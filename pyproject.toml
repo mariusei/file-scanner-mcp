@@ -1,0 +1,43 @@
+[project]
+name = "scantool"
+version = "0.1.0"
+description = "Beautiful file scanner MCP that creates table of contents with line numbers for safe file partitioning"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Marius Berge Eide" }
+]
+keywords = ["mcp", "file-scanner", "tree-sitter", "code-analysis", "structure-extraction"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "fastmcp>=2.12.4",
+    "tree-sitter>=0.23.2",
+    "tree-sitter-python>=0.23.6",
+    "tree-sitter-javascript>=0.23.1",
+    "tree-sitter-typescript>=0.23.2",
+    "tree-sitter-rust>=0.23.2",
+    "tree-sitter-go>=0.23.3",
+    "tree-sitter-markdown>=0.3.2",
+]
+
+[project.scripts]
+scantool = "scantool:main"
+
+[project.urls]
+Homepage = "https://github.com/mariusei/file-scanner-mcp"
+Repository = "https://github.com/mariusei/file-scanner-mcp"
+Issues = "https://github.com/mariusei/file-scanner-mcp/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
