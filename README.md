@@ -83,7 +83,7 @@ example.py (1-57)
 ## Features
 
 ### Core Capabilities
-- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Markdown, Plain Text, Images
+- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, SQL (PostgreSQL, MySQL, SQLite), Markdown, Plain Text, Images
 - **Structure extraction**: Classes, methods, functions, imports, headings, sections, paragraphs
 - **Metadata parsing**: Function signatures with types, decorators, docstrings, modifiers (async, static, etc.)
 - **File metadata**: Size, timestamps, permissions automatically included for all files
@@ -334,6 +334,34 @@ example.ts (1-114)
      "Arrow function to calculate statistics."
 ```
 
+#### SQL File
+```
+database.sql (1-43)
+├─ file-info: 1.2KB modified: 3 hours ago
+├─ table: auth_users (4-11)
+│    "User authentication table"
+│  ├─ column: id BIGINT PRIMARY KEY AUTO_INCREMENT (5-5)
+│  ├─ column: username VARCHAR(50) NOT NULL UNIQUE (6-6)
+│  ├─ column: email VARCHAR(100) NOT NULL UNIQUE (7-7)
+│  ├─ column: password_hash VARCHAR(255) NOT NULL (8-8)
+│  ├─ column: created_at TIMESTAMP DEFAULT (9-9)
+│  └─ column: last_login TIMESTAMP (10-10)
+├─ table: orders (15-21)
+│  ├─ column: order_id INT PRIMARY KEY (16-16)
+│  ├─ column: user_id BIGINT NOT NULL (17-17)
+│  ├─ column: total_amount DECIMAL(12,2) (18-18)
+│  └─ column: status VARCHAR(20) (19-19)
+├─ view: recent_orders SELECT o.order_id, u.username, o.total... (24-32)
+│    "View for recent orders"
+├─ function: calculate_total_with_tax (subtotal DECIMAL, tax_rate DECIMAL) -> DECIMAL (35-37)
+│    "Calculate order total with tax"
+├─ index: idx_username ON auth_users (username) (40-40)
+└─ index: idx_order_status_date ON orders (status, created_at DESC) (43-43)
+     "Composite index for order queries"
+```
+
+**PostgreSQL Support**: Fully parses PL/pgSQL including DO blocks, partitioning, and PostgreSQL-specific syntax.
+
 #### Markdown File
 ```
 example.md (1-119)
@@ -447,6 +475,7 @@ Use `output_format="json"` for structured data:
 | `.php`, `.phtml` | PHP | classes, methods, functions, traits, interfaces, namespaces, attributes |
 | `.cs`, `.csx` | C# | classes, methods, properties, structs, enums, namespaces, attributes |
 | `.rb`, `.rake`, `.gemspec` | Ruby | modules, classes, methods, singleton methods, comments |
+| `.sql` | SQL | tables, views, functions, procedures, indexes, columns, DO blocks (PostgreSQL) |
 | `.md` | Markdown | headings (h1-h6), code blocks with hierarchy |
 | `.txt` | Plain Text | sections (all-caps, underlined), paragraphs |
 | `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico` | Images | format, dimensions, colors, content type, optimization hints |
