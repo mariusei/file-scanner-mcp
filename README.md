@@ -195,53 +195,93 @@ Full hierarchical tree with methods, signatures, and metadata:
 
 ##### Python File
 ```
-example.py (3-57)
+example.py (1-57)
+├─ file-info: 1.4KB modified: 2 hours ago
 ├─ imports: import statements (3-5)
 ├─ class: DatabaseManager (8-26)
-│  ├─ method: __init__ (11-13)
-│  ├─ method: connect (15-17)
-│  ├─ method: disconnect (19-22)
-│  └─ method: query (24-26)
+│    "Manages database connections and queries."
+│  ├─ method: __init__ (self, connection_string: str) (11-13)
+│  ├─ method: connect (self) (15-17)
+│  │    "Establish database connection."
+│  ├─ method: disconnect (self) (19-22)
+│  │    "Close database connection."
+│  └─ method: query (self, sql: str) -> list (24-26)
+│       "Execute a SQL query."
 ├─ class: UserService (29-45)
-│  ├─ method: __init__ (32-33)
-│  ├─ method: create_user (35-37)
-│  ├─ method: get_user (39-41)
-│  └─ method: delete_user (43-45)
-├─ function: validate_email (48-50)
-└─ function: main (53-57)
+│    "Handles user-related operations."
+│  ├─ method: __init__ (self, db: DatabaseManager) (32-33)
+│  ├─ method: create_user (self, username: str, email: str) -> int (35-37)
+│  │    "Create a new user."
+│  ├─ method: get_user (self, user_id: int) -> Optional[dict] (39-41)
+│  │    "Retrieve user by ID."
+│  └─ method: delete_user (self, user_id: int) -> bool (43-45)
+│       "Delete a user."
+├─ function: validate_email (email: str) -> bool (48-50)
+│    "Validate email format."
+└─ function: main () (53-57)
+     "Main entry point."
 ```
 
 #### TypeScript File
 ```
-example.ts (3-66)
-├─ imports: import statements (3-4)
-├─ class: AuthService (11-32)
-│  ├─ method: constructor (15-18)
-│  ├─ method: login (20-23)
-│  ├─ method: logout (25-27)
-│  └─ method: validateToken (29-31)
-└─ class: UserManager (34-58)
-   ├─ method: constructor (37-39)
-   ├─ method: createUser (41-49)
-   ├─ method: getUser (51-53)
-   └─ method: updateUser (55-57)
+example.ts (1-114)
+├─ file-info: 2.2KB modified: 1 day ago
+├─ imports: import statements (5-6)
+├─ interface: Config (11-14)
+│    "Configuration interface for authentication service."
+├─ class: AuthService (19-52)
+│    "Service for handling user authentication and authorization."
+│  ├─ method: constructor (config: Config) (26-29)
+│  │    "Constructs a new AuthService instance."
+│  ├─ method: login (username: string, password: string) : Promise<User | null> (34-37) [async]
+│  │    "Authenticates a user with username and password."
+│  ├─ method: logout (userId: string) : Promise<void> (42-44) [async]
+│  │    "Logs out a user by their ID."
+│  └─ method: validateToken (token: string) : boolean (49-51)
+│       "Validates an authentication token."
+├─ class: UserManager (57-90)
+│    "Manager class for user CRUD operations."
+│  ├─ method: constructor (database: Database) (60-62)
+│  ├─ method: createUser (username: string, email: string) : Promise<User> (67-75) [async]
+│  │    "Creates a new user in the system."
+│  ├─ method: getUser (id: string) : Promise<User | null> (80-82) [async]
+│  │    "Retrieves a user by their ID."
+│  └─ method: updateUser (id: string, data: Partial<User>) : Promise<User> (87-89) [async]
+│       "Updates a user's information."
+├─ function: generateId () : string (95-97)
+│    "Generates a random unique identifier."
+├─ function: validateEmail (email: string) : boolean (102-104)
+│    "Validates an email address format."
+└─ function: calculateStats (users: User[]) : { total: number; active: number } (109-114)
+     "Arrow function to calculate statistics."
 ```
 
 #### Markdown File
 ```
-example.md (1-123)
-└─ heading-1: Documentation (1-2)
-   ├─ heading-2: Overview (5-6)
-   │  ├─ heading-3: Features (9-10)
-   │  └─ heading-3: Installation (16-17)
-   │     └─ code-block: ```bash``` (19-23)
-   └─ heading-2: Usage (24-25)
-      └─ heading-3: Examples (28-29)
+example.md (1-119)
+├─ file-info: 1.6KB modified: 3 hours ago
+├─ heading-1: Project Documentation (1-98)
+│  ├─ heading-2: Installation (5-23)
+│  │  ├─ code-block: code block (bash) bash (9-12)
+│  │  └─ heading-3: Quick Start (13-23)
+│  │     └─ code-block: code block (python) python (17-23)
+│  ├─ heading-2: Features (24-47)
+│  │  ├─ code-block: code block (typescript) typescript (28-34)
+│  │  └─ heading-3: Advanced Usage (35-47)
+│  │     └─ code-block: code block (python) python (39-47)
+│  ├─ heading-2: Configuration (48-60)
+│  │  └─ heading-3: Environment Variables (52-60)
+│  │     └─ code-block: code block (bash) bash (56-60)
+│  └─ heading-2: API Reference (61-76)
+│     ├─ heading-3: FileScanner Class (65-68)
+│     └─ heading-3: TreeFormatter Class (69-76)
+│        └─ heading-4: Options (73-76)
 ```
 
 #### Plain Text File
 ```
 example.txt (1-77)
+├─ file-info: 2.5KB modified: 5 mins ago
 ├─ section: PROJECT OVERVIEW (1-6)
 │  └─ paragraph: paragraph (4-5) (4-5)
 ├─ section: INTRODUCTION (7-12)
@@ -250,9 +290,12 @@ example.txt (1-77)
 │  ├─ paragraph: paragraph (16-16) (16-16)
 │  ├─ paragraph: paragraph (18-19) (18-19)
 │  └─ paragraph: paragraph (21-22) (21-22)
-└─ section: TECHNICAL DETAILS (24-33)
-   ├─ paragraph: paragraph (26-29) (26-29)
-   └─ paragraph: paragraph (31-32) (31-32)
+├─ section: TECHNICAL DETAILS (24-33)
+│  ├─ paragraph: paragraph (26-29) (26-29)
+│  └─ paragraph: paragraph (31-32) (31-32)
+└─ section: CONCLUSION (67-77)
+   ├─ paragraph: paragraph (70-71) (70-71)
+   └─ paragraph: paragraph (73-74) (73-74)
 ```
 
 #### Image File
@@ -441,6 +484,7 @@ Claude Desktop enforces a 25,000 token limit on MCP tool responses.
 # Scan specific areas
 scan_directory("./src", pattern="**/*.py")
 scan_directory("./tests", pattern="**/*.py")
+```
 
 ### Agent Delegation
 
