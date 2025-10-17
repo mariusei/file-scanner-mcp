@@ -16,6 +16,7 @@ jobs:
       url: https://pypi.org/p/scantool
     permissions:
       id-token: write  # Required for trusted publishing
+      attestations: write  # Required for package attestations
 
     steps:
       - name: Checkout code
