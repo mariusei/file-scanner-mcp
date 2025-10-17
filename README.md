@@ -129,12 +129,12 @@ scan_directory(
 ```
 src/ (22 files, 15 classes, 127 functions, 89 methods)
 ├─ scanners/
-│  ├─ python_scanner.py (3-329) [32.1KB, 2 hours ago] - PythonScanner
-│  ├─ typescript_scanner.py (3-505) [45.2KB, 1 day ago] - TypeScriptScanner
-│  └─ rust_scanner.py (3-481) [38.7KB, 3 days ago] - RustScanner
-├─ scanner.py (3-198) [7.2KB, 5 mins ago] - FileScanner
-├─ formatter.py (3-139) [4.5KB, 10 mins ago] - TreeFormatter
-└─ server.py (3-349) [12.1KB, just now] - scan_file, scan_directory, search_structures
+│  ├─ python_scanner.py (1-329) [11.9KB, 2 hours ago] - PythonScanner
+│  ├─ typescript_scanner.py (1-505) [18.9KB, 1 day ago] - TypeScriptScanner
+│  └─ rust_scanner.py (1-481) [17.6KB, 3 days ago] - RustScanner
+├─ scanner.py (1-232) [8.8KB, 5 mins ago] - FileScanner
+├─ formatter.py (1-153) [5.7KB, 10 mins ago] - TreeFormatter
+└─ server.py (1-353) [12.2KB, just now] - scan_file, scan_directory, search_structures, _filter_structures, _structures_to_json, ... (6 total)
 ```
 
 **Controlling scope:**

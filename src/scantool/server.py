@@ -1,6 +1,7 @@
 """FastMCP server with file scanning tools."""
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -349,8 +350,36 @@ def _structures_to_json(structures: list[StructureNode], file_path: str, return_
 
 
 def main():
-    """Main entry point for the MCP server."""
+    """Main entry point for the MCP server (STDIO mode)."""
     mcp.run()
+
+
+def http_main():
+    """Entry point for HTTP mode (used by Smithery)."""
+    import uvicorn
+    from starlette.middleware.cors import CORSMiddleware
+
+    print("Scantool MCP Server starting in HTTP mode...")
+
+    # Setup Starlette app with CORS for cross-origin requests
+    app = mcp.http_app()
+
+    # Add CORS middleware for browser-based clients
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["mcp-session-id", "mcp-protocol-version"],
+        max_age=86400,
+    )
+
+    # Get port from environment variable (Smithery sets this to 8081)
+    port = int(os.environ.get("PORT", 8080))
+    print(f"Listening on port {port}")
+
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 
 if __name__ == "__main__":

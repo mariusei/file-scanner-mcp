@@ -1,21 +1,8 @@
-name: scantool
-description: Multi-language code scanner MCP server with structure extraction, metadata parsing, and search capabilities
-language: python
+runtime: "container"
 
-install:
-  type: pypi
-  package: scantool
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
 
-config:
-  type: mcp_server
-  command: uvx
-  args:
-    - scantool
-
-categories:
-  - development-tools
-  - code-analysis
-
-readme: README.md
-homepage: https://github.com/mariusei/file-scanner-mcp
-repository: https://github.com/mariusei/file-scanner-mcp
+startCommand:
+  type: "http"

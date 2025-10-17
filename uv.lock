@@ -1396,6 +1396,7 @@ dependencies = [
     { name = "tree-sitter-ruby" },
     { name = "tree-sitter-rust" },
     { name = "tree-sitter-typescript" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -1422,6 +1423,7 @@ requires-dist = [
     { name = "tree-sitter-ruby", specifier = ">=0.23.0" },
     { name = "tree-sitter-rust", specifier = ">=0.23.2" },
     { name = "tree-sitter-typescript", specifier = ">=0.23.2" },
+    { name = "uvicorn", specifier = ">=0.32.1" },
 ]
 provides-extras = ["dev"]
 
