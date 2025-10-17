@@ -1,6 +1,6 @@
 [project]
 name = "scantool"
-version = "0.1.0"
+version = "0.9.0"
 description = "MCP server for multi-language code analysis with structure extraction, metadata parsing, and search capabilities across Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Markdown, plain text, and images"
 readme = "README.md"
 requires-python = ">=3.11"
