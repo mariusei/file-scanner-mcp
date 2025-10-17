@@ -1,6 +1,84 @@
+```
+  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+  ░                                                                        ░
+  ░   ███████╗ ██████╗ █████╗ ███╗   ██╗████████╗ ██████╗  ██████╗ ██╗     ░
+  ░   ██╔════╝██╔════╝██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗██╔═══██╗██║     ░
+  ░   ███████╗██║     ███████║██╔██╗ ██║   ██║   ██║   ██║██║   ██║██║     ░
+  ░   ╚════██║██║     ██╔══██║██║╚██╗██║   ██║   ██║   ██║██║   ██║██║     ░
+  ░   ███████║╚██████╗██║  ██║██║ ╚████║   ██║   ╚██████╔╝╚██████╔╝███████╗░
+  ░   ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝░
+  ░                                                                        ░
+  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+                ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+
+                ╔═══════════════════════════════════════════╗
+                ║  ▶ [▓▓▓▓▓▓▓▓▓░░] Scanning codebase...     ║
+                ║                                           ║
+                ║  ╭───────────────────────────────────╮    ║
+                ║  │ ✓ Classes    ▓▓▓▓▓▓▓▓▓▓ 100%      │    ║
+                ║  │ ✓ Functions  ▓▓▓▓▓▓▓▓▓▓ 100%      │    ║
+                ║  │ ✓ Metadata   ▓▓▓▓▓▓▓▓▓▓ 100%      │    ║
+                ║  ╰───────────────────────────────────╯    ║
+                ║                                           ║
+                ║  🌲 tree-sitter powered  •  MCP ready     ║
+                ╚═══════════════════════════════════════════╝
+
+                ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+```
+
 # Scantool - File Scanner MCP
 
 MCP server for analyzing source code structure across multiple languages. Extracts classes, functions, methods, and metadata (signatures, decorators, docstrings) with precise line numbers. Includes search and filtering capabilities for large codebases.
+
+## Quick Look
+
+### Get a compact codebase overview with `scan_directory()`
+
+See your entire codebase structure at a glance with inline class/function names:
+
+```
+src/ (22 files, 15 classes, 127 functions, 89 methods)
+├─ scanners/
+│  ├─ python_scanner.py (1-329) [11.9KB, 2 hours ago] - PythonScanner
+│  ├─ typescript_scanner.py (1-505) [18.9KB, 1 day ago] - TypeScriptScanner
+│  └─ rust_scanner.py (1-481) [17.6KB, 3 days ago] - RustScanner
+├─ scanner.py (1-232) [8.8KB, 5 mins ago] - FileScanner
+├─ formatter.py (1-153) [5.7KB, 10 mins ago] - TreeFormatter
+└─ server.py (1-353) [12.2KB, just now] - scan_file, scan_directory, search_structures, _filter_structures, _structures_to_json, ... (6 total)
+```
+
+### Dive into detailed structure with `scan_file()`
+
+Full hierarchical tree with methods, signatures, decorators, and docstrings:
+
+```
+example.py (1-57)
+├─ file-info: 1.4KB modified: 2025-10-17 14:30
+├─ imports: import statements (3-5)
+├─ class: DatabaseManager (8-26)
+│    "Manages database connections and queries."
+│  ├─ method: __init__ (self, connection_string: str) (11-13)
+│  ├─ method: connect (self) (15-17)
+│  │    "Establish database connection."
+│  ├─ method: disconnect (self) (19-22)
+│  │    "Close database connection."
+│  └─ method: query (self, sql: str) -> list (24-26)
+│       "Execute a SQL query."
+├─ class: UserService (29-45)
+│    "Handles user-related operations."
+│  ├─ method: __init__ (self, db: DatabaseManager) (32-33)
+│  ├─ method: create_user (self, username: str, email: str) -> int (35-37)
+│  │    "Create a new user."
+│  ├─ method: get_user (self, user_id: int) -> Optional[dict] (39-41)
+│  │    "Retrieve user by ID."
+│  └─ method: delete_user (self, user_id: int) -> bool (43-45)
+│       "Delete a user."
+├─ function: validate_email (email: str) -> bool (48-50)
+│    "Validate email format."
+└─ function: main () (53-57)
+     "Main entry point."
+```
 
 ## Features
 
