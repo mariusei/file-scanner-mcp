@@ -1,0 +1,21 @@
+name: scantool
+description: Multi-language code scanner MCP server with structure extraction, metadata parsing, and search capabilities
+language: python
+
+install:
+  type: pypi
+  package: scantool
+
+config:
+  type: mcp_server
+  command: uvx
+  args:
+    - scantool
+
+categories:
+  - development-tools
+  - code-analysis
+
+readme: README.md
+homepage: https://github.com/mariusei/file-scanner-mcp
+repository: https://github.com/mariusei/file-scanner-mcp
