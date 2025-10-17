@@ -1,7 +1,7 @@
 [project]
 name = "scantool"
 version = "0.1.0"
-description = "Beautiful file scanner MCP that creates table of contents with line numbers for safe file partitioning"
+description = "MCP server for multi-language code analysis with structure extraction, metadata parsing, and search capabilities across Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Markdown, plain text, and images"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -28,6 +28,18 @@ dependencies = [
     "tree-sitter-rust>=0.23.2",
     "tree-sitter-go>=0.23.3",
     "tree-sitter-markdown>=0.3.2",
+    "tree-sitter-cpp>=0.23.0",
+    "tree-sitter-java>=0.23.2",
+    "tree-sitter-ruby>=0.23.0",
+    "tree-sitter-c-sharp>=0.23.0",
+    "tree-sitter-php>=0.23.4",
+    "pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
 ]
 
 [project.scripts]

@@ -1,18 +1,29 @@
-# File Scanner MCP
+# Scantool - File Scanner MCP
 
-> Beautiful file scanner MCP that creates table of contents with line numbers for safe file partitioning.
+MCP server for analyzing source code structure across multiple languages. Extracts classes, functions, methods, and metadata (signatures, decorators, docstrings) with precise line numbers. Includes search and filtering capabilities for large codebases.
 
-A powerful MCP server that analyzes source code structure across multiple programming languages and returns beautifully formatted tree views with precise line ranges—perfect for safe file partitioning and code navigation.
+## Features
 
-## ✨ Features
+### Core Capabilities
+- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Markdown, Plain Text, Images
+- **Structure extraction**: Classes, methods, functions, imports, headings, sections, paragraphs
+- **Metadata parsing**: Function signatures with types, decorators, docstrings, modifiers (async, static, etc.)
+- **File metadata**: Size, timestamps, permissions automatically included for all files
+- **Image analysis**: Dimensions, format, colors, content type inference, optimization hints
+- **Precise line numbers**: Every element includes (from-to) line ranges for safe file partitioning
+- **Error handling**: Handles malformed files without crashing, with regex fallback parsing
 
-- **🎨 Beautiful output**: Tree-formatted structure with box-drawing characters (├─, └─, │)
-- **📍 Precise line numbers**: Every element shows (from-to) line ranges for safe partitioning
-- **🌍 Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, Markdown
-- **🔍 Deep structure analysis**: Classes, methods, functions, imports, headings, code blocks
-- **📊 Hierarchical display**: Nested structures shown with proper indentation
+### Output Options
+- **Tree format**: Hierarchical display with box-drawing characters (├─, └─, │)
+- **JSON format**: Structured data output for programmatic use
+- **Configurable display**: Toggle signatures, decorators, docstrings, complexity metrics
 
-## 🚀 Quick Start
+### Tools
+- **scan_file**: Analyze a single file with full metadata extraction
+- **scan_directory**: Hierarchical directory tree with integrated code structures and statistics
+- **search_structures**: Find and filter structures by type, name pattern, decorator, or complexity
+
+## Installation
 
 ### Install with uvx (Recommended)
 
@@ -20,9 +31,12 @@ A powerful MCP server that analyzes source code structure across multiple progra
 # From GitHub
 uvx --from git+https://github.com/mariusei/file-scanner-mcp scantool
 
-# Or if published to PyPI
+# Or from PyPI
 uvx scantool
 ```
+
+# Or from Smithery
+https://smithery.ai/server/@mariusei/file-scanner-mcp
 
 ### Install from Source
 
@@ -33,7 +47,7 @@ uv sync
 uv run scantool
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
@@ -42,7 +56,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
   "mcpServers": {
     "scantool": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/mariusei/file-scanner-mcp", "scantool"]
+      "args": ["scantool"]
     }
   }
 }
@@ -61,17 +75,125 @@ Or if installed from source:
 }
 ```
 
-## 📖 Usage
+## Usage
 
-The server provides a single tool: `scan_file`
+The server provides three MCP tools for code exploration:
+
+**Recommended Workflow:**
+
+1. **Get codebase overview**: Use `scan_directory()` to see compact bird's-eye view
+   - Shows directory tree with inline list of classes/functions per file
+   - Respects .gitignore automatically (excludes node_modules, .venv, etc.)
+
+2. **Examine specific files**: Use `scan_file()` for detailed structure
+   - Full tree with methods, signatures, decorators, docstrings
+   - Precise line numbers for each element
+
+3. **Search for patterns**: Use `search_structures()` for semantic code search
+   - Find classes, functions by type, name pattern, or decorator
+
+4. **Read targeted content**: Use Read tool only after identifying exact line ranges
+
+### 1. scan_file - Analyze a single file
 
 ```python
-scan_file(file_path="path/to/your/file.py")
+scan_file(
+    file_path="path/to/your/file.py",
+    show_signatures=True,      # Include function signatures with types
+    show_decorators=True,      # Include @decorator annotations
+    show_docstrings=True,      # Include first line of docstrings
+    show_complexity=False,     # Show complexity metrics (lines, depth, branches)
+    output_format="tree"       # "tree" or "json"
+)
 ```
 
-### Example Outputs
+### 2. scan_directory - Compact codebase overview
 
-#### Python File
+Shows directory tree with **inline** class/function names for each file.
+
+```python
+scan_directory(
+    directory="./src",
+    pattern="**/*",                 # Glob pattern (default: "**/*" = all files)
+                                    # "**/*.py" = all Python files
+                                    # "*/*" = 1 level deep only
+                                    # "src/**/*.{py,ts}" = Python/TypeScript in src/
+    max_files=None,                 # Limit number of files (default: None)
+    respect_gitignore=True,         # Respect .gitignore (default: True)
+    exclude_patterns=None,          # Additional exclusions (gitignore syntax)
+    output_format="tree"            # "tree" or "json"
+)
+```
+
+**Output format (compact inline):**
+```
+src/ (22 files, 15 classes, 127 functions, 89 methods)
+├─ scanners/
+│  ├─ python_scanner.py (3-329) [32.1KB, 2 hours ago] - PythonScanner
+│  ├─ typescript_scanner.py (3-505) [45.2KB, 1 day ago] - TypeScriptScanner
+│  └─ rust_scanner.py (3-481) [38.7KB, 3 days ago] - RustScanner
+├─ scanner.py (3-198) [7.2KB, 5 mins ago] - FileScanner
+├─ formatter.py (3-139) [4.5KB, 10 mins ago] - TreeFormatter
+└─ server.py (3-349) [12.1KB, just now] - scan_file, scan_directory, search_structures
+```
+
+**Controlling scope:**
+
+```python
+# Specific file types
+scan_directory("./src", pattern="**/*.py")
+
+# Multiple types (brace expansion)
+scan_directory("./src", pattern="**/*.{py,ts,js}")
+
+# Shallow scan (1 level deep)
+scan_directory(".", pattern="*/*")
+
+# Exclude directories (respects .gitignore by default)
+scan_directory(".", exclude_patterns=["tests/**", "docs/**"])
+
+# Scan everything (ignores .gitignore)
+scan_directory(".", respect_gitignore=False)
+```
+
+### 3. search_structures - Find and filter structures
+
+```python
+# Find all test functions
+search_structures(
+    directory="./tests",
+    type_filter="function",
+    name_pattern="^test_"
+)
+
+# Find all classes ending in "Manager"
+search_structures(
+    directory="./src",
+    type_filter="class",
+    name_pattern=".*Manager$"
+)
+
+# Find functions with @staticmethod decorator
+search_structures(
+    directory="./src",
+    has_decorator="@staticmethod"
+)
+
+# Find complex functions (>100 lines)
+search_structures(
+    directory="./src",
+    type_filter="function",
+    min_complexity=100
+)
+```
+
+### Example Output
+
+#### scan_file() - Detailed structure
+
+Full hierarchical tree with methods, signatures, and metadata:
+
+##### Python File
 ```
 example.py (3-57)
 ├─ imports: import statements (3-5)
@@ -117,82 +239,214 @@ example.md (1-123)
       └─ heading-3: Examples (28-29)
 ```
 
-## 🗂️ Supported File Types
+#### Plain Text File
+```
+example.txt (1-77)
+├─ section: PROJECT OVERVIEW (1-6)
+│  └─ paragraph: paragraph (4-5) (4-5)
+├─ section: INTRODUCTION (7-12)
+│  └─ paragraph: paragraph (9-11) (9-11)
+├─ section: Features and Capabilities (13-23)
+│  ├─ paragraph: paragraph (16-16) (16-16)
+│  ├─ paragraph: paragraph (18-19) (18-19)
+│  └─ paragraph: paragraph (21-22) (21-22)
+└─ section: TECHNICAL DETAILS (24-33)
+   ├─ paragraph: paragraph (26-29) (26-29)
+   └─ paragraph: paragraph (31-32) (31-32)
+```
+
+#### Image File
+```
+logo.png (1-1)
+├─ file-info: 45KB modified: 2025-10-15
+├─ format: PNG - RGBA (1-1)
+│    "Format: PNG, Color mode: RGBA"
+├─ dimensions: 512×512 (1-1)
+│    "Aspect ratio: 1:1 (square)"
+├─ content-type: logo (1-1)
+│    "Inferred based on size and format"
+├─ colors: palette (1-1)
+│  ├─ color: #ff5733 (1-1)
+│  ├─ color: #33ff57 (1-1)
+│  └─ color: #3357ff (1-1)
+└─ transparency: has alpha channel (1-1)
+```
+
+### JSON Output Format
+
+Use `output_format="json"` for structured data:
+
+```json
+{
+  "file": "example.py",
+  "structures": [
+    {
+      "type": "class",
+      "name": "DatabaseManager",
+      "start_line": 8,
+      "end_line": 26,
+      "docstring": "Manages database connections and queries.",
+      "children": [
+        {
+          "type": "method",
+          "name": "__init__",
+          "start_line": 11,
+          "end_line": 13,
+          "signature": "(self, connection_string: str)",
+          "children": []
+        },
+        {
+          "type": "method",
+          "name": "query",
+          "start_line": 24,
+          "end_line": 26,
+          "signature": "(self, sql: str) -> list",
+          "docstring": "Execute a SQL query.",
+          "modifiers": ["async"],
+          "children": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Supported File Types
 
 | Extension | Language | Extracted Elements |
 |-----------|----------|-------------------|
-| `.py` | Python | classes, methods, functions, imports |
-| `.js`, `.jsx` | JavaScript | classes, methods, functions, imports |
-| `.ts`, `.tsx` | TypeScript | classes, methods, functions, imports |
-| `.rs` | Rust | structs, enums, traits, impl blocks, functions, use statements |
-| `.go` | Go | types, functions, methods, imports |
+| `.py`, `.pyw` | Python | classes, methods, functions, imports, decorators, docstrings |
+| `.js`, `.jsx`, `.mjs`, `.cjs` | JavaScript | classes, methods, functions, imports, JSDoc comments |
+| `.ts`, `.tsx`, `.mts`, `.cts` | TypeScript | classes, methods, functions, imports, type annotations, JSDoc |
+| `.rs` | Rust | structs, enums, traits, impl blocks, functions, use statements, attributes |
+| `.go` | Go | types, structs, interfaces, functions, methods, imports |
+| `.c`, `.h` | C | functions, structs, enums, includes, comments |
+| `.cpp`, `.hpp`, `.cc`, `.hh`, `.cxx`, `.hxx` | C++ | classes, functions, namespaces, templates, includes |
+| `.java` | Java | classes, methods, interfaces, enums, annotations, imports |
+| `.php`, `.phtml` | PHP | classes, methods, functions, traits, interfaces, namespaces, attributes |
+| `.cs`, `.csx` | C# | classes, methods, properties, structs, enums, namespaces, attributes |
+| `.rb`, `.rake`, `.gemspec` | Ruby | modules, classes, methods, singleton methods, comments |
 | `.md` | Markdown | headings (h1-h6), code blocks with hierarchy |
+| `.txt` | Plain Text | sections (all-caps, underlined), paragraphs |
+| `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico` | Images | format, dimensions, colors, content type, optimization hints |
 
-## 💡 Use Cases
+**Note**: All files automatically include file metadata (size, modified date, permissions) as the first structure node.
 
-- **Safe file partitioning**: Know exact line ranges for splitting large files
-- **Code navigation**: Quickly understand file structure before diving in
-- **Documentation**: Generate structural overviews automatically
-- **Refactoring**: Identify boundaries for safe code reorganization
-- **Code review**: Get quick structural overview before deep dive
-- **LLM context optimization**: Partition files intelligently for AI code assistants
+## Use Cases
 
-## 🏗️ Architecture
+### Code Navigation & Understanding
+- Get structural overview of unfamiliar codebases
+- Understand file organization before reading code
+- Navigate large files using precise line ranges
+
+### Refactoring & Reorganization
+- Identify class and function boundaries for safe splitting
+- Find all implementations of specific patterns (e.g., all Manager classes)
+- Locate functions above complexity thresholds for refactoring
+
+### Code Review & Analysis
+- Generate structural diffs between versions
+- Find all functions with specific decorators
+- Identify test coverage gaps by searching test_ patterns
+
+### Documentation & Tooling
+- Auto-generate table of contents with line numbers
+- Extract API signatures for documentation
+- Feed structured data to other analysis tools (JSON output)
+
+### AI Code Assistance
+- **Primary exploration tool**: Prefer scantool over Glob/Grep/Read for initial codebase exploration
+- Partition large files intelligently for LLM context windows
+- Extract relevant code sections with exact boundaries
+- Search for specific patterns across entire codebases
+- Reduce token usage by getting structure first, reading content only when needed
+
+### Image & Asset Analysis
+- **Quick asset inventory**: Scan image directories to understand formats and sizes
+- **Optimization opportunities**: Find oversized images, unused alpha channels, inefficient formats
+- **Color palette extraction**: Discover dominant colors for branding and design consistency
+- **Content categorization**: Auto-detect icons, logos, photos, screenshots by size/format
+- **Format recommendations**: Get suggestions for WebP conversion, JPEG vs PNG optimization
+
+## Architecture
 
 ```
 scantool/
 ├── scanner.py     # Core scanning logic using tree-sitter
 ├── formatter.py   # Pretty tree formatting with box-drawing characters
 ├── server.py      # FastMCP server implementation
-└── tests/         # Comprehensive test suite
-    ├── test_all.py
-    └── samples/   # Example files for all supported languages
+└── tests/         # Test suite organized by language
+    ├── python/
+    ├── typescript/
+    ├── text/
+    ├── test_integration.py
+    └── conftest.py
 ```
 
-## 🧪 Testing
+## Testing
 
-Run the comprehensive test suite:
+Run tests using pytest:
 
 ```bash
-uv run python tests/test_all.py
+# Run all tests
+uv run pytest
+
+# Run specific language tests
+uv run pytest tests/python/
+uv run pytest tests/typescript/
+uv run pytest tests/text/
+
+# Run with coverage
+uv run pytest --cov=src/scantool
+
+# Run with verbose output
+uv run pytest -v
 ```
 
-This tests scanning across all supported languages (Python, JavaScript, TypeScript, Rust, Go, Markdown).
+Tests are organized by language in `tests/python/`, `tests/typescript/`, and `tests/text/` directories.
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Here's how you can help:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on adding language support.
 
-1. **Add language support**: Implement new `_extract_*_structure` methods
-2. **Improve formatting**: Enhance the tree output formatting
-3. **Fix bugs**: Check the issues tab for known problems
-4. **Add tests**: More test cases are always appreciated
-
-### Development Setup
-
-```bash
-git clone https://github.com/mariusei/file-scanner-mcp.git
-cd file-scanner-mcp
-uv sync
-uv run python tests/test_all.py
-```
-
-## 📝 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Dependencies
 
-Built with:
-- [FastMCP](https://github.com/jlowin/fastmcp) - Fast, simple MCP server framework
-- [tree-sitter](https://tree-sitter.github.io/) - Incremental parsing library
-- [uv](https://github.com/astral-sh/uv) - Fast Python package installer
+- [FastMCP](https://github.com/jlowin/fastmcp) - MCP server framework
+- [tree-sitter](https://tree-sitter.github.io/) - Parsing library
+- [uv](https://github.com/astral-sh/uv) - Python package installer
 
-## 📮 Support
+## Known Limitations
 
-- **Issues**: [GitHub Issues](https://github.com/mariusei/file-scanner-mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/mariusei/file-scanner-mcp/discussions)
+### MCP Tool Response Size Limit
 
----
+Claude Desktop enforces a 25,000 token limit on MCP tool responses.
 
-Made with ❤️ for developers who need to understand code structure quickly and safely.
+**Built-in mitigations:**
+- `scan_directory()` uses compact inline format (not full tree expansion)
+- Respects `.gitignore` by default (excludes node_modules, .venv, etc.)
+- Shows file metadata with relative timestamps (e.g., "2 hours ago")
+
+**Manual controls:**
+- Use `pattern` to limit scope: `"**/*.py"` vs `"*/*"` (shallow)
+- Use `max_files` to cap number of files processed
+- Use `exclude_patterns` for additional exclusions
+- Scan specific subdirectories instead of entire codebase
+
+**For large codebases:**
+```python
+# Scan specific areas
+scan_directory("./src", pattern="**/*.py")
+scan_directory("./tests", pattern="**/*.py")
+
+### Agent Delegation
+
+When using Claude Code, asking to "explore the codebase" may delegate to the Explore agent which doesn't have access to MCP tools. Be explicit: "use scantool to scan the codebase" to ensure the MCP tool is used directly.
+
+## Support
+
+- [GitHub Issues](https://github.com/mariusei/file-scanner-mcp/issues)
+- [GitHub Discussions](https://github.com/mariusei/file-scanner-mcp/discussions)

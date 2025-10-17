@@ -1,411 +1,236 @@
-"""File scanner for extracting structure and creating table of contents."""
+"""Main file scanner orchestrator using the plugin system."""
 
+import os
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from dataclasses import dataclass
 
-import tree_sitter_python
-import tree_sitter_javascript
-import tree_sitter_typescript
-import tree_sitter_rust
-import tree_sitter_go
-import tree_sitter_markdown
-from tree_sitter import Language, Parser, Node
-
-
-@dataclass
-class StructureNode:
-    """Represents a node in the file structure."""
-
-    type: str  # e.g., "class", "function", "heading"
-    name: str
-    start_line: int
-    end_line: int
-    children: list["StructureNode"]
-
-    def __repr__(self):
-        return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"
+from .scanners import BaseScanner, StructureNode, get_registry
+from .gitignore import load_gitignore, GitignoreParser
+from .glob_expander import expand_braces
 
 
 class FileScanner:
-    """Scans files and extracts their structure."""
+    """Main scanner that delegates to language-specific scanner plugins."""
 
-    LANGUAGE_MAP = {
-        ".py": ("python", Language(tree_sitter_python.language())),
-        ".js": ("javascript", Language(tree_sitter_javascript.language())),
-        ".jsx": ("javascript", Language(tree_sitter_javascript.language())),
-        ".ts": ("typescript", Language(tree_sitter_typescript.language_typescript())),
-        ".tsx": ("tsx", Language(tree_sitter_typescript.language_tsx())),
-        ".rs": ("rust", Language(tree_sitter_rust.language())),
-        ".go": ("go", Language(tree_sitter_go.language())),
-        ".md": ("markdown", Language(tree_sitter_markdown.language())),
-    }
+    def __init__(self, show_errors: bool = True, fallback_on_errors: bool = True):
+        """
+        Initialize file scanner.
 
-    def __init__(self):
-        self.parser = Parser()
+        Args:
+            show_errors: Show parse error nodes in output
+            fallback_on_errors: Use regex fallback for severely broken files
+        """
+        self.registry = get_registry()
+        self.show_errors = show_errors
+        self.fallback_on_errors = fallback_on_errors
 
-    def scan_file(self, file_path: str) -> Optional[list[StructureNode]]:
-        """Scan a file and return its structure."""
+    def scan_file(self, file_path: str, include_file_metadata: bool = True) -> Optional[list[StructureNode]]:
+        """
+        Scan a single file and return its structure.
+
+        Args:
+            file_path: Path to the file to scan
+            include_file_metadata: Include file metadata (size, timestamps) as first node
+
+        Returns:
+            List of StructureNode objects, or None if file type not supported
+        """
         path = Path(file_path)
 
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        # Detect language
+        # Get appropriate scanner for this file type
         suffix = path.suffix.lower()
-        if suffix not in self.LANGUAGE_MAP:
-            return None
+        scanner_class = self.registry.get_scanner(suffix)
 
-        lang_name, language = self.LANGUAGE_MAP[suffix]
-        self.parser.language = language
+        if not scanner_class:
+            return None  # Unsupported file type
 
-        # Read and parse file
+        # Get file metadata
+        file_stats = os.stat(file_path)
+
+        # Create scanner instance with options
+        scanner = scanner_class(
+            show_errors=self.show_errors,
+            fallback_on_errors=self.fallback_on_errors
+        )
+
+        # Read file
         with open(file_path, "rb") as f:
             source_code = f.read()
 
-        tree = self.parser.parse(source_code)
+        # Scan using the appropriate plugin
+        structures = scanner.scan(source_code)
 
-        # Extract structure based on language
-        if lang_name == "python":
-            return self._extract_python_structure(tree.root_node, source_code)
-        elif lang_name in ("javascript", "typescript", "tsx"):
-            return self._extract_js_structure(tree.root_node, source_code)
-        elif lang_name == "rust":
-            return self._extract_rust_structure(tree.root_node, source_code)
-        elif lang_name == "go":
-            return self._extract_go_structure(tree.root_node, source_code)
-        elif lang_name == "markdown":
-            return self._extract_markdown_structure(tree.root_node, source_code)
-
-        return None
-
-    def _get_node_text(self, node: Node, source_code: bytes) -> str:
-        """Extract text from a node."""
-        return source_code[node.start_byte:node.end_byte].decode("utf-8")
-
-    def _extract_python_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
-        """Extract structure from Python code."""
-        structures = []
-
-        def traverse(node: Node, parent_structures: list):
-            if node.type == "class_definition":
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
-
-                class_node = StructureNode(
-                    type="class",
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(class_node)
-
-                # Traverse children for methods
-                for child in node.children:
-                    traverse(child, class_node.children)
-
-            elif node.type == "function_definition":
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
-
-                # Check if this is a method (inside a class)
-                type_name = "method" if any(p.type == "class_definition" for p in self._get_ancestors(root, node)) else "function"
-
-                func_node = StructureNode(
-                    type=type_name,
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(func_node)
-
-            elif node.type == "import_statement" or node.type == "import_from_statement":
-                # Group imports
-                if not parent_structures or parent_structures[-1].type != "imports":
-                    import_node = StructureNode(
-                        type="imports",
-                        name="import statements",
-                        start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1,
-                        children=[]
-                    )
-                    parent_structures.append(import_node)
-                else:
-                    # Extend the end line of the existing import group
-                    parent_structures[-1].end_line = node.end_point[0] + 1
-
+        # Prepend file metadata if requested and structures exist
+        if include_file_metadata and structures is not None:
+            # Format file size
+            size_bytes = file_stats.st_size
+            if size_bytes < 1024:
+                size_str = f"{size_bytes}B"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f}KB"
             else:
-                for child in node.children:
-                    traverse(child, parent_structures)
+                size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
 
-        traverse(root, structures)
+            # Create file info node
+            file_info = StructureNode(
+                type="file-info",
+                name=path.name,
+                start_line=1,
+                end_line=1,
+                file_metadata={
+                    "size": size_bytes,
+                    "size_formatted": size_str,
+                    "created": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
+                    "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                    "permissions": oct(file_stats.st_mode)[-3:],
+                }
+            )
+            structures = [file_info] + structures
+
         return structures
 
-    def _get_ancestors(self, root: Node, target: Node) -> list[Node]:
-        """Get all ancestor nodes of a target node."""
-        ancestors = []
+    def scan_directory(
+        self,
+        directory: str,
+        pattern: str = "**/*",
+        respect_gitignore: bool = True,
+        exclude_patterns: Optional[list[str]] = None
+    ) -> dict[str, Optional[list[StructureNode]]]:
+        """
+        Scan all supported files in a directory.
 
-        def find_path(node: Node, path: list[Node]) -> bool:
-            if node == target:
-                ancestors.extend(path)
-                return True
+        Args:
+            directory: Directory path to scan
+            pattern: Glob pattern for files (use "**/*" for recursive, "*" for current dir only)
+            respect_gitignore: Respect .gitignore exclusions (default: True)
+            exclude_patterns: Additional patterns to exclude (gitignore syntax)
 
-            for child in node.children:
-                if find_path(child, path + [node]):
-                    return True
+        Returns:
+            Dictionary mapping file paths to their structures
+        """
+        results = {}
+        dir_path = Path(directory).resolve()
 
-            return False
+        if not dir_path.exists():
+            raise FileNotFoundError(f"Directory not found: {directory}")
 
-        find_path(root, [])
-        return ancestors
+        # Load gitignore if requested
+        gitignore = load_gitignore(dir_path) if respect_gitignore else None
 
-    def _extract_js_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
-        """Extract structure from JavaScript/TypeScript code."""
-        structures = []
+        # Default exclusions - always applied
+        default_exclusions = [
+            '.DS_Store',      # macOS
+            'Thumbs.db',      # Windows
+            'desktop.ini',    # Windows
+            '.localized',     # macOS
+        ]
 
-        def traverse(node: Node, parent_structures: list):
-            if node.type in ("class_declaration", "class"):
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
+        # Combine defaults with user-provided exclusions
+        all_exclude_patterns = default_exclusions.copy()
+        if exclude_patterns:
+            all_exclude_patterns.extend(exclude_patterns)
 
-                class_node = StructureNode(
-                    type="class",
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(class_node)
+        # Parse exclusion patterns
+        exclude_parser = GitignoreParser(all_exclude_patterns) if all_exclude_patterns else None
 
-                for child in node.children:
-                    traverse(child, class_node.children)
+        # Expand brace patterns (e.g., "**/*.{py,js}" → ["**/*.py", "**/*.js"])
+        expanded_patterns = expand_braces(pattern)
 
-            elif node.type in ("function_declaration", "method_definition", "arrow_function", "function"):
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "anonymous"
+        # Process each expanded pattern
+        seen_files = set()  # Avoid duplicates if patterns overlap
+        for expanded_pattern in expanded_patterns:
+            for file_path in dir_path.glob(expanded_pattern):
+                if not file_path.is_file():
+                    continue
 
-                type_name = "method" if node.type == "method_definition" else "function"
+                # Skip if already processed
+                file_str = str(file_path)
+                if file_str in seen_files:
+                    continue
+                seen_files.add(file_str)
 
-                func_node = StructureNode(
-                    type=type_name,
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(func_node)
+                # Check exclusions
+                try:
+                    rel_path = str(file_path.relative_to(dir_path))
+                except ValueError:
+                    # File outside base directory
+                    continue
 
-            elif node.type in ("import_statement", "import_clause"):
-                if not parent_structures or parent_structures[-1].type != "imports":
-                    import_node = StructureNode(
-                        type="imports",
-                        name="import statements",
-                        start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1,
-                        children=[]
-                    )
-                    parent_structures.append(import_node)
+                # Skip files inside hidden directories (directories starting with .)
+                # But allow hidden files themselves (e.g., .gitignore, .python-version)
+                path_parts = Path(rel_path).parts
+                if any(part.startswith('.') and part not in [file_path.name] for part in path_parts):
+                    # File is inside a hidden directory, skip it
+                    continue
+
+                # Check gitignore
+                if gitignore and gitignore.matches(rel_path, file_path.is_dir()):
+                    continue
+
+                # Check additional exclusions
+                if exclude_parser and exclude_parser.matches(rel_path, file_path.is_dir()):
+                    continue
+
+                # Check if we have a scanner for this file type
+                scanner_class = self.registry.get_scanner(file_path.suffix.lower())
+                if scanner_class:
+                    # Check if scanner wants to skip this file
+                    if scanner_class.should_skip(file_path.name):
+                        continue
+
+                    try:
+                        results[file_str] = self.scan_file(file_str)
+                    except Exception as e:
+                        # Continue scanning even if one file fails
+                        results[file_str] = [StructureNode(
+                            type="error",
+                            name=f"Failed to scan: {str(e)}",
+                            start_line=1,
+                            end_line=1
+                        )]
                 else:
-                    parent_structures[-1].end_line = node.end_point[0] + 1
+                    # Unsupported file type - include with basic metadata only
+                    try:
+                        file_stats = os.stat(file_str)
+                        size_bytes = file_stats.st_size
+                        if size_bytes < 1024:
+                            size_str = f"{size_bytes}B"
+                        elif size_bytes < 1024 * 1024:
+                            size_str = f"{size_bytes / 1024:.1f}KB"
+                        else:
+                            size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
 
-            else:
-                for child in node.children:
-                    traverse(child, parent_structures)
+                        results[file_str] = [StructureNode(
+                            type="file-info",
+                            name=file_path.name,
+                            start_line=1,
+                            end_line=1,
+                            file_metadata={
+                                "size": size_bytes,
+                                "size_formatted": size_str,
+                                "extension": file_path.suffix or "(no extension)",
+                                "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+                                "unsupported": True
+                            }
+                        )]
+                    except Exception:
+                        # If we can't even get metadata, skip the file
+                        continue
 
-        traverse(root, structures)
-        return structures
+        return results
 
-    def _extract_rust_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
-        """Extract structure from Rust code."""
-        structures = []
+    def get_supported_extensions(self) -> list[str]:
+        """Get list of all supported file extensions."""
+        return self.registry.get_supported_extensions()
 
-        def traverse(node: Node, parent_structures: list):
-            if node.type in ("struct_item", "enum_item", "trait_item", "impl_item"):
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
+    def get_scanner_info(self) -> dict[str, str]:
+        """Get mapping of extensions to language names."""
+        return self.registry.get_scanner_info()
 
-                struct_node = StructureNode(
-                    type=node.type.replace("_item", ""),
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(struct_node)
 
-                for child in node.children:
-                    traverse(child, struct_node.children)
-
-            elif node.type == "function_item":
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
-
-                func_node = StructureNode(
-                    type="function",
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(func_node)
-
-            elif node.type == "use_declaration":
-                if not parent_structures or parent_structures[-1].type != "imports":
-                    import_node = StructureNode(
-                        type="imports",
-                        name="use statements",
-                        start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1,
-                        children=[]
-                    )
-                    parent_structures.append(import_node)
-                else:
-                    parent_structures[-1].end_line = node.end_point[0] + 1
-
-            else:
-                for child in node.children:
-                    traverse(child, parent_structures)
-
-        traverse(root, structures)
-        return structures
-
-    def _extract_go_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
-        """Extract structure from Go code."""
-        structures = []
-
-        def traverse(node: Node, parent_structures: list):
-            if node.type in ("type_declaration", "type_spec"):
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
-
-                type_node = StructureNode(
-                    type="type",
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(type_node)
-
-                for child in node.children:
-                    traverse(child, type_node.children)
-
-            elif node.type in ("function_declaration", "method_declaration"):
-                name_node = node.child_by_field_name("name")
-                name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
-
-                type_name = "method" if node.type == "method_declaration" else "function"
-
-                func_node = StructureNode(
-                    type=type_name,
-                    name=name,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-                parent_structures.append(func_node)
-
-            elif node.type == "import_declaration":
-                if not parent_structures or parent_structures[-1].type != "imports":
-                    import_node = StructureNode(
-                        type="imports",
-                        name="import statements",
-                        start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1,
-                        children=[]
-                    )
-                    parent_structures.append(import_node)
-                else:
-                    parent_structures[-1].end_line = node.end_point[0] + 1
-
-            else:
-                for child in node.children:
-                    traverse(child, parent_structures)
-
-        traverse(root, structures)
-        return structures
-
-    def _extract_markdown_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
-        """Extract structure from Markdown files."""
-        structures = []
-        heading_stack = []  # Stack to track heading hierarchy
-
-        def get_heading_level(node: Node) -> int:
-            """Get the level of a heading (1-6)."""
-            for child in node.children:
-                if child.type == "atx_h1_marker":
-                    return 1
-                elif child.type == "atx_h2_marker":
-                    return 2
-                elif child.type == "atx_h3_marker":
-                    return 3
-                elif child.type == "atx_h4_marker":
-                    return 4
-                elif child.type == "atx_h5_marker":
-                    return 5
-                elif child.type == "atx_h6_marker":
-                    return 6
-            return 1
-
-        def get_heading_text(node: Node) -> str:
-            """Extract heading text."""
-            for child in node.children:
-                if child.type == "inline":
-                    return self._get_node_text(child, source_code).strip()
-            return "untitled"
-
-        def traverse(node: Node):
-            if node.type == "atx_heading":
-                level = get_heading_level(node)
-                text = get_heading_text(node)
-
-                heading_node = StructureNode(
-                    type=f"heading-{level}",
-                    name=text,
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-
-                # Pop headings from stack that are at same or deeper level
-                while heading_stack and int(heading_stack[-1][0].type.split("-")[1]) >= level:
-                    heading_stack.pop()
-
-                # Add to parent or root
-                if heading_stack:
-                    heading_stack[-1][0].children.append(heading_node)
-                else:
-                    structures.append(heading_node)
-
-                # Push to stack with level
-                heading_stack.append((heading_node, level))
-
-            elif node.type == "fenced_code_block":
-                # Extract code block language if present
-                lang = "code"
-                info_node = node.child_by_field_name("info_string")
-                if info_node:
-                    lang = self._get_node_text(info_node, source_code).strip()
-
-                code_node = StructureNode(
-                    type="code-block",
-                    name=f"```{lang}```",
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1,
-                    children=[]
-                )
-
-                # Add to current heading or root
-                if heading_stack:
-                    heading_stack[-1][0].children.append(code_node)
-                else:
-                    structures.append(code_node)
-
-            else:
-                for child in node.children:
-                    traverse(child)
-
-        traverse(root)
-        return structures
+# For backward compatibility, export StructureNode
+__all__ = ["FileScanner", "StructureNode"]
