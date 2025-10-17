@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.eggs/
+
+# Virtual environments
+.venv
+
+# UV
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+.cache/
