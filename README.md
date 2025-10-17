@@ -28,6 +28,7 @@
 ```
 
 # Scantool - File Scanner MCP
+[![smithery badge](https://smithery.ai/badge/@mariusei/file-scanner-mcp)](https://smithery.ai/server/@mariusei/file-scanner-mcp)
 
 MCP server for analyzing source code structure across multiple languages. Extracts classes, functions, methods, and metadata (signatures, decorators, docstrings) with precise line numbers. Includes search and filtering capabilities for large codebases.
 
@@ -102,6 +103,14 @@ example.py (1-57)
 - **search_structures**: Find and filter structures by type, name pattern, decorator, or complexity
 
 ## Installation
+
+### Installing via Smithery
+
+To install Code Structure Explorer automatically via [Smithery](https://smithery.ai/server/@mariusei/file-scanner-mcp):
+
+```bash
+npx -y @smithery/cli install @mariusei/file-scanner-mcp
+```
 
 ### Install with uvx (Recommended)
 
@@ -572,3 +581,5 @@ When using Claude Code, asking to "explore the codebase" may delegate to the Exp
 
 - [GitHub Issues](https://github.com/mariusei/file-scanner-mcp/issues)
 - [GitHub Discussions](https://github.com/mariusei/file-scanner-mcp/discussions)
+
+```
