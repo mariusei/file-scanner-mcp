@@ -1,0 +1,76 @@
+PROJECT OVERVIEW
+================
+
+This is a plain text document demonstrating the text file scanner capabilities.
+It contains various structural elements that should be detected and parsed.
+
+INTRODUCTION
+
+The file scanner MCP is designed to handle multiple file formats including
+plain text files. This document serves as a test case for the text extraction
+functionality.
+
+Features and Capabilities
+-------------------------
+
+The scanner can detect several types of structural elements in plain text:
+
+Sections with all-caps headers are identified as major structural elements.
+These help organize the document into logical parts.
+
+Underlined headers using equals signs or dashes are also recognized as
+section markers. This is a common convention in plain text documentation.
+
+TECHNICAL DETAILS
+
+The implementation uses pattern matching to identify:
+- All-caps lines (minimum 4 characters)
+- Underlined headers (= or - characters)
+- Paragraph boundaries (separated by blank lines)
+
+Each structural element is assigned precise line number ranges, making it
+easy to partition files safely for processing by LLMs or other tools.
+
+USE CASES
+
+There are many scenarios where analyzing plain text structure is useful:
+
+Documentation files that don't use markdown but follow text conventions
+for organization. Many README files and legacy docs fall into this category.
+
+Log files and output from various tools often use text-based headers to
+separate different sections or time periods.
+
+Configuration files sometimes use comments with special formatting to
+denote different configuration blocks.
+
+PERFORMANCE CONSIDERATIONS
+===========================
+
+The text scanner is lightweight and doesn't require tree-sitter parsing.
+This makes it very fast for large text files.
+
+It handles Unicode characters gracefully and won't crash on malformed input.
+The parser is designed to be robust and extract whatever structure it can
+find, even in messy files.
+
+FUTURE ENHANCEMENTS
+
+Potential improvements could include:
+- Detection of numbered lists
+- Recognition of bullet points
+- Indentation-based structure
+
+Another area for development is better handling of email-style quoted text,
+which often appears in documentation and discussion threads.
+
+CONCLUSION
+----------
+
+This demonstrates the capability to extract meaningful structure from plain
+text files without requiring any special markup or formatting.
+
+The extracted structure includes line numbers for safe partitioning and
+hierarchical organization when sections contain paragraphs.
+
+End of document.

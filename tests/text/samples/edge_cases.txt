@@ -1,0 +1,74 @@
+TESTING EDGE CASES FOR TEXT SCANNER
+====================================
+
+This file tests various edge cases for the plain text scanner.
+
+SECTION WITH VERY LONG NAME THAT MIGHT EXCEED THE 50 CHARACTER LIMIT FOR DISPLAY
+
+This section has a name longer than 50 characters to test truncation.
+
+Section with underline
+======================
+
+This uses equals signs for underlining.
+
+Another underlined section
+--------------------------
+
+This uses dashes for underlining.
+
+MULTIPLE CONSECUTIVE SECTIONS
+ONE
+
+TWO
+
+THREE
+
+Each of these should be a separate section.
+
+SECTION WITH NO CONTENT BELOW IT
+
+UNICODE AND SPECIAL CHARACTERS
+===============================
+
+This section contains Unicode: café, naïve, 北京, 🎉
+
+émoji support test → ← ↑ ↓
+
+Testing various symbols: © ® ™ € £ ¥
+
+Empty Lines and Paragraphs
+---------------------------
+
+This paragraph has content.
+
+This is another paragraph after an empty line.
+
+
+Multiple empty lines above this paragraph.
+
+MIXED FORMATTING
+
+Some text here.
+
+MID-LINE CAPS SHOULD NOT TRIGGER as a section header.
+
+More text here.
+
+Edge Case: Line with only spaces or tabs
+
+
+VERY SHORT
+=
+
+A section with a very short name.
+
+X
+
+Just one letter.
+
+==
+No title above the underline.
+
+ENDING WITHOUT PARAGRAPH
+
