@@ -24,7 +24,7 @@ dir_formatter = DirectoryFormatter()
 
 @mcp.tool(
     tags={"remote", "http", "content"},
-    description="Scan file content directly without a file path - ideal for remote files, APIs, GitHub"
+    description="Scan file content directly - USE THIS for remote files, GitHub, APIs instead of saving to disk first"
 )
 def scan_file_content(
     content: str,
@@ -38,8 +38,12 @@ def scan_file_content(
     """
     Scan file content directly without requiring a file path.
 
+    **When to use this vs other tools:**
+    - Use scan_file_content() INSTEAD of saving remote content to disk → scan directly
+    - Use scan_file_content() for GitHub/API content → no file system needed
+    - Use scan_file() INSTEAD for local files → includes full metadata (timestamps, permissions)
+
     **Recommended for:** HTTP/remote connections, GitHub files, API responses, web content
-    **Local alternative:** Use scan_file() for local files (more efficient with metadata)
 
     Use this when you have file content from remote sources (e.g., GitHub API,
     URLs, or any content not stored locally). The filename parameter is used
@@ -106,7 +110,7 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan a local file and return its structure with metadata"
+    description="Scan local file structure - USE THIS BEFORE Read to get overview with line numbers"
 )
 def scan_file(
     file_path: str,
@@ -119,8 +123,13 @@ def scan_file(
     """
     Scan a source file and return its structure.
 
+    **When to use this vs other tools:**
+    - Use scan_file() BEFORE Read → get table of contents with line numbers first
+    - Use scan_file() INSTEAD of reading entire file → see structure overview efficiently
+    - Use scan_directory() INSTEAD when exploring multiple files → get directory-wide view
+    - Use scan_file_content() INSTEAD for remote content → no local file needed
+
     **Recommended for:** Local files (includes full metadata: timestamps, permissions, size)
-    **Remote alternative:** Use scan_file_content() for remote/API content
 
     Use this to get a structural overview of a code file before reading it.
     Provides table of contents with line numbers, making it easy to identify
@@ -188,7 +197,7 @@ def scan_file(
 
 @mcp.tool(
     tags={"local", "directory", "exploration"},
-    description="Scan a local directory and show compact overview of code structure"
+    description="Scan directory structure - USE THIS INSTEAD of Glob when you want to see both file tree AND code structure"
 )
 def scan_directory(
     directory: str,
@@ -200,6 +209,12 @@ def scan_directory(
 ) -> list[TextContent]:
     """
     Scan directory and show compact overview of code structure.
+
+    **When to use this vs other tools:**
+    - Use scan_directory() INSTEAD of Glob → shows file tree AND inline code structures
+    - Use scan_directory() BEFORE scan_file() or Read → understand codebase organization first
+    - Use scan_directory() for exploring unknown directories → get complete overview in one call
+    - Use scan_file() INSTEAD for single file details → get full method-level structure
 
     **Recommended for:** Local codebases and file system exploration
 
@@ -284,7 +299,7 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search and filter code structures across a local directory"
+    description="Search code structures - USE THIS INSTEAD of Grep when searching for classes, functions, or methods by name/type/decorator"
 )
 def search_structures(
     directory: str,
@@ -297,11 +312,16 @@ def search_structures(
     """
     Search for specific structures across a directory.
 
+    **When to use this vs other tools:**
+    - Use search_structures() INSTEAD of Grep → when searching for code constructs (classes, functions)
+    - Use search_structures() to find by decorator → e.g., all @pytest.fixture or @dataclass
+    - Use search_structures() to find by pattern → e.g., all test_* functions or *Manager classes
+    - Use Grep INSTEAD for literal text search → when you need to find specific strings/comments
+
     **Recommended for:** Local codebases - semantic search for classes, functions, methods
 
-    SEMANTIC CODE SEARCH. Use this instead of Grep when searching for code
-    constructs (classes, functions, methods). Understands code structure, not
-    just text matching. Can filter by decorators, complexity, and structure type.
+    SEMANTIC CODE SEARCH. Understands code structure, not just text matching.
+    Can filter by decorators, complexity, and structure type.
 
     Perfect for: "find all test functions", "show async methods", "locate
     classes with @dataclass", "find complex functions to refactor".
