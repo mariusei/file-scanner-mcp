@@ -98,6 +98,7 @@ example.py (1-57)
 
 ### Tools
 - **scan_file**: Analyze a single file with full metadata extraction
+- **scan_file_content**: Analyze file content directly (useful for remote files, GitHub, APIs)
 - **scan_directory**: Hierarchical directory tree with integrated code structures and statistics
 - **search_structures**: Find and filter structures by type, name pattern, decorator, or complexity
 
@@ -185,7 +186,29 @@ scan_file(
 )
 ```
 
-### 2. scan_directory - Compact codebase overview
+### 2. scan_file_content - Analyze content directly
+
+Scan file content without requiring a local file path. Perfect for analyzing remote files from GitHub, APIs, or any content source.
+
+```python
+scan_file_content(
+    content="def hello(): pass\n\nclass MyClass:\n    pass",
+    filename="example.py",     # Filename determines the parser (extension matters!)
+    show_signatures=True,      # Include function signatures with types
+    show_decorators=True,      # Include @decorator annotations
+    show_docstrings=True,      # Include first line of docstrings
+    show_complexity=False,     # Show complexity metrics
+    output_format="tree"       # "tree" or "json"
+)
+```
+
+**Use cases:**
+- Analyzing files from GitHub without downloading
+- Processing content from APIs or web requests
+- Scanning dynamically generated code
+- Working with content in memory
+
+### 3. scan_directory - Compact codebase overview
 
 Shows directory tree with **inline** class/function names for each file.
 
@@ -234,7 +257,7 @@ scan_directory(".", exclude_patterns=["tests/**", "docs/**"])
 scan_directory(".", respect_gitignore=False)
 ```
 
-### 3. search_structures - Find and filter structures
+### 4. search_structures - Find and filter structures
 
 ```python
 # Find all test functions

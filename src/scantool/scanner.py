@@ -25,6 +25,75 @@ class FileScanner:
         self.show_errors = show_errors
         self.fallback_on_errors = fallback_on_errors
 
+    def scan_content(
+        self,
+        content: str | bytes,
+        filename: str,
+        include_metadata: bool = False
+    ) -> Optional[list[StructureNode]]:
+        """
+        Scan file content directly without requiring a file path.
+
+        Useful for scanning remote files (e.g., from GitHub) or content from APIs.
+
+        Args:
+            content: File content as string or bytes
+            filename: Filename (used to determine language/scanner type)
+            include_metadata: Include basic metadata node (just filename and size)
+
+        Returns:
+            List of StructureNode objects, or None if file type not supported
+        """
+        # Get file extension from filename
+        path = Path(filename)
+        suffix = path.suffix.lower()
+
+        # Get appropriate scanner for this file type
+        scanner_class = self.registry.get_scanner(suffix)
+
+        if not scanner_class:
+            return None  # Unsupported file type
+
+        # Create scanner instance with options
+        scanner = scanner_class(
+            show_errors=self.show_errors,
+            fallback_on_errors=self.fallback_on_errors
+        )
+
+        # Convert content to bytes if needed
+        if isinstance(content, str):
+            source_code = content.encode('utf-8')
+        else:
+            source_code = content
+
+        # Scan using the appropriate plugin
+        structures = scanner.scan(source_code)
+
+        # Prepend metadata if requested and structures exist
+        if include_metadata and structures is not None:
+            size_bytes = len(source_code)
+            if size_bytes < 1024:
+                size_str = f"{size_bytes}B"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f}KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
+
+            file_info = StructureNode(
+                type="file-info",
+                name=path.name,
+                start_line=1,
+                end_line=1,
+                file_metadata={
+                    "size": size_bytes,
+                    "size_formatted": size_str,
+                    "source": "content",
+                }
+            )
+            structures = [file_info] + structures
+
+        return structures
+
     def scan_file(self, file_path: str, include_file_metadata: bool = True) -> Optional[list[StructureNode]]:
         """
         Scan a single file and return its structure.

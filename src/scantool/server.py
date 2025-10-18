@@ -22,7 +22,92 @@ formatter = TreeFormatter()
 dir_formatter = DirectoryFormatter()
 
 
-@mcp.tool
+@mcp.tool(
+    tags={"remote", "http", "content"},
+    description="Scan file content directly without a file path - ideal for remote files, APIs, GitHub"
+)
+def scan_file_content(
+    content: str,
+    filename: str,
+    show_signatures: bool = True,
+    show_decorators: bool = True,
+    show_docstrings: bool = True,
+    show_complexity: bool = False,
+    output_format: str = "tree"
+) -> list[TextContent]:
+    """
+    Scan file content directly without requiring a file path.
+
+    **Recommended for:** HTTP/remote connections, GitHub files, API responses, web content
+    **Local alternative:** Use scan_file() for local files (more efficient with metadata)
+
+    Use this when you have file content from remote sources (e.g., GitHub API,
+    URLs, or any content not stored locally). The filename parameter is used
+    only to determine the language/file type for parsing.
+
+    More efficient than saving to disk first - directly scans provided content.
+
+    Supports: Python, JavaScript, TypeScript, Rust, Go, Java, C/C++, C#, PHP,
+    Ruby, SQL, Markdown, Plain Text, and image formats.
+
+    Args:
+        content: The file content as a string
+        filename: Filename (with extension) to determine parser type
+        show_signatures: Include function signatures with types (default: True)
+        show_decorators: Include decorators like @property, @staticmethod (default: True)
+        show_docstrings: Include first line of docstrings (default: True)
+        show_complexity: Show complexity metrics for long/complex functions (default: False)
+        output_format: Output format - "tree" or "json" (default: "tree")
+
+    Returns:
+        Formatted structure output (tree or JSON)
+
+    Example usage:
+        # Scan Python code from a string
+        scan_file_content(
+            content="def hello(): pass",
+            filename="example.py"
+        )
+    """
+    try:
+        structures = scanner.scan_content(
+            content=content,
+            filename=filename,
+            include_metadata=True
+        )
+
+        if structures is None:
+            supported = ", ".join(scanner.get_supported_extensions())
+            return [TextContent(
+                type="text",
+                text=f"Error: Unsupported file type. Supported extensions: {supported}"
+            )]
+
+        if not structures:
+            return [TextContent(type="text", text=f"{filename} (empty file or no structure found)")]
+
+        # Format output
+        if output_format == "json":
+            return [TextContent(type="text", text=_structures_to_json(structures, filename))]
+        else:
+            # Use custom formatter with options
+            custom_formatter = TreeFormatter(
+                show_signatures=show_signatures,
+                show_decorators=show_decorators,
+                show_docstrings=show_docstrings,
+                show_complexity=show_complexity
+            )
+            result = custom_formatter.format(filename, structures)
+            return [TextContent(type="text", text=result)]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error scanning content: {e}")]
+
+
+@mcp.tool(
+    tags={"local", "file", "analysis"},
+    description="Scan a local file and return its structure with metadata"
+)
 def scan_file(
     file_path: str,
     show_signatures: bool = True,
@@ -33,6 +118,9 @@ def scan_file(
 ) -> list[TextContent]:
     """
     Scan a source file and return its structure.
+
+    **Recommended for:** Local files (includes full metadata: timestamps, permissions, size)
+    **Remote alternative:** Use scan_file_content() for remote/API content
 
     Use this to get a structural overview of a code file before reading it.
     Provides table of contents with line numbers, making it easy to identify
@@ -98,7 +186,10 @@ def scan_file(
         return [TextContent(type="text", text=f"Error scanning file: {e}")]
 
 
-@mcp.tool
+@mcp.tool(
+    tags={"local", "directory", "exploration"},
+    description="Scan a local directory and show compact overview of code structure"
+)
 def scan_directory(
     directory: str,
     pattern: str = "**/*",
@@ -109,6 +200,8 @@ def scan_directory(
 ) -> list[TextContent]:
     """
     Scan directory and show compact overview of code structure.
+
+    **Recommended for:** Local codebases and file system exploration
 
     PRIMARY TOOL FOR CODEBASE EXPLORATION. Shows directory tree with inline
     list of top-level classes/functions for each file. Compact bird's-eye view
@@ -189,7 +282,10 @@ def scan_directory(
         return [TextContent(type="text", text=f"Error scanning directory: {e}")]
 
 
-@mcp.tool
+@mcp.tool(
+    tags={"local", "search", "filter"},
+    description="Search and filter code structures across a local directory"
+)
 def search_structures(
     directory: str,
     type_filter: Optional[str] = None,
@@ -200,6 +296,8 @@ def search_structures(
 ) -> list[TextContent]:
     """
     Search for specific structures across a directory.
+
+    **Recommended for:** Local codebases - semantic search for classes, functions, methods
 
     SEMANTIC CODE SEARCH. Use this instead of Grep when searching for code
     constructs (classes, functions, methods). Understands code structure, not
