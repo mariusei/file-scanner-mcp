@@ -61,13 +61,15 @@ class TreeFormatter:
         if node.type == "file-info" and node.file_metadata:
             meta = node.file_metadata
 
-            # Format timestamp as readable datetime
+            # Format timestamp as readable datetime with unix timestamp
             modified_iso = meta.get('modified', '')
             if modified_iso:
                 try:
                     dt = datetime.fromisoformat(modified_iso)
-                    # Format as: 2025-10-17 14:30
-                    modified_str = dt.strftime('%Y-%m-%d %H:%M')
+                    # Format as: 2025-10-17 14:30 with unix timestamp for LLM processing
+                    readable = dt.strftime('%Y-%m-%d %H:%M')
+                    unix_ts = int(dt.timestamp())
+                    modified_str = f"{readable} [ts:{unix_ts}]"
                 except Exception:
                     # Fallback to just date if parsing fails
                     modified_str = modified_iso.split('T')[0]

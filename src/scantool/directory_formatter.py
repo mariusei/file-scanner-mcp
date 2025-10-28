@@ -18,35 +18,41 @@ class DirectoryFormatter:
 
     @staticmethod
     def _format_relative_time(iso_timestamp: str) -> str:
-        """Format timestamp as relative time (e.g., '2 mins ago', '3 days ago')."""
+        """Format timestamp as relative time with unix timestamp (e.g., '2 mins ago [ts:1729137900]')."""
         try:
             # Parse ISO timestamp
             modified_time = datetime.fromisoformat(iso_timestamp)
             now = datetime.now()
             diff = now - modified_time
 
+            # Get unix timestamp (seconds since epoch)
+            unix_ts = int(modified_time.timestamp())
+
             # Calculate time difference
             seconds = diff.total_seconds()
             if seconds < 60:
-                return "just now"
+                relative = "just now"
             elif seconds < 3600:  # < 1 hour
                 mins = int(seconds / 60)
-                return f"{mins} min{'s' if mins != 1 else ''} ago"
+                relative = f"{mins} min{'s' if mins != 1 else ''} ago"
             elif seconds < 86400:  # < 1 day
                 hours = int(seconds / 3600)
-                return f"{hours} hour{'s' if hours != 1 else ''} ago"
+                relative = f"{hours} hour{'s' if hours != 1 else ''} ago"
             elif seconds < 604800:  # < 1 week
                 days = int(seconds / 86400)
-                return f"{days} day{'s' if days != 1 else ''} ago"
+                relative = f"{days} day{'s' if days != 1 else ''} ago"
             elif seconds < 2592000:  # < 30 days
                 weeks = int(seconds / 604800)
-                return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+                relative = f"{weeks} week{'s' if weeks != 1 else ''} ago"
             elif seconds < 31536000:  # < 1 year
                 months = int(seconds / 2592000)
-                return f"{months} month{'s' if months != 1 else ''} ago"
+                relative = f"{months} month{'s' if months != 1 else ''} ago"
             else:
                 years = int(seconds / 31536000)
-                return f"{years} year{'s' if years != 1 else ''} ago"
+                relative = f"{years} year{'s' if years != 1 else ''} ago"
+
+            # Return relative time with unix timestamp for LLM processing
+            return f"{relative} [ts:{unix_ts}]"
         except Exception:
             # If parsing fails, return empty string
             return ""

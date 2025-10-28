@@ -1,11 +1,14 @@
 """Integration tests for all scanners."""
 
 from pathlib import Path
+from datetime import datetime
+import re
 
 import pytest
 
 from scantool.scanner import FileScanner
 from scantool.formatter import TreeFormatter
+from scantool.directory_formatter import DirectoryFormatter
 
 
 def test_scan_all_sample_files():
@@ -72,3 +75,44 @@ def test_formatter_consistency():
     output2 = formatter.format(str(test_file), structures)
 
     assert output1 == output2, "Formatter should produce identical output for same input"
+
+
+def test_unix_timestamp_in_output():
+    """Test that formatters include unix timestamps for LLM processing."""
+    # Test DirectoryFormatter._format_relative_time
+    dir_formatter = DirectoryFormatter()
+
+    # Test with current time
+    current_time = datetime.now().isoformat()
+    result = dir_formatter._format_relative_time(current_time)
+
+    # Verify unix timestamp is present
+    assert "[ts:" in result, "Unix timestamp should be present in relative time format"
+    assert "]" in result, "Unix timestamp should be properly closed"
+
+    # Verify we can extract the timestamp
+    match = re.search(r'\[ts:(\d+)\]', result)
+    assert match is not None, "Should be able to extract unix timestamp with regex"
+
+    unix_ts = int(match.group(1))
+    assert unix_ts > 0, "Unix timestamp should be positive"
+
+    # Verify the timestamp is reasonably close to now (within 5 seconds)
+    now_ts = int(datetime.now().timestamp())
+    assert abs(now_ts - unix_ts) < 5, "Unix timestamp should be close to current time"
+
+    # Test TreeFormatter with a real file
+    scanner = FileScanner()
+    tree_formatter = TreeFormatter()
+
+    test_file = Path(__file__).parent / "python" / "samples" / "basic.py"
+    structures = scanner.scan_file(str(test_file))
+    output = tree_formatter.format(str(test_file), structures)
+
+    # Check if file-info node has unix timestamp in modified field
+    if "file-info:" in output and "modified:" in output:
+        # Extract the line with modified timestamp
+        for line in output.split('\n'):
+            if "modified:" in line:
+                assert "[ts:" in line, "File metadata should include unix timestamp"
+                break
