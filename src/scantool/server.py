@@ -29,7 +29,7 @@ dir_formatter = DirectoryFormatter()
 )
 def preview_directory(
     directory: str,
-    max_depth: Optional[int] = 3,
+    max_depth: Optional[int] = 5,
     max_files_hint: int = 100000,
     show_top_n: int = 8,
     respect_gitignore: bool = True

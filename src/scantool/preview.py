@@ -371,8 +371,12 @@ class DirectoryPreview:
         # Generate recommendations
         recommendations = self._generate_recommendations(top_level_dirs)
         if recommendations:
-            lines.append("💡 Quick start:")
+            lines.append("💡 Next: See WHAT'S INSIDE files (structure + metadata):")
             lines.extend(recommendations)
+            lines.append("")
+            lines.append("  Why? scan_directory shows: 'auth.py (1-128) [3KB, 1mo ago] - login(), verify_token()'")
+            lines.append("       vs ls/find shows: 'auth.py' (just filename)")
+            lines.append("       Then: scan_file('auth.py') for per-function line numbers → Read specific code.")
 
         return "\n".join(lines)
 
