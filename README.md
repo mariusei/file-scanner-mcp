@@ -97,6 +97,7 @@ example.py (1-57)
 - **Configurable display**: Toggle signatures, decorators, docstrings, complexity metrics
 
 ### Tools
+- **preview_directory**: Lightning-fast overview of directory structure (no code parsing, <0.5s even for huge repos)
 - **scan_file**: Analyze a single file with full metadata extraction
 - **scan_file_content**: Analyze file content directly (useful for remote files, GitHub, APIs)
 - **scan_directory**: Hierarchical directory tree with integrated code structures and statistics
@@ -156,22 +157,61 @@ Or if installed from source:
 
 ## Usage
 
-The server provides three MCP tools for code exploration:
+The server provides five MCP tools for code exploration:
 
-**Recommended Workflow:**
+**Typical workflow:**
 
-1. **Get codebase overview**: Use `scan_directory()` to see compact bird's-eye view
-   - Shows directory tree with inline list of classes/functions per file
-   - Respects .gitignore automatically (excludes node_modules, .venv, etc.)
+1. **Preview structure**: `preview_directory()` shows file counts and types without parsing
+   - Returns in <0.5s for most repos
+   - Includes recommendations for next steps
 
-2. **Examine specific files**: Use `scan_file()` for detailed structure
-   - Full tree with methods, signatures, decorators, docstrings
-   - Precise line numbers for each element
+2. **Scan directories**: `scan_directory()` parses code and shows structures
+   - Use preview recommendations to limit scope
+   - Respects .gitignore by default
 
-3. **Search for patterns**: Use `search_structures()` for semantic code search
-   - Find classes, functions by type, name pattern, or decorator
+3. **Examine files**: `scan_file()` shows full method-level detail
+   - Includes signatures, decorators, docstrings
+   - Returns precise line ranges
 
-4. **Read targeted content**: Use Read tool only after identifying exact line ranges
+4. **Search structures**: `search_structures()` filters by type, name, or decorator
+
+5. **Read code**: Use line ranges from previous steps
+
+### 0. preview_directory - Quick metadata scan
+
+Scans file system metadata without parsing code. Returns directory structure, file counts, and type distribution.
+
+```python
+preview_directory(
+    directory=".",
+    max_depth=3,              # Traversal depth (default: 3)
+    max_files_hint=100000,    # Abort threshold (default: 100k)
+    show_top_n=8,             # Directories to show (default: 8)
+    respect_gitignore=True    # Honor .gitignore (default: True)
+)
+```
+
+**Example output:**
+```
+/project (12.5k files, 2.3GB) scanned in 0.3s
+
+Top dirs:        files   types          size
+src/             2.8k    py:2.5k md:50  180MB
+├─ api/          850     py             65MB
+├─ services/     420     py             28MB
+└─ frontend/     1.2k    ts:900 tsx:300 82MB
+tests/           1.5k    py             45MB
+vendor/          8k      js:7k ts:800   2.0GB    ⚠️ 3rd-party
+
+Ignored: node_modules/ (45k files), .venv/ (12k)
+
+💡 Quick start:
+  scan_directory("src/api", "**/*.py")      → 850 files
+  scan_directory("src/services", "**/*.py") → 420 files
+  preview_directory("src/frontend")         → deep dive
+```
+
+Use this before `scan_directory()` to scope your search in large codebases.
 
 ### 1. scan_file - Analyze a single file
 

@@ -13,6 +13,7 @@ from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .scanner import FileScanner
 from .scanners import StructureNode
+from .preview import preview_directory as preview_dir_func
 
 mcp = FastMCP("File Scanner MCP")
 
@@ -20,6 +21,90 @@ mcp = FastMCP("File Scanner MCP")
 scanner = FileScanner()
 formatter = TreeFormatter()
 dir_formatter = DirectoryFormatter()
+
+
+@mcp.tool(
+    tags={"exploration", "overview", "fast"},
+    description="Fast codebase preview - USE THIS FIRST before scan_directory to understand structure and make informed decisions"
+)
+def preview_directory(
+    directory: str,
+    max_depth: Optional[int] = 3,
+    max_files_hint: int = 100000,
+    show_top_n: int = 8,
+    respect_gitignore: bool = True
+) -> list[TextContent]:
+    """
+    Lightning-fast directory preview for codebase reconnaissance.
+
+    **When to use this vs other tools:**
+    - Use preview_directory() FIRST → get instant overview of codebase structure
+    - Use preview_directory() BEFORE scan_directory() → understand what to scan
+    - Use scan_directory() INSTEAD for detailed code structures → after you know the scope
+    - Use preview_directory() in multi-GB repos → make informed decisions in milliseconds
+
+    **Recommended for:** Initial codebase exploration, understanding project structure
+
+    FASTEST way to understand a codebase. Scans only file system metadata (no code parsing),
+    showing directory structure, file counts, file types, and sizes in milliseconds.
+
+    Perfect for making informed decisions about what to scan in detail:
+    - See all top-level directories with file counts and types
+    - Understand project organization instantly
+    - Get concrete scan_directory() recommendations
+    - Avoid wasting time scanning irrelevant directories
+
+    Output includes:
+    - Directory tree with file counts and types (e.g., "py:450 ts:200")
+    - File sizes and type distribution
+    - Subdirectory breakdown for large directories
+    - Ignored directories (node_modules, .venv, etc.)
+    - Actionable scan recommendations with file counts
+
+    **Speed:** Typically <0.5s even for 10k+ file codebases.
+
+    Args:
+        directory: Root directory to preview
+        max_depth: Maximum traversal depth (None = unlimited, default: 3 for speed)
+        max_files_hint: Abort if file count exceeds this safety limit (default: 100k)
+        show_top_n: Number of top directories to show in detail (default: 8)
+        respect_gitignore: Respect .gitignore patterns (default: True)
+
+    Returns:
+        Ultra-compact overview with directory stats and scan recommendations
+
+    Examples:
+        # Quick overview of entire project
+        preview_directory("./my-project")
+
+        # Deep dive into specific directory
+        preview_directory("./src", max_depth=None)
+
+        # Show more directories in output
+        preview_directory(".", show_top_n=15)
+
+    Typical workflow:
+        1. preview_directory(".") → understand structure
+        2. Review recommendations
+        3. scan_directory("src/api", "**/*.py") → scan relevant parts
+    """
+    try:
+        result = preview_dir_func(
+            directory=directory,
+            max_depth=max_depth,
+            max_files_hint=max_files_hint,
+            show_top_n=show_top_n,
+            respect_gitignore=respect_gitignore
+        )
+        return [TextContent(type="text", text=result)]
+    except FileNotFoundError as e:
+        return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
+    except PermissionError as e:
+        return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
+    except RuntimeError as e:
+        return [TextContent(type="text", text=f"Error: {e}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error previewing directory: {e}")]
 
 
 @mcp.tool(

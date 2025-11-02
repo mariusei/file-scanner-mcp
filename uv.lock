@@ -1420,7 +1420,7 @@ wheels = [
 
 [[package]]
 name = "scantool"
-version = "0.9.4"
+version = "0.9.7"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
