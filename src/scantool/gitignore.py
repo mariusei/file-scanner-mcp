@@ -125,21 +125,40 @@ class GitignoreParser:
 
 def load_gitignore(directory: Path) -> Optional[GitignoreParser]:
     """
-    Load .gitignore file from directory.
+    Load .gitignore files from directory and all parent directories up to git root.
+
+    Mimics git behavior: traverses up to .git/ directory and combines all .gitignore
+    files found along the way.
 
     Args:
-        directory: Directory to search for .gitignore
+        directory: Directory to start search from
 
     Returns:
-        GitignoreParser or None if no .gitignore found
+        GitignoreParser with combined patterns, or None if no .gitignore found
     """
-    gitignore_path = directory / '.gitignore'
-    if not gitignore_path.exists():
+    directory = directory.resolve()
+    all_patterns = []
+    home = Path.home()
+
+    # Collect all .gitignore files from current directory up to home (or filesystem root)
+    gitignore_paths = []
+    current = directory
+
+    while current != current.parent and current != home:
+        gitignore_path = current / '.gitignore'
+        if gitignore_path.exists():
+            gitignore_paths.append(gitignore_path)
+        current = current.parent
+
+    # Load patterns from all .gitignore files (reverse order: root first)
+    for gitignore_path in reversed(gitignore_paths):
+        try:
+            with open(gitignore_path, 'r', encoding='utf-8') as f:
+                all_patterns.extend(f.readlines())
+        except Exception:
+            continue
+
+    if not all_patterns:
         return None
 
-    try:
-        with open(gitignore_path, 'r', encoding='utf-8') as f:
-            patterns = f.readlines()
-        return GitignoreParser(patterns)
-    except Exception:
-        return None
+    return GitignoreParser(all_patterns)

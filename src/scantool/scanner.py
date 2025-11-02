@@ -192,10 +192,27 @@ class FileScanner:
 
         # Default exclusions - always applied
         default_exclusions = [
+            # Files
             '.DS_Store',      # macOS
             'Thumbs.db',      # Windows
             'desktop.ini',    # Windows
             '.localized',     # macOS
+            # Directories (universal noise)
+            'node_modules/',  # Node.js dependencies
+            '__pycache__/',   # Python bytecode
+            '.pytest_cache/', # pytest cache
+            'dist/',          # Build output
+            'build/',         # Build output
+            'target/',        # Rust/Java/Kotlin build
+            '*.egg-info/',    # Python package metadata
+            '.venv/',         # Python virtual env
+            'venv/',          # Python virtual env
+            '.next/',         # Next.js build
+            '.nuxt/',         # Nuxt build
+            'coverage/',      # Test coverage
+            '.coverage/',     # Coverage reports
+            '.ruff_cache/',   # Ruff cache
+            '.mypy_cache/',   # MyPy cache
         ]
 
         # Combine defaults with user-provided exclusions
