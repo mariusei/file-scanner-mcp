@@ -36,8 +36,9 @@ class ScannerRegistry:
             if file_path.name in ("__init__.py", "base.py"):
                 continue
 
-            # Import the module
-            module_name = f"scantool.scanners.{file_path.stem}"
+            # Import the module using the package name from __name__
+            # __name__ is the full package path (e.g., "src.scantool.scanners")
+            module_name = f"{__name__}.{file_path.stem}"
             try:
                 module = importlib.import_module(module_name)
 

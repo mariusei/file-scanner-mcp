@@ -14,6 +14,7 @@ from .directory_formatter import DirectoryFormatter
 from .scanner import FileScanner
 from .scanners import StructureNode
 from .preview import preview_directory as preview_dir_func
+from .intelligent_preview import intelligent_preview
 
 mcp = FastMCP("File Scanner MCP")
 
@@ -30,72 +31,82 @@ dir_formatter = DirectoryFormatter()
 def preview_directory(
     directory: str,
     max_depth: Optional[int] = 5,
+    intelligent: bool = True,
+    ollama_model: str = "qwen2.5-coder:1.5b",
     max_files_hint: int = 100000,
     show_top_n: int = 8,
     respect_gitignore: bool = True
 ) -> list[TextContent]:
     """
-    Lightning-fast directory preview for codebase reconnaissance.
+    Intelligent codebase preview with optional Ollama-powered code structure analysis.
 
     **When to use this vs other tools:**
-    - Use preview_directory() FIRST → get instant overview of codebase structure
-    - Use preview_directory() BEFORE scan_directory() → understand what to scan
-    - Use scan_directory() INSTEAD for detailed code structures → after you know the scope
-    - Use preview_directory() in multi-GB repos → make informed decisions in milliseconds
+    - Use preview_directory() FIRST → understand codebase structure with actual code
+    - Use scan_directory() AFTER → for detailed scanning of specific parts
+    - Set intelligent=False → for instant metadata-only overview (0.5s)
 
-    **Recommended for:** Initial codebase exploration, understanding project structure
+    **Two modes:**
 
-    FASTEST way to understand a codebase. Scans only file system metadata (no code parsing),
-    showing directory structure, file counts, file types, and sizes in milliseconds.
+    1. **Intelligent mode (default, ~23-30s):**
+       - Uses Ollama to intelligently sample ~100-150 most important files
+       - Returns actual code structure: functions, classes, methods
+       - Token-efficient format with Norwegian labels (funksjoner:, klasser:)
+       - 80% coverage of critical files (entry points, APIs, core logic)
+       - Requires Ollama running locally with qwen2.5-coder:1.5b
 
-    Perfect for making informed decisions about what to scan in detail:
-    - See all top-level directories with file counts and types
-    - Understand project organization instantly
-    - Get concrete scan_directory() recommendations
-    - Avoid wasting time scanning irrelevant directories
+    2. **Fast mode (intelligent=False, <0.5s):**
+       - File system metadata only (no code parsing)
+       - Directory tree with file counts and types
+       - Perfect for quick orientation or very large repos
 
-    Output includes:
-    - Directory tree with file counts and types (e.g., "py:450 ts:200")
-    - File sizes and type distribution
-    - Subdirectory breakdown for large directories
-    - Ignored directories (node_modules, .venv, etc.)
-    - Actionable scan recommendations with file counts
-
-    **Speed:** Typically <0.5s even for 10k+ file codebases.
+    **Recommended for:** Initial codebase exploration, understanding project architecture
 
     Args:
         directory: Root directory to preview
-        max_depth: Maximum traversal depth (None = unlimited, default: 3 for speed)
-        max_files_hint: Abort if file count exceeds this safety limit (default: 100k)
-        show_top_n: Number of top directories to show in detail (default: 8)
+        max_depth: Maximum directory depth (default: 5)
+        intelligent: Use Ollama for intelligent sampling with code structure (default: True)
+        ollama_model: Ollama model to use (default: "qwen2.5-coder:1.5b")
+        max_files_hint: Safety limit for file count (default: 100k, only for fast mode)
+        show_top_n: Top directories to show (default: 8, only for fast mode)
         respect_gitignore: Respect .gitignore patterns (default: True)
 
     Returns:
-        Ultra-compact overview with directory stats and scan recommendations
+        Intelligent mode: Sampled files with code structure
+        Fast mode: Directory stats and file counts
 
     Examples:
-        # Quick overview of entire project
+        # Intelligent preview with code structure (default)
         preview_directory("./my-project")
 
-        # Deep dive into specific directory
-        preview_directory("./src", max_depth=None)
+        # Fast metadata-only preview
+        preview_directory("./my-project", intelligent=False)
 
-        # Show more directories in output
-        preview_directory(".", show_top_n=15)
+        # Use different Ollama model
+        preview_directory("./src", ollama_model="qwen2.5-coder:7b")
 
     Typical workflow:
-        1. preview_directory(".") → understand structure
-        2. Review recommendations
-        3. scan_directory("src/api", "**/*.py") → scan relevant parts
+        1. preview_directory(".") → deep understanding with code structure
+        2. Ask questions about architecture, patterns, key components
+        3. scan_directory("src/api", "**/*.py") → detailed scan of specific parts
     """
     try:
-        result = preview_dir_func(
-            directory=directory,
-            max_depth=max_depth,
-            max_files_hint=max_files_hint,
-            show_top_n=show_top_n,
-            respect_gitignore=respect_gitignore
-        )
+        if intelligent:
+            # Intelligent mode: Use Ollama for code structure
+            result = intelligent_preview(
+                directory=directory,
+                ollama_model=ollama_model,
+                max_depth=max_depth,
+                respect_gitignore=respect_gitignore
+            )
+        else:
+            # Fast mode: Metadata only
+            result = preview_dir_func(
+                directory=directory,
+                max_depth=max_depth,
+                max_files_hint=max_files_hint,
+                show_top_n=show_top_n,
+                respect_gitignore=respect_gitignore
+            )
         return [TextContent(type="text", text=result)]
     except FileNotFoundError as e:
         return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
@@ -104,7 +115,30 @@ def preview_directory(
     except RuntimeError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        return [TextContent(type="text", text=f"Error previewing directory: {e}")]
+        # Graceful fallback for intelligent mode
+        error_msg = str(e)
+        if intelligent and ("Connection" in error_msg or "11434" in error_msg):
+            fallback_msg = (
+                f"⚠️  Ollama unavailable (connection failed)\n\n"
+                f"To use intelligent preview:\n"
+                f"1. Install Ollama: https://ollama.com\n"
+                f"2. Pull model: ollama pull {ollama_model}\n"
+                f"3. Ensure Ollama is running\n\n"
+                f"Falling back to fast mode...\n\n"
+            )
+            try:
+                basic_result = preview_dir_func(
+                    directory=directory,
+                    max_depth=max_depth,
+                    max_files_hint=max_files_hint,
+                    show_top_n=show_top_n,
+                    respect_gitignore=respect_gitignore
+                )
+                return [TextContent(type="text", text=fallback_msg + basic_result)]
+            except Exception:
+                return [TextContent(type="text", text=fallback_msg + f"Error: {e}")]
+        else:
+            return [TextContent(type="text", text=f"Error previewing directory: {e}")]
 
 
 @mcp.tool(
