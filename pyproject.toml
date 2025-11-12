@@ -1,6 +1,6 @@
 [project]
 name = "scantool"
-version = "0.10.0"
+version = "0.10.1"
 description = "MCP server for multi-language code analysis with structure extraction, metadata parsing, and search capabilities across Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Markdown, plain text, and images"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,6 +39,12 @@ dependencies = [
     "pglast>=7.7",
     "httpx>=0.27.0",
     "nest-asyncio>=1.6.0",
+    "ollama>=0.3.0",
+    "PyPDF2>=3.0.0",
+    "pdf2image>=1.16.0",
+    "docling>=2.0.0",
+    "mlx>=0.20.0",
+    "mlx-vlm>=0.3.0",
 ]
 
 [dependency-groups]

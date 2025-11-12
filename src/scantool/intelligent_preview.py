@@ -487,6 +487,18 @@ def intelligent_preview(
         except Exception:
             pass
 
+    # Check if we got enough meaningful results
+    # If intelligent mode found very few files with structure, raise exception to trigger fallback
+    coverage_ratio = len(file_structures) / total_files if total_files > 0 else 0
+    min_files_threshold = min(20, total_files * 0.1)  # At least 20 files or 10% of total
+
+    if len(file_structures) < min_files_threshold:
+        raise RuntimeError(
+            f"Intelligent mode found structure in only {len(file_structures)}/{total_files} files "
+            f"({coverage_ratio*100:.1f}%). This may indicate mostly non-code files (markdown, text, etc). "
+            f"Falling back to fast mode for better overview."
+        )
+
     # Format output - minimal, token-efficient
     lines = [f"📂 {directory} ({len(file_structures)}/{total_files} files)\n"]
 

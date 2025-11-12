@@ -113,7 +113,23 @@ def preview_directory(
     except PermissionError as e:
         return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
     except RuntimeError as e:
-        return [TextContent(type="text", text=f"Error: {e}")]
+        # Check if this is a fallback trigger from intelligent mode
+        error_msg = str(e)
+        if intelligent and ("Falling back to fast mode" in error_msg or "found structure in only" in error_msg):
+            fallback_msg = f"⚠️  {error_msg}\n\n"
+            try:
+                basic_result = preview_dir_func(
+                    directory=directory,
+                    max_depth=max_depth,
+                    max_files_hint=max_files_hint,
+                    show_top_n=show_top_n,
+                    respect_gitignore=respect_gitignore
+                )
+                return [TextContent(type="text", text=fallback_msg + basic_result)]
+            except Exception as fallback_error:
+                return [TextContent(type="text", text=fallback_msg + f"Error in fallback: {fallback_error}")]
+        else:
+            return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
         # Graceful fallback for intelligent mode
         error_msg = str(e)
@@ -139,6 +155,96 @@ def preview_directory(
                 return [TextContent(type="text", text=fallback_msg + f"Error: {e}")]
         else:
             return [TextContent(type="text", text=f"Error previewing directory: {e}")]
+
+
+@mcp.tool(
+    tags={"exploration", "navigation", "directories"},
+    description="List directory tree structure (folders only, no files) - USE THIS to see folder hierarchy"
+)
+def list_directories(
+    directory: str,
+    max_depth: Optional[int] = 3,
+    respect_gitignore: bool = True
+) -> list[TextContent]:
+    """
+    List directory tree showing only folders (no files).
+
+    Displays hierarchical folder structure as a tree, perfect for understanding
+    project organization without file clutter.
+
+    Args:
+        directory: Root directory to list
+        max_depth: Maximum depth to traverse (default: 3)
+        respect_gitignore: Respect .gitignore patterns (default: True)
+
+    Returns:
+        Tree structure showing only directories
+
+    Examples:
+        # Show directory structure 3 levels deep
+        list_directories("./src")
+
+        # Show all directories (ignoring gitignore)
+        list_directories(".", max_depth=5, respect_gitignore=False)
+    """
+    from pathlib import Path
+    from .gitignore import load_gitignore
+
+    try:
+        root_path = Path(directory).resolve()
+        if not root_path.exists():
+            return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
+        if not root_path.is_dir():
+            return [TextContent(type="text", text=f"Error: Not a directory: {directory}")]
+
+        gitignore = load_gitignore(root_path) if respect_gitignore else None
+
+        def build_tree(path: Path, prefix: str = "", depth: int = 0) -> list[str]:
+            """Recursively build directory tree."""
+            if max_depth is not None and depth >= max_depth:
+                return []
+
+            lines = []
+            try:
+                # Get all subdirectories
+                all_dirs = [e for e in path.iterdir() if e.is_dir()]
+
+                # Filter out gitignored directories
+                entries = []
+                for entry in all_dirs:
+                    if gitignore:
+                        rel_path = str(entry.relative_to(root_path))
+                        if gitignore.matches(rel_path, is_dir=True):
+                            continue
+                    entries.append(entry)
+
+                # Sort after filtering
+                entries = sorted(entries, key=lambda x: x.name.lower())
+
+                for i, entry in enumerate(entries):
+                    is_last = (i == len(entries) - 1)
+                    connector = "└─ " if is_last else "├─ "
+                    extension = "   " if is_last else "│  "
+
+                    lines.append(f"{prefix}{connector}{entry.name}/")
+
+                    # Recurse into subdirectories
+                    sub_lines = build_tree(entry, prefix + extension, depth + 1)
+                    lines.extend(sub_lines)
+
+            except PermissionError:
+                pass
+
+            return lines
+
+        # Build tree starting from root
+        result_lines = [f"{root_path}/"]
+        result_lines.extend(build_tree(root_path))
+
+        return [TextContent(type="text", text="\n".join(result_lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error listing directories: {e}")]
 
 
 @mcp.tool(
