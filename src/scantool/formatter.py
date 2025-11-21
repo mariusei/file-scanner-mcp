@@ -8,11 +8,11 @@ from .scanners import StructureNode
 class TreeFormatter:
     """Formats structure nodes as a pretty tree with metadata."""
 
-    # Tree drawing characters
+    # Tree drawing characters (token-optimized: 2-space indent)
     BRANCH = "├─"
     LAST_BRANCH = "└─"
-    VERTICAL = "│  "
-    SPACE = "   "
+    VERTICAL = "│ "  # 2-space indent
+    SPACE = "  "     # 2-space indent
 
     def __init__(self, show_signatures: bool = True, show_decorators: bool = True,
                  show_docstrings: bool = True, show_complexity: bool = False):
@@ -84,16 +84,17 @@ class TreeFormatter:
             lines.append(" ".join(p for p in parts if p))
             return lines
 
-        # Build the main node line
-        parts = [f"{prefix}{connector} {node.type}: {node.name}"]
+        # Build the main node line (token-optimized format)
+        # Remove "type:" prefix (redundant), shorten line range format
+        parts = [f"{prefix}{connector[:-1]} {node.name}"]  # ├─  → ├
 
         # Add signature if available
         if self.show_signatures and node.signature:
             parts.append(node.signature)
 
-        # Add line numbers (skip for file-info nodes with line 0)
+        # Add line numbers in compact format @startline
         if node.start_line > 0 or node.end_line > 0:
-            parts.append(f"({node.start_line}-{node.end_line})")
+            parts.append(f"@{node.start_line}")
 
         # Add modifiers if present
         if node.modifiers:
@@ -106,22 +107,29 @@ class TreeFormatter:
             if complexity_str:
                 parts.append(complexity_str)
 
+        # Add docstring inline as comment (token-optimized)
+        if self.show_docstrings and node.docstring:
+            parts.append(f"# {node.docstring}")
+
         lines.append(" ".join(parts))
 
-        # Add decorators on separate lines (indented)
+        # Add decorators on separate lines (2-space indent, token-optimized)
         if self.show_decorators and node.decorators:
-            decorator_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + "  "
+            decorator_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space
             for decorator in node.decorators:
                 lines.append(f"{decorator_prefix}{decorator}")
 
-        # Add docstring on separate line (indented)
-        if self.show_docstrings and node.docstring:
-            docstring_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + "  "
-            lines.append(f'{docstring_prefix}"{node.docstring}"')
+        # Add code excerpt if node is marked as salient (high-entropy)
+        if hasattr(node, 'code_excerpt') and node.code_excerpt:
+            code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
 
-        # Format children
+            # No blank line (token-optimized)
+            # Compact line number format: {i} | instead of {i:4d} |
+            for i, line in enumerate(node.code_excerpt, start=node.start_line):
+                lines.append(f"{code_prefix}{i} | {line}")
+
+        # Format children (2-space indent, token-optimized)
         if node.children:
-            # New prefix for children
             child_prefix = prefix + (self.SPACE if is_last else self.VERTICAL)
 
             for i, child in enumerate(node.children):
@@ -131,17 +139,17 @@ class TreeFormatter:
         return lines
 
     def _format_complexity(self, complexity: dict) -> str:
-        """Format complexity metrics as a compact string."""
+        """Format complexity metrics as compact text (no emoji - cleaner output)."""
         parts = []
 
         if complexity.get("lines", 0) > 100:
-            parts.append(f"📏{complexity['lines']}")
+            parts.append(f"L{complexity['lines']}")
 
         if complexity.get("max_depth", 0) > 5:
-            parts.append(f"🔄{complexity['max_depth']}")
+            parts.append(f"D{complexity['max_depth']}")
 
         if complexity.get("branches", 0) > 10:
-            parts.append(f"🌿{complexity['branches']}")
+            parts.append(f"B{complexity['branches']}")
 
         return " ".join(parts) if parts else ""
 

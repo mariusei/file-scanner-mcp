@@ -157,7 +157,7 @@ Or if installed from source:
 
 ## Usage
 
-The server provides five MCP tools for code exploration:
+The server provides six MCP tools for code exploration:
 
 **Typical workflow:**
 
@@ -165,17 +165,21 @@ The server provides five MCP tools for code exploration:
    - Returns in <0.5s for most repos
    - Includes recommendations for next steps
 
-2. **Scan directories**: `scan_directory()` parses code and shows structures
+2. **List folders**: `list_directories()` shows directory tree (folders only, no files)
+   - Pure folder hierarchy visualization
+   - Respects .gitignore by default
+
+3. **Scan directories**: `scan_directory()` parses code and shows structures
    - Use preview recommendations to limit scope
    - Respects .gitignore by default
 
-3. **Examine files**: `scan_file()` shows full method-level detail
+4. **Examine files**: `scan_file()` shows full method-level detail
    - Includes signatures, decorators, docstrings
    - Returns precise line ranges
 
-4. **Search structures**: `search_structures()` filters by type, name, or decorator
+5. **Search structures**: `search_structures()` filters by type, name, or decorator
 
-5. **Read code**: Use line ranges from previous steps
+6. **Read code**: Use line ranges from previous steps
 
 ### 0. preview_directory - Quick metadata scan
 
@@ -213,7 +217,35 @@ Ignored: node_modules/ (45k files), .venv/ (12k)
 
 Use this before `scan_directory()` to scope your search in large codebases.
 
-### 1. scan_file - Analyze a single file
+### 1. list_directories - Show folder hierarchy only
+
+Lists directory tree structure without files. Perfect for understanding project organization.
+
+```python
+list_directories(
+    directory=".",
+    max_depth=3,              # Maximum traversal depth (default: 3)
+    respect_gitignore=True    # Honor .gitignore (default: True)
+)
+```
+
+**Example output:**
+```
+/Users/user/project/
+├─ src/
+│  ├─ components/
+│  ├─ services/
+│  └─ utils/
+├─ tests/
+│  ├─ unit/
+│  └─ integration/
+├─ docs/
+└─ scripts/
+```
+
+Use this when you only need folder structure, not file contents.
+
+### 2. scan_file - Analyze a single file
 
 ```python
 scan_file(
@@ -226,7 +258,7 @@ scan_file(
 )
 ```
 
-### 2. scan_file_content - Analyze content directly
+### 3. scan_file_content - Analyze content directly
 
 Scan file content without requiring a local file path. Perfect for analyzing remote files from GitHub, APIs, or any content source.
 
@@ -248,7 +280,7 @@ scan_file_content(
 - Scanning dynamically generated code
 - Working with content in memory
 
-### 3. scan_directory - Compact codebase overview
+### 4. scan_directory - Compact codebase overview
 
 Shows directory tree with **inline** class/function names for each file.
 
@@ -297,7 +329,7 @@ scan_directory(".", exclude_patterns=["tests/**", "docs/**"])
 scan_directory(".", respect_gitignore=False)
 ```
 
-### 4. search_structures - Find and filter structures
+### 5. search_structures - Find and filter structures
 
 ```python
 # Find all test functions

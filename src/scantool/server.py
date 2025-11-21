@@ -377,18 +377,19 @@ def scan_file(
     Returns:
         Formatted structure output (tree or JSON)
 
-    Example output (tree format):
+    Example output (token-optimized tree format with entropy-based code excerpts):
+        Compact format: @line instead of (start-end), inline docstrings with #
+        High-entropy functions show actual code implementation
+
         example.py (3-57)
-        ├─ imports: import statements (3-5)
-        ├─ class: DatabaseManager (8-26)
-        │    "Manages database connections and queries."
-        │  ├─ method: __init__ (self, connection_string: str) (11-13)
-        │  ├─ method: connect (self) (15-17)
-        │  │    "Establish database connection."
-        │  └─ method: query (self, sql: str) -> list (24-26)
-        │       "Execute a SQL query."
-        └─ function: validate_email (email: str) -> bool (48-50)
-             "Validate email format."
+        ├ import statements @3
+        ├ DatabaseManager @8 # Manages database connections
+        │ ├ __init__ (self, connection_string: str) @11
+        │ ├ connect (self) @15 # Establish database connection
+        │ └ query (self, sql: str) -> list @24 # Execute a SQL query
+        │   24 | def query(self, sql: str) -> list:
+        │   25 |     return self.cursor.execute(sql).fetchall()
+        └ validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
         structures = scanner.scan_file(file_path)
