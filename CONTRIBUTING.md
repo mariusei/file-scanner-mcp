@@ -2,6 +2,10 @@
 
 This guide covers how to add support for a new programming language.
 
+**Two systems for different purposes:**
+- **Scanners** (this guide): Extract file structure (classes, functions, methods) for scan_file/scan_directory
+- **Analyzers** (see below): Extract imports, entry points, calls for code map and preview_directory
+
 ## Adding a New Language
 
 The plugin system auto-discovers scanners. Create one file with the required methods and it will be automatically registered.
@@ -664,3 +668,453 @@ elif node.type in ("variable_declaration", "lexical_declaration"):
 1. **`python_scanner.py`**: Full-featured with all metadata
 2. **`text_scanner.py`**: Simple, no tree-sitter required
 3. **`_template.py`**: Starter template with TODOs
+
+---
+
+# Adding a New Analyzer (Code Map System)
+
+Analyzers power the code map system (preview_directory, code_map). They extract imports, entry points, and optionally function definitions and calls for building import graphs and call graphs.
+
+## Quick Start
+
+### 1. Copy the Template
+
+```bash
+cp src/scantool/analyzers/_analyzer_template.py src/scantool/analyzers/LANGUAGE_analyzer.py
+```
+
+### 2. Implement Required Methods
+
+**Minimum viable analyzer** (Layer 1 only):
+```python
+class LANGUAGEAnalyzer(BaseAnalyzer):
+    @classmethod
+    def get_extensions(cls) -> list[str]:
+        return [".ext"]  # Your file extensions
+
+    @classmethod
+    def get_language_name(cls) -> str:
+        return "LANGUAGE"  # Human-readable name
+
+    def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
+        # Extract import/use/require statements
+        pass
+
+    def find_entry_points(self, file_path: str, content: str) -> list[EntryPointInfo]:
+        # Find main(), if __name__, app instances, exports
+        pass
+
+    def should_analyze(self, file_path: str) -> bool:
+        # Skip minified, generated, compiled files
+        return True
+```
+
+**Full analyzer** (Layer 1 + Layer 2):
+Add these for call graph support:
+```python
+def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
+    # Extract functions, classes, methods
+    pass
+
+def extract_calls(self, file_path: str, content: str, definitions: list[DefinitionInfo]) -> list[CallInfo]:
+    # Extract function calls
+    pass
+```
+
+### 3. Auto-Discovery
+
+No registration needed. The analyzer is automatically discovered on startup.
+
+Verify:
+```bash
+uv run python -c "
+from scantool.analyzers import get_registry
+registry = get_registry()
+print(registry.get_supported_extensions())  # Should include .your_ext
+"
+```
+
+### 4. Test It
+
+```bash
+# Create test file
+mkdir -p tests/analyzers
+cat > tests/analyzers/test_LANGUAGE_analyzer.py << 'EOF'
+from scantool.analyzers.LANGUAGE_analyzer import LANGUAGEAnalyzer
+
+def test_extract_imports():
+    analyzer = LANGUAGEAnalyzer()
+    content = "import foo"  # Your language syntax
+    imports = analyzer.extract_imports("test.ext", content)
+    assert len(imports) > 0
+    assert imports[0].target_module == "foo"
+EOF
+
+# Run tests
+uv run pytest tests/analyzers/test_LANGUAGE_analyzer.py -v
+```
+
+---
+
+## Two-Tier Noise Filtering
+
+Analyzers integrate with two-tier skip system:
+
+**Tier 1**: Directory/file patterns (fast, structural)
+- Handled by `skip_patterns.py`: COMMON_SKIP_DIRS, COMMON_SKIP_FILES, COMMON_SKIP_EXTENSIONS
+- Filters .git/, node_modules/, .pyc, .dll before analyzer sees them
+
+**Tier 2**: Language-specific patterns (semantic)
+- Handled by `should_analyze()` in your analyzer
+- Filters minified JS, type declarations, generated protobuf files
+
+### Example: TypeScript Analyzer
+
+```python
+def should_analyze(self, file_path: str) -> bool:
+    filename = Path(file_path).name.lower()
+
+    # Skip minified files
+    if filename.endswith(('.min.js', '.min.mjs', '.min.cjs')):
+        return False
+
+    # Skip type declarations
+    if filename.endswith('.d.ts'):
+        return False
+
+    # Skip bundles
+    if 'bundle' in filename or 'chunk' in filename:
+        return False
+
+    return True
+```
+
+**Principle**: Tier 1 filters by structure (directories, extensions), Tier 2 filters by naming patterns specific to your language ecosystem.
+
+---
+
+## Regex vs Tree-Sitter
+
+**Use regex when:**
+- Import syntax is simple and consistent
+- Language has strict conventions (e.g., Python imports, Rust use statements)
+- Performance matters (analyzing thousands of files)
+
+**Use tree-sitter when:**
+- Syntax is complex or has many edge cases
+- Need to distinguish comments from code
+- Need to handle nested structures (definitions inside classes)
+
+**Recommendation**: Start with regex, add tree-sitter if you hit edge cases.
+
+### Example: Regex-based Imports (Rust)
+
+```python
+def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
+    imports = []
+
+    # use foo::bar;
+    # use foo::{bar, baz};
+    pattern = r'^\s*use\s+([^;]+);'
+
+    for match in re.finditer(pattern, content, re.MULTILINE):
+        module = match.group(1).strip()
+        # Remove curly braces: foo::{bar, baz} -> foo
+        module = re.sub(r'\{[^}]*\}', '', module).strip()
+        line = content[:match.start()].count('\n') + 1
+
+        imports.append(ImportInfo(
+            source_file=file_path,
+            target_module=module,
+            import_type="use",
+            line=line
+        ))
+
+    return imports
+```
+
+### Example: Tree-Sitter-based Definitions (Go)
+
+```python
+def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
+    if not self.parser:
+        return []
+
+    definitions = []
+    tree = self.parser.parse(bytes(content, 'utf8'))
+
+    def visit(node, parent_name=None):
+        # func main() or func (r *Receiver) Method()
+        if node.type == "function_declaration":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = content[name_node.start_byte:name_node.end_byte]
+                line = node.start_point[0] + 1
+
+                # Check if it's a method (has receiver)
+                receiver = node.child_by_field_name("receiver")
+                if receiver:
+                    fqn = f"{file_path}:{parent_name}.{name}"
+                    def_type = "method"
+                else:
+                    fqn = f"{file_path}:{name}"
+                    def_type = "function"
+
+                definitions.append(DefinitionInfo(
+                    name=fqn,
+                    type=def_type,
+                    file=file_path,
+                    line=line
+                ))
+
+        for child in node.children:
+            visit(child, parent_name)
+
+    visit(tree.root_node)
+    return definitions
+```
+
+---
+
+## Entry Point Detection Patterns
+
+Entry points vary by language. Here are common patterns:
+
+### main() Functions
+```python
+# Pattern: fn main(), func main(), def main(), public static void main
+pattern = r'^\s*(?:pub\s+)?(?:fn|func|def|public\s+static\s+void)\s+main\s*\('
+```
+
+### Conditional Execution Guards
+```python
+# Python: if __name__ == "__main__"
+# Ruby: if __FILE__ == $0
+pattern = r'if\s+__(?:name|FILE)__\s*==\s*["\'](?:__main__|\\$0)["\']\s*:'
+```
+
+### Framework Entry Points
+```python
+# Flask: app = Flask(__name__)
+# Express: const app = express()
+# FastAPI: app = FastAPI()
+pattern = r'(\w+)\s*=\s*(Flask|express|FastAPI|Rocket)\('
+```
+
+### Module Exports
+```python
+# JavaScript: export default function
+# TypeScript: export { foo, bar }
+pattern = r'^\s*export\s+(?:default\s+)?(?:function|class|const)\s+(\w+)'
+```
+
+---
+
+## Testing Analyzers
+
+### Unit Tests
+
+Create `tests/analyzers/test_LANGUAGE_analyzer.py`:
+
+```python
+import pytest
+from scantool.analyzers.LANGUAGE_analyzer import LANGUAGEAnalyzer
+
+class TestLANGUAGEAnalyzer:
+    def test_extract_imports(self):
+        analyzer = LANGUAGEAnalyzer()
+        content = """
+        import foo
+        import bar.baz
+        """
+        imports = analyzer.extract_imports("test.ext", content)
+        assert len(imports) == 2
+        assert imports[0].target_module == "foo"
+        assert imports[1].target_module == "bar.baz"
+
+    def test_find_entry_points(self):
+        analyzer = LANGUAGEAnalyzer()
+        content = """
+        def main():
+            pass
+        """
+        entry_points = analyzer.find_entry_points("test.ext", content)
+        assert len(entry_points) == 1
+        assert entry_points[0].type == "main_function"
+
+    def test_should_analyze_skip_minified(self):
+        analyzer = LANGUAGEAnalyzer()
+        assert analyzer.should_analyze("app.min.js") is False
+        assert analyzer.should_analyze("app.js") is True
+```
+
+### Integration Tests
+
+Test with real project:
+
+```python
+import tempfile
+from pathlib import Path
+from scantool.code_map import CodeMap
+
+def test_code_map_integration():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        project_dir = Path(tmpdir)
+
+        # Create test files
+        (project_dir / "main.ext").write_text("""
+        import helper
+
+        def main():
+            helper.do_something()
+        """)
+
+        (project_dir / "helper.ext").write_text("""
+        def do_something():
+            pass
+        """)
+
+        # Run code map
+        cm = CodeMap(str(project_dir), respect_gitignore=False)
+        result = cm.analyze()
+
+        # Verify imports were detected
+        assert result.total_files == 2
+        assert len(result.import_graph) == 2
+
+        # Verify entry points
+        assert len(result.entry_points) == 1
+        assert result.entry_points[0].name == "main"
+```
+
+### Run Tests
+
+```bash
+# Specific analyzer tests
+uv run pytest tests/analyzers/test_LANGUAGE_analyzer.py -v
+
+# All analyzer tests
+uv run pytest tests/analyzers/ -v
+
+# With coverage
+uv run pytest tests/analyzers/test_LANGUAGE_analyzer.py --cov=src/scantool/analyzers
+```
+
+---
+
+## Checklist for New Analyzers
+
+**Required:**
+- [ ] Create `src/scantool/analyzers/LANGUAGE_analyzer.py`
+- [ ] Implement `get_extensions()`, `get_language_name()`
+- [ ] Implement `extract_imports()` (Layer 1)
+- [ ] Implement `find_entry_points()` (Layer 1)
+- [ ] Implement `should_analyze()` for language-specific skip patterns
+- [ ] Create unit tests in `tests/analyzers/test_LANGUAGE_analyzer.py`
+- [ ] All tests pass: `uv run pytest tests/analyzers/test_LANGUAGE_analyzer.py`
+
+**Optional (for call graph support):**
+- [ ] Implement `extract_definitions()` (Layer 2)
+- [ ] Implement `extract_calls()` (Layer 2)
+- [ ] Add integration test with CodeMap
+
+**Documentation:**
+- [ ] Add to README.md supported languages table
+- [ ] Document any tree-sitter dependencies in pyproject.toml
+
+---
+
+## Philosophy: Raskt-Enkelt-Pålitelig
+
+**Raskt (Fast):**
+- Use regex for simple patterns (imports, entry points)
+- Reserve tree-sitter for complex syntax (nested definitions, calls)
+- Two-tier filtering eliminates noise before parsing
+
+**Enkelt (Simple):**
+- One file per language, auto-discovered
+- No registration boilerplate
+- Copy template, fill in patterns, done
+- DRY: Use BaseAnalyzer helpers (_resolve_relative_import, classify_file)
+
+**Pålitelig (Reliable):**
+- No TODOs, no placeholders, no shortcuts
+- Handle edge cases (relative imports, framework detection)
+- Complete implementation: both happy path and error cases
+- Tests verify correctness on real code
+
+**No Overabstraction:**
+- Direct regex patterns, not regex builders
+- Tree-sitter queries when needed, not everywhere
+- Simple if/else, not factory patterns
+
+---
+
+## Examples to Study
+
+**Regex-based (simple, fast):**
+- `src/scantool/analyzers/python_analyzer.py` - Import variants, relative imports, if __name__
+- `src/scantool/analyzers/go_analyzer.py` - Package imports, func main(), skip .pb.go
+
+**Tree-sitter-based (robust):**
+- `src/scantool/analyzers/typescript_analyzer.py` - Dynamic imports, export patterns
+- `src/scantool/analyzers/python_analyzer.py` - extract_definitions(), extract_calls()
+
+**Template (copy this):**
+- `src/scantool/analyzers/_analyzer_template.py` - Complete reference with all options
+
+---
+
+## Debugging Tips
+
+### Verify Auto-Discovery
+
+```bash
+uv run python -c "
+from scantool.analyzers import get_registry
+registry = get_registry()
+print('Supported extensions:', registry.get_supported_extensions())
+print('Analyzer for .rs:', registry.get_analyzer('.rs'))
+"
+```
+
+### Test Analyzer Directly
+
+```bash
+uv run python -c "
+from scantool.analyzers.rust_analyzer import RustAnalyzer
+
+analyzer = RustAnalyzer()
+content = open('tests/samples/main.rs').read()
+
+imports = analyzer.extract_imports('main.rs', content)
+print('Imports:', imports)
+
+entry_points = analyzer.find_entry_points('main.rs', content)
+print('Entry points:', entry_points)
+"
+```
+
+### Test with Code Map
+
+```bash
+uv run python -c "
+from scantool.code_map import CodeMap
+
+cm = CodeMap('.', respect_gitignore=True, enable_layer2=False)
+result = cm.analyze()
+
+print(f'Files analyzed: {result.total_files}')
+print(f'Entry points: {len(result.entry_points)}')
+print(f'Import edges: {sum(len(n.imports) for n in result.files)}')
+"
+```
+
+---
+
+## Getting Help
+
+- **Template**: Copy `src/scantool/analyzers/_analyzer_template.py`
+- **Examples**: Study `python_analyzer.py`, `typescript_analyzer.py`, `go_analyzer.py`
+- **Issues**: [GitHub Issues](https://github.com/mariusei/file-scanner-mcp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/mariusei/file-scanner-mcp/discussions)
