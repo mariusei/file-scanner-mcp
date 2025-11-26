@@ -42,9 +42,19 @@ class PythonAnalyzer(BaseAnalyzer):
         return 10
 
     def should_analyze(self, file_path: str) -> bool:
-        """Skip empty __init__.py files and __pycache__."""
-        if "__pycache__" in file_path:
+        """
+        Skip Python files that should not be analyzed.
+
+        Matches PythonScanner.should_skip() logic:
+        - Skip compiled Python files (.pyc, .pyo, .pyd)
+        - __pycache__ directories are already filtered by COMMON_SKIP_DIRS
+        """
+        filename = Path(file_path).name
+
+        # Skip compiled Python files
+        if filename.endswith(('.pyc', '.pyo', '.pyd')):
             return False
+
         return True
 
     def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:

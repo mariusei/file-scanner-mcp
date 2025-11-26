@@ -50,9 +50,9 @@ class AnalyzerRegistry:
         # Get the directory where this __init__.py is located
         package_dir = Path(__file__).parent
 
-        # Import all Python files in this directory (except __init__.py, base.py, models.py)
+        # Import all Python files in this directory (except __init__.py, base.py, models.py, skip_patterns.py, template)
         for file_path in package_dir.glob("*.py"):
-            if file_path.name in ("__init__.py", "base.py", "models.py"):
+            if file_path.name in ("__init__.py", "base.py", "models.py", "skip_patterns.py", "_analyzer_template.py"):
                 continue
 
             # Import the module using the package name from __name__

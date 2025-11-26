@@ -87,6 +87,7 @@ class CodeMap:
         all_calls = []
         file_clusters = {}
         file_definitions = {}  # Track definitions per file
+        analyzed_files = []  # Track which files were actually analyzed
 
         for file_path in files:
             # Get analyzer for this file
@@ -103,6 +104,9 @@ class CodeMap:
             # Skip if analyzer says to skip
             if not analyzer.should_analyze(file_path):
                 continue
+
+            # Track that this file was analyzed
+            analyzed_files.append(file_path)
 
             # Layer 1: Extract imports
             imports = analyzer.extract_imports(file_path, content)
@@ -125,8 +129,8 @@ class CodeMap:
                 calls = analyzer.extract_calls(file_path, content, definitions)
                 all_calls.extend(calls)
 
-        # Phase 3: Build import graph
-        import_graph = self._build_import_graph(all_imports, files)
+        # Phase 3: Build import graph (only with analyzed files)
+        import_graph = self._build_import_graph(all_imports, analyzed_files)
         result.import_graph = import_graph
 
         # Phase 4: Calculate file-level centrality
@@ -158,16 +162,31 @@ class CodeMap:
 
     def _discover_files(self) -> list[str]:
         """
-        Discover all files in directory (respecting gitignore).
+        Discover all files in directory (respecting gitignore and skip patterns).
+
+        Uses two-tier noise reduction:
+        - Tier 1: Directory/file skip patterns (fast, structural)
+        - Tier 2: Language-specific skip (in analyzer.should_analyze())
 
         Returns:
             List of relative file paths
         """
+        from .analyzers.skip_patterns import should_skip_directory, should_skip_file
+
         files = []
 
         for path in self.directory.rglob("*"):
             # Only process files
             if not path.is_file():
+                continue
+
+            # Tier 1: Skip common noise directories (fast check)
+            # Check all parts of path for skip patterns
+            if any(should_skip_directory(part) for part in path.parts):
+                continue
+
+            # Tier 1: Skip common noise files
+            if should_skip_file(path.name):
                 continue
 
             # Check gitignore

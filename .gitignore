@@ -26,3 +26,15 @@ wheels/
 *.tmp
 *.bak
 .cache/
+
+# Dev notes and prototypes (keep local, don't commit)
+MILESTONE_*.md
+*_PROPOSAL.md
+*_EVALUATION*.md
+*_REPORT.md
+CODEMAP_*.md
+STYLE_GUIDE.md
+debug_*.py
+prototype_*.py
+/test_*.py
+# Note: /test_*.py only ignores root test files, not tests/ directory
