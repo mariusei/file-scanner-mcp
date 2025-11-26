@@ -12,19 +12,28 @@ from .analyzers import (
     FileNode,
     EntryPointInfo,
     ImportInfo,
+    DefinitionInfo,
+    CallInfo,
 )
 from .analyzers.generic_analyzer import GenericAnalyzer
+from . import call_graph
 
 
 class CodeMap:
     """
     Orchestrator for building a code map of a directory.
 
-    Layer 1 (Milestone 1):
+    Layer 1:
     - File-level import graph
     - Entry point detection
     - File clustering
     - Centrality by import count
+
+    Layer 2 (Milestone 2):
+    - Function/class definitions
+    - Cross-file call graph
+    - Function-level centrality
+    - Hot function detection
     """
 
     def __init__(
@@ -32,6 +41,7 @@ class CodeMap:
         directory: str,
         respect_gitignore: bool = True,
         max_files: int = 10000,
+        enable_layer2: bool = True,
     ):
         """
         Initialize code map analyzer.
@@ -40,10 +50,12 @@ class CodeMap:
             directory: Root directory to analyze
             respect_gitignore: Whether to respect .gitignore patterns
             max_files: Maximum number of files to analyze (safety limit)
+            enable_layer2: Enable Layer 2 analysis (call graphs, function centrality)
         """
         self.directory = Path(directory).resolve()
         self.respect_gitignore = respect_gitignore
         self.max_files = max_files
+        self.enable_layer2 = enable_layer2
 
         # Load gitignore patterns
         self.gitignore = None
@@ -56,10 +68,10 @@ class CodeMap:
 
     def analyze(self) -> CodeMapResult:
         """
-        Perform complete code map analysis (Layer 1).
+        Perform complete code map analysis (Layer 1 + Layer 2 if enabled).
 
         Returns:
-            CodeMapResult with file graph, entry points, and clusters
+            CodeMapResult with file graph, entry points, clusters, and optionally call graph
         """
         start_time = time.time()
         result = CodeMapResult()
@@ -68,10 +80,13 @@ class CodeMap:
         files = self._discover_files()
         result.total_files = len(files)
 
-        # Phase 2: Analyze each file
+        # Phase 2: Analyze each file (Layer 1 + Layer 2)
         all_imports = []
         all_entry_points = []
+        all_definitions = []
+        all_calls = []
         file_clusters = {}
+        file_definitions = {}  # Track definitions per file
 
         for file_path in files:
             # Get analyzer for this file
@@ -89,23 +104,32 @@ class CodeMap:
             if not analyzer.should_analyze(file_path):
                 continue
 
-            # Extract imports
+            # Layer 1: Extract imports
             imports = analyzer.extract_imports(file_path, content)
             all_imports.extend(imports)
 
-            # Find entry points
+            # Layer 1: Find entry points
             entry_points = analyzer.find_entry_points(file_path, content)
             all_entry_points.extend(entry_points)
 
-            # Classify file
+            # Layer 1: Classify file
             cluster = analyzer.classify_file(file_path, content)
             file_clusters[file_path] = cluster
+
+            # Layer 2: Extract definitions and calls (if enabled)
+            if self.enable_layer2:
+                definitions = analyzer.extract_definitions(file_path, content)
+                all_definitions.extend(definitions)
+                file_definitions[file_path] = definitions
+
+                calls = analyzer.extract_calls(file_path, content, definitions)
+                all_calls.extend(calls)
 
         # Phase 3: Build import graph
         import_graph = self._build_import_graph(all_imports, files)
         result.import_graph = import_graph
 
-        # Phase 4: Calculate centrality
+        # Phase 4: Calculate file-level centrality
         self._calculate_centrality(import_graph)
 
         # Phase 5: Cluster files
@@ -114,11 +138,21 @@ class CodeMap:
             clusters[cluster].append(file_path)
         result.clusters = dict(clusters)
 
-        # Phase 6: Populate result
+        # Phase 6: Build call graph (Layer 2)
+        if self.enable_layer2 and all_definitions:
+            result.definitions = all_definitions
+            result.calls = all_calls
+            result.call_graph = call_graph.build_call_graph(all_definitions, all_calls)
+            call_graph.calculate_centrality(result.call_graph)
+            result.hot_functions = call_graph.find_hot_functions(result.call_graph, top_n=10)
+
+        # Phase 7: Populate result
         result.files = list(import_graph.values())
         result.entry_points = all_entry_points
         result.analysis_time = time.time() - start_time
         result.layers_analyzed = ["layer1"]
+        if self.enable_layer2:
+            result.layers_analyzed.append("layer2")
 
         return result
 
@@ -338,7 +372,23 @@ class CodeMap:
                         lines.append(f"       ... +{len(node.imports) - 3} more")
             lines.append("")
 
+        # Section 5: Hot Functions (Layer 2)
+        if result.hot_functions:
+            lines.append("━━━ HOT FUNCTIONS (most called) ━━━")
+            for func in result.hot_functions[:max_entries]:
+                if func.centrality_score > 0:
+                    # Parse FQN: file:name or file:class.method
+                    parts = func.name.split(":")
+                    display_name = parts[1] if len(parts) > 1 else func.name
+                    lines.append(
+                        f"  {display_name} ({func.type}): "
+                        f"called by {len(func.callers)}, "
+                        f"calls {len(func.callees)} @{parts[0] if len(parts) > 1 else 'unknown'}"
+                    )
+            lines.append("")
+
         # Footer
-        lines.append(f"Analysis: {result.total_files} files in {result.analysis_time:.2f}s")
+        layers_str = "+".join(result.layers_analyzed)
+        lines.append(f"Analysis: {result.total_files} files in {result.analysis_time:.2f}s ({layers_str})")
 
         return "\n".join(lines)
