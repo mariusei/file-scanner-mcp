@@ -15,6 +15,7 @@ from .scanner import FileScanner
 from .scanners import StructureNode
 from .preview import preview_directory as preview_dir_func
 from .intelligent_preview import intelligent_preview
+from .code_map import CodeMap
 
 mcp = FastMCP("File Scanner MCP")
 
@@ -155,6 +156,85 @@ def preview_directory(
                 return [TextContent(type="text", text=fallback_msg + f"Error: {e}")]
         else:
             return [TextContent(type="text", text=f"Error previewing directory: {e}")]
+
+
+@mcp.tool(
+    tags={"exploration", "analysis", "overview", "local"},
+    description="Intelligent code map - Shows entry points, import graph, call patterns, and architecture (fast, deterministic, offline)"
+)
+def code_map(
+    directory: str,
+    respect_gitignore: bool = True,
+    max_files: int = 10000,
+    max_entries: int = 20
+) -> list[TextContent]:
+    """
+    Build intelligent code map showing codebase structure and relationships.
+
+    **FAST REPLACEMENT for preview_directory's intelligent mode:**
+    - 15x faster (<2s vs 23-30s with Ollama)
+    - Deterministic (same results every time)
+    - Offline (no Ollama required)
+    - Richer analysis (imports, entry points, call patterns, architecture)
+
+    **What it shows:**
+    1. Entry Points: main(), if __name__, app instances, exports
+    2. Core Files: Ranked by centrality (most imported = most important)
+    3. Architecture: Files clustered by role (entry points, core logic, plugins, utilities, tests)
+    4. Dependencies: Import relationships between files
+
+    **Layer 1 Analysis (Milestone 1):**
+    - File-level import graph
+    - Entry point detection
+    - File clustering
+    - Centrality ranking
+
+    **Recommended workflow:**
+    1. code_map(".") → instant architecture understanding
+    2. Ask about specific patterns, entry points, dependencies
+    3. scan_directory() → detailed code structure of specific areas
+
+    Args:
+        directory: Root directory to analyze
+        respect_gitignore: Respect .gitignore patterns (default: True)
+        max_files: Maximum files to analyze (default: 10000)
+        max_entries: Maximum entries per section (default: 20)
+
+    Returns:
+        Code map with entry points, import graph, and architecture
+
+    Examples:
+        # Analyze current project
+        code_map(".")
+
+        # Analyze subdirectory
+        code_map("src/api")
+
+        # Include all files (ignore .gitignore)
+        code_map(".", respect_gitignore=False)
+    """
+    try:
+        # Create code map instance
+        cm = CodeMap(
+            directory=directory,
+            respect_gitignore=respect_gitignore,
+            max_files=max_files
+        )
+
+        # Analyze
+        result = cm.analyze()
+
+        # Format as tree
+        output = cm.format_tree(result, max_entries=max_entries)
+
+        return [TextContent(type="text", text=output)]
+
+    except FileNotFoundError as e:
+        return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
+    except PermissionError as e:
+        return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error analyzing code map: {e}")]
 
 
 @mcp.tool(
