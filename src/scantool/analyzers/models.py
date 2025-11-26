@@ -71,6 +71,11 @@ class FileNode:
     centrality_score: float = 0.0  # Centrality metric
     cluster: str = "other"  # Architectural cluster
 
+    # Temporal metadata (for relevance scoring)
+    mtime: float = 0.0  # Modification timestamp
+    size: int = 0  # File size in bytes
+    age_days: float = 0.0  # Days since last modified
+
 
 @dataclass
 class CodeMapResult:
