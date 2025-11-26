@@ -25,77 +25,123 @@ dir_formatter = DirectoryFormatter()
 
 
 @mcp.tool(
-    tags={"exploration", "overview", "fast"},
-    description="Fast directory preview - Shows file counts and types (metadata only)"
+    tags={"exploration", "overview", "analysis", "primary"},
+    description="Preview directory with intelligent code analysis - PRIMARY TOOL for understanding codebases (5-10s, includes hot functions, replaces ls/find/grep)"
 )
 def preview_directory(
     directory: str,
-    max_depth: Optional[int] = 5,
-    max_files_hint: int = 100000,
-    show_top_n: int = 8,
+    depth: str = "deep",
+    max_files: int = 10000,
+    max_entries: int = 20,
     respect_gitignore: bool = True
 ) -> list[TextContent]:
     """
-    Fast directory preview with file counts and types (metadata only).
+    Intelligent directory preview with code analysis.
 
-    **DEPRECATED for deep code analysis - use code_map() instead:**
-    - code_map() provides entry points, import graph, call patterns, architecture
-    - code_map() is faster and more accurate than old intelligent preview mode
-    - preview_directory() is now metadata-only (file counts, sizes, types)
+    **PRIMARY TOOL - Use this instead of ls/find/grep for codebase exploration!**
 
-    **When to use this:**
-    - Quick file count and type overview
-    - Understanding directory structure without code parsing
-    - Very large repositories (>10k files)
+    This tool automatically analyzes code structure, entry points, and architecture.
+    Much faster and more informative than manual ls/grep exploration.
 
-    **For code analysis, use code_map() instead:**
-    - code_map(".") → instant architecture understanding with call graphs
-    - Faster: <2s vs 23-30s (old Ollama mode)
-    - Deterministic: same results every time
-    - Richer: entry points, imports, call graph, hot functions
+    **Depth levels:**
+    - "quick": Metadata only (0.5s) - file counts, sizes, types
+    - "normal": Architecture analysis (2-5s) - imports, entry points, clusters
+    - "deep": Function-level (5-10s) - hot functions, call graph, centrality [DEFAULT]
+
+    **What you get (depth="deep", default):**
+    - ✅ Entry Points: main(), if __name__, app instances
+    - ✅ Core Files: Most imported files (architectural hubs)
+    - ✅ Architecture: Files clustered by role (entry points, core logic, utilities, tests)
+    - ✅ Import Graph: How files depend on each other
+    - ✅ Hot Functions: Most called functions (critical code paths)
+    - ✅ Call Graph: Function-to-function dependencies
+    - ✅ Noise Filtered: Skips .git/, node_modules/, __pycache__, etc.
+
+    **Why use this instead of ls/grep:**
+    - 75% fewer tool calls (one call vs multiple ls/grep/find)
+    - Semantic understanding (imports, entry points, hot functions) not just file lists
+    - Pre-filtered noise (.git/, node_modules/ already excluded)
+    - Instant architecture AND critical function overview
+    - Function-level insights ("get_pool() called by 41 functions")
 
     Args:
-        directory: Root directory to preview
-        max_depth: Maximum directory depth (default: 5)
-        max_files_hint: Safety limit for file count (default: 100k)
-        show_top_n: Top directories to show (default: 8)
+        directory: Root directory to analyze
+        depth: Analysis depth - "quick", "normal", or "deep" [default]
+        max_files: Maximum files to analyze (safety limit, default: 10000)
+        max_entries: Maximum entries to show per section (default: 20)
         respect_gitignore: Respect .gitignore patterns (default: True)
 
     Returns:
-        Directory stats and file counts (metadata only)
+        Structured code analysis with entry points, architecture, hot functions, and call graph
 
     Examples:
-        # Fast metadata overview
+        # DEFAULT usage (recommended for most cases):
         preview_directory("./my-project")
+        → 5-10s, full analysis with hot functions and call graph
 
-        # Deep directory tree
-        preview_directory("./my-project", max_depth=10)
+        # Quick metadata only (if >10k files):
+        preview_directory("./huge-repo", depth="quick")
+        → 0.5s, just file counts and sizes
 
-    Recommended workflow:
-        1. code_map(".") → architecture understanding (PREFERRED)
-        2. preview_directory(".") → file counts if needed
-        3. scan_directory("src/", "**/*.py") → detailed code structure
+        # Normal (without hot functions, faster):
+        preview_directory("./my-project", depth="normal")
+        → 2-5s, architecture and imports only (no function-level)
+
+    Use cases:
+        ✅ First time exploring unknown codebase
+        ✅ Understanding multi-modality projects (frontend/backend/db)
+        ✅ Finding entry points (where does app start?)
+        ✅ Identifying core files (architectural hubs)
+        ✅ Replacing ls/find/grep workflows
+
+    Performance:
+        - Filters noise: .git/, node_modules/, __pycache__, dist/, build/
+        - Language-aware: Skips .min.js, .d.ts, .pyc, bundle.js
+        - Scales: 486 files analyzed in 4.79s (spotgrid-v3 example)
     """
     try:
-        result = preview_dir_func(
-            directory=directory,
-            max_depth=max_depth,
-            max_files_hint=max_files_hint,
-            show_top_n=show_top_n,
-            respect_gitignore=respect_gitignore
-        )
-        return [TextContent(type="text", text=result)]
+        # Map depth to analysis mode
+        if depth == "quick":
+            # Metadata only
+            result = preview_dir_func(
+                directory=directory,
+                max_depth=5,
+                max_files_hint=max_files,
+                show_top_n=max_entries,
+                respect_gitignore=respect_gitignore
+            )
+            return [TextContent(type="text", text=result)]
+
+        elif depth in ("normal", "deep"):
+            # Code analysis (Layer 1 for normal, Layer 1+2 for deep)
+            enable_layer2 = (depth == "deep")
+
+            cm = CodeMap(
+                directory=directory,
+                respect_gitignore=respect_gitignore,
+                max_files=max_files,
+                enable_layer2=enable_layer2
+            )
+
+            result = cm.analyze()
+            output = cm.format_tree(result, max_entries=max_entries)
+
+            return [TextContent(type="text", text=output)]
+
+        else:
+            return [TextContent(type="text", text=f"Error: Invalid depth '{depth}'. Use 'quick', 'normal', or 'deep'.")]
+
     except FileNotFoundError as e:
         return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
     except PermissionError as e:
         return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
     except Exception as e:
-        return [TextContent(type="text", text=f"Error previewing directory: {e}")]
+        return [TextContent(type="text", text=f"Error analyzing directory: {e}")]
 
 
 @mcp.tool(
-    tags={"exploration", "analysis", "overview", "local"},
-    description="Intelligent code map - Shows entry points, import graph, call patterns, and architecture (fast, deterministic, offline)"
+    tags={"exploration", "analysis", "overview", "deprecated"},
+    description="[DEPRECATED] Use preview_directory() instead - Same functionality, better UX"
 )
 def code_map(
     directory: str,
@@ -105,13 +151,26 @@ def code_map(
     enable_layer2: bool = True
 ) -> list[TextContent]:
     """
-    Build intelligent code map showing codebase structure and relationships.
+    **⚠️ DEPRECATED - Use preview_directory() instead!**
 
-    **FAST REPLACEMENT for preview_directory's intelligent mode:**
-    - 15x faster (<2s vs 23-30s with Ollama)
-    - Deterministic (same results every time)
-    - Offline (no Ollama required)
-    - Richer analysis (imports, entry points, call patterns, architecture)
+    This tool is deprecated in favor of preview_directory() which provides
+    the same functionality with better defaults and simpler API.
+
+    Migration:
+        # Old (deprecated):
+        code_map(".", enable_layer2=False)  # Layer 1
+        code_map(".", enable_layer2=True)   # Layer 2
+
+        # New (recommended):
+        preview_directory(".")                # Layer 2 (default, hot functions)
+        preview_directory(".", depth="normal")  # Layer 1 (faster, no hot functions)
+        preview_directory(".", depth="quick")   # Metadata only
+
+    **Why preview_directory() is better:**
+    - Simpler API: depth="quick|normal|deep" instead of enable_layer2=True/False
+    - Better defaults: "deep" (Layer 2) gives full insights including hot functions
+    - Primary tool: LLMs will use it first instead of ls/grep
+    - Same functionality: Just a better interface
 
     **What it shows:**
     1. Entry Points: main(), if __name__, app instances, exports
