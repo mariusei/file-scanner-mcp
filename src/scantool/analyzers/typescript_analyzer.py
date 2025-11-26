@@ -61,6 +61,35 @@ class TypeScriptAnalyzer(BaseAnalyzer):
 
         return True
 
+    def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
+        """
+        Identify low-value TypeScript/JavaScript files for inventory listing.
+
+        Low-value files (unless central):
+        - index.ts/index.js that only re-export (small size)
+        - Type declaration files (.d.ts) - already skipped by should_analyze
+        - Config files (vite.config.ts, etc.) unless large
+        - Test setup files (setupTests.ts, etc.)
+        """
+        filename = Path(file_path).name.lower()
+
+        # Small index files are usually just re-exports
+        if filename in ("index.ts", "index.js", "index.tsx", "index.jsx") and size < 200:
+            return True
+
+        # Test setup files
+        if filename in ("setuptests.ts", "setuptests.js", "jest.setup.ts", "jest.setup.js") and size < 300:
+            return True
+
+        # Very small config files
+        config_files = ("vite.config.ts", "vitest.config.ts", "jest.config.ts",
+                       "tsconfig.json", "tsconfig.node.json")
+        if filename in config_files and size < 500:
+            return True
+
+        # Fall back to base class
+        return super().is_low_value_for_inventory(file_path, size)
+
     def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
         """
         Extract import/require statements from TypeScript/JavaScript file.
