@@ -182,6 +182,36 @@ class BaseAnalyzer(ABC):
         """
         return True
 
+    def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
+        """
+        Check if file is low-value for inventory listing.
+
+        Unlike should_analyze (which skips analysis entirely), this method
+        identifies files that CAN be analyzed but are low-value for a
+        file inventory overview. Used by preview_directory to filter noise.
+
+        NOTE: Central/hot files should NEVER be excluded from inventory,
+        regardless of this method's return value. The caller must ensure
+        files with high centrality_score or in hot_functions are included.
+
+        Override in language-specific analyzers for patterns like:
+        - Empty __init__.py (Python)
+        - Type declarations *.d.ts (TypeScript)
+        - Re-export index files (TypeScript/JavaScript)
+        - Generated files (*.pb.go, *.generated.cs)
+
+        Args:
+            file_path: Relative path to the file
+            size: File size in bytes (0 = unknown)
+
+        Returns:
+            True if file is low-value for inventory (can be hidden)
+        """
+        # Default: very small files are often boilerplate
+        if size > 0 and size < 50:
+            return True
+        return False
+
     # ===================================================================
     # Helper methods for common patterns
     # ===================================================================

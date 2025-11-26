@@ -57,6 +57,32 @@ class PythonAnalyzer(BaseAnalyzer):
 
         return True
 
+    def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
+        """
+        Identify low-value Python files for inventory listing.
+
+        Low-value files (unless central):
+        - Empty or near-empty __init__.py files
+        - conftest.py (pytest fixtures, usually boilerplate)
+        - setup.py/setup.cfg (unless large)
+        """
+        filename = Path(file_path).name
+
+        # Empty __init__.py files are low-value
+        if filename == "__init__.py" and size < 100:
+            return True
+
+        # Empty conftest.py is usually just pytest boilerplate
+        if filename == "conftest.py" and size < 200:
+            return True
+
+        # Very small setup files
+        if filename in ("setup.py", "setup.cfg") and size < 100:
+            return True
+
+        # Fall back to base class (very small files)
+        return super().is_low_value_for_inventory(file_path, size)
+
     def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
         """
         Extract import statements from Python file.
