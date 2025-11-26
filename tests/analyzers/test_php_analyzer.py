@@ -484,7 +484,7 @@ class HomeController extends AbstractController
 
     def test_edge_cases_file(self, analyzer):
         """Test analysis of edge cases file from test fixtures."""
-        with open("/Users/mariusbergeeide/Projects/scantool/tests/php/samples/edge_cases.php", "r") as f:
+        with open("tests/php/samples/edge_cases.php", "r") as f:
             content = f.read()
 
         imports = analyzer.extract_imports("tests/php/samples/edge_cases.php", content)
