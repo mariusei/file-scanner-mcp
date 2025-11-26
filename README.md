@@ -97,11 +97,77 @@ example.py (1-57)
 - **Configurable display**: Toggle signatures, decorators, docstrings, complexity metrics
 
 ### Tools
-- **preview_directory**: Lightning-fast overview of directory structure (no code parsing, <0.5s even for huge repos)
+- **code_map**: ⭐ **NEW!** Intelligent code map with entry points, import graph, call patterns, and architecture (<2s, deterministic, offline)
+- **preview_directory**: Lightning-fast overview of directory structure (metadata only, <0.5s)
 - **scan_file**: Analyze a single file with full metadata extraction
 - **scan_file_content**: Analyze file content directly (useful for remote files, GitHub, APIs)
 - **scan_directory**: Hierarchical directory tree with integrated code structures and statistics
 - **search_structures**: Find and filter structures by type, name pattern, decorator, or complexity
+
+## Migration Guide
+
+### Migrating from `preview_directory` (intelligent mode)
+
+The Ollama-based intelligent preview mode has been **replaced** by the new `code_map()` tool:
+
+| Feature | Old (Ollama Preview) | **New (Code Map)** |
+|---------|---------------------|-------------------|
+| **Speed** | 23-30s | **<2s** (15x faster) |
+| **Deterministic** | ❌ Random sampling | ✅ Same results every time |
+| **Offline** | ❌ Requires Ollama | ✅ Fully offline |
+| **Coverage** | ~150 files (sampled) | All files analyzed |
+| **Shows relationships** | ❌ No | ✅ Import + call graph |
+| **Entry points** | ⚠️ Sometimes | ✅ Always detected |
+| **Hot functions** | ❌ No | ✅ Centrality ranking |
+| **Line numbers** | ⚠️ Compressed | ✅ Precise references |
+
+**Before** (deprecated):
+```python
+# Slow, non-deterministic, requires Ollama
+preview_directory("./src", intelligent=True)  # 23-30s
+```
+
+**After** (recommended):
+```python
+# Fast, deterministic, offline
+code_map("./src")  # <2s
+
+# Shows:
+# - Entry points (main(), app instances)
+# - Import graph (file dependencies)
+# - Call graph (function relationships)
+# - Hot functions (most called/central)
+# - Architecture clusters (entry points, core logic, plugins, tests)
+```
+
+**What changed:**
+- `preview_directory()` is now **metadata-only** (file counts, sizes, types)
+- For code analysis, use `code_map()` instead
+- All `intelligent=True` calls should migrate to `code_map()`
+
+**Why migrate:**
+- **15x faster**: 0.15s vs 23-30s
+- **Deterministic**: Same results every run
+- **Richer analysis**: Import graph, call graph, hot functions
+- **No dependencies**: No Ollama required
+- **Accurate**: Analyzes all files, not random sample
+
+### Typical workflows
+
+#### Quick orientation (metadata only)
+```python
+preview_directory(".")  # File counts and types
+```
+
+#### Deep code understanding (recommended)
+```python
+code_map(".")  # Entry points, imports, calls, architecture
+```
+
+#### Detailed code structure
+```python
+scan_directory("src/", "**/*.py")  # Full tree with all functions/classes
+```
 
 ## Installation
 

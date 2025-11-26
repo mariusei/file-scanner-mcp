@@ -14,7 +14,6 @@ from .directory_formatter import DirectoryFormatter
 from .scanner import FileScanner
 from .scanners import StructureNode
 from .preview import preview_directory as preview_dir_func
-from .intelligent_preview import intelligent_preview
 from .code_map import CodeMap
 
 mcp = FastMCP("File Scanner MCP")
@@ -27,135 +26,71 @@ dir_formatter = DirectoryFormatter()
 
 @mcp.tool(
     tags={"exploration", "overview", "fast"},
-    description="Fast codebase preview - USE THIS FIRST before scan_directory to understand structure and make informed decisions"
+    description="Fast directory preview - Shows file counts and types (metadata only)"
 )
 def preview_directory(
     directory: str,
     max_depth: Optional[int] = 5,
-    intelligent: bool = True,
-    ollama_model: str = "qwen2.5-coder:1.5b",
     max_files_hint: int = 100000,
     show_top_n: int = 8,
     respect_gitignore: bool = True
 ) -> list[TextContent]:
     """
-    Intelligent codebase preview with optional Ollama-powered code structure analysis.
+    Fast directory preview with file counts and types (metadata only).
 
-    **When to use this vs other tools:**
-    - Use preview_directory() FIRST → understand codebase structure with actual code
-    - Use scan_directory() AFTER → for detailed scanning of specific parts
-    - Set intelligent=False → for instant metadata-only overview (0.5s)
+    **DEPRECATED for deep code analysis - use code_map() instead:**
+    - code_map() provides entry points, import graph, call patterns, architecture
+    - code_map() is faster and more accurate than old intelligent preview mode
+    - preview_directory() is now metadata-only (file counts, sizes, types)
 
-    **Two modes:**
+    **When to use this:**
+    - Quick file count and type overview
+    - Understanding directory structure without code parsing
+    - Very large repositories (>10k files)
 
-    1. **Intelligent mode (default, ~23-30s):**
-       - Uses Ollama to intelligently sample ~100-150 most important files
-       - Returns actual code structure: functions, classes, methods
-       - Token-efficient format with Norwegian labels (funksjoner:, klasser:)
-       - 80% coverage of critical files (entry points, APIs, core logic)
-       - Requires Ollama running locally with qwen2.5-coder:1.5b
-
-    2. **Fast mode (intelligent=False, <0.5s):**
-       - File system metadata only (no code parsing)
-       - Directory tree with file counts and types
-       - Perfect for quick orientation or very large repos
-
-    **Recommended for:** Initial codebase exploration, understanding project architecture
+    **For code analysis, use code_map() instead:**
+    - code_map(".") → instant architecture understanding with call graphs
+    - Faster: <2s vs 23-30s (old Ollama mode)
+    - Deterministic: same results every time
+    - Richer: entry points, imports, call graph, hot functions
 
     Args:
         directory: Root directory to preview
         max_depth: Maximum directory depth (default: 5)
-        intelligent: Use Ollama for intelligent sampling with code structure (default: True)
-        ollama_model: Ollama model to use (default: "qwen2.5-coder:1.5b")
-        max_files_hint: Safety limit for file count (default: 100k, only for fast mode)
-        show_top_n: Top directories to show (default: 8, only for fast mode)
+        max_files_hint: Safety limit for file count (default: 100k)
+        show_top_n: Top directories to show (default: 8)
         respect_gitignore: Respect .gitignore patterns (default: True)
 
     Returns:
-        Intelligent mode: Sampled files with code structure
-        Fast mode: Directory stats and file counts
+        Directory stats and file counts (metadata only)
 
     Examples:
-        # Intelligent preview with code structure (default)
+        # Fast metadata overview
         preview_directory("./my-project")
 
-        # Fast metadata-only preview
-        preview_directory("./my-project", intelligent=False)
+        # Deep directory tree
+        preview_directory("./my-project", max_depth=10)
 
-        # Use different Ollama model
-        preview_directory("./src", ollama_model="qwen2.5-coder:7b")
-
-    Typical workflow:
-        1. preview_directory(".") → deep understanding with code structure
-        2. Ask questions about architecture, patterns, key components
-        3. scan_directory("src/api", "**/*.py") → detailed scan of specific parts
+    Recommended workflow:
+        1. code_map(".") → architecture understanding (PREFERRED)
+        2. preview_directory(".") → file counts if needed
+        3. scan_directory("src/", "**/*.py") → detailed code structure
     """
     try:
-        if intelligent:
-            # Intelligent mode: Use Ollama for code structure
-            result = intelligent_preview(
-                directory=directory,
-                ollama_model=ollama_model,
-                max_depth=max_depth,
-                respect_gitignore=respect_gitignore
-            )
-        else:
-            # Fast mode: Metadata only
-            result = preview_dir_func(
-                directory=directory,
-                max_depth=max_depth,
-                max_files_hint=max_files_hint,
-                show_top_n=show_top_n,
-                respect_gitignore=respect_gitignore
-            )
+        result = preview_dir_func(
+            directory=directory,
+            max_depth=max_depth,
+            max_files_hint=max_files_hint,
+            show_top_n=show_top_n,
+            respect_gitignore=respect_gitignore
+        )
         return [TextContent(type="text", text=result)]
     except FileNotFoundError as e:
         return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
     except PermissionError as e:
         return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
-    except RuntimeError as e:
-        # Check if this is a fallback trigger from intelligent mode
-        error_msg = str(e)
-        if intelligent and ("Falling back to fast mode" in error_msg or "found structure in only" in error_msg):
-            fallback_msg = f"⚠️  {error_msg}\n\n"
-            try:
-                basic_result = preview_dir_func(
-                    directory=directory,
-                    max_depth=max_depth,
-                    max_files_hint=max_files_hint,
-                    show_top_n=show_top_n,
-                    respect_gitignore=respect_gitignore
-                )
-                return [TextContent(type="text", text=fallback_msg + basic_result)]
-            except Exception as fallback_error:
-                return [TextContent(type="text", text=fallback_msg + f"Error in fallback: {fallback_error}")]
-        else:
-            return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        # Graceful fallback for intelligent mode
-        error_msg = str(e)
-        if intelligent and ("Connection" in error_msg or "11434" in error_msg):
-            fallback_msg = (
-                f"⚠️  Ollama unavailable (connection failed)\n\n"
-                f"To use intelligent preview:\n"
-                f"1. Install Ollama: https://ollama.com\n"
-                f"2. Pull model: ollama pull {ollama_model}\n"
-                f"3. Ensure Ollama is running\n\n"
-                f"Falling back to fast mode...\n\n"
-            )
-            try:
-                basic_result = preview_dir_func(
-                    directory=directory,
-                    max_depth=max_depth,
-                    max_files_hint=max_files_hint,
-                    show_top_n=show_top_n,
-                    respect_gitignore=respect_gitignore
-                )
-                return [TextContent(type="text", text=fallback_msg + basic_result)]
-            except Exception:
-                return [TextContent(type="text", text=fallback_msg + f"Error: {e}")]
-        else:
-            return [TextContent(type="text", text=f"Error previewing directory: {e}")]
+        return [TextContent(type="text", text=f"Error previewing directory: {e}")]
 
 
 @mcp.tool(
