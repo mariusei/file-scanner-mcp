@@ -134,7 +134,9 @@ class FileScanner:
         structures = scanner.scan(source_code)
 
         # Entropy-based saliency analysis (annotate high-importance code regions)
-        if structures is not None:
+        # Skip for binary/non-code files where entropy analysis is meaningless
+        binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.pdf'}
+        if structures is not None and suffix not in binary_extensions:
             self._annotate_salient_code(structures, file_path, source_code)
 
         # Prepend file metadata if requested and structures exist
