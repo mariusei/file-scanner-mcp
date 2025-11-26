@@ -166,7 +166,8 @@ def code_map(
     directory: str,
     respect_gitignore: bool = True,
     max_files: int = 10000,
-    max_entries: int = 20
+    max_entries: int = 20,
+    enable_layer2: bool = True
 ) -> list[TextContent]:
     """
     Build intelligent code map showing codebase structure and relationships.
@@ -183,15 +184,21 @@ def code_map(
     3. Architecture: Files clustered by role (entry points, core logic, plugins, utilities, tests)
     4. Dependencies: Import relationships between files
 
-    **Layer 1 Analysis (Milestone 1):**
+    **Layer 1 Analysis:**
     - File-level import graph
     - Entry point detection
     - File clustering
     - Centrality ranking
 
+    **Layer 2 Analysis (default enabled):**
+    - Function/class definitions
+    - Cross-file call graph
+    - Function-level centrality
+    - Hot function detection
+
     **Recommended workflow:**
-    1. code_map(".") → instant architecture understanding
-    2. Ask about specific patterns, entry points, dependencies
+    1. code_map(".") → instant architecture understanding with call graph
+    2. Ask about specific patterns, entry points, dependencies, hot functions
     3. scan_directory() → detailed code structure of specific areas
 
     Args:
@@ -199,6 +206,7 @@ def code_map(
         respect_gitignore: Respect .gitignore patterns (default: True)
         max_files: Maximum files to analyze (default: 10000)
         max_entries: Maximum entries per section (default: 20)
+        enable_layer2: Enable Layer 2 analysis (call graphs, function centrality) (default: True)
 
     Returns:
         Code map with entry points, import graph, and architecture
@@ -218,7 +226,8 @@ def code_map(
         cm = CodeMap(
             directory=directory,
             respect_gitignore=respect_gitignore,
-            max_files=max_files
+            max_files=max_files,
+            enable_layer2=enable_layer2
         )
 
         # Analyze
