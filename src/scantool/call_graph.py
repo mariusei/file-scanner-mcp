@@ -30,28 +30,28 @@ def build_call_graph(
             name=fqn, file=defn.file, type=defn.type, callers=[], callees=[]
         )
 
+    # Build lookup index for O(1) name resolution (instead of O(n) search)
+    # Maps name suffix -> list of matching FQNs
+    name_index = defaultdict(list)
+    for fqn in graph:
+        # Index by ":name" suffix (top-level functions)
+        parts = fqn.rsplit(":", 1)
+        if len(parts) == 2:
+            name_index[parts[1]].append(fqn)
+            # Also index by ".method" for class methods
+            if "." in parts[1]:
+                method_name = parts[1].rsplit(".", 1)[1]
+                name_index[method_name].append(fqn)
+
+    def find_node(name: str) -> str | None:
+        """Find first matching FQN for a name. O(1) average case."""
+        candidates = name_index.get(name)
+        return candidates[0] if candidates else None
+
     # Build edges from calls
     for call in calls:
-        # Find caller node
-        caller_fqn = None
-        if call.caller_name:
-            # Try to find exact match
-            for fqn in graph:
-                if fqn.endswith(f":{call.caller_name}") or fqn.endswith(
-                    f".{call.caller_name}"
-                ):
-                    caller_fqn = fqn
-                    break
-
-        # Find callee node
-        callee_fqn = None
-        for fqn in graph:
-            # Match by name (simple match for now)
-            if fqn.endswith(f":{call.callee_name}") or fqn.endswith(
-                f".{call.callee_name}"
-            ):
-                callee_fqn = fqn
-                break
+        caller_fqn = find_node(call.caller_name) if call.caller_name else None
+        callee_fqn = find_node(call.callee_name)
 
         # Add edge if both found
         if caller_fqn and callee_fqn and caller_fqn != callee_fqn:
