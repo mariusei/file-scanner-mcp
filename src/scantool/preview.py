@@ -6,6 +6,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Optional
 from .gitignore import load_gitignore
+from .analyzers.skip_patterns import should_skip_directory
 
 
 class DirectoryStats:
@@ -137,6 +138,11 @@ class DirectoryPreview:
 
         # Process entries
         for entry in entries:
+            # Check skip patterns first (fast O(1) lookup)
+            if entry.is_dir() and should_skip_directory(entry.name):
+                self.ignored_dirs[entry.name] = self._quick_count_files(entry.path)
+                continue
+
             # Check gitignore
             if self.gitignore:
                 entry_path = Path(entry.path)
