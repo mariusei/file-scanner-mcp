@@ -148,8 +148,8 @@ class TestDirectoryPreview:
         scanner_no_ignore = DirectoryPreview(str(tmp_path), respect_gitignore=False)
         scanner_no_ignore.scan()
 
-        # Should find all files
-        assert scanner_no_ignore.total_files == 4  # good.py, bad.pyc, cache.pyc, .gitignore
+        # Should find files not in skip_patterns (__pycache__ always skipped)
+        assert scanner_no_ignore.total_files == 3  # good.py, bad.pyc, .gitignore (no cache.pyc)
 
 
 class TestPreviewDirectoryFunction:
