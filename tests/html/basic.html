@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic HTML Test Page</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="icon" href="favicon.ico">
+    <script src="scripts/app.js" defer></script>
+</head>
+<body>
+    <header id="main-header">
+        <nav aria-label="Main navigation">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/about">About</a></li>
+                <li><a href="/contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main id="content">
+        <article>
+            <h1>Welcome to the Test Page</h1>
+            <p>This is a basic HTML test file for the scanner.</p>
+
+            <section id="features">
+                <h2>Features Section</h2>
+                <ul id="feature-list">
+                    <li>Feature 1</li>
+                    <li>Feature 2</li>
+                    <li>Feature 3</li>
+                </ul>
+            </section>
+
+            <section id="contact-section">
+                <h2>Contact Us</h2>
+                <form id="contact-form" method="POST" action="/api/contact">
+                    <fieldset>
+                        <legend>Your Information</legend>
+                        <label for="name">Name:</label>
+                        <input type="text" id="name" name="name" required>
+
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
+
+                        <label for="message">Message:</label>
+                        <textarea id="message" name="message" rows="4"></textarea>
+
+                        <button type="submit">Send Message</button>
+                    </fieldset>
+                </form>
+            </section>
+        </article>
+
+        <aside id="sidebar">
+            <h3>Related Links</h3>
+            <ol>
+                <li><a href="/docs">Documentation</a></li>
+                <li><a href="/blog">Blog</a></li>
+            </ol>
+        </aside>
+    </main>
+
+    <footer id="main-footer">
+        <p>Copyright 2024</p>
+    </footer>
+
+    <style>
+        @import "components/buttons.css";
+        body { margin: 0; }
+    </style>
+
+    <script>
+        console.log('Inline script');
+    </script>
+</body>
+</html>
