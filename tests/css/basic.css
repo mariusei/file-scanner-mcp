@@ -1,0 +1,114 @@
+/*! Main stylesheet for the application */
+
+@import url("base/reset.css");
+@import "components/buttons.css";
+
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --text-color: #333;
+    --spacing-unit: 8px;
+    --border-radius: 4px;
+}
+
+/* Base styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, sans-serif;
+    color: var(--text-color);
+}
+
+/* Header styles */
+.header {
+    background: var(--primary-color);
+    padding: calc(var(--spacing-unit) * 2);
+}
+
+#main-nav {
+    display: flex;
+    justify-content: space-between;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-link:hover {
+    text-decoration: underline;
+}
+
+/* Button component */
+.btn {
+    display: inline-block;
+    padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--secondary-color);
+    color: white;
+}
+
+/* Media queries */
+@media screen and (max-width: 768px) {
+    .header {
+        padding: var(--spacing-unit);
+    }
+
+    #main-nav {
+        flex-direction: column;
+    }
+
+    .nav-link {
+        padding: var(--spacing-unit);
+    }
+}
+
+@media print {
+    .no-print {
+        display: none;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Font face */
+@font-face {
+    font-family: 'CustomFont';
+    src: url('../fonts/custom.woff2') format('woff2'),
+         url('../fonts/custom.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Footer */
+.footer {
+    background: #333;
+    color: white;
+    padding: calc(var(--spacing-unit) * 3);
+}

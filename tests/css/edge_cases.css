@@ -1,0 +1,125 @@
+/* Edge cases for CSS scanner */
+
+/* Very long selector */
+.container .row .col-md-6 .card .card-body .card-title .text-primary {
+    color: blue;
+}
+
+/* Multiple selectors on one rule */
+.btn,
+.button,
+input[type="submit"],
+input[type="button"],
+button {
+    cursor: pointer;
+    border: none;
+}
+
+/* Complex selectors with pseudo-elements and pseudo-classes */
+.form-group:not(.has-error) > label::before,
+.form-group:focus-within > label::after {
+    content: "";
+    position: absolute;
+}
+
+/* ID selector */
+#unique-element {
+    z-index: 9999;
+}
+
+/* Attribute selectors */
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+}
+
+a[href^="https://"] {
+    color: green;
+}
+
+/* Nested media queries with complex conditions */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    .tablet-only {
+        display: block;
+    }
+
+    @supports (display: grid) {
+        .grid-container {
+            display: grid;
+        }
+    }
+}
+
+/* Media with multiple features */
+@media (prefers-color-scheme: dark) and (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}
+
+/* Keyframes with vendor prefixes (fallback pattern) */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-30px);
+    }
+    60% {
+        transform: translateY(-15px);
+    }
+}
+
+/* @layer (modern CSS) */
+@layer utilities {
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+    }
+}
+
+/* @container queries */
+@container (min-width: 400px) {
+    .card {
+        flex-direction: row;
+    }
+}
+
+/* External imports (should be tracked but filtered) */
+@import url("https://fonts.googleapis.com/css2?family=Roboto");
+
+/* Empty rule set */
+.empty-rule {
+}
+
+/* Rule with many declarations */
+.complex-element {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    margin: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: linear-gradient(to bottom, #fff, #f5f5f5);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* CSS variables with complex values */
+:root {
+    --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* URL references for assets */
+.hero {
+    background-image: url('../images/hero-bg.jpg');
+}
+
+.icon-check {
+    background: url('data:image/svg+xml,...') no-repeat center;
+}

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edge Cases</title>
+    <!-- External CDN scripts should be ignored -->
+    <script src="https://cdn.example.com/lib.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto">
+</head>
+<body>
+    <!-- Empty heading -->
+    <h1></h1>
+
+    <!-- Very long heading that should be truncated -->
+    <h2>This is an extremely long heading that goes on and on and should definitely be truncated by the scanner to maintain readability</h2>
+
+    <!-- Nested semantic sections -->
+    <article id="nested-article">
+        <header>
+            <h3>Article Header</h3>
+        </header>
+        <section id="inner-section-1">
+            <h4>Inner Section 1</h4>
+            <section id="deeply-nested">
+                <h5>Deeply Nested Section</h5>
+            </section>
+        </section>
+        <footer>
+            <p>Article footer</p>
+        </footer>
+    </article>
+
+    <!-- Multiple forms -->
+    <form id="search-form" method="GET" action="/search">
+        <input type="search" name="q">
+        <button type="submit">Search</button>
+    </form>
+
+    <form name="newsletter" method="POST" action="/subscribe">
+        <input type="email" name="email" placeholder="Email">
+        <input type="checkbox" name="consent">
+        <button type="submit">Subscribe</button>
+    </form>
+
+    <!-- Form without id or name -->
+    <form action="/anonymous">
+        <input type="text" name="data">
+    </form>
+
+    <!-- Complex table -->
+    <table id="data-table" aria-label="User data">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Alice</td><td>alice@example.com</td><td>Active</td></tr>
+            <tr><td>2</td><td>Bob</td><td>bob@example.com</td><td>Inactive</td></tr>
+            <tr><td>3</td><td>Charlie</td><td>charlie@example.com</td><td>Active</td></tr>
+        </tbody>
+    </table>
+
+    <!-- Definition list -->
+    <dl id="glossary">
+        <dt>HTML</dt>
+        <dd>HyperText Markup Language</dd>
+        <dt>CSS</dt>
+        <dd>Cascading Style Sheets</dd>
+        <dt>JS</dt>
+        <dd>JavaScript</dd>
+    </dl>
+
+    <!-- Self-closing tags and special attributes -->
+    <img src="images/logo.png" alt="Company Logo" width="200" height="100">
+    <img src="data:image/png;base64,..." alt="Inline image">
+
+    <!-- Script variations -->
+    <script src="local/script.js" async></script>
+    <script src="another/script.js" defer type="module"></script>
+
+    <!-- Style with media query -->
+    <style media="print">
+        body { font-size: 12pt; }
+    </style>
+
+    <!-- Elements with only class (no id) should not be extracted -->
+    <div class="container">
+        <div class="row">
+            <div class="col">Content</div>
+        </div>
+    </div>
+
+    <!-- Element with id should be extracted -->
+    <div id="important-element" class="highlight special" title="Important content">
+        This div has an id so it's a landmark
+    </div>
+</body>
+</html>

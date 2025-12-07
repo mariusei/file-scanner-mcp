@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Broken HTML for Fallback Testing</title>
+</head>
+<body>
+    <!-- Unclosed tags -->
+    <div id="unclosed-div">
+        <p>This paragraph is not closed
+        <span>Neither is this span
+
+    <!-- Mismatched tags -->
+    <div id="mismatched">
+        <p>This has wrong closing</div>
+    </p>
+
+    <!-- Invalid nesting -->
+    <p>
+        <div>Block inside inline is invalid</div>
+    </p>
+
+    <!-- Broken attributes -->
+    <form id="broken-form method="POST" action=/submit>
+        <input type="text name="broken>
+    </form>
+
+    <!-- Missing quotes -->
+    <section id=no-quotes class=multiple classes here>
+        <h2>Section without quoted attributes</h2>
+    </section>
+
+    <!-- Random invalid content -->
+    <<<invalid>>>
+    <not-a-real-tag>But has content</not-a-real-tag>
+
+    <!-- Valid content after broken parts -->
+    <h1>This heading should still be found</h1>
+
+    <form id="valid-form" method="GET" action="/search">
+        <input type="text" name="q">
+    </form>
+
+    <header id="still-valid-header">
+        <nav>Navigation</nav>
+    </header>
+
+    <script src="valid-script.js"></script>
+</body>
+</html>
