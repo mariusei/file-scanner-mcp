@@ -1,0 +1,124 @@
+//! Main SCSS stylesheet
+
+@use 'base/variables';
+@use 'base/mixins';
+@forward 'components/buttons';
+@import 'legacy/old-styles';
+
+// Variables
+$primary-color: #3498db;
+$secondary-color: #2ecc71;
+$font-stack: 'Helvetica Neue', sans-serif;
+$spacing-unit: 8px;
+$border-radius: 4px;
+
+// Mixins
+@mixin flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@mixin button-style($bg-color, $text-color: white) {
+    background: $bg-color;
+    color: $text-color;
+    padding: $spacing-unit ($spacing-unit * 2);
+    border-radius: $border-radius;
+    cursor: pointer;
+
+    &:hover {
+        background: darken($bg-color, 10%);
+    }
+}
+
+@mixin responsive($breakpoint) {
+    @if $breakpoint == 'mobile' {
+        @media (max-width: 768px) {
+            @content;
+        }
+    } @else if $breakpoint == 'tablet' {
+        @media (max-width: 1024px) {
+            @content;
+        }
+    }
+}
+
+// Functions
+@function shade($color, $amount: 10%) {
+    @return darken($color, $amount);
+}
+
+@function tint($color, $amount: 10%) {
+    @return lighten($color, $amount);
+}
+
+// Base styles
+body {
+    font-family: $font-stack;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+// Components
+.btn {
+    @include button-style($primary-color);
+
+    &--secondary {
+        @include button-style($secondary-color);
+    }
+
+    &--outline {
+        background: transparent;
+        border: 2px solid $primary-color;
+        color: $primary-color;
+
+        &:hover {
+            background: $primary-color;
+            color: white;
+        }
+    }
+}
+
+.card {
+    background: white;
+    border-radius: $border-radius;
+    padding: $spacing-unit * 2;
+
+    .card-header {
+        font-weight: bold;
+        margin-bottom: $spacing-unit;
+    }
+
+    .card-body {
+        color: #666;
+    }
+}
+
+// Layout
+.container {
+    @include flex-center;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    @include responsive('mobile') {
+        padding: $spacing-unit;
+    }
+}
+
+// Media queries
+@media screen and (max-width: 768px) {
+    .hide-mobile {
+        display: none;
+    }
+}
+
+// Animations
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

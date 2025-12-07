@@ -1,0 +1,111 @@
+// Edge cases for SCSS scanner
+
+// Variable with complex value
+$complex-gradient: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 1) 0%,
+    rgba(118, 75, 162, 1) 100%
+);
+
+// Mixin with many parameters
+@mixin complex-mixin($color, $size: 16px, $weight: normal, $style: normal, $decoration: none) {
+    color: $color;
+    font-size: $size;
+    font-weight: $weight;
+    font-style: $style;
+    text-decoration: $decoration;
+}
+
+// Function with complex logic
+@function calculate-rem($pixels, $base: 16px) {
+    @if type-of($pixels) != 'number' {
+        @warn 'Invalid input';
+        @return null;
+    }
+    @return ($pixels / $base) * 1rem;
+}
+
+// Deeply nested selectors
+.level-1 {
+    color: red;
+
+    .level-2 {
+        color: blue;
+
+        .level-3 {
+            color: green;
+
+            &:hover {
+                color: yellow;
+
+                span {
+                    text-decoration: underline;
+                }
+            }
+        }
+    }
+}
+
+// BEM-style nesting with parent selector
+.block {
+    display: block;
+
+    &__element {
+        display: flex;
+
+        &--modifier {
+            color: red;
+        }
+    }
+
+    &--large {
+        font-size: 2rem;
+    }
+}
+
+// @extend usage
+%placeholder-style {
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+.box {
+    @extend %placeholder-style;
+    background: white;
+}
+
+// @include with content block
+@mixin media($query) {
+    @media #{$query} {
+        @content;
+    }
+}
+
+.responsive-element {
+    @include media('(max-width: 768px)') {
+        display: none;
+    }
+}
+
+// Interpolation
+$property: 'color';
+$selector: 'important';
+
+.#{$selector}-element {
+    #{$property}: red;
+    background-#{$property}: blue;
+}
+
+// @each loop (structure detection)
+$sizes: (small: 12px, medium: 16px, large: 20px);
+
+// Multiple imports on separate lines
+@use 'sass:math';
+@use 'sass:color';
+@use 'sass:list';
+
+// Forward with configuration
+@forward 'theme' with (
+    $primary: #3498db,
+    $secondary: #2ecc71
+);

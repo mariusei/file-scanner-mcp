@@ -1,0 +1,60 @@
+/* Broken CSS for fallback testing */
+
+/* Unclosed rule */
+.unclosed {
+    color: red;
+    /* missing closing brace
+
+/* Missing selector */
+{
+    display: none;
+}
+
+/* Invalid property */
+.invalid-prop {
+    not-a-property: value;
+    ;;;
+}
+
+/* Malformed media query */
+@media screen and (max-width: ) {
+    .broken-media {
+        display: none;
+    }
+}
+
+/* Unclosed string */
+.bad-string {
+    content: "unclosed string;
+}
+
+/* Double colons error */
+.pseudo-error::before::after {
+    content: "";
+}
+
+/* Valid rules after broken ones - should still be found */
+@import "still-valid.css";
+
+@media print {
+    .print-only {
+        display: block;
+    }
+}
+
+@keyframes valid-animation {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+:root {
+    --valid-var: #333;
+}
+
+.valid-class {
+    color: blue;
+}
+
+#valid-id {
+    margin: 0;
+}

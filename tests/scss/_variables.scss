@@ -1,0 +1,49 @@
+//! Partial: Variable definitions
+// This is a partial file (starts with _) that should be imported
+
+// Color palette
+$color-primary: #3498db;
+$color-secondary: #2ecc71;
+$color-accent: #e74c3c;
+$color-dark: #2c3e50;
+$color-light: #ecf0f1;
+
+// Typography
+$font-family-base: 'Helvetica Neue', Arial, sans-serif;
+$font-family-heading: 'Georgia', serif;
+$font-size-base: 16px;
+$font-size-large: 1.25rem;
+$font-size-small: 0.875rem;
+$line-height-base: 1.5;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Breakpoints
+$breakpoint-mobile: 576px;
+$breakpoint-tablet: 768px;
+$breakpoint-desktop: 992px;
+$breakpoint-wide: 1200px;
+
+// Borders
+$border-radius-sm: 2px;
+$border-radius-md: 4px;
+$border-radius-lg: 8px;
+$border-radius-full: 50%;
+
+// Shadows
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+
+// Z-index layers
+$z-dropdown: 100;
+$z-sticky: 200;
+$z-fixed: 300;
+$z-modal-backdrop: 400;
+$z-modal: 500;
+$z-tooltip: 600;
