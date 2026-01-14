@@ -240,11 +240,9 @@ class MarkdownAnalyzer(BaseAnalyzer):
         if filename.startswith('README'):
             return "entry_points"
 
-        # Documentation directories (check both with and without leading slash)
-        path_lower = str(path).lower()
-        if '/docs/' in path_lower or path_lower.startswith('docs/'):
-            return "documentation"
-        if '/documentation/' in path_lower or path_lower.startswith('documentation/'):
+        # Documentation directories (check path parts for cross-platform compatibility)
+        path_parts_lower = [p.lower() for p in path.parts]
+        if 'docs' in path_parts_lower or 'documentation' in path_parts_lower:
             return "documentation"
 
         # Fall back to base implementation
