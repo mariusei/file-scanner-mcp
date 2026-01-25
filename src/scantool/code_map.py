@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Optional
 
 from .gitignore import load_gitignore
-from .analyzers import (
+from .languages import (
     get_registry,
     CodeMapResult,
     FileNode,
@@ -15,7 +15,7 @@ from .analyzers import (
     DefinitionInfo,
     CallInfo,
 )
-from .analyzers.generic_analyzer import GenericAnalyzer
+from .languages.generic import GenericLanguage
 from . import call_graph
 
 
@@ -64,7 +64,7 @@ class CodeMap:
 
         # Get analyzer registry
         self.registry = get_registry()
-        self.generic_analyzer = GenericAnalyzer()
+        self.generic_language = GenericLanguage()
 
     def analyze(self) -> CodeMapResult:
         """
@@ -88,6 +88,7 @@ class CodeMap:
         file_clusters = {}
         file_definitions = {}  # Track definitions per file
         analyzed_files = []  # Track which files were actually analyzed
+        type_to_file = {}  # Map type names to files (for Swift intra-module deps)
 
         for file_path in files:
             # Get analyzer for this file
@@ -126,11 +127,19 @@ class CodeMap:
                 all_definitions.extend(definitions)
                 file_definitions[file_path] = definitions
 
+                # Build definitions_map: name → file_path
+                # Used by analyzers for type-based import resolution
+                # (Swift types, TypeScript interfaces, Go types, etc.)
+                for defn in definitions:
+                    # Track any named definition - first definition wins
+                    if defn.name and defn.name not in type_to_file:
+                        type_to_file[defn.name] = file_path
+
                 calls = analyzer.extract_calls(file_path, content, definitions)
                 all_calls.extend(calls)
 
         # Phase 3: Build import graph (only with analyzed files)
-        import_graph = self._build_import_graph(all_imports, analyzed_files)
+        import_graph = self._build_import_graph(all_imports, analyzed_files, type_to_file)
         result.import_graph = import_graph
 
         # Phase 4: Calculate file-level centrality
@@ -171,7 +180,7 @@ class CodeMap:
         Returns:
             List of relative file paths
         """
-        from .analyzers.skip_patterns import should_skip_directory, should_skip_file
+        from .languages.skip_patterns import should_skip_directory, should_skip_file
 
         files = []
 
@@ -223,10 +232,10 @@ class CodeMap:
             return analyzer_class()
         else:
             # Use generic analyzer as fallback
-            return self.generic_analyzer
+            return self.generic_language
 
     def _build_import_graph(
-        self, imports: list[ImportInfo], all_files: list[str]
+        self, imports: list[ImportInfo], all_files: list[str], type_to_file: dict[str, str] = None
     ) -> dict[str, FileNode]:
         """
         Build import graph from imports.
@@ -234,6 +243,7 @@ class CodeMap:
         Args:
             imports: List of all imports
             all_files: List of all discovered files
+            type_to_file: Optional map of type names to file paths (for Swift intra-module deps)
 
         Returns:
             Dict mapping file path to FileNode
@@ -241,6 +251,7 @@ class CodeMap:
         import os
 
         now = time.time()
+        type_to_file = type_to_file or {}
 
         # Initialize nodes for all files with metadata
         graph = {}
@@ -268,9 +279,13 @@ class CodeMap:
                 graph[source_file] = FileNode(path=source_file)
 
             # Try to resolve target module to a file
-            target_file = self._resolve_import_to_file(imp.target_module, all_files)
+            target_file = self._resolve_import_to_file(imp, all_files, type_to_file)
 
             if target_file and target_file in graph:
+                # Skip self-references
+                if target_file == source_file:
+                    continue
+
                 # Add edge to graph
                 if target_file not in graph[source_file].imports:
                     graph[source_file].imports.append(target_file)
@@ -281,40 +296,27 @@ class CodeMap:
         return graph
 
     def _resolve_import_to_file(
-        self, module: str, all_files: list[str]
+        self,
+        imp: ImportInfo,
+        all_files: list[str],
+        definitions_map: dict[str, str],
     ) -> Optional[str]:
         """
-        Resolve module name to file path.
+        Resolve import to file path by delegating to language-specific analyzer.
 
         Args:
-            module: Module name (e.g., "scantool.scanner")
+            imp: ImportInfo object containing source file and target module
             all_files: List of all files in project
+            definitions_map: Map of type/definition names to file paths
 
         Returns:
             Relative file path or None
         """
-        # Handle relative imports (already resolved in analyzer)
-        if "/" in module:
-            # Already a file path
-            candidate = f"{module}.py"
-            if candidate in all_files:
-                return candidate
-            return None
-
-        # Convert module to file path
-        parts = module.split(".")
-
-        # Try various common patterns
-        candidates = [
-            "/".join(parts) + ".py",  # foo.bar.baz -> foo/bar/baz.py
-            "/".join(parts[1:]) + ".py",  # scantool.foo -> foo.py
-            "/".join(parts) + "/__init__.py",  # foo.bar -> foo/bar/__init__.py
-        ]
-
-        for candidate in candidates:
-            if candidate in all_files:
-                return candidate
-
+        analyzer = self._get_analyzer(imp.source_file)
+        if analyzer:
+            return analyzer.resolve_import_to_file(
+                imp.target_module, imp.source_file, all_files, definitions_map
+            )
         return None
 
     def _calculate_centrality(self, graph: dict[str, FileNode]) -> None:
@@ -566,15 +568,24 @@ class CodeMap:
         # Section 1: Entry Points
         if result.entry_points:
             lines.append("━━━ ENTRY POINTS ━━━")
-            for ep in result.entry_points[:max_entries]:
-                if ep.type == "main_function":
-                    lines.append(f"  {ep.file}:main() @{ep.line}")
-                elif ep.type == "if_main":
-                    lines.append(f"  {ep.file}:if __name__ @{ep.line}")
-                elif ep.type == "app_instance":
-                    lines.append(f"  {ep.file}:{ep.framework} {ep.name} @{ep.line}")
-                elif ep.type == "export":
-                    lines.append(f"  {ep.file}:{ep.name}")
+            # Deduplicate entry points by (file, name) - keep highest line number
+            # (lower line numbers are often in comments/documentation)
+            seen = {}
+            for ep in result.entry_points:
+                key = (ep.file, ep.name)
+                if key not in seen or ep.line > seen[key].line:
+                    seen[key] = ep
+            deduped_entry_points = list(seen.values())
+
+            for ep in deduped_entry_points[:max_entries]:
+                # Delegate formatting to language-specific analyzer
+                analyzer = self._get_analyzer(ep.file)
+                if analyzer:
+                    lines.append(analyzer.format_entry_point(ep))
+                else:
+                    # Fallback for unknown file types
+                    line_str = f" @{ep.line}" if ep.line else ""
+                    lines.append(f"  {ep.file}:{ep.name or ep.type}{line_str}")
             lines.append("")
 
         # Section 2: Core Files (by centrality) with their contents
@@ -793,7 +804,7 @@ class CodeMap:
                 dir_files[dir_key].append(f)
 
             # Get analyzers for filtering
-            from .analyzers import get_registry
+            from .languages import get_registry
             registry = get_registry()
 
             # Sort directories by file count

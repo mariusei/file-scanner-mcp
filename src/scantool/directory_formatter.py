@@ -4,7 +4,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Optional
 from datetime import datetime
-from .scanners import StructureNode
+from .languages import StructureNode
 
 
 class DirectoryFormatter:

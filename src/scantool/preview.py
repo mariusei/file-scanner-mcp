@@ -6,7 +6,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Optional
 from .gitignore import load_gitignore
-from .analyzers.skip_patterns import should_skip_directory
+from .languages.skip_patterns import should_skip_directory
 
 
 class DirectoryStats:

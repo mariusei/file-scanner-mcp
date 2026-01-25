@@ -1,7 +1,7 @@
 """Call graph construction and centrality analysis."""
 
 from collections import defaultdict
-from .analyzers.models import CallInfo, DefinitionInfo, CallGraphNode
+from .languages import CallInfo, DefinitionInfo, CallGraphNode
 
 
 def build_call_graph(
