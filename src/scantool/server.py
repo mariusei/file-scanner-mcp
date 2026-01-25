@@ -139,105 +139,31 @@ def preview_directory(
         return [TextContent(type="text", text=f"Error analyzing directory: {e}")]
 
 
-@mcp.tool(
-    tags={"exploration", "analysis", "overview", "deprecated"},
-    description="[DEPRECATED] Use preview_directory() instead - Same functionality, better UX"
-)
-def code_map(
-    directory: str,
-    respect_gitignore: bool = True,
-    max_files: int = 10000,
-    max_entries: int = 20,
-    enable_layer2: bool = True
-) -> list[TextContent]:
-    """
-    **⚠️ DEPRECATED - Use preview_directory() instead!**
-
-    This tool is deprecated in favor of preview_directory() which provides
-    the same functionality with better defaults and simpler API.
-
-    Migration:
-        # Old (deprecated):
-        code_map(".", enable_layer2=False)  # Layer 1
-        code_map(".", enable_layer2=True)   # Layer 2
-
-        # New (recommended):
-        preview_directory(".")                # Layer 2 (default, hot functions)
-        preview_directory(".", depth="normal")  # Layer 1 (faster, no hot functions)
-        preview_directory(".", depth="quick")   # Metadata only
-
-    **Why preview_directory() is better:**
-    - Simpler API: depth="quick|normal|deep" instead of enable_layer2=True/False
-    - Better defaults: "deep" (Layer 2) gives full insights including hot functions
-    - Primary tool: LLMs will use it first instead of ls/grep
-    - Same functionality: Just a better interface
-
-    **What it shows:**
-    1. Entry Points: main(), if __name__, app instances, exports
-    2. Core Files: Ranked by centrality (most imported = most important)
-    3. Architecture: Files clustered by role (entry points, core logic, plugins, utilities, tests)
-    4. Dependencies: Import relationships between files
-
-    **Layer 1 Analysis:**
-    - File-level import graph
-    - Entry point detection
-    - File clustering
-    - Centrality ranking
-
-    **Layer 2 Analysis (default enabled):**
-    - Function/class definitions
-    - Cross-file call graph
-    - Function-level centrality
-    - Hot function detection
-
-    **Recommended workflow:**
-    1. code_map(".") → instant architecture understanding with call graph
-    2. Ask about specific patterns, entry points, dependencies, hot functions
-    3. scan_directory() → detailed code structure of specific areas
-
-    Args:
-        directory: Root directory to analyze
-        respect_gitignore: Respect .gitignore patterns (default: True)
-        max_files: Maximum files to analyze (default: 10000)
-        max_entries: Maximum entries per section (default: 20)
-        enable_layer2: Enable Layer 2 analysis (call graphs, function centrality) (default: True)
-
-    Returns:
-        Code map with entry points, import graph, and architecture
-
-    Examples:
-        # Analyze current project
-        code_map(".")
-
-        # Analyze subdirectory
-        code_map("src/api")
-
-        # Include all files (ignore .gitignore)
-        code_map(".", respect_gitignore=False)
-    """
-    try:
-        # Create code map instance
-        cm = CodeMap(
-            directory=directory,
-            respect_gitignore=respect_gitignore,
-            max_files=max_files,
-            enable_layer2=enable_layer2
-        )
-
-        # Analyze
-        result = cm.analyze()
-
-        # Format as tree
-        output = cm.format_tree(result, max_entries=max_entries)
-
-        return [TextContent(type="text", text=output)]
-
-    except FileNotFoundError as e:
-        return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
-    except PermissionError as e:
-        return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error analyzing code map: {e}")]
+# DEPRECATED: code_map - commented out, use preview_directory() instead
+# @mcp.tool(
+#     tags={"exploration", "analysis", "overview", "deprecated"},
+#     description="[DEPRECATED] Use preview_directory() instead - Same functionality, better UX"
+# )
+# def code_map(
+#     directory: str,
+#     respect_gitignore: bool = True,
+#     max_files: int = 10000,
+#     max_entries: int = 20,
+#     enable_layer2: bool = True
+# ) -> list[TextContent]:
+#     """Deprecated. Use preview_directory() instead."""
+#     try:
+#         cm = CodeMap(
+#             directory=directory,
+#             respect_gitignore=respect_gitignore,
+#             max_files=max_files,
+#             enable_layer2=enable_layer2
+#         )
+#         result = cm.analyze()
+#         output = cm.format_tree(result, max_entries=max_entries)
+#         return [TextContent(type="text", text=output)]
+#     except Exception as e:
+#         return [TextContent(type="text", text=f"Error: {e}")]
 
 
 @mcp.tool(
