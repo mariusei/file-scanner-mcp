@@ -1,7 +1,7 @@
 [project]
 name = "scantool"
-version = "0.11.6"
-description = "MCP server for multi-language code analysis with structure extraction, metadata parsing, and search capabilities across Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, HTML, CSS, SCSS, Markdown, plain text, and images"
+version = "0.11.7"
+description = "MCP server for multi-language code analysis with structure extraction, metadata parsing, and search capabilities across Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, HTML, CSS, SCSS, Markdown, Swift, plain text, and images"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -41,6 +41,8 @@ dependencies = [
     "tree-sitter-html>=0.23.0",
     "tree-sitter-css>=0.23.0",
     "tree-sitter-scss>=1.0.0",
+    "tree-sitter-swift>=0.0.1",
+    "numpy>=1.24.0",
 ]
 
 [dependency-groups]
