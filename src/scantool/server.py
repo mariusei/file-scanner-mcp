@@ -12,7 +12,7 @@ from mcp.types import TextContent
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .scanner import FileScanner
-from .scanners import StructureNode
+from .languages import StructureNode
 from .preview import preview_directory as preview_dir_func
 from .code_map import CodeMap
 

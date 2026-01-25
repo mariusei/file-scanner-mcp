@@ -1,15 +1,15 @@
-"""Tests for SCSS scanner."""
+"""Tests for SCSS language."""
 
 import pytest
 from pathlib import Path
 
-from scantool.scanners.scss_scanner import SCSSScanner
+from scantool.languages.scss import SCSSLanguage
 
 
 @pytest.fixture
-def scss_scanner():
-    """Create an SCSS scanner instance."""
-    return SCSSScanner()
+def scss_language():
+    """Create SCSS language instance."""
+    return SCSSLanguage()
 
 
 @pytest.fixture
@@ -34,26 +34,26 @@ def edge_cases_scss():
 
 
 class TestSCSSScanner:
-    """Tests for SCSSScanner."""
+    """Tests for SCSSLanguage."""
 
     def test_get_extensions(self):
         """Test supported file extensions."""
-        extensions = SCSSScanner.get_extensions()
+        extensions = SCSSLanguage.get_extensions()
         assert ".scss" in extensions
         assert ".sass" in extensions
 
     def test_get_language_name(self):
         """Test language name."""
-        assert SCSSScanner.get_language_name() == "SCSS"
+        assert SCSSLanguage.get_language_name() == "SCSS"
 
     def test_should_skip_minified(self):
         """Test skipping minified files."""
-        assert SCSSScanner.should_skip("app.min.scss") is True
-        assert SCSSScanner.should_skip("styles.scss") is False
+        assert SCSSLanguage.should_skip("app.min.scss") is True
+        assert SCSSLanguage.should_skip("styles.scss") is False
 
-    def test_scan_basic_variables(self, scss_scanner, basic_scss):
+    def test_scan_basic_variables(self, scss_language, basic_scss):
         """Test SCSS variable extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         variables = [s for s in structures if s.type == "variable"]
@@ -63,9 +63,9 @@ class TestSCSSScanner:
         assert primary is not None
         assert "#3498db" in (primary.signature or "")
 
-    def test_scan_basic_mixins(self, scss_scanner, basic_scss):
+    def test_scan_basic_mixins(self, scss_language, basic_scss):
         """Test @mixin extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         mixins = [s for s in structures if s.type == "mixin"]
@@ -78,9 +78,9 @@ class TestSCSSScanner:
         assert button_style is not None
         assert "(" in (button_style.signature or "")
 
-    def test_scan_basic_functions(self, scss_scanner, basic_scss):
+    def test_scan_basic_functions(self, scss_language, basic_scss):
         """Test @function extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         functions = [s for s in structures if s.type == "function"]
@@ -89,9 +89,9 @@ class TestSCSSScanner:
         shade = next((f for f in functions if f.name == "shade"), None)
         assert shade is not None
 
-    def test_scan_basic_imports(self, scss_scanner, basic_scss):
+    def test_scan_basic_imports(self, scss_language, basic_scss):
         """Test @use/@forward/@import extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         imports = [s for s in structures if s.type == "import"]
@@ -105,17 +105,17 @@ class TestSCSSScanner:
         forward_imports = [i for i in imports if "forward" in i.modifiers]
         assert len(forward_imports) >= 1
 
-    def test_scan_basic_media_queries(self, scss_scanner, basic_scss):
+    def test_scan_basic_media_queries(self, scss_language, basic_scss):
         """Test @media extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         media = [s for s in structures if s.type == "media_query"]
         assert len(media) >= 1
 
-    def test_scan_basic_keyframes(self, scss_scanner, basic_scss):
+    def test_scan_basic_keyframes(self, scss_language, basic_scss):
         """Test @keyframes extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         keyframes = [s for s in structures if s.type == "keyframes"]
@@ -124,17 +124,17 @@ class TestSCSSScanner:
         fade = next((k for k in keyframes if k.name == "fadeIn"), None)
         assert fade is not None
 
-    def test_scan_basic_rule_sets(self, scss_scanner, basic_scss):
+    def test_scan_basic_rule_sets(self, scss_language, basic_scss):
         """Test rule set extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         rules = [s for s in structures if s.type == "rule_set"]
         assert len(rules) >= 4
 
-    def test_scan_basic_nested_rules(self, scss_scanner, basic_scss):
+    def test_scan_basic_nested_rules(self, scss_language, basic_scss):
         """Test nested rule extraction."""
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
 
         # Find .btn rule
@@ -146,17 +146,17 @@ class TestSCSSScanner:
         # Should have nested children (modifiers)
         assert btn_rule.children is not None or "nested" in btn_rule.modifiers
 
-    def test_scan_partial_variables(self, scss_scanner, variables_scss):
+    def test_scan_partial_variables(self, scss_language, variables_scss):
         """Test partial file with many variables."""
-        structures = scss_scanner.scan(variables_scss)
+        structures = scss_language.scan(variables_scss)
         assert structures is not None
 
         variables = [s for s in structures if s.type == "variable"]
         assert len(variables) >= 20  # Many variables in this file
 
-    def test_scan_edge_cases_complex_mixin(self, scss_scanner, edge_cases_scss):
+    def test_scan_edge_cases_complex_mixin(self, scss_language, edge_cases_scss):
         """Test complex mixin with many parameters."""
-        structures = scss_scanner.scan(edge_cases_scss)
+        structures = scss_language.scan(edge_cases_scss)
         assert structures is not None
 
         mixins = [s for s in structures if s.type == "mixin"]
@@ -166,9 +166,9 @@ class TestSCSSScanner:
         assert complex_mixin is not None
         assert "$color" in (complex_mixin.signature or "")
 
-    def test_scan_edge_cases_function_logic(self, scss_scanner, edge_cases_scss):
+    def test_scan_edge_cases_function_logic(self, scss_language, edge_cases_scss):
         """Test function extraction."""
-        structures = scss_scanner.scan(edge_cases_scss)
+        structures = scss_language.scan(edge_cases_scss)
         assert structures is not None
 
         functions = [s for s in structures if s.type == "function"]
@@ -177,9 +177,9 @@ class TestSCSSScanner:
         )
         assert calc_rem is not None
 
-    def test_scan_edge_cases_deep_nesting(self, scss_scanner, edge_cases_scss):
+    def test_scan_edge_cases_deep_nesting(self, scss_language, edge_cases_scss):
         """Test deeply nested selectors."""
-        structures = scss_scanner.scan(edge_cases_scss)
+        structures = scss_language.scan(edge_cases_scss)
         assert structures is not None
 
         # Find .level-1 rule
@@ -189,9 +189,9 @@ class TestSCSSScanner:
         )
         assert level1 is not None
 
-    def test_scan_edge_cases_bem_nesting(self, scss_scanner, edge_cases_scss):
+    def test_scan_edge_cases_bem_nesting(self, scss_language, edge_cases_scss):
         """Test BEM-style nesting with parent selector."""
-        structures = scss_scanner.scan(edge_cases_scss)
+        structures = scss_language.scan(edge_cases_scss)
         assert structures is not None
 
         # Find .block rule
@@ -201,22 +201,22 @@ class TestSCSSScanner:
         )
         assert block is not None
 
-    def test_scan_edge_cases_multiple_imports(self, scss_scanner, edge_cases_scss):
+    def test_scan_edge_cases_multiple_imports(self, scss_language, edge_cases_scss):
         """Test multiple @use imports."""
-        structures = scss_scanner.scan(edge_cases_scss)
+        structures = scss_language.scan(edge_cases_scss)
         assert structures is not None
 
         use_imports = [s for s in structures
                        if s.type == "import" and "use" in s.modifiers]
         assert len(use_imports) >= 3  # sass:math, sass:color, sass:list
 
-    def test_scan_important_comments(self, scss_scanner, basic_scss):
+    def test_scan_important_comments(self, scss_language, basic_scss):
         """Test important comment extraction.
 
         Note: tree-sitter-scss may not expose comments in the AST,
         so we just verify scanning doesn't fail.
         """
-        structures = scss_scanner.scan(basic_scss)
+        structures = scss_language.scan(basic_scss)
         assert structures is not None
         # Comments may or may not be in the tree depending on tree-sitter version
         # The important thing is that we can parse the file

@@ -237,9 +237,9 @@ def test_table_with_foreign_keys(file_scanner):
 
 def test_postgresql_dialect_detection(file_scanner):
     """Test that PostgreSQL dialect is detected correctly."""
-    from scantool.scanners.sql_scanner import SQLScanner
+    from scantool.languages.sql import SQLLanguage
 
-    scanner = SQLScanner()
+    scanner = SQLLanguage()
 
     # Test PostgreSQL file
     with open("tests/sql/samples/postgresql.sql", "rb") as f:

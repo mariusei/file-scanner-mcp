@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from datetime import datetime
-from .scanners import StructureNode
+from .languages import StructureNode
 
 
 class TreeFormatter:

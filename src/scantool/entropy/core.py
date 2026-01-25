@@ -58,7 +58,7 @@ def analyze_file_entropy(
         return []
 
     # Rank by entropy + uniqueness (+ optional centrality)
-    _rank_partitions(data, partitions, use_centrality)
+    _rank_partitions(data, partitions, use_centrality, filepath)
 
     # Sort and take top N%
     ranked = sorted(partitions, key=lambda p: p["saliency"], reverse=True)
@@ -176,7 +176,12 @@ def _partition_by_patterns(data: bytes, patterns: list[dict], min_size: int = 32
     return partitions
 
 
-def _rank_partitions(data: bytes, partitions: list[dict], use_centrality: bool):
+def _rank_partitions(
+    data: bytes,
+    partitions: list[dict],
+    use_centrality: bool,
+    file_path: Optional[str] = None,
+):
     """Rank partitions by information-theoretic metrics."""
     if not partitions:
         return
@@ -210,7 +215,7 @@ def _rank_partitions(data: bytes, partitions: list[dict], use_centrality: bool):
         try:
             from .callgraph import analyze_call_graph_simple
 
-            centrality_scores = analyze_call_graph_simple(data, partitions)
+            centrality_scores = analyze_call_graph_simple(data, partitions, file_path)
             centrality_norm = normalize(centrality_scores)
 
             # Weighted combination with centrality

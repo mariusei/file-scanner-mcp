@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .scanners import BaseScanner, StructureNode, get_registry
+from .languages import BaseLanguage, StructureNode, get_registry
 from .gitignore import load_gitignore, GitignoreParser
 from .glob_expander import expand_braces
 
