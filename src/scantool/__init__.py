@@ -14,7 +14,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(write_through=True)  # type: ignore[union-attr]
 
-__version__ = "0.12.0"
+__version__ = "0.14.0"
 
 from .server import main
 

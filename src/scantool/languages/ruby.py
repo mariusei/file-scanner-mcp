@@ -701,12 +701,123 @@ class RubyLanguage(BaseLanguage):
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
     ) -> list[CallInfo]:
-        """Extract method calls.
+        """Extract method calls using tree-sitter."""
+        try:
+            source_bytes = content.encode("utf-8")
+            tree = self.parser.parse(source_bytes)
+            return self._extract_calls_tree_sitter(
+                file_path, tree.root_node, source_bytes, definitions
+            )
+        except Exception:
+            return self._extract_calls_regex(file_path, content, definitions)
 
-        For Layer 1, we return empty list. Full implementation would require
-        tree-sitter or Ripper for robust parsing of Ruby's flexible syntax.
-        """
-        return []
+    def _extract_calls_tree_sitter(
+        self,
+        file_path: str,
+        root: Node,
+        source_bytes: bytes,
+        definitions: list[DefinitionInfo],
+    ) -> list[CallInfo]:
+        """Extract calls using tree-sitter AST with caller context tracking."""
+        calls = []
+
+        def traverse(node: Node, current_method: Optional[str] = None, in_statement: bool = False):
+            # Track method context
+            if node.type in ("method", "singleton_method"):
+                name_node = node.child_by_field_name("name")
+                if name_node:
+                    method_name = self._get_node_text(name_node, source_bytes)
+                    # Traverse children with this method as context
+                    for child in node.children:
+                        traverse(child, method_name, False)
+                    return
+
+            # Extract method calls with receiver: obj.method or method(args)
+            if node.type == "call":
+                method_node = node.child_by_field_name("method")
+                if method_node and current_method:
+                    callee_name = self._get_node_text(method_node, source_bytes)
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_method,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Bare identifiers in statement position are often method calls in Ruby
+            if node.type == "identifier" and in_statement and current_method:
+                callee_name = self._get_node_text(node, source_bytes)
+                # Skip common non-method identifiers
+                if callee_name not in ("self", "true", "false", "nil"):
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_method,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # body_statement children are at statement level
+            next_in_statement = node.type == "body_statement"
+
+            # Recurse into children
+            for child in node.children:
+                traverse(child, current_method, next_in_statement)
+
+        traverse(root)
+
+        # Mark cross-file calls
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
+    def _extract_calls_regex(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Fallback: Extract calls using regex (without caller context)."""
+        calls = []
+
+        # Match method calls: identifier followed by optional arguments
+        for match in re.finditer(r"\b(\w+)(?:\s*\(|\s+\w)", content):
+            callee_name = match.group(1)
+            line = content[: match.start()].count("\n") + 1
+
+            # Skip keywords
+            if callee_name in [
+                "if", "else", "elsif", "unless", "case", "when",
+                "while", "until", "for", "do", "end", "begin", "rescue",
+                "ensure", "raise", "return", "yield", "super", "self",
+                "true", "false", "nil", "and", "or", "not", "in",
+                "def", "class", "module", "attr_reader", "attr_writer",
+                "attr_accessor", "private", "protected", "public",
+                "require", "require_relative", "include", "extend",
+            ]:
+                continue
+
+            calls.append(
+                CallInfo(
+                    caller_file=file_path,
+                    caller_name=None,
+                    callee_name=callee_name,
+                    line=line,
+                    is_cross_file=False,
+                )
+            )
+
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
 
     # ===========================================================================
     # Classification (enhanced for Ruby)

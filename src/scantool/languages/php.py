@@ -922,6 +922,149 @@ class PHPLanguage(BaseLanguage):
 
         return definitions
 
+    def extract_calls(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Extract function/method calls using tree-sitter."""
+        try:
+            source_bytes = content.encode("utf-8")
+            tree = self.parser.parse(source_bytes)
+            return self._extract_calls_tree_sitter(
+                file_path, tree.root_node, source_bytes, definitions
+            )
+        except Exception:
+            return self._extract_calls_regex(file_path, content, definitions)
+
+    def _extract_calls_tree_sitter(
+        self,
+        file_path: str,
+        root: Node,
+        source_bytes: bytes,
+        definitions: list[DefinitionInfo],
+    ) -> list[CallInfo]:
+        """Extract calls using tree-sitter AST with caller context tracking."""
+        calls = []
+
+        def traverse(node: Node, current_func: Optional[str] = None):
+            # Track function/method context
+            if node.type in ("function_definition", "method_declaration"):
+                name_node = node.child_by_field_name("name")
+                if name_node:
+                    func_name = self._get_node_text(name_node, source_bytes)
+                    # Traverse children with this function as context
+                    for child in node.children:
+                        traverse(child, func_name)
+                    return
+
+            # Extract function calls
+            if node.type == "function_call_expression":
+                func_node = node.child_by_field_name("function")
+                callee_name = None
+
+                if func_node:
+                    # Simple function call: foo()
+                    if func_node.type == "name":
+                        callee_name = self._get_node_text(func_node, source_bytes)
+                    # Qualified call: \Namespace\func() or Namespace\func()
+                    elif func_node.type == "qualified_name":
+                        # Get the last part of the qualified name
+                        for child in reversed(func_node.children):
+                            if child.type == "name":
+                                callee_name = self._get_node_text(child, source_bytes)
+                                break
+
+                if callee_name and current_func:
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_func,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Extract method calls: $obj->method() or Class::method()
+            if node.type == "member_call_expression":
+                name_node = node.child_by_field_name("name")
+                if name_node and current_func:
+                    callee_name = self._get_node_text(name_node, source_bytes)
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_func,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Extract static method calls: ClassName::method()
+            if node.type == "scoped_call_expression":
+                name_node = node.child_by_field_name("name")
+                if name_node and current_func:
+                    callee_name = self._get_node_text(name_node, source_bytes)
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_func,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Recurse into children
+            for child in node.children:
+                traverse(child, current_func)
+
+        traverse(root)
+
+        # Mark cross-file calls
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
+    def _extract_calls_regex(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Fallback: Extract calls using regex (without caller context)."""
+        calls = []
+
+        for match in re.finditer(r"\b(\w+)\s*\(", content):
+            callee_name = match.group(1)
+            line = content[: match.start()].count("\n") + 1
+
+            # Skip keywords
+            if callee_name in [
+                "if", "else", "elseif", "while", "for", "foreach", "switch",
+                "case", "function", "class", "interface", "trait", "enum",
+                "return", "echo", "print", "array", "list", "isset", "unset",
+                "empty", "eval", "exit", "die", "include", "require",
+                "include_once", "require_once", "new", "clone", "throw",
+            ]:
+                continue
+
+            calls.append(
+                CallInfo(
+                    caller_file=file_path,
+                    caller_name=None,
+                    callee_name=callee_name,
+                    line=line,
+                    is_cross_file=False,
+                )
+            )
+
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
     # ===========================================================================
     # Classification (enhanced for PHP)
     # ===========================================================================
