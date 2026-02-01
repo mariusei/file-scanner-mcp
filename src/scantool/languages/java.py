@@ -829,21 +829,96 @@ class JavaLanguage(BaseLanguage):
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
     ) -> list[CallInfo]:
-        """Extract method calls from Java file.
+        """Extract method calls from Java file using tree-sitter."""
+        calls = []
+        source_bytes = content.encode("utf-8")
 
-        Note: This is a basic implementation that extracts method calls.
-        A full implementation would use tree-sitter for accuracy.
-        """
+        try:
+            tree = self.parser.parse(source_bytes)
+            calls = self._extract_calls_tree_sitter(
+                file_path, tree.root_node, source_bytes, definitions
+            )
+        except Exception:
+            # Fallback to regex for malformed files
+            calls = self._extract_calls_regex(file_path, content, definitions)
+
+        # Mark cross-file calls
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
+    def _extract_calls_tree_sitter(
+        self,
+        file_path: str,
+        root: Node,
+        source_bytes: bytes,
+        definitions: list[DefinitionInfo],
+    ) -> list[CallInfo]:
+        """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
 
-        # Simple regex to find method calls: identifier(
-        # This is a basic approach - tree-sitter would be more accurate
-        call_pattern = r'\b(\w+)\s*\('
+        def traverse(node: Node, current_method: Optional[str] = None):
+            # Track current method/constructor context
+            if node.type in ("method_declaration", "constructor_declaration"):
+                name_node = node.child_by_field_name("name")
+                if name_node:
+                    method_name = self._get_node_text(name_node, source_bytes)
+                    # Traverse children with this method as context
+                    for child in node.children:
+                        traverse(child, method_name)
+                    return
+
+            # Extract method invocations
+            if node.type == "method_invocation":
+                callee_name = None
+                # Find the method name (last identifier before argument_list)
+                for child in node.children:
+                    if child.type == "identifier":
+                        callee_name = self._get_node_text(child, source_bytes)
+                    elif child.type == "." and callee_name:
+                        # Reset - the next identifier is the actual method
+                        callee_name = None
+
+                # Get the actual method name after the dot (if any)
+                for i, child in enumerate(node.children):
+                    if child.type == "." and i + 1 < len(node.children):
+                        next_child = node.children[i + 1]
+                        if next_child.type == "identifier":
+                            callee_name = self._get_node_text(next_child, source_bytes)
+
+                if callee_name and current_method:
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_method,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Recurse into children
+            for child in node.children:
+                traverse(child, current_method)
+
+        traverse(root)
+        return calls
+
+    def _extract_calls_regex(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Fallback: Extract calls using regex (no caller context)."""
+        calls = []
+        call_pattern = r"\b(\w+)\s*\("
+
         for match in re.finditer(call_pattern, content):
             callee_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            # Skip keywords and common Java keywords
+            # Skip keywords
             if callee_name in (
                 "if", "for", "while", "switch", "catch", "synchronized",
                 "return", "new", "class", "interface", "enum", "void",
@@ -856,18 +931,12 @@ class JavaLanguage(BaseLanguage):
             calls.append(
                 CallInfo(
                     caller_file=file_path,
-                    caller_name=None,  # Would need context tracking for this
+                    caller_name=None,
                     callee_name=callee_name,
                     line=line,
                     is_cross_file=False,
                 )
             )
-
-        # Mark cross-file calls
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
 
         return calls
 

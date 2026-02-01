@@ -1204,6 +1204,154 @@ class SwiftLanguage(BaseLanguage):
 
         return definitions
 
+    def extract_calls(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Extract function/method calls using tree-sitter."""
+        try:
+            source_bytes = content.encode("utf-8")
+            tree = self.parser.parse(source_bytes)
+            return self._extract_calls_tree_sitter(
+                file_path, tree.root_node, source_bytes, definitions
+            )
+        except Exception:
+            return self._extract_calls_regex(file_path, content, definitions)
+
+    def _extract_calls_tree_sitter(
+        self,
+        file_path: str,
+        root: Node,
+        source_bytes: bytes,
+        definitions: list[DefinitionInfo],
+    ) -> list[CallInfo]:
+        """Extract calls using tree-sitter AST with caller context tracking."""
+        calls = []
+
+        def get_last_identifier(node: Node) -> Optional[str]:
+            """Get the last identifier from a navigation_expression (the method name)."""
+            # For logger.info, we want "info" not "logger"
+            # Structure: navigation_expression > [simple_identifier, navigation_suffix]
+            # navigation_suffix > [., simple_identifier]
+            for child in reversed(node.children):
+                if child.type == "navigation_suffix":
+                    for suffix_child in child.children:
+                        if suffix_child.type == "simple_identifier":
+                            return self._get_node_text(suffix_child, source_bytes)
+                elif child.type == "simple_identifier":
+                    # Fallback if no navigation_suffix
+                    return self._get_node_text(child, source_bytes)
+            return None
+
+        def traverse(node: Node, current_func: Optional[str] = None):
+            # Track function context
+            if node.type == "function_declaration":
+                for child in node.children:
+                    if child.type == "simple_identifier":
+                        func_name = self._get_node_text(child, source_bytes)
+                        for c in node.children:
+                            traverse(c, func_name)
+                        return
+
+            # Track computed property context (like SwiftUI's body)
+            if node.type == "property_declaration":
+                # Check if this has a computed_property child
+                has_computed = any(c.type == "computed_property" for c in node.children)
+                if has_computed:
+                    # Get the property name from the pattern child
+                    prop_name = None
+                    for child in node.children:
+                        if child.type == "pattern":
+                            prop_name = self._get_node_text(child, source_bytes)
+                            break
+                    if prop_name:
+                        for c in node.children:
+                            traverse(c, prop_name)
+                        return
+
+            # Track initializer context
+            if node.type == "init_declaration":
+                for child in node.children:
+                    traverse(child, "init")
+                return
+
+            # Extract call expressions
+            if node.type == "call_expression":
+                callee_name = None
+
+                for child in node.children:
+                    if child.type == "simple_identifier":
+                        # Simple call: foo()
+                        callee_name = self._get_node_text(child, source_bytes)
+                        break
+                    elif child.type == "navigation_expression":
+                        # Method call: obj.method() - get the method name
+                        callee_name = get_last_identifier(child)
+                        if callee_name:
+                            break
+
+                if callee_name and current_func:
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_func,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Recurse into children
+            for child in node.children:
+                traverse(child, current_func)
+
+        traverse(root)
+
+        # Mark cross-file calls
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
+    def _extract_calls_regex(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Fallback: Extract calls using regex (without caller context)."""
+        calls = []
+
+        for match in re.finditer(r"\b(\w+)\s*\(", content):
+            callee_name = match.group(1)
+            line = content[: match.start()].count("\n") + 1
+
+            # Skip keywords
+            if callee_name in [
+                "if", "else", "guard", "switch", "case", "for", "while",
+                "repeat", "do", "try", "catch", "throw", "return", "break",
+                "continue", "func", "class", "struct", "enum", "protocol",
+                "extension", "init", "deinit", "subscript", "typealias",
+                "import", "let", "var", "where", "as", "is", "self", "Self",
+                "super", "nil", "true", "false", "Any", "AnyObject",
+            ]:
+                continue
+
+            calls.append(
+                CallInfo(
+                    caller_file=file_path,
+                    caller_name=None,
+                    callee_name=callee_name,
+                    line=line,
+                    is_cross_file=False,
+                )
+            )
+
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
     # ===========================================================================
     # Classification (enhanced for Swift)
     # ===========================================================================
