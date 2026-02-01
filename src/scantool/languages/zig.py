@@ -700,14 +700,93 @@ class ZigLanguage(BaseLanguage):
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
     ) -> list[CallInfo]:
-        """Extract function calls from Zig file.
+        """Extract function calls using tree-sitter."""
+        try:
+            source_bytes = content.encode("utf-8")
+            tree = self.parser.parse(source_bytes)
+            return self._extract_calls_tree_sitter(
+                file_path, tree.root_node, source_bytes, definitions
+            )
+        except Exception:
+            return self._extract_calls_regex(file_path, content, definitions)
 
-        Note: This is a basic implementation using regex.
-        Could be improved with tree-sitter in the future.
-        """
+    def _extract_calls_tree_sitter(
+        self,
+        file_path: str,
+        root: Node,
+        source_bytes: bytes,
+        definitions: list[DefinitionInfo],
+    ) -> list[CallInfo]:
+        """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
 
-        # Pattern: function call identifier(
+        def get_callee_name(node: Node) -> Optional[str]:
+            """Extract the callee name from a call expression's function node."""
+            if node.type == "identifier":
+                return self._get_node_text(node, source_bytes)
+            elif node.type == "field_expression":
+                # Get the last identifier (the actual function name)
+                for child in reversed(node.children):
+                    if child.type == "identifier":
+                        return self._get_node_text(child, source_bytes)
+            return None
+
+        def traverse(node: Node, current_func: Optional[str] = None):
+            # Track function context
+            if node.type == "function_declaration":
+                # Find the function name (direct identifier child)
+                func_name = None
+                for child in node.children:
+                    if child.type == "identifier":
+                        func_name = self._get_node_text(child, source_bytes)
+                        break
+
+                if func_name:
+                    # Traverse children with this function as context
+                    for child in node.children:
+                        traverse(child, func_name)
+                    return
+
+            # Extract call expressions
+            if node.type == "call_expression":
+                callee_name = None
+                # First child is the function being called
+                for child in node.children:
+                    if child.type in ("identifier", "field_expression"):
+                        callee_name = get_callee_name(child)
+                        break
+
+                if callee_name and current_func:
+                    calls.append(
+                        CallInfo(
+                            caller_file=file_path,
+                            caller_name=current_func,
+                            callee_name=callee_name,
+                            line=node.start_point[0] + 1,
+                            is_cross_file=False,
+                        )
+                    )
+
+            # Recurse into children
+            for child in node.children:
+                traverse(child, current_func)
+
+        traverse(root)
+
+        # Mark cross-file calls
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
+
+    def _extract_calls_regex(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Fallback: Extract calls using regex (without caller context)."""
+        calls = []
+
         call_pattern = r'\b(\w+)\s*\('
         for match in re.finditer(call_pattern, content):
             callee_name = match.group(1)
@@ -731,7 +810,6 @@ class ZigLanguage(BaseLanguage):
                 )
             )
 
-        # Mark cross-file calls
         local_defs = {d.name for d in definitions}
         for call in calls:
             if call.callee_name not in local_defs:

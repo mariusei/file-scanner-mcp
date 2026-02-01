@@ -39,3 +39,4 @@ prototype_*.py
 /test_*.py
 # Note: /test_*.py only ignores root test files, not tests/ directory
 .coverage
+CLAUDE.md
