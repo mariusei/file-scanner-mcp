@@ -8,7 +8,13 @@ license = { text = "MIT" }
 authors = [
     { name = "Marius Berge Eide" }
 ]
-keywords = ["mcp", "file-scanner", "tree-sitter", "code-analysis", "structure-extraction"]
+keywords = [
+    "mcp", "mcp-server", "model-context-protocol",
+    "code-analysis", "tree-sitter", "claude", "claude-code",
+    "file-scanner", "structure-extraction", "static-analysis",
+    "ast", "code-structure", "codebase-analysis", "ai-tools",
+    "developer-tools",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -18,6 +24,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Code Generators",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
 ]
 dependencies = [
     "fastmcp>=2.14.4",  # Includes stdio handling improvements
@@ -59,6 +70,8 @@ scantool-http = "scantool.server:http_main"
 Homepage = "https://github.com/mariusei/file-scanner-mcp"
 Repository = "https://github.com/mariusei/file-scanner-mcp"
 Issues = "https://github.com/mariusei/file-scanner-mcp/issues"
+Changelog = "https://github.com/mariusei/file-scanner-mcp/releases"
+"MCP Registry" = "https://glama.ai/mcp/servers/@mariusei/file-scanner-mcp"
 
 [build-system]
 requires = ["hatchling"]
