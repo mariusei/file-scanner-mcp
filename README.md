@@ -29,12 +29,94 @@
 
 # Scantool - File Scanner MCP
 
-MCP server for analyzing source code structure across multiple languages. Extracts classes, functions, methods, and metadata (signatures, decorators, docstrings) with precise line numbers.
+MCP server for analyzing source code structure across 20+ languages. Extracts classes, functions, methods, and metadata (signatures, decorators, docstrings) with precise line numbers. Powered by tree-sitter.
+
+## Quick Start
+
+### Claude Code
+
+```bash
+claude mcp add --transport stdio scantool -- uvx --from scantool scantool
+```
+
+That's it. Restart Claude Code and you're ready to go.
+
+### Claude Desktop
+
+Add to config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "scantool": {
+      "command": "uvx",
+      "args": ["--from", "scantool", "scantool"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop after configuration.
+
+### Troubleshooting: `uvx` not found
+
+`uvx` comes with [uv](https://docs.astral.sh/uv/), the Python package manager. Install it first:
+
+```bash
+# macOS / Linux / WSL
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**After installing uv, restart your terminal** (or open a new one) so `uvx` is on your PATH. Then re-run the setup command above.
+
+If `uvx` still isn't found after restarting the terminal, add it to your PATH manually:
+
+```bash
+# Linux / WSL - add to ~/.bashrc or ~/.zshrc:
+export PATH="$HOME/.local/bin:$PATH"
+
+# macOS - usually works out of the box, but if not:
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Alternative: Install from source
+
+```bash
+git clone https://github.com/mariusei/file-scanner-mcp.git
+cd file-scanner-mcp
+uv sync
+
+# Claude Code
+claude mcp add --transport stdio scantool -- uv run --directory /path/to/file-scanner-mcp scantool
+
+# Claude Desktop
+# Use command: "uv", args: ["run", "--directory", "/path/to/file-scanner-mcp", "scantool"]
+```
+
+### Share with your team (.mcp.json)
+
+Add a `.mcp.json` file to your project root to share the config with your team:
+
+```json
+{
+  "mcpServers": {
+    "scantool": {
+      "command": "uvx",
+      "args": ["--from", "scantool", "scantool"]
+    }
+  }
+}
+```
+
+Claude Code will prompt team members for approval on first use.
 
 ## Features
 
 ### Multi-language Support
-Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, SQL (PostgreSQL, MySQL, SQLite), Markdown, Plain Text, Images
+Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, Swift, SQL (PostgreSQL, MySQL, SQLite), HTML, CSS, SCSS, Markdown, Plain Text, Images
 
 ### Structure Extraction
 - Classes, methods, functions, imports
@@ -51,64 +133,9 @@ Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, SQL (Postg
 - **list_directories**: Directory tree (folders only)
 
 ### Output Formats
-- Tree format with box-drawing characters (├─, └─, │)
+- Tree format with box-drawing characters
 - JSON format for programmatic use
 - Configurable display options
-
-## Installation
-
-### Install with uvx
-
-```bash
-# From GitHub
-uvx --from git+https://github.com/mariusei/file-scanner-mcp scantool
-
-# Or from PyPI
-uvx scantool
-```
-
-### Install from Smithery
-
-https://smithery.ai/server/@mariusei/file-scanner-mcp
-
-### Install from Source
-
-```bash
-git clone https://github.com/mariusei/file-scanner-mcp.git
-cd file-scanner-mcp
-uv sync
-uv run scantool
-```
-
-## Configuration
-
-Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "scantool": {
-      "command": "uvx",
-      "args": ["scantool"]
-    }
-  }
-}
-```
-
-Or if installed from source:
-
-```json
-{
-  "mcpServers": {
-    "scantool": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/file-scanner-mcp", "scantool"]
-    }
-  }
-}
-```
-
-Restart Claude Desktop after configuration.
 
 ## Usage
 
@@ -134,25 +161,25 @@ preview_directory(
 **Example output (depth="deep"):**
 
 ```
-📂 project/
+project/
 
-━━━ ENTRY POINTS ━━━
+--- ENTRY POINTS ---
   main.py:main() @1
   backend/application.py:Flask app @15
   frontend/index.ts:export default
 
-━━━ CORE FILES (by centrality) ━━━
+--- CORE FILES (by centrality) ---
   backend/database.py: imports 0, used by 15 files
   backend/auth.py: imports 1, used by 8 files
   shared/utils.py: imports 2, used by 12 files
 
-━━━ ARCHITECTURE ━━━
+--- ARCHITECTURE ---
   Entry Points: 25 files
   Core Logic: 68 files
   Plugins: 15 files
   Tests: 42 files
 
-━━━ HOT FUNCTIONS (most called) ━━━
+--- HOT FUNCTIONS (most called) ---
   get_database() (function): called by 41, calls 1 @backend/database.py
   authenticate() (function): called by 23, calls 5 @backend/auth.py
   validate_input() (function): called by 15, calls 2 @shared/utils.py
@@ -231,12 +258,12 @@ scan_directory(
 
 ```
 src/ (22 files, 15 classes, 127 functions, 89 methods)
-├─ scanners/
-│  ├─ python_scanner.py (1-329) [11.9KB, 2 hours ago] - PythonScanner
-│  ├─ typescript_scanner.py (1-505) [18.9KB, 1 day ago] - TypeScriptScanner
-│  └─ rust_scanner.py (1-481) [17.6KB, 3 days ago] - RustScanner
+├─ languages/
+│  ├─ python.py (1-329) [11.9KB, 2 hours ago] - PythonLanguage
+│  ├─ typescript.py (1-505) [18.9KB, 1 day ago] - TypeScriptLanguage
+│  └─ rust.py (1-481) [17.6KB, 3 days ago] - RustLanguage
 ├─ scanner.py (1-232) [8.8KB, 5 mins ago] - FileScanner
-└─ server.py (1-353) [12.2KB, just now] - scan_file, scan_directory, ...
+└─ server.py (1-735) [27.2KB, just now] - scan_file, scan_directory, ...
 ```
 
 **Pattern examples:**
@@ -327,7 +354,12 @@ list_directories(
 | `.php` | PHP | classes, methods, functions, traits, interfaces, namespaces |
 | `.cs` | C# | classes, methods, properties, structs, enums, namespaces |
 | `.rb` | Ruby | modules, classes, methods, singleton methods |
+| `.zig` | Zig | functions, structs, enums, unions, tests |
+| `.swift` | Swift | classes, structs, enums, protocols, functions, extensions |
 | `.sql` | SQL | tables, views, functions, procedures, indexes, columns |
+| `.html` | HTML | document structure, elements, attributes |
+| `.css` | CSS | selectors, properties, media queries |
+| `.scss` | SCSS | selectors, mixins, variables, nesting |
 | `.md` | Markdown | headings (h1-h6), code blocks with hierarchy |
 | `.txt` | Plain Text | sections, paragraphs |
 | `.png`, `.jpg`, `.gif`, `.webp` | Images | format, dimensions, colors, content type |
@@ -367,22 +399,35 @@ All files include metadata (size, modified date, permissions) automatically.
 
 ```
 scantool/
+├── server.py        # FastMCP server (stdio + HTTP entry points)
 ├── scanner.py       # Core scanning logic using tree-sitter
 ├── formatter.py     # Tree formatting with box-drawing characters
-├── server.py        # FastMCP server implementation
-├── code_map.py      # Code analysis orchestrator
-├── analyzers/       # Language-specific analyzers
-│   ├── base.py
-│   ├── python_analyzer.py
-│   ├── typescript_analyzer.py
-│   ├── go_analyzer.py
-│   └── skip_patterns.py
-└── scanners/        # Language-specific scanners
-    ├── base.py
-    ├── python_scanner.py
-    ├── typescript_scanner.py
-    └── ...
+├── code_map.py      # Architecture analysis (Layer 1 + 2)
+├── call_graph.py    # Hot functions, centrality analysis
+├── preview.py       # Quick directory preview
+└── languages/       # Unified language system (one file per language)
+    ├── base.py      # BaseLanguage - all languages inherit from this
+    ├── models.py    # StructureNode, CallInfo, ImportInfo, etc.
+    ├── python.py    # PythonLanguage
+    ├── typescript.py
+    ├── rust.py
+    └── ...          # 20+ languages
 ```
+
+## HTTP Transport (advanced)
+
+For environments where stdio doesn't work, or when sharing a server across multiple clients:
+
+```bash
+# Start the HTTP server
+uvx --from scantool scantool-http
+# Listens on port 8080 by default (set PORT env var to change)
+
+# Connect Claude Code to it
+claude mcp add --transport http scantool http://127.0.0.1:8080/mcp
+```
+
+Note: The HTTP server must be started separately and kept running. For most users, the stdio transport (default) is simpler and recommended.
 
 ## Testing
 
@@ -391,7 +436,7 @@ scantool/
 uv run pytest
 
 # Run specific tests
-uv run pytest tests/analyzers/
+uv run pytest tests/languages/
 uv run pytest tests/python/
 uv run pytest tests/typescript/
 
@@ -420,7 +465,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ### MCP Tool Response Size Limit
 
-Claude Desktop enforces a 25,000 token limit on MCP tool responses.
+Claude Desktop enforces a 25,000 token limit on MCP tool responses. Claude Code has a configurable limit (set `MAX_MCP_OUTPUT_TOKENS` env var to adjust).
 
 **Built-in mitigations:**
 - `scan_directory()` uses compact inline format
