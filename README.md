@@ -1,42 +1,23 @@
-```
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-  ░                                                                          ░
-  ░   ███████╗ ██████╗ █████╗ ███╗   ██╗████████╗ ██████╗  ██████╗ ██╗       ░
-  ░   ██╔════╝██╔════╝██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗██╔═══██╗██║       ░
-  ░   ███████╗██║     ███████║██╔██╗ ██║   ██║   ██║   ██║██║   ██║██║       ░
-  ░   ╚════██║██║     ██╔══██║██║╚██╗██║   ██║   ██║   ██║██║   ██║██║       ░
-  ░   ███████║╚██████╗██║  ██║██║ ╚████║   ██║   ╚██████╔╝╚██████╔╝███████╗  ░
-  ░   ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝  ░
-  ░                                                                          ░
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+# Scantool: Code Analysis MCP Server for Claude
 
-                ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+[![PyPI version](https://badge.fury.io/py/scantool.svg)](https://pypi.org/project/scantool/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-                ╔═══════════════════════════════════════════╗
-                ║  ▶ [▓▓▓▓▓▓▓▓▓░░] Scanning codebase...     ║
-                ║                                           ║
-                ║  ╭───────────────────────────────────╮    ║
-                ║  │ ✓ Classes    ▓▓▓▓▓▓▓▓▓▓ 100%      │    ║
-                ║  │ ✓ Functions  ▓▓▓▓▓▓▓▓▓▓ 100%      │    ║
-                ║  │ ✓ Metadata   ▓▓▓▓▓▓▓▓▓▓ 100%      │    ║
-                ║  ╰───────────────────────────────────╯    ║
-                ║                                           ║
-                ║    tree-sitter powered  •  MCP ready      ║
-                ╚═══════════════════════════════════════════╝
-
-                ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-```
-
-# Scantool - File Scanner MCP
-
-MCP server for analyzing source code structure across 20+ languages. Extracts classes, functions, methods, and metadata (signatures, decorators, docstrings) with precise line numbers. Powered by tree-sitter.
+MCP server for analyzing source code structure across 20+ languages. Works with **Claude Code**, **Claude Desktop**, and any **Model Context Protocol** client. Powered by **tree-sitter**. Extracts classes, functions, methods, imports, call graphs, and hot functions with precise line numbers.
 
 ## Quick Start
+
+**Requires [uv](https://docs.astral.sh/uv/)** (provides the `uvx` command). Install it first if you don't have it — without it, scantool will silently fail to start:
+
+```bash
+# macOS / Linux / WSL
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Claude Code
 
 ```bash
-claude mcp add --transport stdio scantool -- uvx --from scantool scantool
+claude mcp add scantool -- uvx scantool
 ```
 
 That's it. Restart Claude Code and you're ready to go.
@@ -50,7 +31,7 @@ Add to config (`~/Library/Application Support/Claude/claude_desktop_config.json`
   "mcpServers": {
     "scantool": {
       "command": "uvx",
-      "args": ["--from", "scantool", "scantool"]
+      "args": ["scantool"]
     }
   }
 }
@@ -105,7 +86,7 @@ Add a `.mcp.json` file to your project root to share the config with your team:
   "mcpServers": {
     "scantool": {
       "command": "uvx",
-      "args": ["--from", "scantool", "scantool"]
+      "args": ["scantool"]
     }
   }
 }
