@@ -26,7 +26,7 @@ dir_formatter = DirectoryFormatter()
 
 @mcp.tool(
     tags={"exploration", "overview", "analysis", "primary"},
-    description="Preview directory with intelligent code analysis - PRIMARY TOOL for understanding codebases (5-10s, includes hot functions, replaces ls/find/grep)"
+    description="Preview directory - architecture, hot functions, call graph, entry points for ALL file types (code, docs, markdown, config). One call replaces ls/find/grep (5-10s)"
 )
 def preview_directory(
     directory: str,
@@ -36,9 +36,9 @@ def preview_directory(
     respect_gitignore: bool = True
 ) -> list[TextContent]:
     """
-    Intelligent directory preview with code analysis.
+    Intelligent directory preview - analyzes all file types including code, markdown, text, HTML, CSS, SQL, and config files.
 
-    **PRIMARY TOOL - Use this instead of ls/find/grep for codebase exploration!**
+    **PRIMARY TOOL - Use this instead of ls/find/grep for project exploration!**
 
     This tool automatically analyzes code structure, entry points, and architecture.
     Much faster and more informative than manual ls/grep exploration.
@@ -344,7 +344,7 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan local file structure - USE THIS BEFORE Read to get overview with line numbers"
+    description="Scan ANY file (code, markdown, text, HTML, config) - returns signatures, docstrings, and key code excerpts with line numbers. Richer than Read, USE BEFORE Read"
 )
 def scan_file(
     file_path: str,
@@ -355,7 +355,7 @@ def scan_file(
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
-    Scan a source file and return its structure.
+    Scan any file and return its structure — works on code, markdown, text, HTML, CSS, SQL, config, and 20+ file types.
 
     **When to use this vs other tools:**
     - Use scan_file() BEFORE Read → get table of contents with line numbers first
@@ -365,15 +365,11 @@ def scan_file(
 
     **Recommended for:** Local files (includes full metadata: timestamps, permissions, size)
 
-    Use this to get a structural overview of a code file before reading it.
-    Provides table of contents with line numbers, making it easy to identify
-    which sections to read with the Read tool.
-
-    More efficient than Read for initial exploration - shows what's in the file
-    without loading full content. Get signatures, decorators, docstrings, and
-    precise line ranges for each code element.
-
-    Supports: Python, JavaScript, TypeScript, Rust, Go, Markdown, and Plain Text files.
+    Provides table of contents with line numbers for any file type:
+    - Code files: classes, functions, methods, imports
+    - Markdown: headings, code blocks, sections
+    - Text: sections, structure
+    - HTML/CSS: tags, selectors, rules
 
     Args:
         file_path: Absolute or relative path to the file to scan
@@ -405,14 +401,14 @@ def scan_file(
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
-            return f"Error: Unsupported file type. Supported extensions: {supported}"
+            return [TextContent(type="text", text=f"Unsupported file type. Supported extensions: {supported}")]
 
         if not structures:
-            return f"{file_path} (empty file or no structure found)"
+            return [TextContent(type="text", text=f"{file_path} (empty file or no structure found)")]
 
         # Format output
         if output_format == "json":
-            return _structures_to_json(structures, file_path)
+            return [TextContent(type="text", text=json.dumps(_structures_to_json(structures, file_path), indent=2))]
         else:
             # Use custom formatter with options
             custom_formatter = TreeFormatter(
@@ -432,7 +428,7 @@ def scan_file(
 
 @mcp.tool(
     tags={"local", "directory", "exploration"},
-    description="Scan directory structure - USE THIS INSTEAD of Glob when you want to see both file tree AND code structure"
+    description="Scan directory - file tree with signatures, docstrings, code excerpts for ALL file types (code, docs, markdown, config). Replaces Glob"
 )
 def scan_directory(
     directory: str,
@@ -443,7 +439,7 @@ def scan_directory(
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
-    Scan directory and show compact overview of code structure.
+    Scan directory and show compact overview of all file structures (code, docs, markdown, config, text).
 
     **When to use this vs other tools:**
     - Use scan_directory() INSTEAD of Glob → shows file tree AND inline code structures
@@ -501,7 +497,7 @@ def scan_directory(
         )
 
         if not results:
-            return f"No supported files found in {directory} matching {pattern}"
+            return [TextContent(type="text", text=f"No supported files found in {directory} matching {pattern}")]
 
         # Apply max_files limit if specified
         if max_files is not None and len(results) > max_files:
@@ -516,7 +512,7 @@ def scan_directory(
             for file_path, structures in results.items():
                 if structures:
                     json_results[file_path] = _structures_to_json(structures, file_path, return_dict=True)
-            return warning + json.dumps(json_results, indent=2)
+            return [TextContent(type="text", text=warning + json.dumps(json_results, indent=2))]
         else:
             # ALWAYS use compact inline format for directory scans
             custom_formatter = DirectoryFormatter(
@@ -534,7 +530,7 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search code structures - USE THIS INSTEAD of Grep when searching for classes, functions, or methods by name/type/decorator"
+    description="Search structures across all file types - USE THIS INSTEAD of Grep for classes, functions, headings, sections by name/type/decorator"
 )
 def search_structures(
     directory: str,
@@ -604,14 +600,14 @@ def search_structures(
                 matching[file_path] = filtered
 
         if not matching:
-            return "No structures found matching the criteria"
+            return [TextContent(type="text", text="No structures found matching the criteria")]
 
         # Format output
         if output_format == "json":
             json_results = {}
             for file_path, structures in matching.items():
                 json_results[file_path] = _structures_to_json(structures, file_path, return_dict=True)
-            return json.dumps(json_results, indent=2)
+            return [TextContent(type="text", text=json.dumps(json_results, indent=2))]
         else:
             outputs = []
             for file_path, structures in sorted(matching.items()):
