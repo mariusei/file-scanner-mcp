@@ -23,6 +23,7 @@ from .models import (
     DefinitionInfo,
     CallInfo,
 )
+from .templates import preprocess as preprocess_templates, merge_trees
 
 
 # Semantic HTML5 elements that define document structure
@@ -141,24 +142,43 @@ class HTMLLanguage(BaseLanguage):
     # ===========================================================================
 
     def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
-        """Scan HTML source code and extract structure with metadata."""
-        try:
-            tree = self.parser.parse(source_code)
+        """Scan HTML source code and extract structure with metadata.
 
-            # Check for excessive errors
+        For files with template syntax (Jinja2, Django, Svelte, Blade, ERB):
+        1. Extract template structure (blocks, conditionals, loops)
+        2. Neutralize template syntax with same-length whitespace
+        3. Parse the cleaned HTML with tree-sitter
+        4. Merge template and HTML trees into one unified structure
+        """
+        template_result = preprocess_templates(source_code)
+        parse_source = template_result.cleaned_source if template_result else source_code
+
+        try:
+            tree = self.parser.parse(parse_source)
+
             if self._should_use_fallback(tree.root_node):
                 if self.fallback_on_errors:
-                    return self._fallback_extract(source_code)
-                return None
-
-            return self._extract_structure(tree.root_node, source_code)
+                    html_nodes = self._fallback_extract(parse_source)
+                else:
+                    html_nodes = None
+            else:
+                html_nodes = self._extract_structure(tree.root_node, parse_source)
 
         except Exception as e:
             if self.show_errors:
                 print(f"HTML parsing error: {e}")
             if self.fallback_on_errors:
-                return self._fallback_extract(source_code)
-            return None
+                html_nodes = self._fallback_extract(parse_source)
+            else:
+                html_nodes = None
+
+        if template_result and template_result.template_nodes:
+            return merge_trees(
+                template_result.template_nodes,
+                html_nodes or [],
+            )
+
+        return html_nodes
 
     def _extract_structure(
         self, root: Node, source_code: bytes
@@ -750,6 +770,35 @@ class HTMLLanguage(BaseLanguage):
                         import_type="css_import",
                         imported_names=[],
                     ))
+
+        # Pattern 5: Template extends/include/import
+        # Jinja/Django: {% extends "base.html" %}, {% include "nav.html" %}
+        tpl_import_pattern = r'\{%-?\s*(extends|include|import|from)\s+["\']([^"\']+)["\']'
+        for match in re.finditer(tpl_import_pattern, content):
+            keyword = match.group(1)
+            target = match.group(2)
+            line_num = content[:match.start()].count("\n") + 1
+            imports.append(ImportInfo(
+                source_file=file_path,
+                target_module=target,
+                line=line_num,
+                import_type=f"template_{keyword}",
+                imported_names=[],
+            ))
+
+        # Blade: @extends('base'), @include('nav')
+        blade_import_pattern = r'@(extends|include|component)\s*\(\s*["\']([^"\']+)["\']'
+        for match in re.finditer(blade_import_pattern, content):
+            keyword = match.group(1)
+            target = match.group(2)
+            line_num = content[:match.start()].count("\n") + 1
+            imports.append(ImportInfo(
+                source_file=file_path,
+                target_module=target,
+                line=line_num,
+                import_type=f"template_{keyword}",
+                imported_names=[],
+            ))
 
         return imports
 

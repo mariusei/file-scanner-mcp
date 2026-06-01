@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="header">
+  <h1>{{ title }}</h1>
+</section>
+
+{% if user.is_admin %}
+<div id="admin-panel">
+  <h2>Admin</h2>
+  {% for item in items %}
+  <div class="item">
+    {{ item.name }}
+    {% if item.active %}
+    <span class="badge">Aktiv</span>
+    {# MERK: mangler endif for item.active #}
+  </div>
+  {# MERK: mangler endfor for items #}
+</div>
+{# MERK: mangler endif for user.is_admin #}
+
+{# Fristående lukketags uten åpning #}
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{# Stray endblock uten åpning #}
+{% endblock %}
+
+{# Tom blokk #}
+{% block sidebar %}{% endblock %}
+
+{# Blokk med bare whitespace #}
+{% block scripts %}
+
+{% endblock %}
+
+{# Nestet if uten else-avslutning ordentlig #}
+{% if a %}
+  {% if b %}
+    {% if c %}
+      <p>Deep</p>
+    {% endif %}
+  {# mangler endif for b #}
+{% endif %}
+
+{# Bare value-tags, ingen blokker #}
+<p>{{ foo }} og {{ bar.baz|default:"nada" }}</p>
+
+{# Tom for-løkke #}
+{% for x in empty_list %}{% endfor %}
+
+{# Multiline tag (uvanlig men gyldig i noen engines) #}
+{% if
+   very_long_condition
+   and another_condition
+%}
+<p>Multiline</p>
+{% endif %}
+
+{# Include med variabel sti (ikke streng-literal) #}
+{% include template_name %}
+
+{# Tag i HTML-attributt #}
+<div class="{% if active %}active{% endif %} wrapper" id="{{ dom_id }}">
+  <img src="{{ image_url }}" alt="{% if alt %}{{ alt }}{% else %}placeholder{% endif %}">
+</div>
+
+{# Kommentar som ser ut som en tag #}
+{# {% if false %}dette er ikke en ekte tag{% endif %} #}
+
+{# Blade-lignende syntax i en Jinja-fil (feil, men kan oppstå) #}
+<p>Not blade: @if(wrong)</p>

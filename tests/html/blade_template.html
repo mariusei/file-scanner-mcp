@@ -1,0 +1,25 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+  <h1>{{ $title }}</h1>
+
+  @if($user->isAdmin())
+    <div id="admin-panel">
+      <h2>Admin</h2>
+      @foreach($users as $u)
+        <div class="user-row">
+          <span>{{ $u->name }}</span>
+          @if($u->active)
+            <span class="badge active">Aktiv</span>
+          @else
+            <span class="badge inactive">Inaktiv</span>
+          @endif
+        </div>
+      @endforeach
+    </div>
+  @endif
+
+  @include('partials.footer')
+</div>
+@endsection
