@@ -17,10 +17,14 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Claude Code
 
 ```bash
+# Available in all your projects (recommended)
+claude mcp add --scope user scantool -- uvx scantool
+
+# Or just for the current project
 claude mcp add scantool -- uvx scantool
 ```
 
-That's it. Restart Claude Code and you're ready to go.
+Restart Claude Code and you're ready to go.
 
 ### Claude Desktop
 
