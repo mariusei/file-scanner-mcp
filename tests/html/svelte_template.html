@@ -1,0 +1,34 @@
+<script>
+  let items = [];
+  let loading = true;
+  let error = null;
+</script>
+
+<main>
+  <h1>Dashboard</h1>
+
+  {#if loading}
+    <div class="spinner">Laster...</div>
+  {:else if error}
+    <div class="error">
+      <p>{error.message}</p>
+    </div>
+  {:else}
+    <section id="items-list">
+      {#each items as item, index}
+        <article class="item-card">
+          <h2>{item.title}</h2>
+          {#if item.urgent}
+            <span class="badge urgent">Haster</span>
+          {/if}
+          <p>{item.description}</p>
+        </article>
+      {/each}
+    </section>
+  {/if}
+</main>
+
+<style>
+  .spinner { animation: spin 1s linear infinite; }
+  .error { color: red; }
+</style>
