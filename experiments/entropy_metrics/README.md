@@ -28,7 +28,16 @@ generasjon ligger i `selection_before.json` (opprinnelig metrikk),
 `selection_after.json` (betinget kompresjon, partisjonsbasert) og
 `selection_node_direct.json` (dagens).
 
-## Skjelett-dybde etter saliency (målt 2026-06-10, ikke integrert)
+## Skjelett-dybde etter saliency (målt og integrert 2026-06-10 som S6)
+
+> **Integrert:** scanner-annoteringen gir nå alle kandidatnoder
+> dybde-2-skjelett (`FileScanner.BROAD_TIER_DEPTH`), topp 20 % får full
+> dybde + verbatim-excerpt. `limit_skeleton_depth()` i `languages/base.py`
+> mapper innrykksbredder til nivåer per rang (virker for 1-space-AST,
+> tabs og 2/4-space). Compact-strategi (deklarativt innhold) dybdekuttes
+> aldri; skjeletter som etter kutt kun består av `…` droppes.
+> Målt total scan_file-output på 10 src-filer: 20,1k → 31,5k tokens
+> (+56 %, 39 % av full kilde) for 56,4 % vs 32,8 % fakta-dekning.
 
 `skeleton_depth_experiment.py` testet om gradert dybde (mer salient = dypere
 skjelett) gir flere synlige metode-fakta (unike kall-navn) per token.

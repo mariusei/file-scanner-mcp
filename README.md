@@ -210,11 +210,13 @@ example.py (1-57)
      "Main entry point."
 ```
 
-High-entropy (salient) functions additionally show their implementation as a
-condensed method skeleton in `⟨⟩`: control flow with conditions, calls and
-returns are kept, trivial statements fold to `…`. This conveys the *method*
-at roughly half the token cost of verbatim lines — pass `condense=False` to
-get the original line-numbered excerpts instead.
+Functions additionally show their implementation as a condensed method
+skeleton in `⟨⟩`: control flow with conditions, calls and returns are kept,
+trivial statements fold to `…`. Skeletons come in two tiers: the most
+salient functions (by entropy, uniqueness and centrality) get full depth,
+every other function gets a shallow depth-2 outline — measured as the best
+fact-coverage per token. Pass `condense=False` to get the original
+line-numbered excerpts (top tier only) instead.
 
 Condensation adapts to the language: imperative languages (Python, TypeScript,
 Go, Rust, Java, ...) get fold-by-default skeletons, declarative ones (CSS,

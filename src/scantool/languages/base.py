@@ -46,6 +46,30 @@ _PUNCT_ONLY_LINE = re.compile(r"^[\s)\]}>;,]*$")
 _BODY_FIELDS = ("body", "consequence", "block")
 
 
+def limit_skeleton_depth(skeleton: list[str], max_depth: int) -> list[str]:
+    """Cut skeleton lines nested deeper than max_depth levels.
+
+    Indentation widths are mapped to nesting levels by rank, so this works
+    for 1-space AST skeletons and tab/2/4-space generic skeletons alike.
+    Cut blocks leave a single "…" marker. Measured rationale: shallow
+    skeletons are fact-dense — see experiments/entropy_metrics/.
+    """
+    def width(line: str) -> int:
+        ws = line[: len(line) - len(line.lstrip())]
+        return len(ws.expandtabs(4))
+
+    levels = {w: rank for rank, w in enumerate(sorted({width(l) for l in skeleton}))}
+
+    out: list[str] = []
+    marker = " " * max_depth + "…"
+    for line in skeleton:
+        if levels[width(line)] < max_depth:
+            out.append(line)
+        elif not out or out[-1] != marker:
+            out.append(marker)
+    return out
+
+
 class BaseLanguage(ABC):
     """Unified base class for language support.
 

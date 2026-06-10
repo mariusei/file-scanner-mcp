@@ -125,3 +125,93 @@ class Manager:
         scores = [score for _, score in selected]
 
         assert scores == sorted(scores, reverse=True)
+
+
+class TestLimitSkeletonDepth:
+    def test_one_space_ast_skeleton(self):
+        from scantool.languages.base import limit_skeleton_depth
+
+        skeleton = [
+            "for item in items:",
+            " if item.valid:",
+            "  results.append(item)",
+            "  log.debug(item)",
+            " else:",
+            "  skipped += 1",
+            "return results",
+        ]
+
+        limited = limit_skeleton_depth(skeleton, 2)
+
+        assert limited == [
+            "for item in items:",
+            " if item.valid:",
+            "  …",
+            " else:",
+            "  …",
+            "return results",
+        ]
+
+    def test_tab_and_wide_indents_map_by_rank(self):
+        from scantool.languages.base import limit_skeleton_depth
+
+        skeleton = [
+            "for _, item := range items {",
+            "\tif item.Score > 0 {",
+            "\t\tresults = append(results, item)",
+            "\treturn nil",
+            "}",
+        ]
+
+        limited = limit_skeleton_depth(skeleton, 2)
+
+        assert "\t\tresults = append(results, item)" not in limited
+        assert "\tif item.Score > 0 {" in limited
+        assert "  …" in limited
+
+    def test_depth_within_limit_is_unchanged(self):
+        from scantool.languages.base import limit_skeleton_depth
+
+        skeleton = ["if x:", " return y"]
+
+        assert limit_skeleton_depth(skeleton, 2) == skeleton
+
+
+class TestTwoTierAnnotation:
+    def test_broad_tier_gets_shallow_skeleton_without_excerpt(self, tmp_path):
+        from scantool.scanner import FileScanner
+
+        source = "\n".join(
+            f'''\
+def transform_{i}(items, threshold):
+    results = []
+    for item in items:
+        if item.score > threshold * {i + 1}:
+            if item.kind == "strict_{i}":
+                results.append(normalize(item, mode="strict_{i}"))
+    return aggregate(results, weights=[0.{i}1, 0.{i}2])
+'''
+            for i in range(10)
+        )
+        path = tmp_path / "sample.py"
+        path.write_text(source)
+
+        structures = FileScanner().scan_file(str(path))
+
+        full_tier = [n for n in structures if n.code_excerpt is not None]
+        broad_tier = [n for n in structures
+                      if n.code_excerpt is None and n.code_skeleton is not None]
+
+        # 10 kandidater → topp 20 % = 2 i full tier, resten i bred tier
+        assert len(full_tier) == 2
+        assert len(broad_tier) == 8
+        # bred tier er dybdekuttet: ingen linjer dypere enn nivå 2
+        for node in broad_tier:
+            for line in node.code_skeleton:
+                indent = len(line) - len(line.lstrip())
+                assert indent <= 2, f"{node.name}: '{line}' er dypere enn nivå 2"
+        # full tier beholder full dybde (kildene har dybde-3-logikk)
+        assert any(
+            len(line) - len(line.lstrip()) >= 3
+            for node in full_tier for line in node.code_skeleton
+        )
