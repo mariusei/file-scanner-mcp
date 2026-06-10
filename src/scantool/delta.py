@@ -40,6 +40,47 @@ def node_key(node, parent_chain: str = "") -> str:
     return f"{parent_chain}/{node.type}:{node.name}"
 
 
+def node_hashes(structures, source_lines: list[str]) -> dict[str, str]:
+    """Fingerprint every named node by its source block — the shared
+    primitive for both session deltas and ref diffs."""
+    hashes: dict[str, str] = {}
+
+    def walk(nodes, chain: str):
+        for node in nodes or []:
+            if node.type != "file-info" and node.name:
+                key = node_key(node, chain)
+                # whitespace-normalized: trailing-space/blank-line edits are
+                # not structural changes
+                block = "\n".join(
+                    line.rstrip()
+                    for line in source_lines[node.start_line - 1:node.end_line]
+                    if line.strip()
+                )
+                hashes[key] = hashlib.sha1(block.encode()).hexdigest()
+                walk(node.children, key)
+            else:
+                walk(node.children, chain)
+
+    walk(structures, "")
+    return hashes
+
+
+def diff_nodes(previous: dict[str, str], current: dict[str, str]) -> NodeDiff:
+    """Structural change set between two node-fingerprint maps."""
+    diff = NodeDiff()
+    for key, digest in current.items():
+        if key not in previous:
+            diff.new.add(key)
+        elif previous[key] != digest:
+            diff.changed.add(key)
+        else:
+            diff.unchanged.add(key)
+    diff.removed = sorted(
+        key.rsplit(":", 1)[-1] for key in previous if key not in current
+    )
+    return diff
+
+
 class ScanMemory:
     """Remembers previous scans; answers "what changed since last time?"."""
 
@@ -59,23 +100,6 @@ class ScanMemory:
         except OSError:
             return None
 
-    @staticmethod
-    def _node_hashes(structures, source_lines: list[str]) -> dict[str, str]:
-        hashes: dict[str, str] = {}
-
-        def walk(nodes, chain: str):
-            for node in nodes or []:
-                if node.type != "file-info" and node.name:
-                    key = node_key(node, chain)
-                    block = "\n".join(source_lines[node.start_line - 1:node.end_line])
-                    hashes[key] = hashlib.sha1(block.encode()).hexdigest()
-                    walk(node.children, key)
-                else:
-                    walk(node.children, chain)
-
-        walk(structures, "")
-        return hashes
-
     def file_unchanged(self, path: str) -> Optional[int]:
         """Scan-sequence number of the previous identical scan, else None."""
         cached = self._files.get(path)
@@ -91,7 +115,7 @@ class ScanMemory:
         """Node-diff against the previous scan (None on first scan), then
         record the current state."""
         fingerprint = self._stat_fingerprint(path)
-        current = self._node_hashes(structures, source_lines)
+        current = node_hashes(structures, source_lines)
         previous = self._files.get(path)
 
         self._seq += 1
@@ -99,20 +123,7 @@ class ScanMemory:
 
         if previous is None:
             return None
-        prev_hashes = previous[1]
-
-        diff = NodeDiff()
-        for key, digest in current.items():
-            if key not in prev_hashes:
-                diff.new.add(key)
-            elif prev_hashes[key] != digest:
-                diff.changed.add(key)
-            else:
-                diff.unchanged.add(key)
-        diff.removed = sorted(
-            key.rsplit(":", 1)[-1] for key in prev_hashes if key not in current
-        )
-        return diff
+        return diff_nodes(previous[1], current)
 
 
 def apply_node_delta(structures, diff: NodeDiff) -> tuple[int, int]:

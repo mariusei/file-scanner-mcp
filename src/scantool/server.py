@@ -12,6 +12,7 @@ from mcp.types import TextContent
 from .code_health import analyze_health
 from .content_search import search_content, format_hits
 from .delta import ScanMemory, apply_node_delta
+from .ref_diff import diff_against_ref
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits
@@ -672,6 +673,45 @@ def scan_directory(
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
         return [TextContent(type="text", text=f"Error scanning directory: {e}")]
+
+
+@mcp.tool(
+    tags={"local", "diff", "review"},
+    description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions"
+)
+def scan_diff(
+    directory: str,
+    ref: str = "HEAD",
+    budget: Optional[int] = 1500
+) -> list[TextContent]:
+    """
+    Structural diff of the working tree against a git ref.
+
+    **When to use this vs other tools:**
+    - Use scan_diff() INSTEAD of git diff → review-oriented view: WHICH
+      functions/classes/sections are new, changed or removed, with their
+      condensed method skeletons — not line noise
+    - ref="HEAD" (default) shows uncommitted work; ref="main" shows the
+      whole branch; ref="HEAD~5" the last five commits
+
+    Per changed file: new/changed nodes carry [ny]/[endret] labels and show
+    code detail; unchanged nodes keep headers only; removed nodes are
+    listed by name. Files changed without structural impact (whitespace,
+    comments) are reported as exactly that. Works for any file type —
+    markdown diffs show changed sections.
+
+    Args:
+        directory: Directory inside the git repository to diff
+        ref: Git ref to compare the working tree against (default: HEAD)
+        budget: Approximate token cap per file's skeletons (default: 1500)
+
+    Returns:
+        Structural diff with per-node change labels
+    """
+    try:
+        return [TextContent(type="text", text=diff_against_ref(directory, ref, budget))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error diffing: {e}")]
 
 
 @mcp.tool(
