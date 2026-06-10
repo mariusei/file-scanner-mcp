@@ -58,7 +58,7 @@ def _annotate_churn(results: dict, directory: str) -> None:
 
 @mcp.tool(
     tags={"exploration", "overview", "analysis", "primary"},
-    description="Preview directory - architecture, hot functions, call graph, entry points for ALL file types (code, docs, markdown, config). One call replaces ls/find/grep (5-10s)"
+    description="Deep architecture analysis - entry points, hot functions, call graph, git activity (RICH output ~3-5k tokens; for first-time orientation of an unknown codebase. For targeted questions, search_structures or scan_directory are cheaper first calls)"
 )
 def preview_directory(
     directory: str,
@@ -379,7 +379,7 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan ANY file (code, markdown, text, HTML, config) - returns signatures, docstrings, and key code excerpts with line numbers. Richer than Read, USE BEFORE Read"
+    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass"
 )
 def scan_file(
     file_path: str,
@@ -525,7 +525,7 @@ def scan_file(
 
 @mcp.tool(
     tags={"local", "directory", "exploration"},
-    description="Scan directory - file tree with signatures, docstrings, code excerpts for ALL file types (code, docs, markdown, config). Replaces Glob"
+    description="Scan directory - file tree with one-line gists per file, code health and churn labels (cheap overview, good first call). Replaces Glob/ls for ALL file types"
 )
 def scan_directory(
     directory: str,
@@ -718,7 +718,7 @@ def scan_diff(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search across all file types - USE THIS INSTEAD of Grep: content_pattern finds text WITH its structural context (which function/class/section each hit lives in), name/type/decorator find structures"
+    description="Search across all file types - BEST FIRST CALL for targeted questions, USE INSTEAD of Grep: content_pattern finds text WITH structural context (enclosing function/class/section) plus leads to definitions; name/type/decorator find structures"
 )
 def search_structures(
     directory: str,

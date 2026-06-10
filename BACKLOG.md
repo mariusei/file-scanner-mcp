@@ -16,13 +16,11 @@ token-paritet eller bedre under budsjettpress. Bevis: harness 6/6 vs 5/6
 
 ## M1-kø (vedlikehold, prioritert)
 
-1. **Konsum-styring for agenter** — M2b-produktsignalet: scantool-agenter
-   brukte 1,5× flere verktøy-tokens fordi rike defaults inviterer konsum
-   (preview ≈ 4–5k). Tiltak: verktøybeskrivelser som dytter mot
-   glimt-først (scan_directory før preview) og budget-presets; vurder
-   default-budsjett på scan_file. Aksept: re-kjør 6 M2b-episoder med
-   oppdaterte beskrivelser → token-gapet lukkes uten kvalitetstap.
-   Bevis: experiments/benchmark/M2B.md, m2b/PROTOKOLL.md.
+1. ~~**Konsum-styring for agenter**~~ **LEVERT 2026-06-11**:
+   kostnadstransparente verktøybeskrivelser i server.py; akseptkriteriet
+   innfridd — token-gap 2,8× → 1,2× med kvalitet 86 % vs grep 67 %
+   (M2B.md addendum). Restnyanse: åpne arkitekturspørsmål taper litt på
+   økonomisering (sg-T5) — vurder oppgavebetinget styring senere.
 
 2. **Dogfooding-refaktor**: ~18 copy-pastede metoder på tvers av
    språkplugins, funnet av vår egen helse-flagging (extract_definitions

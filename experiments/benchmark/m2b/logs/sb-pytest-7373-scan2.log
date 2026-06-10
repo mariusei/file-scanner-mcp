@@ -1,0 +1,66 @@
+=== CALL: scantool scanfile /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py 1500 ===
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+   …
+   evalcache = config._store.setdefault(evalcache_key, default)
+   try:
+    return evalcache[expr]
+   except KeyError:
+    …
+    exprcode = _pytest._code.compile(expr, mode='eval')
+    evalcache[expr], x = eval(exprcode, d)
+    return x
+- MarkEvaluator @34
+  - __init__ (self, item: Item, name: str) -> None @35
+  - __bool__ (self) -> bool @41
+     return bool(self._get_marks())
+  - wasvalid (self) -> bool @45
+     return not hasattr(self, 'exc')
+  - _get_marks (self) -> List[Mark] @48
+     return list(self.item.iter_markers(name=self._mark_name))
+  - invalidraise (self, exc) -> Optional[bool] @51
+     raises = self.get('raises')
+     if not raises:
+      return None
+     return not isinstance(exc, raises)
+  - istrue (self) -> bool @57
+     try:
+      return self._istrue()
+     except TEST_OUTCOME:
+      self.exc = sys.exc_info()
+      if isinstance(self.exc[1], SyntaxError):
+       assert self.exc[1].offset is not None
+       msg = [' ' * (self.exc[1].offset + 4) + '^']
+       msg.append('SyntaxError: invalid syntax')
+      else:
+       msg = traceback.format_exception_only(*self.exc[:2])
+      fail('Error evaluat…' % (self._mark_name, self.expr, '\n'.join(…)), pytrace=False)
+  - _getglobals (self) -> Dict[str, object] @76
+     …
+     if hasattr(self.item, 'obj'):
+      d.update(self.item.obj.__globals__)
+     return d
+  - _istrue (self) -> bool @82
+     if hasattr(self, 'result'):
+      result = getattr(self, 'result')
+      return result
+     self._marks = self._get_marks()
+     if self._marks:
+      …
+      for mark in self._marks:
+       …
+     return False
+  - get (self, attr, default=None) @123
+     if self._mark is None:
+      return default
+     return self._mark.kwargs.get(attr, default)
+  - getexplanation (self) @128
+     expl = getattr(self, 'reason', None) or self.get('reason', None)
+     if not expl:
+      if not hasattr(self, 'expr'):
+       …
+      else:
+       …
+     return expl
