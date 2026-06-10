@@ -6,7 +6,8 @@ from typing import Optional
 
 
 def analyze_call_graph_simple(
-    data: bytes, partitions: list[dict], file_path: Optional[str] = None
+    data: bytes, partitions: list[dict], file_path: Optional[str] = None,
+    structures: Optional[list] = None
 ) -> list[float]:
     """
     Call graph analysis - returns centrality scores for partitions.
@@ -18,6 +19,8 @@ def analyze_call_graph_simple(
         data: Raw file bytes
         partitions: List of partition dicts with 'offset' and 'size' keys
         file_path: Optional file path to determine language (enables tree-sitter)
+        structures: Already-scanned StructureNode list — reused directly
+            instead of parsing the file a second time
 
     Returns:
         List of centrality scores (0.0-1.0) per partition
@@ -27,9 +30,11 @@ def analyze_call_graph_simple(
     except Exception:
         return [0.0] * len(partitions)
 
-    # Try tree-sitter extraction via languages/ if file_path provided
+    # Reuse caller's structures; otherwise tree-sitter scan via languages/
     entities = []
-    if file_path:
+    if structures is not None:
+        entities = _structures_to_entities(structures, data)
+    elif file_path:
         entities = _extract_entities_via_languages(data, file_path)
 
     # Fall back to regex if no entities found
@@ -85,25 +90,28 @@ def _extract_entities_via_languages(data: bytes, file_path: str) -> list[dict]:
         if structures is None:
             return []
 
-        # Convert StructureNode tree to flat entity list
-        entities = []
-        _flatten_structures(structures, data, entities)
-        return entities
+        return _structures_to_entities(structures, data)
 
     except Exception:
         # Any error - fall back to regex
         return []
 
 
+def _structures_to_entities(structures: list, data: bytes) -> list[dict]:
+    """Convert a StructureNode tree to a flat entity list with byte offsets."""
+    # Pre-compute line start offsets once — not per recursion level
+    line_starts = _compute_line_starts(data)
+    entities: list[dict] = []
+    _flatten_structures(structures, line_starts, entities)
+    return entities
+
+
 def _flatten_structures(
-    structures: list, data: bytes, entities: list[dict], depth: int = 0
+    structures: list, line_starts: list[int], entities: list[dict], depth: int = 0
 ) -> None:
     """Recursively flatten StructureNode tree to entity list with byte offsets."""
     if not structures:
         return
-
-    # Pre-compute line start offsets for byte offset calculation
-    line_starts = _compute_line_starts(data)
 
     for node in structures:
         # Skip non-callable types
@@ -126,7 +134,7 @@ def _flatten_structures(
 
         # Recurse into children
         if node.children:
-            _flatten_structures(node.children, data, entities, depth + 1)
+            _flatten_structures(node.children, line_starts, entities, depth + 1)
 
 
 def _compute_line_starts(data: bytes) -> list[int]:
