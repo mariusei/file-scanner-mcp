@@ -127,6 +127,58 @@ class Manager:
         assert scores == sorted(scores, reverse=True)
 
 
+class TestChurnWeighting:
+    """line_edits boosts actively-worked nodes in selection (weight 0.15)."""
+
+    TWINS = "\n".join(
+        f'''\
+def processor_{i}(items, threshold):
+    kept = [x for x in items if x.score > threshold * {i}]
+    return summarize(kept, mode="variant_{i}")
+
+'''
+        for i in range(6)
+    )
+
+    def _rank_of(self, name, line_edits):
+        data = self.TWINS.encode()
+        ranked = select_salient_nodes(data, scan(self.TWINS), top_percent=1.0,
+                                      line_edits=line_edits)
+        return [n.name for n, _ in ranked].index(name)
+
+    def test_edits_improve_rank(self):
+        # finn den lavest rangerte uten churn, gi den redigeringshistorikk
+        data = self.TWINS.encode()
+        ranked = select_salient_nodes(data, scan(self.TWINS), top_percent=1.0)
+        last_node = ranked[-1][0]
+        edits = {line: f"c{line}" for line in
+                 range(last_node.start_line, last_node.end_line + 1)}
+
+        base_rank = self._rank_of(last_node.name, None)
+        boosted_rank = self._rank_of(last_node.name, edits)
+
+        assert boosted_rank < base_rank
+
+    def test_uniform_edits_change_nothing(self):
+        data = self.TWINS.encode()
+        structures = scan(self.TWINS)
+
+        base = [n.name for n, _ in select_salient_nodes(data, structures, top_percent=1.0)]
+        uniform = {line: "c1" for line in range(1, self.TWINS.count("\n") + 2)}
+        boosted = [n.name for n, _ in select_salient_nodes(
+            data, structures, top_percent=1.0, line_edits=uniform)]
+
+        assert base == boosted
+
+    def test_no_line_edits_is_unchanged(self):
+        data = self.TWINS.encode()
+        structures = scan(self.TWINS)
+
+        assert ([n.name for n, _ in select_salient_nodes(data, structures, top_percent=1.0)]
+                == [n.name for n, _ in select_salient_nodes(
+                    data, structures, top_percent=1.0, line_edits=None)])
+
+
 class TestLimitSkeletonDepth:
     def test_one_space_ast_skeleton(self):
         from scantool.languages.base import limit_skeleton_depth

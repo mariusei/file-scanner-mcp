@@ -35,30 +35,6 @@ def _git_activity_section(directory: str) -> str:
     return format_activity(signals)
 
 
-def _annotate_node_edits(structures: list, line_map: dict[int, str]) -> None:
-    """Per-node edit counts from a blame line map. Labels are only set when
-    they discriminate — a uniform value across all nodes (e.g. a freshly
-    created file) repeats the file-level churn and carries no information."""
-    eligible: list[tuple] = []
-
-    def walk(nodes):
-        for node in nodes:
-            if node.type != "file-info" and node.name and node.end_line >= node.start_line:
-                commits = {line_map[line]
-                           for line in range(node.start_line, node.end_line + 1)
-                           if line in line_map}
-                eligible.append((node, len(commits)))
-            if node.children:
-                walk(node.children)
-
-    walk(structures)
-    if len({count for _, count in eligible}) <= 1:
-        return
-    for node, count in eligible:
-        if count:
-            node.recent_edits = count
-
-
 def _annotate_churn(results: dict, directory: str) -> None:
     """Inject per-file churn into file-info metadata; no-op without git."""
     signals = collect_git_signals(directory)
@@ -445,7 +421,10 @@ def scan_file(
         budget: Approximate token cap for skeleton content. The least salient
             functions degrade first (full depth → outline → header only), so
             output size becomes predictable for huge files while the most
-            important code keeps its depth (default: None = no cap)
+            important code keeps its depth (default: None = no cap).
+            Presets for the exploration funnel — use instead of grep:
+            budget=300 ≈ file preview (top functions only), budget=1500 ≈
+            compact overview, None = full two-tier detail
         output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -468,7 +447,14 @@ def scan_file(
         - validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
-        structures = scanner.scan_file(file_path, budget=budget)
+        # Git activity first — recent line edits feed saliency selection
+        # (weight 0.15 toward actively-worked nodes) and "[N edits/90d]"
+        # labels. Cold files (zero churn) skip the blame call; silently
+        # absent without git.
+        churn = file_churn(file_path)
+        line_edits = recent_line_edits(file_path) if churn else None
+
+        structures = scanner.scan_file(file_path, budget=budget, line_edits=line_edits)
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
@@ -477,16 +463,8 @@ def scan_file(
         if not structures:
             return [TextContent(type="text", text=f"{file_path} (empty file or no structure found)")]
 
-        # Git churn label on the file-info node; silently absent without git
-        if structures[0].type == "file-info" and structures[0].file_metadata is not None:
-            churn = file_churn(file_path)
-            if churn:
-                structures[0].file_metadata["churn_90d"] = churn
-                # per-node edit counts (blame-based) only when the file has
-                # any recent activity — saves a blame call on cold files
-                line_map = recent_line_edits(file_path)
-                if line_map:
-                    _annotate_node_edits(structures, line_map)
+        if churn and structures[0].type == "file-info" and structures[0].file_metadata is not None:
+            structures[0].file_metadata["churn_90d"] = churn
 
         # Format output
         if output_format == "json":
