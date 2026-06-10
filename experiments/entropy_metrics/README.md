@@ -28,6 +28,33 @@ generasjon ligger i `selection_before.json` (opprinnelig metrikk),
 `selection_after.json` (betinget kompresjon, partisjonsbasert) og
 `selection_node_direct.json` (dagens).
 
+## Kryssfil-dedup av skjeletter (målt 2026-06-10 — NULL-FUNN, ikke integrert)
+
+`dedup_experiment.py` målte potensialet i å vise repeterte skjelettmønstre
+én gang + referanser, på to nivåer: A = eksakte duplikater (tapsfri),
+B = form-duplikater med normaliserte identifikatorer (tapsfull — skjuler
+medlemmenes kall-navn, dvs. selve fakta-innholdet).
+
+| Repo | Nivå A (tapsfri) | Nivå B (tapsfull) |
+|---|---|---|
+| scantool/src (kunstig gunstig: 20 like språkfiler) | 3,0 % | 5,1 % |
+| isowords (ekte iOS/SwiftUI, 388 filer, 1609 noder) | **0,2 %** | 3,4 % |
+
+Selv i det mest dedup-vennlige repoet tenkelig er tapsfri besparelse 3 %;
+på ekte iOS-kode 0,2 %. Form-mønstrene i isowords er dessuten degenererte
+(flerlinje-init-signaturer som folder til `…` + `) {`), ikke meningsfulle
+mønstre. Forklaringen er at pipelinen allerede har skvist redundansen:
+skjelettene folder boilerplate *innad* i noder, betinget kompresjon
+nedprioriterer duplikater i *utvalget*, og dybde-2-outlines er så små
+(20–30 tokens) at referansekostnaden spiser gevinsten.
+
+**Konklusjon: ikke verdt kompleksiteten.** Målt hierarki av gevinster:
+notasjonsfrekvens (ASCII-bytte: −26 %) ≫ arkitektur (node-direkte/S6) ≫
+kryssfil-dedup (≤3 %).
+
+Bifunn: generisk skjelett på Swift med flerlinje-signaturer produserer
+støylinjer (`…` + `) {`) — forbedringskandidat i `_skeleton_lines`.
+
 ## Skjelett-dybde etter saliency (målt og integrert 2026-06-10 som S6)
 
 > **Integrert:** scanner-annoteringen gir nå alle kandidatnoder
