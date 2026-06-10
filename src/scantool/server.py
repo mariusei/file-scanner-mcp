@@ -10,7 +10,7 @@ from fastmcp import FastMCP
 from mcp.types import TextContent
 
 from .code_health import analyze_health
-from .content_search import search_content, format_hits
+from .content_search import search_content, format_hits, find_leads
 from .delta import ScanMemory, apply_node_delta
 from .ref_diff import diff_against_ref
 from .formatter import TreeFormatter
@@ -779,7 +779,9 @@ def search_structures(
             if name_pattern:
                 name_re = re.compile(name_pattern)
                 found = [h for h in found if h.node_name and name_re.search(h.node_name)]
-            return [TextContent(type="text", text=format_hits(found, content_pattern))]
+            leads = find_leads(found, results)
+            return [TextContent(type="text",
+                                text=format_hits(found, content_pattern, leads))]
 
         # Filter structures
         matching = {}

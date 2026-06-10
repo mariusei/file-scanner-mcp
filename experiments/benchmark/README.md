@@ -55,12 +55,20 @@ base). Forbered: `prepare_swebench.py`, kjør: `harness.py --swebench`.
 
 | Instans | scantool | grep | Margin |
 |---|---|---|---|
-| flask-4045 (blueprint-validering) | **3 079 / 1** | 11 212 / 1 | **3,6×** |
-| flask-5063 (routes/domener) | 5 066 / 2 | **3 119 / 3** | grep 1,6× |
-| requests-1963 (resolve_redirects) | 186 / 1 | 134 / 1 | ~uavgjort |
-| requests-2674 (urllib3-unntak) | **2 539 / 1** | 4 480 / 1 | **1,8×** |
-| pytest-5221 (fixture-scope) | **2 152 / 1** | 9 532 / 1 | **4,4×** |
-| pytest-7373 (skipif-caching) | 67 % (begge feiler) | **0 %** | scantool nærmest |
+| flask-4045 (blueprint-validering) | **3 221 / 1** | 11 212 / 1 | **3,5×** |
+| flask-5063 (routes/domener) | 5 205 / 2 | **3 119 / 3** | grep 1,7× |
+| requests-1963 (resolve_redirects) | 326 / 1 | 134 / 1 | ~uavgjort |
+| requests-2674 (urllib3-unntak) | **2 691 / 1** | 4 480 / 1 | **1,7×** |
+| pytest-5221 (fixture-scope) | **2 295 / 1** | 9 532 / 1 | **4,2×** |
+| pytest-7373 (skipif-caching) | **3 731 / 3 (100 %)** | 0 % etter 13 450 | **scantool løser, grep feiler** |
+
+**Etter spor-følging (leads): scantool 6/6, grep 5/6.** Leads-foten i
+innholdssøket («kalt i treffene, definert i annen fil») løste pytest-7373:
+sporene pekte rett på `mark/evaluate.py` (`MarkEvaluator@34`, `istrue@57`),
+og den kanoniske strategien følger første spor. Bivirkning på internal-backend:
+T4 (literal-oppgaven designet for grep-seier) vippes nå til scantool
+(2 892 vs 3 068) fordi sporet peker direkte på definisjonen — mekanismen
+er forklarlig, og T5 består som det ærlige tapet.
 
 **Benchmarken drev to produktfikser** (poenget med M2): brede søk i store
 repoer avslørte at (1) struktur-taket kuttet i filrekkefølge i stedet for

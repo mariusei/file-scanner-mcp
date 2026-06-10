@@ -96,7 +96,19 @@ def scantool_steps(task: Task):
     if top_file:
         yield f"scan_file({Path(top_file).name}, budget=2000)", \
             scan_file.fn(top_file, budget=2000)[0].text
+
+    # følg første spor (leads-foten) — det strukturelle hoppet til nabofilen
+    lead_file = _first_lead(out)
+    if lead_file and lead_file != top_file:
+        yield f"scan_file(spor: {Path(lead_file).name})", \
+            scan_file.fn(lead_file, budget=2000)[0].text
+
     yield "scan_directory", scan_directory.fn(task.directory)[0].text
+
+
+def _first_lead(output: str):
+    m = re.search(r"leads \(called in hits, defined elsewhere\): \w+ → (\S+)@\d+", output)
+    return m.group(1) if m else None
 
 
 def _first_path(output: str):
