@@ -113,6 +113,10 @@ class TreeFormatter:
         if node.recent_edits:
             parts.append(f"[{node.recent_edits} edits/90d]")
 
+        # Delta mode: new/changed vs previous scan
+        if node.delta_status:
+            parts.append(f"[{node.delta_status}]")
+
         # Add complexity indicator if enabled
         if self.show_complexity and node.complexity:
             complexity_str = self._format_complexity(node.complexity)
