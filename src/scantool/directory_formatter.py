@@ -58,15 +58,22 @@ class DirectoryFormatter:
             # If parsing fails, return empty string
             return ""
 
+    # One-line gist max length — measured at 57 facts/1k tokens, the most
+    # fact-dense representation in the pipeline (experiments/entropy_metrics/)
+    GLIMPSE_MAX_CHARS = 100
+
     def __init__(self, show_signatures: bool = True, show_decorators: bool = True,
                  show_docstrings: bool = True, show_complexity: bool = False,
-                 include_structures: bool = True, flatten_structures: bool = False):
+                 include_structures: bool = True, flatten_structures: bool = False,
+                 include_glimpse: bool = True):
         """
         Initialize directory formatter with display options.
 
         Args:
             flatten_structures: Show only top-level structures (classes/functions)
                                without nested children (methods). Reduces output by ~50%.
+            include_glimpse: One line per file with the most salient node's
+                             depth-1 skeleton gist (~25 tokens per code file)
         """
         self.show_signatures = show_signatures
         self.show_decorators = show_decorators
@@ -74,6 +81,42 @@ class DirectoryFormatter:
         self.show_complexity = show_complexity
         self.include_structures = include_structures
         self.flatten_structures = flatten_structures
+        self.include_glimpse = include_glimpse
+
+    @classmethod
+    def _glimpse_line(cls, structures) -> Optional[str]:
+        """One-line gist of the file's most salient node: its depth-1
+        skeleton joined, declaration line dropped (the tree already names
+        the node). None for files without skeletons (docs, config)."""
+        from .languages.base import limit_skeleton_depth
+
+        best = None
+        def walk(nodes):
+            nonlocal best
+            for node in nodes:
+                if (node.code_skeleton and node.saliency is not None
+                        and (best is None or node.saliency > best.saliency)):
+                    best = node
+                if node.children:
+                    walk(node.children)
+        walk(structures or [])
+        if best is None:
+            return None
+
+        # depth 2, not 1: generic skeletons carry the declaration as level 0,
+        # so their body starts one level deeper than Python's body-only
+        # skeletons — the char cap bounds the cost either way
+        lines = [line for line in limit_skeleton_depth(best.code_skeleton, 2)
+                 if line.strip() != "…"]
+        if lines and best.name and best.name.split("(")[0].strip() in lines[0]:
+            lines = lines[1:]  # declaration line repeats what the tree shows
+        if not lines:
+            return None
+
+        text = f"> {best.name}: " + " ; ".join(line.strip() for line in lines)
+        if len(text) > cls.GLIMPSE_MAX_CHARS:
+            text = text[:cls.GLIMPSE_MAX_CHARS - 1] + "…"
+        return text
 
     def format(self, base_dir: str, file_structures: dict[str, list[StructureNode]]) -> str:
         """
@@ -273,6 +316,10 @@ class DirectoryFormatter:
                             lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str} - {structure_list}")
                         else:
                             lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}")
+                        if self.include_glimpse:
+                            glimpse = self._glimpse_line(structures)
+                            if glimpse:
+                                lines.append(f"{prefix}{self.SPACE if is_last else self.VERTICAL} {glimpse}")
                     elif self.include_structures:
                         # Normal mode: show structures in tree below file
                         lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}")

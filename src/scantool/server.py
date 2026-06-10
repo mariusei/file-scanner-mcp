@@ -517,8 +517,12 @@ def scan_directory(
     For detailed view of a specific file (with methods, decorators, docstrings),
     use scan_file() instead.
 
-    ALWAYS shows structures in compact inline format:
+    ALWAYS shows structures in compact inline format, plus a one-line
+    glimpse of each file's most salient function (its condensed gist —
+    ~25 tokens per code file, so you rarely need grep to know what a
+    file actually does):
     - filename.py (1-100) - ClassName, function_name, AnotherClass
+       > main_function: drift = sum(...) ; for t in sorted(txns): ; return …
 
     Output ends with a CODE HEALTH section when there is something to say:
     - UNREFERENCED: definitions whose name appears nowhere else in the
