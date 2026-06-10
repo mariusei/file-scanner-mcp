@@ -95,6 +95,54 @@ class TestScanFileDelta:
         assert "alpha" in full and "beta" in full
 
 
+class TestMemoryTTL:
+    """En langlivet server krysser samtaler — delta må aldri referere
+    output en ny samtale ikke har sett. Minne eldre enn TTL = første scan."""
+
+    @staticmethod
+    def _age_memory(seconds: float):
+        for path, (fp, hashes, ts) in list(scan_memory._files.items()):
+            scan_memory._files[path] = (fp, hashes, ts - seconds)
+
+    def test_expired_memory_gives_full_rescan(self, tmp_path):
+        from scantool.delta import _MEMORY_TTL_SECONDS
+
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        _scan(path)
+        self._age_memory(_MEMORY_TTL_SECONDS + 1)
+
+        second = _scan(path)
+
+        assert "uendret siden" not in second
+        assert "alpha" in second and "beta" in second  # full output
+
+    def test_expired_memory_never_ghost_diffs(self, tmp_path):
+        """Endret fil + utløpt minne: full scan, ikke node-diff mot en
+        tilstand konsumenten aldri så."""
+        from scantool.delta import _MEMORY_TTL_SECONDS
+
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        _scan(path)
+        self._age_memory(_MEMORY_TTL_SECONDS + 1)
+        path.write_text(SOURCE_V2)
+
+        out = _scan(path)
+
+        assert "[endret]" not in out
+        assert "delta siden forrige scan" not in out
+
+    def test_unchanged_message_includes_age(self, tmp_path):
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        _scan(path)
+
+        second = _scan(path)
+
+        assert "sek siden" in second or "min siden" in second
+
+
 class TestScanDirectoryDelta:
     def test_all_unchanged_aggregates(self, tmp_path):
         (tmp_path / "a.py").write_text(SOURCE_V1)
