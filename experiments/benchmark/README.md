@@ -45,6 +45,36 @@ experiments/benchmark/harness.py`
 - Ett repo, fem oppgaver. v1.0-porten krever samme margin på repoer vi
   ikke har tunet mot, med flere oppgaver per kategori.
 
+## SWE-bench-suiten (eksternt forankret, 2026-06-10)
+
+Seks instanser fra SWE-bench Lite (flask, requests, pytest — repoene som
+brukes til LLM-agent-testing i praksis), sjekket ut på instansens
+base_commit. **Fasit = filene og funksjonene gullpatchen faktisk berørte**
+(mekanisk ekstrahert; navn patchen la til ekskluderes — de finnes ikke ved
+base). Forbered: `prepare_swebench.py`, kjør: `harness.py --swebench`.
+
+| Instans | scantool | grep | Margin |
+|---|---|---|---|
+| flask-4045 (blueprint-validering) | **3 079 / 1** | 11 212 / 1 | **3,6×** |
+| flask-5063 (routes/domener) | 5 066 / 2 | **3 119 / 3** | grep 1,6× |
+| requests-1963 (resolve_redirects) | 186 / 1 | 134 / 1 | ~uavgjort |
+| requests-2674 (urllib3-unntak) | **2 539 / 1** | 4 480 / 1 | **1,8×** |
+| pytest-5221 (fixture-scope) | **2 152 / 1** | 9 532 / 1 | **4,4×** |
+| pytest-7373 (skipif-caching) | 67 % (begge feiler) | **0 %** | scantool nærmest |
+
+**Benchmarken drev to produktfikser** (poenget med M2): brede søk i store
+repoer avslørte at (1) struktur-taket kuttet i filrekkefølge i stedet for
+relevans — nå rangeres tetteste filer/strukturer først, og (2) test-
+kataloger dominerte ren tetthetsranking — implementasjon rangeres nå foran
+tester. Før fiksene dekket scantool 3/6 oppgaver; etter: 5/6.
+
+Funn underveis, dokumentert for ærlighetens skyld: første query-valg for
+flask-5063 («subdomain») fantes ikke i koden ved base — feature-request-
+instanser krever begreper som eksisterer FØR fiksen; og fakta-ekstraksjon
+må ekskludere '+'-linjer (patchens nye navn er ufinnbare ved base).
+Rest-svakheten (pytest-7373, 67 %): kanonisk strategi følger ikke
+import-spor til nabofilen — en ekte agent ville tatt det fjerde kallet.
+
 ## Neste (M2b/M2c)
 
 - Flere repoer (klon ukjente åpne prosjekter) og 3–5 oppgaver per kategori

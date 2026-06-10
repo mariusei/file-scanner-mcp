@@ -45,6 +45,7 @@ class Task:
     query: str                # søkebegrep for begge verktøysett
     facts: list[str]          # distinkte substrings som MÅ være synlige
     description: str = ""
+    directory: str = DIR
 
 
 TASKS = [
@@ -81,21 +82,21 @@ def scantool_steps(task: Task):
                                  scan_directory, preview_directory)
 
     if task.kind == "overview":
-        yield "preview_directory(deep)", preview_directory.fn(DIR, depth="deep")[0].text
-        yield "scan_directory", scan_directory.fn(DIR)[0].text
+        yield "preview_directory(deep)", preview_directory.fn(task.directory, depth="deep")[0].text
+        yield "scan_directory", scan_directory.fn(task.directory)[0].text
         return
 
     if task.kind == "structure":
-        out = search_structures.fn(DIR, name_pattern=task.query)[0].text
+        out = search_structures.fn(task.directory, name_pattern=task.query)[0].text
     else:
-        out = search_structures.fn(DIR, content_pattern=task.query)[0].text
+        out = search_structures.fn(task.directory, content_pattern=task.query)[0].text
     yield f"search_structures({task.query!r})", out
 
     top_file = _first_path(out)
     if top_file:
         yield f"scan_file({Path(top_file).name}, budget=2000)", \
             scan_file.fn(top_file, budget=2000)[0].text
-    yield "scan_directory", scan_directory.fn(DIR)[0].text
+    yield "scan_directory", scan_directory.fn(task.directory)[0].text
 
 
 def _first_path(output: str):
@@ -110,18 +111,18 @@ def _first_path(output: str):
 
 def grep_steps(task: Task):
     if task.kind == "overview":
-        find = subprocess.run(["find", DIR, "-name", "*.py"],
+        find = subprocess.run(["find", task.directory, "-name", "*.py"],
                               capture_output=True, text=True).stdout
         yield "find *.py", find
         for name in ("README.md", "main.py"):
             hits = [l for l in find.split("\n") if l.endswith(name)]
-            path = hits[0] if hits else f"{DIR}/{name}"
+            path = hits[0] if hits else f"{task.directory}/{name}"
             if Path(path).is_file():
                 yield f"cat {name}", Path(path).read_text(errors="replace")
         return
 
     pattern = task.query if task.kind == "concept" else task.query.strip(".*$")
-    rg = subprocess.run(["grep", "-rn", "-i", pattern, DIR, "--include=*.py"],
+    rg = subprocess.run(["grep", "-rn", "-i", pattern, task.directory, "--include=*.py"],
                         capture_output=True, text=True).stdout
     yield f"grep -rni {pattern!r}", rg
 
@@ -152,6 +153,24 @@ def grep_steps(task: Task):
 
 # ── kjøring ──────────────────────────────────────────────────────────────
 
+def load_swebench_tasks() -> list[Task]:
+    """Eksternt forankrede oppgaver: fakta = filer og funksjoner som
+    SWE-bench-instansens gullpatch faktisk endret (mekanisk ekstrahert),
+    katalog = repoet sjekket ut på instansens base_commit."""
+    import json
+
+    tasks = []
+    for row in json.load(open("/tmp/swebench_tasks.json")):
+        directory = f"/tmp/swb/{row['instance_id']}"
+        if not Path(directory).is_dir():
+            continue
+        tasks.append(Task(
+            name=row["instance_id"], kind="concept", query=row["query"],
+            facts=row["facts"], description=row["title"], directory=directory,
+        ))
+    return tasks
+
+
 def run():
     try:
         import tiktoken
@@ -164,7 +183,8 @@ def run():
           f"{'tokens@full':>12s} {'dekning':>8s}")
     print("-" * 82)
 
-    for task in TASKS:
+    tasks = load_swebench_tasks() if "--swebench" in sys.argv else TASKS
+    for task in tasks:
         for label, steps in (("scantool", scantool_steps), ("grep", grep_steps)):
             accumulated = ""
             tokens = 0

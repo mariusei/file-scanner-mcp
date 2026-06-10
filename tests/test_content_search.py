@@ -84,6 +84,19 @@ class TestContentSearch:
         assert "6 | " in output
         assert "comp.py" in output
 
+    def test_densest_file_ranked_first(self, tmp_path):
+        """Caps must keep the most relevant structures — densest files first."""
+        results = scan(tmp_path, {
+            "aaa_sparse.py": "def one_mention():\n    return target_term()\n",
+            "zzz_dense.py": "\n".join(
+                f"def dense_{i}():\n    return target_term_{i}()\n" for i in range(4)
+            ).replace("target_term_", "target_term_x"),
+        })
+
+        found = search_content(results, "target_term")
+
+        assert "zzz_dense.py" in found[0].file  # tettest først, tross filnavn
+
     def test_hit_cap_per_node(self, tmp_path):
         body = "\n".join(f"    target_{i} = call_{i}()" for i in range(8))
         results = scan(tmp_path, {"many.py": f"def crowded():\n{body}\n"})
