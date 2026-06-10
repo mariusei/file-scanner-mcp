@@ -196,27 +196,29 @@ scan_file(
 
 ```
 example.py (1-57)
-├─ file-info: 1.4KB modified: 2 hours ago
-├─ imports: import statements (3-5)
-├─ class: DatabaseManager (8-26)
-│    "Manages database connections and queries."
-│  ├─ method: __init__ (self, connection_string: str) (11-13)
-│  ├─ method: connect (self) (15-17)
-│  │    "Establish database connection."
-│  └─ method: query (self, sql: str) -> list (24-26)
-│       "Execute a SQL query."
-│       ⟨return self.cursor.execute(sql).fetchall()⟩
-└─ function: main () (53-57)
-     "Main entry point."
+- file-info: 1.4KB modified: 2 hours ago
+- imports: import statements (3-5)
+- class: DatabaseManager (8-26)
+    "Manages database connections and queries."
+  - method: __init__ (self, connection_string: str) (11-13)
+  - method: connect (self) (15-17)
+      "Establish database connection."
+  - method: query (self, sql: str) -> list (24-26)
+      "Execute a SQL query."
+      return self.cursor.execute(sql).fetchall()
+- function: main () (53-57)
+    "Main entry point."
 ```
 
 Functions additionally show their implementation as a condensed method
-skeleton in `⟨⟩`: control flow with conditions, calls and returns are kept,
-trivial statements fold to `…`. Skeletons come in two tiers: the most
-salient functions (by entropy, uniqueness and centrality) get full depth,
-every other function gets a shallow depth-2 outline — measured as the best
-fact-coverage per token. Pass `condense=False` to get the original
-line-numbered excerpts (top tier only) instead.
+skeleton: pseudocode lines without line numbers where control flow with
+conditions, calls and returns are kept and trivial statements fold to `…`
+(verbatim lines always carry `N |` line numbers — that's how you tell them
+apart). Skeletons come in two tiers: the most salient functions (by entropy,
+uniqueness and centrality) get full depth, every other function gets a
+shallow depth-2 outline — measured as the best fact-coverage per token.
+Markers are plain ASCII because box-drawing glyphs cost 2-3 BPE tokens each.
+Pass `condense=False` to get line-numbered excerpts (top tier only) instead.
 
 Condensation adapts to the language: imperative languages (Python, TypeScript,
 Go, Rust, Java, ...) get fold-by-default skeletons, declarative ones (CSS,

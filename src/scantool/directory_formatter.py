@@ -10,11 +10,12 @@ from .languages import StructureNode
 class DirectoryFormatter:
     """Formats directory scans as hierarchical trees with code structures."""
 
-    # Tree drawing characters
-    BRANCH = "├─"
-    LAST_BRANCH = "└─"
-    VERTICAL = "│  "
-    SPACE = "   "
+    # Outline markers. ASCII bullets + plain indentation — box-drawing
+    # glyphs cost 2-3 BPE tokens each (see TreeFormatter)
+    BRANCH = "-"
+    LAST_BRANCH = "-"
+    VERTICAL = "  "
+    SPACE = "  "
 
     @staticmethod
     def _format_relative_time(iso_timestamp: str) -> str:

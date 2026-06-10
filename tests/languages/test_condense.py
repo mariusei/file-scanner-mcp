@@ -299,7 +299,8 @@ class TestFormatterRendering:
 
         output = TreeFormatter().format("x.py", [node])
 
-        assert "⟨return bar()⟩" in output
+        # skjelett vises som ren pseudokode uten linjenumre
+        assert "return bar()" in output
         assert "10 | def foo():" not in output
 
     def test_condense_false_renders_verbatim(self):
@@ -310,8 +311,8 @@ class TestFormatterRendering:
 
         output = TreeFormatter(condense=False).format("x.py", [node])
 
-        assert "⟨" not in output
         assert "10 | def foo():" in output
+        assert "11 |     return bar()" in output
 
     def test_verbatim_fallback_without_skeleton(self):
         node = self._node(code_excerpt=["def foo():", "    return 1 + 1"])
