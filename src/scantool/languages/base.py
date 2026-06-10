@@ -405,15 +405,24 @@ class BaseLanguage(ABC):
                 return []
             return self._structures_to_definitions(file_path, structures)
         except Exception:
-            return []
+            # Fallback to regex-based extraction
+            return self._extract_definitions_regex(file_path, content)
+
+    def _extract_definitions_regex(
+        self, file_path: str, content: str
+    ) -> list[DefinitionInfo]:
+        """Regex fallback when scan() fails. Default: no fallback."""
+        return []
 
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
     ) -> list[CallInfo]:
         """Extract function/method calls from file.
 
-        Default implementation returns empty list.
-        Override to enable call graph analysis.
+        Default implementation parses with tree-sitter and delegates to
+        _extract_calls_tree_sitter, with _extract_calls_regex as fallback
+        for malformed files. Languages without a parser or those hooks
+        yield no calls (no call graph).
 
         Args:
             file_path: Relative path to the file
@@ -423,7 +432,17 @@ class BaseLanguage(ABC):
         Returns:
             List of CallInfo objects
         """
-        return []
+        parser = getattr(self, "parser", None)
+        ts_hook = getattr(self, "_extract_calls_tree_sitter", None)
+        if parser is None or ts_hook is None:
+            return []
+        try:
+            source_bytes = content.encode("utf-8")
+            tree = parser.parse(source_bytes)
+            return ts_hook(file_path, tree.root_node, source_bytes, definitions)
+        except Exception:
+            regex_hook = getattr(self, "_extract_calls_regex", None)
+            return regex_hook(file_path, content, definitions) if regex_hook else []
 
     def _structures_to_definitions(
         self, file_path: str, structures: list[StructureNode], parent: str = None
@@ -578,6 +597,36 @@ class BaseLanguage(ABC):
             return source_code[node.start_byte:node.end_byte].decode("utf-8")
         except (UnicodeDecodeError, AttributeError):
             return source_code[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+
+    def _get_ancestors(self, root, target) -> list:
+        """Get all ancestor nodes of a target node."""
+        ancestors = []
+
+        def find_path(node, path: list) -> bool:
+            if node == target:
+                ancestors.extend(path)
+                return True
+            for child in node.children:
+                if find_path(child, path + [node]):
+                    return True
+            return False
+
+        find_path(root, [])
+        return ancestors
+
+    def _handle_import(self, node, parent_structures: list):
+        """Group import statements together."""
+        if not parent_structures or parent_structures[-1].type != "imports":
+            import_node = StructureNode(
+                type="imports",
+                name="import statements",
+                start_line=node.start_point[0] + 1,
+                end_line=node.end_point[0] + 1
+            )
+            parent_structures.append(import_node)
+        else:
+            # Extend the end line of the existing import group
+            parent_structures[-1].end_line = node.end_point[0] + 1
 
     def _normalize_signature(self, signature: str) -> str:
         """Normalize a signature to single line for tree formatting."""

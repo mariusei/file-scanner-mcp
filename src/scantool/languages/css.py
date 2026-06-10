@@ -746,19 +746,6 @@ class CSSLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract definitions by reusing scan() output.
-
-        For CSS, definitions include rule sets, media queries, keyframes, etc.
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions(file_path, structures)
-        except Exception:
-            return []
-
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
     ) -> list[CallInfo]:

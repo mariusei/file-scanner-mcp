@@ -749,19 +749,6 @@ class SwiftLanguage(BaseLanguage):
         signature = "".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
 
-    def _handle_import(self, node: Node, parent_structures: list):
-        """Group import statements together."""
-        if not parent_structures or parent_structures[-1].type != "imports":
-            import_node = StructureNode(
-                type="imports",
-                name="import statements",
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
-            )
-            parent_structures.append(import_node)
-        else:
-            parent_structures[-1].end_line = node.end_point[0] + 1
-
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
@@ -1205,19 +1192,6 @@ class SwiftLanguage(BaseLanguage):
             )
 
         return definitions
-
-    def extract_calls(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Extract function/method calls using tree-sitter."""
-        try:
-            source_bytes = content.encode("utf-8")
-            tree = self.parser.parse(source_bytes)
-            return self._extract_calls_tree_sitter(
-                file_path, tree.root_node, source_bytes, definitions
-            )
-        except Exception:
-            return self._extract_calls_regex(file_path, content, definitions)
 
     def _extract_calls_tree_sitter(
         self,

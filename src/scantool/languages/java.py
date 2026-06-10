@@ -505,20 +505,6 @@ class JavaLanguage(BaseLanguage):
             )
             parent_structures.append(package_node)
 
-    def _handle_import(self, node: Node, parent_structures: list):
-        """Group import statements together."""
-        if not parent_structures or parent_structures[-1].type != "imports":
-            import_node = StructureNode(
-                type="imports",
-                name="import statements",
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
-            )
-            parent_structures.append(import_node)
-        else:
-            # Extend the end line of the existing import group
-            parent_structures[-1].end_line = node.end_point[0] + 1
-
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
@@ -765,21 +751,6 @@ class JavaLanguage(BaseLanguage):
     # ===========================================================================
     # Semantic Analysis - Layer 2
     # ===========================================================================
-
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract class/method definitions by reusing scan() output.
-
-        This is the key optimization: instead of re-parsing with tree-sitter,
-        we convert the StructureNode output from scan() to DefinitionInfo.
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions(file_path, structures)
-        except Exception:
-            # Fallback to regex-based extraction
-            return self._extract_definitions_regex(file_path, content)
 
     def _extract_definitions_regex(
         self, file_path: str, content: str
