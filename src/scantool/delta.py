@@ -17,13 +17,27 @@ KONTRAKT:
   - Delta refererer KUN til hva som er likt forrige output — aldri en
     gjetning. Output sier alltid hvordan man får alt (delta=False),
     fordi konsumentens kontekst kan være komprimert bort.
-  - Første scan av en fil er alltid full. Cache lever i serverprosessen.
+  - Første scan av en fil er alltid full.
+  - Minnet er ALDERSBEGRENSET: en langlivet serverprosess (HTTP, gjenbrukt
+    stdio) krysser samtaler, og delta må aldri referere output en ny
+    samtale aldri har sett. Oppføringer eldre enn TTL behandles som
+    første scan, og uendret-meldinger oppgir alderen.
 """
 
 import hashlib
 import os
+import time
 from dataclasses import dataclass, field
 from typing import Optional
+
+# Innen-økt-iterasjon bevares; kryss-samtale-spøkelser dør
+_MEMORY_TTL_SECONDS = 30 * 60
+
+
+def format_age(seconds: float) -> str:
+    if seconds < 60:
+        return f"{int(seconds)} sek"
+    return f"{int(seconds / 60)} min"
 
 
 @dataclass
@@ -85,12 +99,10 @@ class ScanMemory:
     """Remembers previous scans; answers "what changed since last time?"."""
 
     def __init__(self):
-        self._files: dict[str, tuple] = {}  # path -> (stat_fp, {key: hash}, seq)
-        self._seq = 0
+        self._files: dict[str, tuple] = {}  # path -> (stat_fp, {key: hash}, recorded_at)
 
     def clear(self) -> None:
         self._files.clear()
-        self._seq = 0
 
     @staticmethod
     def _stat_fingerprint(path: str) -> Optional[tuple]:
@@ -100,14 +112,19 @@ class ScanMemory:
         except OSError:
             return None
 
-    def file_unchanged(self, path: str) -> Optional[int]:
-        """Scan-sequence number of the previous identical scan, else None."""
+    def file_unchanged(self, path: str) -> Optional[float]:
+        """Age in seconds of the previous identical scan — None if changed,
+        unseen, or the memory has expired (TTL)."""
         cached = self._files.get(path)
         if cached is None:
             return None
+        age = time.time() - cached[2]
+        if age > _MEMORY_TTL_SECONDS:
+            del self._files[path]
+            return None
         fingerprint = self._stat_fingerprint(path)
         if fingerprint is not None and fingerprint == cached[0]:
-            return cached[2]
+            return age
         return None
 
     def diff_and_record(self, path: str, structures,
@@ -118,11 +135,10 @@ class ScanMemory:
         current = node_hashes(structures, source_lines)
         previous = self._files.get(path)
 
-        self._seq += 1
-        self._files[path] = (fingerprint, current, self._seq)
+        self._files[path] = (fingerprint, current, time.time())
 
-        if previous is None:
-            return None
+        if previous is None or time.time() - previous[2] > _MEMORY_TTL_SECONDS:
+            return None  # utløpt minne = første scan, aldri spøkelses-diff
         return diff_nodes(previous[1], current)
 
 

@@ -11,7 +11,7 @@ from mcp.types import TextContent
 
 from .code_health import analyze_health
 from .content_search import search_content, format_hits, find_leads
-from .delta import ScanMemory, apply_node_delta
+from .delta import ScanMemory, apply_node_delta, format_age
 from .ref_diff import diff_against_ref
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
@@ -463,12 +463,12 @@ def scan_file(
     try:
         # Delta: unchanged since this session's previous scan → one line
         if delta and output_format != "json":
-            prev_seq = scan_memory.file_unchanged(file_path)
-            if prev_seq is not None:
+            age = scan_memory.file_unchanged(file_path)
+            if age is not None:
                 return [TextContent(type="text", text=(
-                    f"{file_path}: uendret siden forrige scan i denne økten "
-                    f"— strukturen er identisk med forrige svar "
-                    f"(delta=False for full output)"))]
+                    f"{file_path}: uendret siden forrige scan "
+                    f"(for {format_age(age)} siden) — strukturen er identisk "
+                    f"med forrige svar (delta=False for full output)"))]
 
         # Git activity first — recent line edits feed saliency selection
         # (weight 0.15 toward actively-worked nodes) and "[N edits/90d]"
