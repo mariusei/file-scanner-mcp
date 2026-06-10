@@ -180,44 +180,37 @@ class CodeMap:
         Returns:
             List of relative file paths
         """
+        import os
+
         from .languages.skip_patterns import should_skip_directory, should_skip_file
 
         files = []
 
-        for path in self.directory.rglob("*"):
-            # Only process files
-            if not path.is_file():
-                continue
+        # os.walk with in-place dir pruning: ignored trees (node_modules,
+        # .venv, gitignored dirs) are never descended into — rglob walked
+        # them all and filtered per file afterwards
+        for root, dirs, names in os.walk(self.directory):
+            rel_root = os.path.relpath(root, self.directory)
 
-            # Tier 1: Skip common noise directories (fast check)
-            # Check all parts of path for skip patterns
-            if any(should_skip_directory(part) for part in path.parts):
-                continue
-
-            # Tier 1: Skip common noise files
-            if should_skip_file(path.name):
-                continue
-
-            # Check gitignore
-            if self.gitignore:
-                try:
-                    rel_path = str(path.relative_to(self.directory))
-                except ValueError:
+            kept_dirs = []
+            for dir_name in dirs:
+                if should_skip_directory(dir_name):
                     continue
-
-                if self.gitignore.matches(rel_path, False):
+                rel_dir = dir_name if rel_root == "." else f"{rel_root}/{dir_name}"
+                if self.gitignore and self.gitignore.matches(rel_dir, True):
                     continue
-            else:
-                try:
-                    rel_path = str(path.relative_to(self.directory))
-                except ValueError:
+                kept_dirs.append(dir_name)
+            dirs[:] = kept_dirs
+
+            for name in names:
+                if should_skip_file(name):
                     continue
-
-            # Safety limit
-            if len(files) >= self.max_files:
-                break
-
-            files.append(rel_path)
+                rel_path = name if rel_root == "." else f"{rel_root}/{name}"
+                if self.gitignore and self.gitignore.matches(rel_path, False):
+                    continue
+                if len(files) >= self.max_files:
+                    return files
+                files.append(rel_path)
 
         return files
 

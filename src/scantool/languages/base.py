@@ -586,26 +586,28 @@ class BaseLanguage(ABC):
         normalized = signature.replace('\n', ' ').replace('\r', ' ')
         return ' '.join(normalized.split())
 
-    def _count_error_nodes(self, node) -> int:
-        """Count ERROR nodes in tree (for fallback detection)."""
-        count = 1 if node.type == "ERROR" else 0
-        for child in node.children:
-            count += self._count_error_nodes(child)
-        return count
-
-    def _count_nodes(self, node) -> int:
-        """Count all nodes in tree."""
-        count = 1
-        for child in node.children:
-            count += self._count_nodes(child)
-        return count
+    # Error-ratio sample size for fallback detection. Full trees can run to
+    # millions of nodes (a 4MB generated markdown table is 1.3M nodes) and
+    # the ratio stabilizes long before this.
+    _FALLBACK_SAMPLE_LIMIT = 2000
 
     def _should_use_fallback(self, root_node) -> bool:
-        """Determine if we should use regex fallback due to too many errors."""
+        """Determine if we should use regex fallback due to too many errors.
+
+        Single walk with early exit — the previous implementation walked the
+        entire tree twice and dominated scan time on table-heavy markdown.
+        """
         if not self.fallback_on_errors:
             return False
-        total = self._count_nodes(root_node)
-        errors = self._count_error_nodes(root_node)
+        total = 0
+        errors = 0
+        stack = [root_node]
+        while stack and total < self._FALLBACK_SAMPLE_LIMIT:
+            node = stack.pop()
+            total += 1
+            if node.type == "ERROR":
+                errors += 1
+            stack.extend(node.children)
         return total > 0 and (errors / total) > 0.5
 
     def _calculate_complexity(self, node) -> dict:

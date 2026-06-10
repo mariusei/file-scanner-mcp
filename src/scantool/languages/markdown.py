@@ -77,9 +77,17 @@ class MarkdownLanguage(BaseLanguage):
     # Structure Scanning (from MarkdownScanner)
     # ===========================================================================
 
+    # Above this size, generated content (report tables, exports) dominates
+    # and tree-sitter parsing costs hundreds of ms per pass — the regex
+    # fallback finds the same headings in a fraction of the time
+    _TREE_SITTER_BYTE_LIMIT = 1_000_000
+
     def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
         """Scan Markdown source and extract structure with metadata."""
         try:
+            if len(source_code) > self._TREE_SITTER_BYTE_LIMIT:
+                return self._fallback_extract(source_code)
+
             tree = self.parser.parse(source_code)
 
             # Check if we should use fallback due to too many errors
@@ -169,6 +177,14 @@ class MarkdownLanguage(BaseLanguage):
                     heading_stack[-1][1].children.append(code_block)
                 else:
                     structures.append(code_block)
+                return
+
+            # Block containers that can never hold headings or code blocks —
+            # generated reports carry pipe tables with hundreds of thousands
+            # of cell/delimiter tokens, and descending into them dominated
+            # scan time (4MB markdown = 1.3M nodes, 99% table tokens)
+            elif node.type in ("pipe_table", "table", "paragraph",
+                               "html_block", "thematic_break"):
                 return
 
             # Continue traversing for other nodes
