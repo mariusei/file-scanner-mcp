@@ -187,7 +187,9 @@ scan_file(
     show_decorators=True,      # Include @decorator annotations
     show_docstrings=True,      # Include first line of docstrings
     show_complexity=False,     # Show complexity metrics
-    condense=True,             # Condensed ⟨skeleton⟩ for salient code (set False for verbatim lines)
+    condense=True,             # Condensed skeletons (set False for verbatim lines)
+    budget=None,               # Approx token cap for skeletons — least salient
+                               # functions degrade first, output stays predictable
     output_format="tree"       # "tree" or "json"
 )
 ```

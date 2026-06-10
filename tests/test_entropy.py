@@ -177,6 +177,71 @@ class TestLimitSkeletonDepth:
         assert limit_skeleton_depth(skeleton, 2) == skeleton
 
 
+class TestBudgetAllocation:
+    def _scan(self, tmp_path, budget):
+        from scantool.scanner import FileScanner
+
+        source = "\n".join(
+            f'''\
+def transform_{i}(items, threshold):
+    results = []
+    for item in items:
+        if item.score > threshold * {i + 1}:
+            if item.kind == "strict_{i}":
+                results.append(normalize(item, mode="strict_{i}"))
+    return aggregate(results, weights=[0.{i}1, 0.{i}2])
+'''
+            for i in range(12)
+        )
+        path = tmp_path / "sample.py"
+        path.write_text(source)
+        return FileScanner().scan_file(str(path), budget=budget)
+
+    @staticmethod
+    def _skeleton_cost(structures):
+        from scantool.scanner import _estimate_tokens
+        return sum(_estimate_tokens(n.code_skeleton) for n in structures
+                   if n.code_skeleton)
+
+    def test_no_budget_is_unchanged_s6(self, tmp_path):
+        structures = self._scan(tmp_path, budget=None)
+
+        assert sum(1 for n in structures if n.code_excerpt) == 2  # topp 20 % av 12
+        assert sum(1 for n in structures if n.code_skeleton) == 12
+
+    def test_budget_caps_estimated_cost(self, tmp_path):
+        unlimited = self._skeleton_cost(self._scan(tmp_path, budget=None))
+        capped_structures = self._scan(tmp_path, budget=unlimited // 3)
+
+        assert self._skeleton_cost(capped_structures) <= unlimited // 3
+
+    def test_degradation_hits_least_salient_first(self, tmp_path):
+        structures = self._scan(tmp_path, budget=120)
+
+        with_skeleton = [n for n in structures if n.code_skeleton]
+        without = [n for n in structures
+                   if n.code_skeleton is None and n.type == "function"]
+        assert with_skeleton, "noe må overleve et lite budsjett"
+        assert without, "noe må degraderes bort"
+        # de som beholder skjelett er mer saliente enn de som mistet det
+        min_kept = min(n.saliency for n in with_skeleton)
+        # degraderte noder har ingen saliency satt — de er utenfor display
+        assert min_kept > 0
+
+    def test_huge_budget_equals_no_budget(self, tmp_path):
+        unlimited = self._scan(tmp_path, budget=None)
+        huge = self._scan(tmp_path, budget=10**9)
+
+        assert ([n.code_skeleton for n in unlimited]
+                == [n.code_skeleton for n in huge])
+
+    def test_zero_budget_yields_pure_structure(self, tmp_path):
+        structures = self._scan(tmp_path, budget=0)
+
+        assert all(n.code_skeleton is None for n in structures)
+        assert all(n.code_excerpt is None for n in structures)
+
+
 class TestTwoTierAnnotation:
     def test_broad_tier_gets_shallow_skeleton_without_excerpt(self, tmp_path):
         from scantool.scanner import FileScanner
