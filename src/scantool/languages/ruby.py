@@ -36,6 +36,8 @@ class RubyLanguage(BaseLanguage):
     - extract_calls(): Find method calls (not fully implemented)
     """
 
+    CONDENSE_STRATEGY = "skeleton"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

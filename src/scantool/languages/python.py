@@ -8,7 +8,10 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import ast
+import copy
 import re
+import textwrap
 from typing import Optional
 from pathlib import Path
 
@@ -118,6 +121,29 @@ class PythonLanguage(BaseLanguage):
                 start_line=1,
                 end_line=1
             )]
+
+    def condense_excerpt(self, excerpt_lines: list[str]) -> Optional[list[str]]:
+        """Condense excerpt to a method skeleton via Python AST.
+
+        Returns None (verbatim fallback) when the excerpt doesn't parse,
+        e.g. broken or partial code.
+        """
+        source = textwrap.dedent("\n".join(excerpt_lines))
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return None
+
+        body = tree.body
+        # Single def/class: skeleton of its body only — the header line and
+        # docstring are already shown in the structure tree
+        if len(body) == 1 and isinstance(
+            body[0], (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        ):
+            body = body[0].body
+        body = _strip_docstring(body)
+
+        return _skeleton_stmts(body, 0) or None
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
@@ -773,3 +799,183 @@ class PythonLanguage(BaseLanguage):
             return f"  {ep.file}:{ep.name}"
         else:
             return super().format_entry_point(ep)
+
+
+# ===========================================================================
+# Excerpt condensation helpers (AST-based method skeleton)
+# ===========================================================================
+# Keeps the information-bearing parts of a salient excerpt (control flow with
+# conditions, calls, arithmetic, return/raise), folds trivial statements to
+# "…". Measured at ~47% of verbatim token cost with 100% call-name retention
+# (see experiments/condensation/).
+
+_MAX_EXPR_LEN = 60
+
+_AUG_OP_SYMBOLS = {
+    ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.Div: "/",
+    ast.FloorDiv: "//", ast.Mod: "%", ast.Pow: "**", ast.MatMult: "@",
+    ast.BitOr: "|", ast.BitAnd: "&", ast.BitXor: "^",
+    ast.LShift: "<<", ast.RShift: ">>",
+}
+
+
+class _ShortenLiterals(ast.NodeTransformer):
+    """Shortens lambda bodies and long string literals — call names survive."""
+
+    def visit_Lambda(self, node):
+        return ast.Name(id="λ")
+
+    def visit_Constant(self, node):
+        if isinstance(node.value, str) and len(node.value) > 16:
+            return ast.Constant(value=node.value[:13] + "…")
+        return node
+
+
+class _ElideNestedArgs(ast.NodeTransformer):
+    """Replaces arguments of nested calls with … — the call name survives."""
+
+    def __init__(self):
+        self.depth = 0
+
+    def visit_Call(self, node):
+        node.func = self.visit(node.func)
+        self.depth += 1
+        if self.depth > 1:
+            node.args = [ast.Name(id="…")] if (node.args or node.keywords) else []
+            node.keywords = []
+        else:
+            node.args = [self.visit(a) for a in node.args]
+            node.keywords = [self.visit(k) for k in node.keywords]
+        self.depth -= 1
+        return node
+
+
+def _strip_docstring(body: list[ast.stmt]) -> list[ast.stmt]:
+    """Remove a leading docstring statement (shown in the structure tree)."""
+    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+        return body[1:]
+    return body
+
+
+def _trunc(expr: ast.AST) -> str:
+    """Render an expression compactly, eliding rather than tail-chopping."""
+    try:
+        text = " ".join(ast.unparse(expr).split())
+        if len(text) <= _MAX_EXPR_LEN:
+            return text
+        short = _ShortenLiterals().visit(copy.deepcopy(expr))
+        text = " ".join(ast.unparse(short).split())
+        if len(text) <= _MAX_EXPR_LEN:
+            return text
+        short = _ElideNestedArgs().visit(short)
+        text = " ".join(ast.unparse(short).split())
+        if len(text) <= _MAX_EXPR_LEN * 2:  # roomier limit after elision
+            return text
+        return text[: _MAX_EXPR_LEN - 1] + "…"
+    except Exception:
+        return "…"
+
+
+def _has_substance(value: ast.AST) -> bool:
+    """A statement is kept if its RHS carries method information: calls,
+    arithmetic, comparisons, conditional expressions or comprehensions."""
+    for sub in ast.walk(value):
+        if isinstance(sub, (ast.Call, ast.BinOp, ast.BoolOp, ast.Compare,
+                            ast.IfExp, ast.ListComp, ast.SetComp,
+                            ast.DictComp, ast.GeneratorExp)):
+            return True
+    return False
+
+
+def _skeleton_stmts(stmts: list[ast.stmt], depth: int) -> list[str]:
+    """Recursively render statements as skeleton lines (1 space per level)."""
+    out: list[str] = []
+    ind = " " * depth
+
+    def emit(text: str) -> None:
+        out.append(f"{ind}{text}")
+
+    def fold() -> None:
+        if not out or out[-1] != f"{ind}…":
+            emit("…")
+
+    for stmt in stmts:
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            emit(f"def {stmt.name}(…):")
+            out.extend(_skeleton_stmts(_strip_docstring(stmt.body), depth + 1))
+        elif isinstance(stmt, ast.ClassDef):
+            emit(f"class {stmt.name}:")
+            out.extend(_skeleton_stmts(_strip_docstring(stmt.body), depth + 1))
+        elif isinstance(stmt, ast.If):
+            emit(f"if {_trunc(stmt.test)}:")
+            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            orelse = stmt.orelse
+            while len(orelse) == 1 and isinstance(orelse[0], ast.If):
+                emit(f"elif {_trunc(orelse[0].test)}:")
+                out.extend(_skeleton_stmts(orelse[0].body, depth + 1))
+                orelse = orelse[0].orelse
+            if orelse:
+                emit("else:")
+                out.extend(_skeleton_stmts(orelse, depth + 1))
+        elif isinstance(stmt, (ast.For, ast.AsyncFor)):
+            emit(f"for {_trunc(stmt.target)} in {_trunc(stmt.iter)}:")
+            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+        elif isinstance(stmt, ast.While):
+            emit(f"while {_trunc(stmt.test)}:")
+            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+        elif isinstance(stmt, (ast.With, ast.AsyncWith)):
+            items = ", ".join(
+                _trunc(item.context_expr)
+                + (f" as {_trunc(item.optional_vars)}" if item.optional_vars else "")
+                for item in stmt.items
+            )
+            emit(f"with {items}:")
+            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+        elif isinstance(stmt, ast.Try):
+            emit("try:")
+            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            for handler in stmt.handlers:
+                exc = f" {_trunc(handler.type)}" if handler.type else ""
+                if handler.name:
+                    exc += f" as {handler.name}"
+                emit(f"except{exc}:")
+                out.extend(_skeleton_stmts(handler.body, depth + 1))
+            if stmt.finalbody:
+                emit("finally:")
+                out.extend(_skeleton_stmts(stmt.finalbody, depth + 1))
+        elif isinstance(stmt, ast.Match):
+            emit(f"match {_trunc(stmt.subject)}:")
+            for case in stmt.cases:
+                emit(f" case {_trunc(case.pattern)}:")
+                out.extend(_skeleton_stmts(case.body, depth + 2))
+        elif isinstance(stmt, ast.Return):
+            emit(f"return {_trunc(stmt.value)}" if stmt.value else "return")
+        elif isinstance(stmt, ast.Raise):
+            emit(f"raise {_trunc(stmt.exc)}" if stmt.exc else "raise")
+        elif isinstance(stmt, ast.Assert):
+            emit(f"assert {_trunc(stmt.test)}")
+        elif isinstance(stmt, (ast.Break, ast.Continue)):
+            emit("break" if isinstance(stmt, ast.Break) else "continue")
+        elif isinstance(stmt, ast.Assign):
+            if _has_substance(stmt.value):
+                targets = ", ".join(_trunc(t) for t in stmt.targets)
+                emit(f"{targets} = {_trunc(stmt.value)}")
+            else:
+                fold()
+        elif isinstance(stmt, ast.AugAssign):
+            symbol = _AUG_OP_SYMBOLS.get(type(stmt.op), "?")
+            emit(f"{_trunc(stmt.target)} {symbol}= {_trunc(stmt.value)}")
+        elif isinstance(stmt, ast.AnnAssign):
+            if stmt.value is not None and _has_substance(stmt.value):
+                emit(f"{_trunc(stmt.target)} = {_trunc(stmt.value)}")
+            else:
+                fold()
+        elif isinstance(stmt, ast.Expr):
+            if isinstance(stmt.value, (ast.Call, ast.Await, ast.Yield, ast.YieldFrom)):
+                emit(_trunc(stmt.value))
+            else:
+                fold()  # bare constants/expressions
+        else:
+            fold()  # import, pass, global, delete, ...
+
+    return out

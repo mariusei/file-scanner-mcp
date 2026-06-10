@@ -352,6 +352,7 @@ def scan_file(
     show_decorators: bool = True,
     show_docstrings: bool = True,
     show_complexity: bool = False,
+    condense: bool = True,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -377,6 +378,9 @@ def scan_file(
         show_decorators: Include decorators like @property, @staticmethod (default: True)
         show_docstrings: Include first line of docstrings (default: True)
         show_complexity: Show complexity metrics for long/complex functions (default: False)
+        condense: Show salient code as condensed method skeletons in ⟨⟩ instead of
+            verbatim lines — same control flow, calls and returns at ~half the tokens
+            (default: True; set False for verbatim excerpts with line numbers)
         output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -384,7 +388,8 @@ def scan_file(
 
     Example output (token-optimized tree format with entropy-based code excerpts):
         Compact format: @line instead of (start-end), inline docstrings with #
-        High-entropy functions show actual code implementation
+        High-entropy functions show their method as a condensed skeleton in ⟨⟩
+        (control flow + calls + returns; trivial statements folded to …)
 
         example.py (3-57)
         ├ import statements @3
@@ -392,8 +397,7 @@ def scan_file(
         │ ├ __init__ (self, connection_string: str) @11
         │ ├ connect (self) @15 # Establish database connection
         │ └ query (self, sql: str) -> list @24 # Execute a SQL query
-        │   24 | def query(self, sql: str) -> list:
-        │   25 |     return self.cursor.execute(sql).fetchall()
+        │   ⟨return self.cursor.execute(sql).fetchall()⟩
         └ validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
@@ -415,7 +419,8 @@ def scan_file(
                 show_signatures=show_signatures,
                 show_decorators=show_decorators,
                 show_docstrings=show_docstrings,
-                show_complexity=show_complexity
+                show_complexity=show_complexity,
+                condense=condense
             )
             result = custom_formatter.format(file_path, structures)
             return [TextContent(type="text", text=result)]

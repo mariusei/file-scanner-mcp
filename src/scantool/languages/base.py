@@ -8,6 +8,8 @@ Each language implementation inherits from BaseLanguage and provides
 a single file per language instead of separate scanner + analyzer files.
 """
 
+import re
+import textwrap
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -18,6 +20,30 @@ from .models import (
     DefinitionInfo,
     CallInfo,
 )
+
+# ===========================================================================
+# Excerpt condensation (shared machinery for condense_excerpt)
+# ===========================================================================
+
+# Node types that carry intent/method, matched against tree-sitter type names
+# across grammars (if_statement, call_expression, method_invocation,
+# let_declaration, ...). Underscores are normalized to spaces before matching.
+_SIGNIFICANT_NODE = re.compile(
+    r"\b(if|else|elif|for|foreach|while|do|switch|case|match|when|guard|loop"
+    r"|try|catch|except|finally|return|break|continue|throw|raise|yield|defer"
+    r"|call|invocation|invoke|new|await|macro"
+    r"|assignment|augmented"
+    r"|function|method|class|struct|enum|interface|impl|trait|lambda|closure"
+    r"|let|const|short_var|local)\b"
+)
+
+# Lines containing only closing syntax/punctuation — dropped silently
+# (nesting stays visible through indentation, as in Python)
+_PUNCT_ONLY_LINE = re.compile(r"^[\s)\]}>;,]*$")
+
+# Field names pointing at a node's body — lines from node start to body start
+# form the header (multi-line conditions/signatures) and are kept together
+_BODY_FIELDS = ("body", "consequence", "block")
 
 
 class BaseLanguage(ABC):
@@ -160,6 +186,141 @@ class BaseLanguage(ABC):
             or None if the file couldn't be parsed
         """
         pass
+
+    #: Condensation strategy for salient excerpts:
+    #: - None: no condensation, verbatim display (prose, config — every line
+    #:   is content)
+    #: - "skeleton": fold-by-default; keep lines where significant nodes start
+    #:   (imperative languages with control flow)
+    #: - "compact": keep-by-default; drop only blanks, comment-only lines and
+    #:   closing punctuation (declarative languages — CSS, SQL — where
+    #:   "trivial" lines ARE the content)
+    CONDENSE_STRATEGY: Optional[str] = None
+
+    def _fragment_prefix(self) -> str:
+        """Prefix needed for a detached excerpt to parse (e.g. PHP's '<?php')."""
+        return ""
+
+    def condense_excerpt(self, excerpt_lines: list[str]) -> Optional[list[str]]:
+        """Condense a salient code excerpt into a compact skeleton.
+
+        Abstractive alternative to verbatim excerpts, driven by
+        CONDENSE_STRATEGY and the language's tree-sitter parser (regex-only
+        languages fall back to verbatim). Python overrides this with an
+        AST-based variant. Measurements in experiments/condensation/.
+
+        Args:
+            excerpt_lines: The excerpt as source lines (one node's region)
+
+        Returns:
+            Skeleton lines, or None to fall back to verbatim display
+        """
+        parser = getattr(self, "parser", None)
+        if self.CONDENSE_STRATEGY is None or parser is None:
+            return None
+
+        source = textwrap.dedent("\n".join(excerpt_lines))
+        lines = source.split("\n")
+        prefix = self._fragment_prefix()
+        try:
+            tree = parser.parse((prefix + source).encode("utf-8", errors="replace"))
+        except Exception:
+            return None
+        offset = prefix.count("\n")
+
+        if self.CONDENSE_STRATEGY == "skeleton":
+            out, folded = self._skeleton_lines(tree, lines, offset)
+        else:
+            out, folded = self._compact_lines(tree, lines, offset)
+
+        # Nothing recognized or nothing saved → verbatim (with line numbers)
+        # is strictly better
+        if not out or not folded:
+            return None
+        return out
+
+    def _skeleton_lines(self, tree, lines: list[str], offset: int) -> tuple[list[str], bool]:
+        """Fold-by-default: keep rows where significant nodes start."""
+        keep = self._significant_rows(tree, offset, len(lines))
+        if not keep:
+            return [], False
+
+        out: list[str] = []
+        folded = False
+        for i, line in enumerate(lines):
+            if _PUNCT_ONLY_LINE.match(line):
+                folded = folded or bool(line.strip())
+                continue
+            if i in keep:
+                out.append(line.rstrip())
+            else:
+                folded = True
+                indent = len(line) - len(line.lstrip())
+                if not out or out[-1].strip() != "…":
+                    out.append(" " * indent + "…")
+        return out, folded
+
+    def _compact_lines(self, tree, lines: list[str], offset: int) -> tuple[list[str], bool]:
+        """Keep-by-default: drop blanks, comment-only lines and closers."""
+        comment_rows = self._comment_only_rows(tree, lines, offset)
+
+        out: list[str] = []
+        folded = False
+        for i, line in enumerate(lines):
+            if _PUNCT_ONLY_LINE.match(line):
+                folded = folded or bool(line.strip())
+                continue
+            if i in comment_rows:
+                folded = True
+                indent = len(line) - len(line.lstrip())
+                if not out or out[-1].strip() != "…":
+                    out.append(" " * indent + "…")
+            else:
+                out.append(line.rstrip())
+        return out, folded
+
+    def _significant_rows(self, tree, offset: int, n_lines: int) -> set[int]:
+        """Rows where information-bearing nodes start (incl. multi-line headers)."""
+        rows: set[int] = set()
+        stack = [tree.root_node]
+        while stack:
+            node = stack.pop()
+            if _SIGNIFICANT_NODE.search(node.type.replace("_", " ")):
+                start = node.start_point[0] - offset
+                end = start
+                for field in _BODY_FIELDS:
+                    body = node.child_by_field_name(field)
+                    if body is not None:
+                        body_row = body.start_point[0] - offset
+                        if body_row > start:
+                            end = body_row - 1
+                        break
+                rows.update(range(max(0, start), min(end, n_lines - 1) + 1))
+            stack.extend(node.children)
+        return rows
+
+    def _comment_only_rows(self, tree, lines: list[str], offset: int) -> set[int]:
+        """Rows whose entire non-whitespace content lies inside a comment."""
+        rows: set[int] = set()
+        stack = [tree.root_node]
+        while stack:
+            node = stack.pop()
+            if "comment" in node.type:
+                r1, c1 = node.start_point[0] - offset, node.start_point[1]
+                r2, c2 = node.end_point[0] - offset, node.end_point[1]
+                for row in range(max(0, r1), min(r2, len(lines) - 1) + 1):
+                    line = lines[row]
+                    if not line.strip():
+                        continue
+                    first = len(line) - len(line.lstrip())
+                    last = len(line.rstrip())
+                    starts_before = row > r1 or c1 <= first
+                    ends_after = row < r2 or c2 >= last
+                    if starts_before and ends_after:
+                        rows.add(row)
+            else:
+                stack.extend(node.children)
+        return rows
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (REQUIRED - from BaseAnalyzer)

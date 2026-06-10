@@ -15,7 +15,8 @@ class TreeFormatter:
     SPACE = "  "     # 2-space indent
 
     def __init__(self, show_signatures: bool = True, show_decorators: bool = True,
-                 show_docstrings: bool = True, show_complexity: bool = False):
+                 show_docstrings: bool = True, show_complexity: bool = False,
+                 condense: bool = True):
         """
         Initialize formatter with display options.
 
@@ -24,11 +25,14 @@ class TreeFormatter:
             show_decorators: Display decorators
             show_docstrings: Display first line of docstrings
             show_complexity: Display complexity metrics
+            condense: Show condensed skeletons (⟨…⟩) instead of verbatim
+                excerpts where available (~53% fewer tokens)
         """
         self.show_signatures = show_signatures
         self.show_decorators = show_decorators
         self.show_docstrings = show_docstrings
         self.show_complexity = show_complexity
+        self.condense = condense
 
     def format(self, file_path: str, structures: list[StructureNode]) -> str:
         """Format the structure as a pretty tree."""
@@ -119,8 +123,13 @@ class TreeFormatter:
             for decorator in node.decorators:
                 lines.append(f"{decorator_prefix}{decorator}")
 
-        # Add code excerpt if node is marked as salient (high-entropy)
-        if hasattr(node, 'code_excerpt') and node.code_excerpt:
+        # Add code for salient (high-entropy) nodes: condensed skeleton when
+        # available, verbatim excerpt otherwise
+        if node.code_skeleton and self.condense:
+            code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
+            for line in node.code_skeleton:
+                lines.append(f"{code_prefix}⟨{line}⟩")
+        elif node.code_excerpt:
             code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
 
             # No blank line (token-optimized)

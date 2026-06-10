@@ -36,6 +36,8 @@ class GoLanguage(BaseLanguage):
     - extract_calls(): Find function/method calls (not yet implemented)
     """
 
+    CONDENSE_STRATEGY = "skeleton"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

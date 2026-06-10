@@ -137,7 +137,7 @@ class FileScanner:
         # Skip for binary/non-code files where entropy analysis is meaningless
         binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.pdf'}
         if structures is not None and suffix not in binary_extensions:
-            self._annotate_salient_code(structures, file_path, source_code)
+            self._annotate_salient_code(structures, file_path, source_code, language=scanner)
 
         # Prepend file metadata if requested and structures exist
         if include_file_metadata and structures is not None:
@@ -174,7 +174,8 @@ class FileScanner:
         file_path: str,
         source_code: bytes,
         top_percent: float = 0.20,
-        coverage_threshold: float = 0.5
+        coverage_threshold: float = 0.5,
+        language=None
     ) -> None:
         """
         Annotate structure nodes with salient code excerpts based on entropy analysis.
@@ -188,6 +189,7 @@ class FileScanner:
             source_code: Raw source code bytes
             top_percent: Top N% of partitions to consider salient (default: 0.20 = top 20%)
             coverage_threshold: Minimum fraction of node that must be salient to show code (default: 0.5)
+            language: BaseLanguage instance used to condense excerpts to skeletons (optional)
         """
         try:
             from .entropy import analyze_file_entropy
@@ -208,7 +210,7 @@ class FileScanner:
             source_lines = source_code.decode('utf-8', errors='replace').split('\n')
 
             # Recursively annotate nodes
-            self._annotate_nodes_recursive(structures, salient_lines, source_lines, coverage_threshold)
+            self._annotate_nodes_recursive(structures, salient_lines, source_lines, coverage_threshold, language)
 
         except Exception as e:
             # Fail gracefully if entropy analysis fails (e.g., file too small, import error)
@@ -221,7 +223,8 @@ class FileScanner:
         nodes: list[StructureNode],
         salient_lines: set,
         source_lines: list[str],
-        coverage_threshold: float
+        coverage_threshold: float,
+        language=None
     ) -> None:
         """
         Recursively annotate nodes with code excerpts if they overlap with salient regions.
@@ -231,6 +234,7 @@ class FileScanner:
             salient_lines: Set of line numbers marked as salient
             source_lines: Source code split into lines
             coverage_threshold: Minimum coverage to trigger code display
+            language: BaseLanguage instance used to condense excerpts (optional)
         """
         for node in nodes:
             # Skip structural nodes that shouldn't show code
@@ -255,13 +259,19 @@ class FileScanner:
                     start_idx = max(0, node.start_line - 1)
                     end_idx = min(len(source_lines), node.end_line)
 
-                    # Dynamically add attributes (duck typing - no dataclass change needed)
                     node.code_excerpt = source_lines[start_idx:end_idx]
                     node.saliency_coverage = coverage
 
+                    # Condense to skeleton where the language supports it
+                    # (None → formatter falls back to verbatim excerpt)
+                    if language is not None:
+                        skeleton = language.condense_excerpt(node.code_excerpt)
+                        if skeleton:
+                            node.code_skeleton = skeleton
+
             # Recurse into children
             if node.children:
-                self._annotate_nodes_recursive(node.children, salient_lines, source_lines, coverage_threshold)
+                self._annotate_nodes_recursive(node.children, salient_lines, source_lines, coverage_threshold, language)
 
     def scan_directory(
         self,
