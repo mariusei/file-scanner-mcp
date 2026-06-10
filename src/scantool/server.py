@@ -9,6 +9,7 @@ from typing import Optional
 from fastmcp import FastMCP
 from mcp.types import TextContent
 
+from .code_health import analyze_health
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .git_signals import collect_git_signals, file_churn, format_activity
@@ -504,6 +505,15 @@ def scan_directory(
     ALWAYS shows structures in compact inline format:
     - filename.py (1-100) - ClassName, function_name, AnotherClass
 
+    Output ends with a CODE HEALTH section when there is something to say:
+    - UNREFERENCED: definitions whose name appears nowhere else in the
+      scanned files (text-based, language-agnostic; conservative — any
+      mention in code, strings, comments or config suppresses the flag;
+      decorated/override/entry-point/container definitions are exempt)
+    - DUPLICATE: byte-identical definition blocks (whitespace-normalized,
+      >=4 lines) repeated across or within files
+    File lines carry a "Nx/90d" git churn label inside git repositories.
+
     Use pattern to control scope:
     - "**/*" = recursive scan all files (default)
     - "*/*" = 1 level deep only
@@ -566,6 +576,7 @@ def scan_directory(
                 flatten_structures=True  # Always flat for directory overview
             )
             result = warning + custom_formatter.format(directory, results)
+            result += analyze_health(results)
             return [TextContent(type="text", text=result)]
 
     except FileNotFoundError as e:
