@@ -28,6 +28,7 @@ def analyze_file_entropy(
     filepath: str,
     top_percent: float = 0.20,
     use_centrality: bool = True,
+    structures: Optional[list] = None,
 ) -> list[SalientPartition]:
     """
     Analyze file and return top N% most salient partitions.
@@ -36,6 +37,8 @@ def analyze_file_entropy(
         filepath: Path to file
         top_percent: Return top N% (0.2 = top 20%)
         use_centrality: Enable call graph centrality scoring
+        structures: Already-scanned StructureNode list — avoids a second
+            tree-sitter parse in the centrality step
 
     Returns:
         List of salient partitions sorted by importance
@@ -58,7 +61,7 @@ def analyze_file_entropy(
         return []
 
     # Rank by entropy + uniqueness (+ optional centrality)
-    _rank_partitions(data, partitions, use_centrality, filepath)
+    _rank_partitions(data, partitions, use_centrality, filepath, structures)
 
     # Sort and take top N%
     ranked = sorted(partitions, key=lambda p: p["saliency"], reverse=True)
@@ -106,8 +109,10 @@ def _find_indentation_blocks(data: bytes) -> list[dict]:
             offset += len(line) + 1
             continue
 
-        # Measure indentation
-        indent = len(line) - len(line.lstrip(b" \t"))
+        # Measure indentation — tabs count as one level (4), so tab-indented
+        # files (Go, C, Makefiles) partition like space-indented ones
+        ws = line[: len(line) - len(line.lstrip(b" \t"))]
+        indent = ws.count(b"\t") * 4 + ws.count(b" ")
 
         # Detect change in BASE indentation level
         base_indent = (indent // 4) * 4
@@ -181,6 +186,7 @@ def _rank_partitions(
     partitions: list[dict],
     use_centrality: bool,
     file_path: Optional[str] = None,
+    structures: Optional[list] = None,
 ):
     """Rank partitions by information-theoretic metrics."""
     if not partitions:
@@ -215,7 +221,7 @@ def _rank_partitions(
         try:
             from .callgraph import analyze_call_graph_simple
 
-            centrality_scores = analyze_call_graph_simple(data, partitions, file_path)
+            centrality_scores = analyze_call_graph_simple(data, partitions, file_path, structures)
             centrality_norm = normalize(centrality_scores)
 
             # Weighted combination with centrality

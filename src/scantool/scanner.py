@@ -194,11 +194,13 @@ class FileScanner:
         try:
             from .entropy import analyze_file_entropy
 
-            # Run entropy analysis
+            # Run entropy analysis — reuse our structures so the centrality
+            # step doesn't parse the file a second time
             partitions = analyze_file_entropy(
                 file_path,
                 top_percent=top_percent,
-                use_centrality=True
+                use_centrality=True,
+                structures=structures
             )
 
             # Build set of salient line numbers
