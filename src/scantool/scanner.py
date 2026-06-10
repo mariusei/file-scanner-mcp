@@ -174,106 +174,46 @@ class FileScanner:
         file_path: str,
         source_code: bytes,
         top_percent: float = 0.20,
-        coverage_threshold: float = 0.5,
         language=None
     ) -> None:
         """
-        Annotate structure nodes with salient code excerpts based on entropy analysis.
+        Annotate the most salient structure nodes with code excerpts.
 
-        High-entropy code regions (complex, unique, called-often) are marked for
-        full code display, while low-entropy regions show only signature/docstring.
+        Nodes are scored directly on their byte ranges (entropy, conditional
+        new information, centrality); the top N% get full code display, the
+        rest show only signature/docstring.
 
         Args:
             structures: List of StructureNode objects to annotate
-            file_path: Path to the file being analyzed
+            file_path: Path to the file being analyzed (for error messages)
             source_code: Raw source code bytes
-            top_percent: Top N% of partitions to consider salient (default: 0.20 = top 20%)
-            coverage_threshold: Minimum fraction of node that must be salient to show code (default: 0.5)
+            top_percent: Share of candidate nodes to select (default: top 20%)
             language: BaseLanguage instance used to condense excerpts to skeletons (optional)
         """
         try:
-            from .entropy import analyze_file_entropy
+            from .entropy import select_salient_nodes
 
-            # Run entropy analysis — reuse our structures so the centrality
-            # step doesn't parse the file a second time
-            partitions = analyze_file_entropy(
-                file_path,
-                top_percent=top_percent,
-                use_centrality=True,
-                structures=structures
-            )
-
-            # Build set of salient line numbers
-            salient_lines = set()
-            for partition in partitions:
-                salient_lines.update(range(partition.start_line, partition.end_line + 1))
-
-            # Decode source code to lines
             source_lines = source_code.decode('utf-8', errors='replace').split('\n')
 
-            # Recursively annotate nodes
-            self._annotate_nodes_recursive(structures, salient_lines, source_lines, coverage_threshold, language)
+            for node, score in select_salient_nodes(source_code, structures, top_percent=top_percent):
+                start_idx = max(0, node.start_line - 1)
+                end_idx = min(len(source_lines), node.end_line)
+
+                node.code_excerpt = source_lines[start_idx:end_idx]
+                node.saliency = score
+
+                # Condense to skeleton where the language supports it
+                # (None → formatter falls back to verbatim excerpt)
+                if language is not None:
+                    skeleton = language.condense_excerpt(node.code_excerpt)
+                    if skeleton:
+                        node.code_skeleton = skeleton
 
         except Exception as e:
             # Fail gracefully if entropy analysis fails (e.g., file too small, import error)
             if self.show_errors:
                 import sys
                 print(f"Warning: Entropy analysis failed for {file_path}: {e}", file=sys.stderr)
-
-    def _annotate_nodes_recursive(
-        self,
-        nodes: list[StructureNode],
-        salient_lines: set,
-        source_lines: list[str],
-        coverage_threshold: float,
-        language=None
-    ) -> None:
-        """
-        Recursively annotate nodes with code excerpts if they overlap with salient regions.
-
-        Args:
-            nodes: List of nodes to annotate
-            salient_lines: Set of line numbers marked as salient
-            source_lines: Source code split into lines
-            coverage_threshold: Minimum coverage to trigger code display
-            language: BaseLanguage instance used to condense excerpts (optional)
-        """
-        for node in nodes:
-            # Skip structural nodes that shouldn't show code
-            skip_types = {'file-info', 'imports', 'section', 'heading', 'heading-1', 'heading-2',
-                         'heading-3', 'heading-4', 'heading-5', 'heading-6', 'paragraph'}
-            if node.type in skip_types:
-                # Still recurse to children, but don't add code to this node
-                if node.children:
-                    self._annotate_nodes_recursive(node.children, salient_lines, source_lines, coverage_threshold)
-                continue
-
-            # Calculate overlap between node and salient lines
-            node_lines = set(range(node.start_line, node.end_line + 1))
-            overlap = node_lines & salient_lines
-
-            if overlap and len(node_lines) > 0:
-                coverage = len(overlap) / len(node_lines)
-
-                # If significant overlap, attach code excerpt
-                if coverage >= coverage_threshold:
-                    # Extract lines for this node (convert 1-indexed to 0-indexed)
-                    start_idx = max(0, node.start_line - 1)
-                    end_idx = min(len(source_lines), node.end_line)
-
-                    node.code_excerpt = source_lines[start_idx:end_idx]
-                    node.saliency_coverage = coverage
-
-                    # Condense to skeleton where the language supports it
-                    # (None → formatter falls back to verbatim excerpt)
-                    if language is not None:
-                        skeleton = language.condense_excerpt(node.code_excerpt)
-                        if skeleton:
-                            node.code_skeleton = skeleton
-
-            # Recurse into children
-            if node.children:
-                self._annotate_nodes_recursive(node.children, salient_lines, source_lines, coverage_threshold, language)
 
     def scan_directory(
         self,
