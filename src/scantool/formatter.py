@@ -8,10 +8,12 @@ from .languages import StructureNode
 class TreeFormatter:
     """Formats structure nodes as a pretty tree with metadata."""
 
-    # Tree drawing characters (token-optimized: 2-space indent)
-    BRANCH = "├─"
-    LAST_BRANCH = "└─"
-    VERTICAL = "│ "  # 2-space indent
+    # Outline markers. ASCII bullets + plain indentation: box-drawing glyphs
+    # are multi-byte and tokenize to 2-3 BPE tokens each — measured at 26%
+    # of total output (experiments/entropy_metrics/)
+    BRANCH = "-"
+    LAST_BRANCH = "-"
+    VERTICAL = "  "  # 2-space indent
     SPACE = "  "     # 2-space indent
 
     def __init__(self, show_signatures: bool = True, show_decorators: bool = True,
@@ -25,8 +27,8 @@ class TreeFormatter:
             show_decorators: Display decorators
             show_docstrings: Display first line of docstrings
             show_complexity: Display complexity metrics
-            condense: Show condensed skeletons (⟨…⟩) instead of verbatim
-                excerpts where available (~53% fewer tokens)
+            condense: Show condensed skeletons (pseudocode lines without
+                line numbers) instead of verbatim excerpts where available
         """
         self.show_signatures = show_signatures
         self.show_decorators = show_decorators
@@ -90,7 +92,7 @@ class TreeFormatter:
 
         # Build the main node line (token-optimized format)
         # Remove "type:" prefix (redundant), shorten line range format
-        parts = [f"{prefix}{connector[:-1]} {node.name}"]  # ├─  → ├
+        parts = [f"{prefix}{connector} {node.name}"]
 
         # Add signature if available
         if self.show_signatures and node.signature:
@@ -126,9 +128,11 @@ class TreeFormatter:
         # Add code for salient (high-entropy) nodes: condensed skeleton when
         # available, verbatim excerpt otherwise
         if node.code_skeleton and self.condense:
+            # Plain pseudocode lines, no line numbers — that absence is what
+            # distinguishes condensed skeletons from verbatim excerpts
             code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
             for line in node.code_skeleton:
-                lines.append(f"{code_prefix}⟨{line}⟩")
+                lines.append(f"{code_prefix}{line}")
         elif node.code_excerpt:
             code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
 
