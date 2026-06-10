@@ -5,6 +5,8 @@ coverage mapping. Key properties: unique logic beats duplicated boilerplate,
 classes defer to their methods, structural noise is never selected.
 """
 
+import pytest
+
 from scantool.entropy import select_salient_nodes
 from scantool.languages import get_language
 
@@ -177,6 +179,61 @@ def processor_{i}(items, threshold):
         assert ([n.name for n, _ in select_salient_nodes(data, structures, top_percent=1.0)]
                 == [n.name for n, _ in select_salient_nodes(
                     data, structures, top_percent=1.0, line_edits=None)])
+
+
+class TestModes:
+    """Weight profiles: "active" lets recent edits dominate selection.
+    An "architecture" profile was probed and falsified (within-file
+    centrality favors local helpers) — only two modes exist."""
+
+    # stor basespredning: kompleks logikk øverst, triviell helper nederst —
+    # 0.15-boost (balanced) flytter ikke helperen, 0.45 (active) skal
+    SOURCE = UNIQUE_LOGIC + '''
+
+def transform_pipeline(rows, schema):
+    validated = [validate_row(r, schema) for r in rows]
+    grouped = group_by_key(validated, schema.key)
+    return {k: aggregate_group(v) for k, v in grouped.items()}
+
+
+def tiny_helper(x):
+    return x + 1
+
+
+def small_format(value):
+    return f"<{value}>"
+'''
+
+    def test_active_outranks_balanced_for_edited_node(self):
+        data = self.SOURCE.encode()
+        structures = scan(self.SOURCE)
+        ranked = select_salient_nodes(data, structures, top_percent=1.0)
+        last = ranked[-1][0]
+        edits = {line: f"c{line}" for line in
+                 range(last.start_line, last.end_line + 1)}
+
+        def rank(mode):
+            names = [n.name for n, _ in select_salient_nodes(
+                data, structures, top_percent=1.0, line_edits=edits, mode=mode)]
+            return names.index(last.name)
+
+        assert rank("active") < rank("balanced")
+
+    def test_modes_identical_without_edit_history(self):
+        data = self.SOURCE.encode()
+        structures = scan(self.SOURCE)
+
+        balanced = [n.name for n, _ in select_salient_nodes(
+            data, structures, top_percent=1.0, mode="balanced")]
+        active = [n.name for n, _ in select_salient_nodes(
+            data, structures, top_percent=1.0, mode="active")]
+
+        assert balanced == active
+
+    def test_unknown_mode_raises(self):
+        with pytest.raises(ValueError, match="Unknown mode"):
+            select_salient_nodes(b"def f():\n    pass\n", scan("def f():\n    pass\n"),
+                                 mode="arkitektur")
 
 
 class TestLimitSkeletonDepth:
