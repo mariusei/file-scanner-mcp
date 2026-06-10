@@ -36,8 +36,9 @@ class TestOversizedMarkdown:
 
         names = _heading_names(MarkdownLanguage().scan(source))
 
-        assert "Resultater" in names
-        assert "Konklusjon" in names
+        # regex-fallbacken markerer navn med " (fallback)"
+        assert any(n.startswith("Resultater") for n in names)
+        assert any(n.startswith("Konklusjon") for n in names)
 
     def test_fallback_is_fast(self):
         source = _giant_report()
