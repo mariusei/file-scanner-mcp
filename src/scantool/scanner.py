@@ -10,6 +10,12 @@ from .gitignore import load_gitignore, GitignoreParser
 from .glob_expander import expand_braces
 
 
+def _estimate_tokens(lines: list[str]) -> int:
+    """Rough BPE-token estimate for display lines (~4 chars/token plus
+    per-line prefix overhead) — used for budget allocation, not billing."""
+    return len("\n".join(lines)) // 4 + len(lines)
+
+
 class FileScanner:
     """Main scanner that delegates to language-specific scanner plugins."""
 
@@ -98,13 +104,21 @@ class FileScanner:
 
         return structures
 
-    def scan_file(self, file_path: str, include_file_metadata: bool = True) -> Optional[list[StructureNode]]:
+    def scan_file(
+        self,
+        file_path: str,
+        include_file_metadata: bool = True,
+        budget: Optional[int] = None
+    ) -> Optional[list[StructureNode]]:
         """
         Scan a single file and return its structure.
 
         Args:
             file_path: Path to the file to scan
             include_file_metadata: Include file metadata (size, timestamps) as first node
+            budget: Approximate token cap for code skeletons — the least
+                salient nodes degrade (full → depth-2 → depth-1 → header
+                only) until the estimate fits. None = no cap.
 
         Returns:
             List of StructureNode objects, or None if file type not supported
@@ -141,7 +155,8 @@ class FileScanner:
         # Skip for binary/non-code files where entropy analysis is meaningless
         binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.pdf'}
         if structures is not None and suffix not in binary_extensions:
-            self._annotate_salient_code(structures, file_path, source_code, language=scanner)
+            self._annotate_salient_code(structures, file_path, source_code,
+                                        language=scanner, budget=budget)
 
         # Prepend file metadata if requested and structures exist
         if include_file_metadata and structures is not None:
@@ -172,22 +187,31 @@ class FileScanner:
 
         return structures
 
+    # Display level degradation order: full tier loses depth before the
+    # broad tier loses breadth — depth-2 outlines measured as the most
+    # fact-dense representation (experiments/entropy_metrics/)
+    _LEVEL_DOWN = {"full": 2, 2: 1, 1: 0}
+
     def _annotate_salient_code(
         self,
         structures: list[StructureNode],
         file_path: str,
         source_code: bytes,
         top_percent: float = 0.20,
-        language=None
+        language=None,
+        budget: Optional[int] = None
     ) -> None:
         """
-        Annotate structure nodes with code in two tiers by saliency.
+        Annotate structure nodes with code in tiers by saliency, optionally
+        within an approximate token budget.
 
         Nodes are scored directly on their byte ranges (entropy, conditional
-        new information, centrality). The top N% get full display (verbatim
-        excerpt + full-depth skeleton); every other candidate gets a shallow
-        depth-2 skeleton — measured as the best fact-coverage per token
-        (see experiments/entropy_metrics/, S6).
+        new information, centrality). Without budget: the top N% get full
+        display (verbatim excerpt + full-depth skeleton), every other
+        candidate a depth-2 outline. With budget: same starting point, then
+        the least salient nodes degrade (full → d2 → d1 → header only)
+        until the estimated skeleton cost fits — token allocation IS
+        prioritization, and the budget makes it explicit.
 
         Args:
             structures: List of StructureNode objects to annotate
@@ -195,6 +219,7 @@ class FileScanner:
             source_code: Raw source code bytes
             top_percent: Share of candidates given full display (default: top 20%)
             language: BaseLanguage instance used to condense excerpts to skeletons (optional)
+            budget: Approximate token cap for skeleton content (None = no cap)
         """
         try:
             from .entropy import select_salient_nodes
@@ -203,16 +228,53 @@ class FileScanner:
             source_lines = source_code.decode('utf-8', errors='replace').split('\n')
 
             ranked = select_salient_nodes(source_code, structures, top_percent=1.0)
+            if not ranked:
+                return
             full_count = max(1, int(len(ranked) * top_percent))
+            # Compact-strategy skeletons (declarative content) are never
+            # depth-cut — their downgrade path is skeleton → nothing
+            is_compact = getattr(language, "CONDENSE_STRATEGY", None) == "compact"
 
-            for rank, (node, score) in enumerate(ranked):
+            items = []
+            for node, score in ranked:
                 start_idx = max(0, node.start_line - 1)
                 end_idx = min(len(source_lines), node.end_line)
                 excerpt = source_lines[start_idx:end_idx]
-
                 skeleton = language.condense_excerpt(excerpt) if language is not None else None
+                items.append((node, score, excerpt, skeleton))
 
-                if rank < full_count:
+            levels: list = ["full" if i < full_count else self.BROAD_TIER_DEPTH
+                            for i in range(len(items))]
+
+            if budget is not None:
+                def cost(i, level):
+                    _, _, excerpt, skeleton = items[i]
+                    if level == 0:
+                        return 0
+                    if skeleton is None:
+                        # verbatim fallback exists only at full level
+                        return _estimate_tokens(excerpt) if level == "full" else 0
+                    if level == "full" or is_compact:
+                        return _estimate_tokens(skeleton)
+                    return _estimate_tokens(limit_skeleton_depth(skeleton, level))
+
+                total = sum(cost(i, levels[i]) for i in range(len(items)))
+                for from_level in ("full", 2, 1):
+                    for i in reversed(range(len(items))):
+                        if total <= budget:
+                            break
+                        if levels[i] == from_level:
+                            total -= cost(i, levels[i])
+                            levels[i] = self._LEVEL_DOWN[from_level]
+                            total += cost(i, levels[i])
+                    if total <= budget:
+                        break
+
+            for i, (node, score, excerpt, skeleton) in enumerate(items):
+                level = levels[i]
+                if level == 0:
+                    continue
+                if level == "full":
                     # Full tier: verbatim excerpt (shown when condense=False)
                     # + full-depth skeleton
                     node.code_excerpt = excerpt
@@ -220,14 +282,10 @@ class FileScanner:
                     if skeleton:
                         node.code_skeleton = skeleton
                 elif skeleton:
-                    # Broad tier: shallow skeleton only — no verbatim fallback,
-                    # and compact-strategy output (declarative content) is
-                    # never depth-cut
-                    if getattr(language, "CONDENSE_STRATEGY", None) != "compact":
-                        skeleton = limit_skeleton_depth(skeleton, self.BROAD_TIER_DEPTH)
+                    shallow = skeleton if is_compact else limit_skeleton_depth(skeleton, level)
                     # all-fold skeletons ("…" only) carry no information
-                    if any(line.strip() != "…" for line in skeleton):
-                        node.code_skeleton = skeleton
+                    if any(line.strip() != "…" for line in shallow):
+                        node.code_skeleton = shallow
                         node.saliency = score
 
         except Exception as e:

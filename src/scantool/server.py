@@ -382,6 +382,7 @@ def scan_file(
     show_docstrings: bool = True,
     show_complexity: bool = False,
     condense: bool = True,
+    budget: Optional[int] = None,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -414,6 +415,10 @@ def scan_file(
             line numbers) — every function gets a shallow depth-2 outline, the
             most salient get full depth (default: True; set False for verbatim
             excerpts with line numbers, top-tier nodes only)
+        budget: Approximate token cap for skeleton content. The least salient
+            functions degrade first (full depth → outline → header only), so
+            output size becomes predictable for huge files while the most
+            important code keeps its depth (default: None = no cap)
         output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -436,7 +441,7 @@ def scan_file(
         - validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
-        structures = scanner.scan_file(file_path)
+        structures = scanner.scan_file(file_path, budget=budget)
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
