@@ -40,7 +40,8 @@ def collect(structures, out):
                 "name": node.name,
                 "type": node.type,
                 "lines": [node.start_line, node.end_line],
-                "coverage": round(node.saliency_coverage or 0, 3),
+                "saliency": round(getattr(node, "saliency", None)
+                                  or getattr(node, "saliency_coverage", None) or 0, 3),
             })
         collect(node.children, out)
 

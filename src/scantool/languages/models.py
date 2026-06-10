@@ -39,7 +39,7 @@ class StructureNode:
     # Entropy-based saliency (set by FileScanner._annotate_salient_code)
     code_excerpt: Optional[list[str]] = None  # Verbatim source lines for salient nodes
     code_skeleton: Optional[list[str]] = None  # Condensed method skeleton (preferred display)
-    saliency_coverage: Optional[float] = None  # Fraction of node lines marked salient
+    saliency: Optional[float] = None  # Normalized saliency score for selected nodes
 
     def __repr__(self):
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"

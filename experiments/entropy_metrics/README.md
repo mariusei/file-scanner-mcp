@@ -1,3 +1,35 @@
+# Entropi-maskineriet: metrikk- og arkitektur-eksperimenter
+
+> **Historikk:** `compression_experiment.py` målte mot den partisjonsbaserte
+> pipelinen og kan ikke kjøres mot dagens kode (partisjonsfunksjonene er
+> fjernet) — sjekk ut commit før node-direkte-omleggingen for å reprodusere.
+
+## Node-direkte arkitektur (integrert 2026-06-10)
+
+`node_direct_experiment.py` testet å score strukturnodene direkte i stedet
+for innrykkspartisjoner + ≥50 % coverage-mapping. To iterasjoner:
+
+1. **Per-byte-scoring**: kjernelogikk kom inn (`preview_directory`), men
+   småtode-bias besto — trivielle gettere (`return 10`) scoret høyt fordi
+   per-byte-metrikker belønner tetthet, ikke substans.
+2. **Log-absolutt ny informasjon** (`log1p(komprimert størrelse gitt
+   kontekst)`): «hvem tilfører filen mest metode». scanner.py gikk fra
+   trivielle gettere til `scan_file`; code_map til `analyze`+`format_tree`.
+
+**Falsifiseringssjekk** (er log-abs bare «velg største node»?): 56 % overlapp
+med ren størrelsesranking, rangkorrelasjon 0,39–0,88 — størrelse bidrar
+(lengre unik kode = mer informasjon), men metrikken diskriminerer reelt
+(scanner.py velger ikke største node; Rust 0/4 overlapp).
+
+Arkitekturgevinsten: partisjonering, coverage-terskel, `min_size`-hull,
+linje-mapping og hele `callgraph.py` (entiteter = nodene selv) forsvant.
+Tab-fiksen ble overflødig — innrykk brukes ikke lenger. Utvalgene per
+generasjon ligger i `selection_before.json` (opprinnelig metrikk),
+`selection_after.json` (betinget kompresjon, partisjonsbasert) og
+`selection_node_direct.json` (dagens).
+
+---
+
 # Kompresjonsmetrikk-eksperiment: betinget kompresjon vs dagens ratio
 
 ## Bakgrunn
