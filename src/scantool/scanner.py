@@ -109,7 +109,8 @@ class FileScanner:
         file_path: str,
         include_file_metadata: bool = True,
         budget: Optional[int] = None,
-        line_edits: Optional[dict[int, str]] = None
+        line_edits: Optional[dict[int, str]] = None,
+        mode: str = "balanced"
     ) -> Optional[list[StructureNode]]:
         """
         Scan a single file and return its structure.
@@ -123,6 +124,7 @@ class FileScanner:
             line_edits: line number -> commit id for recently edited lines
                 (from git_signals.recent_line_edits); boosts actively-worked
                 nodes in selection and sets "[N edits/90d]" labels
+            mode: Saliency weight profile — "balanced" or "active"
 
         Returns:
             List of StructureNode objects, or None if file type not supported
@@ -161,7 +163,7 @@ class FileScanner:
         if structures is not None and suffix not in binary_extensions:
             self._annotate_salient_code(structures, file_path, source_code,
                                         language=scanner, budget=budget,
-                                        line_edits=line_edits)
+                                        line_edits=line_edits, mode=mode)
 
         # Prepend file metadata if requested and structures exist
         if include_file_metadata and structures is not None:
@@ -230,7 +232,8 @@ class FileScanner:
         top_percent: float = 0.20,
         language=None,
         budget: Optional[int] = None,
-        line_edits: Optional[dict[int, str]] = None
+        line_edits: Optional[dict[int, str]] = None,
+        mode: str = "balanced"
     ) -> None:
         """
         Annotate structure nodes with code in tiers by saliency, optionally
@@ -259,7 +262,7 @@ class FileScanner:
             source_lines = source_code.decode('utf-8', errors='replace').split('\n')
 
             ranked = select_salient_nodes(source_code, structures, top_percent=1.0,
-                                          line_edits=line_edits)
+                                          line_edits=line_edits, mode=mode)
             if not ranked:
                 return
             if line_edits:

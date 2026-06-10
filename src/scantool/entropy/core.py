@@ -38,10 +38,18 @@ _CONTEXT_WINDOW = 16384
 _CALL_RE = re.compile(r"\b(\w+)\s*\(")
 
 
-# Weight for recent-edit activity when line edits are provided. Measured:
-# 0.15 gives few, targeted selection shifts toward actively-worked code;
-# 0.30 displaces core logic with fresh helpers — too aggressive.
-_CHURN_WEIGHT = 0.15
+# Weight profiles per task intent. "balanced" measured through the
+# selection experiments (churn 0.15: few, targeted shifts; 0.30 displaced
+# core logic — but in EXPLICIT active mode that emphasis is the point).
+# An "architecture" profile was probed and falsified: within-file
+# centrality favors local helpers, not hubs — cross-file architecture is
+# preview_directory's domain.
+_PROFILES = {
+    "balanced": {"shannon": 0.30, "conditional": 0.50, "centrality": 0.20,
+                 "churn": 0.15},
+    "active":   {"shannon": 0.25, "conditional": 0.30, "centrality": 0.10,
+                 "churn": 0.45},
+}
 
 
 def select_salient_nodes(
@@ -50,6 +58,7 @@ def select_salient_nodes(
     top_percent: float = 0.20,
     use_centrality: bool = True,
     line_edits: Optional[dict[int, str]] = None,
+    mode: str = "balanced",
 ) -> list[tuple]:
     """Select the most salient structure nodes in a file.
 
@@ -59,11 +68,16 @@ def select_salient_nodes(
         top_percent: Share of candidate nodes to select (0.2 = top 20%)
         use_centrality: Include call-count centrality in the score
         line_edits: line number -> commit id for recently edited lines
-            (git blame); boosts actively-worked nodes with weight 0.15
+            (git blame); boosts actively-worked nodes
+        mode: Weight profile — "balanced" (default) or "active"
+            ("what's being worked on": recent edits dominate)
 
     Returns:
         List of (node, saliency) pairs, highest saliency first
     """
+    if mode not in _PROFILES:
+        raise ValueError(f"Unknown mode {mode!r} — use one of {sorted(_PROFILES)}")
+    profile = _PROFILES[mode]
     candidates = _candidate_nodes(structures or [])
     if not candidates or len(data) == 0:
         return []
@@ -86,18 +100,23 @@ def select_salient_nodes(
                        if line in line_edits}
             churn.append(float(len(commits)))
 
-    if use_centrality:
-        saliency = (
-            0.30 * _normalize(shannon)
-            + 0.50 * _normalize(conditional)
-            + 0.20 * _normalize(centrality)
-        )
-    else:
-        saliency = 0.35 * _normalize(shannon) + 0.65 * _normalize(conditional)
+    w_shannon, w_cond, w_centr = (profile["shannon"], profile["conditional"],
+                                  profile["centrality"])
+    if not use_centrality:
+        # renormaliser sentralitetsvekten inn i de to andre
+        scale = (w_shannon + w_cond + w_centr) / (w_shannon + w_cond)
+        w_shannon, w_cond, w_centr = w_shannon * scale, w_cond * scale, 0.0
+
+    saliency = (
+        w_shannon * _normalize(shannon)
+        + w_cond * _normalize(conditional)
+        + w_centr * _normalize(centrality)
+    )
 
     # Recent activity boosts only when it discriminates between nodes
     if churn and max(churn) > min(churn):
-        saliency = (1 - _CHURN_WEIGHT) * saliency + _CHURN_WEIGHT * _normalize(churn)
+        w_churn = profile["churn"]
+        saliency = (1 - w_churn) * saliency + w_churn * _normalize(churn)
 
     order = np.argsort(saliency)[::-1]
     count = max(1, int(len(candidates) * top_percent))

@@ -390,6 +390,7 @@ def scan_file(
     condense: bool = True,
     budget: Optional[int] = None,
     delta: bool = True,
+    mode: str = "balanced",
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -476,7 +477,8 @@ def scan_file(
         churn = file_churn(file_path)
         line_edits = recent_line_edits(file_path) if churn else None
 
-        structures = scanner.scan_file(file_path, budget=budget, line_edits=line_edits)
+        structures = scanner.scan_file(file_path, budget=budget,
+                                       line_edits=line_edits, mode=mode)
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
