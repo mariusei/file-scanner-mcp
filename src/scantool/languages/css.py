@@ -35,6 +35,8 @@ class CSSLanguage(BaseLanguage):
     - extract_definitions(): Convert scan() output to DefinitionInfo
     """
 
+    CONDENSE_STRATEGY = "compact"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

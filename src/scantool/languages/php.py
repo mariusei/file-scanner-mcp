@@ -36,10 +36,16 @@ class PHPLanguage(BaseLanguage):
     - extract_calls(): Not implemented (uses base class default)
     """
 
+    CONDENSE_STRATEGY = "skeleton"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
         self.parser.language = Language(tree_sitter_php.language_php())
+
+    def _fragment_prefix(self) -> str:
+        """Detached excerpts parse as HTML text without the PHP open tag."""
+        return "<?php\n"
 
     # ===========================================================================
     # Metadata (REQUIRED)

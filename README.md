@@ -187,6 +187,7 @@ scan_file(
     show_decorators=True,      # Include @decorator annotations
     show_docstrings=True,      # Include first line of docstrings
     show_complexity=False,     # Show complexity metrics
+    condense=True,             # Condensed ⟨skeleton⟩ for salient code (set False for verbatim lines)
     output_format="tree"       # "tree" or "json"
 )
 ```
@@ -204,9 +205,22 @@ example.py (1-57)
 │  │    "Establish database connection."
 │  └─ method: query (self, sql: str) -> list (24-26)
 │       "Execute a SQL query."
+│       ⟨return self.cursor.execute(sql).fetchall()⟩
 └─ function: main () (53-57)
      "Main entry point."
 ```
+
+High-entropy (salient) functions additionally show their implementation as a
+condensed method skeleton in `⟨⟩`: control flow with conditions, calls and
+returns are kept, trivial statements fold to `…`. This conveys the *method*
+at roughly half the token cost of verbatim lines — pass `condense=False` to
+get the original line-numbered excerpts instead.
+
+Condensation adapts to the language: imperative languages (Python, TypeScript,
+Go, Rust, Java, ...) get fold-by-default skeletons, declarative ones (CSS,
+SQL, HTML) keep their content and drop only blanks, comments and closing
+punctuation, and prose/config stay verbatim — where there is nothing safe to
+fold, the original excerpt is shown unchanged.
 
 ### scan_file_content - Analyze content directly
 

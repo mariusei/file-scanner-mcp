@@ -38,6 +38,8 @@ class CCppLanguage(BaseLanguage):
     Supports: .c, .cc, .cpp, .cxx, .h, .hpp, .hh, .hxx
     """
 
+    CONDENSE_STRATEGY = "skeleton"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

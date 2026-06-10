@@ -36,6 +36,8 @@ class SCSSLanguage(BaseLanguage):
     - classify_file(): Categorize SCSS files by purpose
     """
 
+    CONDENSE_STRATEGY = "compact"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

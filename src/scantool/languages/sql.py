@@ -51,6 +51,8 @@ class SQLLanguage(BaseLanguage):
     - Generic SQL (via tree-sitter-sql)
     """
 
+    CONDENSE_STRATEGY = "compact"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
