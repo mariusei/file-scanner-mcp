@@ -94,7 +94,25 @@ def search_content(
 
         found.extend(by_node.values())
 
+    # Relevance ranking: implementation before tests, then densest files
+    # first, densest structures within — output caps then keep the RIGHT
+    # structures instead of the alphabetically first (measured on
+    # SWE-bench: broad queries in large repos truncated away the answer;
+    # test directories dominated pure density ranking)
+    file_totals: dict[str, int] = {}
+    for node_hits in found:
+        file_totals[node_hits.file] = file_totals.get(node_hits.file, 0) + len(node_hits.hits)
+    found.sort(key=lambda n: (_is_test_path(n.file), -file_totals[n.file],
+                              n.file, -len(n.hits), n.start_line))
+
     return found
+
+
+def _is_test_path(file_path: str) -> bool:
+    parts = Path(file_path).parts
+    name = Path(file_path).name
+    return (any(p in ("test", "tests", "testing") for p in parts)
+            or name.startswith("test_") or name.endswith("_test.py"))
 
 
 def _containing_node(structures, line_no: int):
