@@ -57,6 +57,27 @@ def _run_git(directory: str, *args: str) -> Optional[str]:
     return result.stdout
 
 
+def _last_activity_ts(directory: str) -> Optional[float]:
+    """Unix timestamp of the repository's most recent commit."""
+    out = _run_git(directory, "log", "-1", "--format=%ct")
+    if out is None:
+        return None
+    try:
+        return float(out.strip())
+    except ValueError:
+        return None
+
+
+def _window_start(directory: str, window_days: int) -> Optional[float]:
+    """Window anchored at the project's LAST COMMIT, not at wall-clock now —
+    "the last 90 days of activity". Older projects keep their signals; for
+    actively developed projects this is indistinguishable from a now-window."""
+    anchor = _last_activity_ts(directory)
+    if anchor is None:
+        return None
+    return anchor - window_days * 86400
+
+
 def collect_git_signals(
     directory: str,
     window_days: int = 90,
@@ -64,17 +85,23 @@ def collect_git_signals(
 ) -> Optional[GitSignals]:
     """Collect churn and co-change for files under directory.
 
-    Returns None when the directory is not in a git repository or git is
-    unavailable — callers must treat that as "no signal", not as an error.
+    The window covers the last window_days of ACTIVITY (anchored at the
+    most recent commit). Returns None when the directory is not in a git
+    repository or git is unavailable — callers must treat that as
+    "no signal", not as an error.
     """
     toplevel = _run_git(directory, "rev-parse", "--show-toplevel")
     if toplevel is None:
         return None
     toplevel = toplevel.strip()
 
+    since = _window_start(directory, window_days)
+    if since is None:
+        return None
+
     log = _run_git(
         directory, "log",
-        f"--since={window_days} days ago",
+        f"--since=@{int(since)}",
         "--name-only",
         f"--pretty=format:{_COMMIT_SEP}",
         "--", ".",
@@ -132,12 +159,14 @@ def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
             f"{a} <-> {b} {c}x" for a, b, c in signals.co_change))
     if not lines:
         return ""
-    return f"\n━━━ GIT ACTIVITY (last {signals.window_days}d) ━━━\n" + "\n".join(lines)
+    return (f"\n━━━ GIT ACTIVITY (last {signals.window_days}d of activity) ━━━\n"
+            + "\n".join(lines))
 
 
 def recent_line_edits(file_path: str, window_days: int = 90) -> Optional[dict[int, str]]:
     """Map current line numbers to the commit that last touched them,
-    filtered to the window. Built on git blame, so history is projected
+    filtered to the last window_days of ACTIVITY (anchored at the repo's
+    most recent commit). Built on git blame, so history is projected
     onto TODAY's line numbers — no hunk drift. Line-based and therefore
     language-agnostic. None without git/repo; uncommitted lines count as
     one in-progress edit.
@@ -145,15 +174,14 @@ def recent_line_edits(file_path: str, window_days: int = 90) -> Optional[dict[in
     One blame call per file (~20-40ms) — suited for scan_file, too costly
     to run per file in directory scans.
     """
-    import time
-
     parent = str(Path(file_path).parent) or "."
+    cutoff = _window_start(parent, window_days)
+    if cutoff is None:
+        return None
     out = _run_git(parent, "blame", "--line-porcelain", "--",
                    os.path.abspath(file_path))
     if out is None:
         return None
-
-    cutoff = time.time() - window_days * 86400
     edits: dict[int, str] = {}
     current_sha = ""
     current_line = 0
@@ -178,11 +206,15 @@ def recent_line_edits(file_path: str, window_days: int = 90) -> Optional[dict[in
 
 
 def file_churn(file_path: str, window_days: int = 90) -> Optional[int]:
-    """Commits touching a single file in the window; None without git/repo."""
+    """Commits touching a single file in the last window_days of activity
+    (anchored at the repo's most recent commit); None without git/repo."""
     parent = str(Path(file_path).parent) or "."
+    since = _window_start(parent, window_days)
+    if since is None:
+        return None
     out = _run_git(
         parent, "rev-list", "--count",
-        f"--since={window_days} days ago",
+        f"--since=@{int(since)}",
         "HEAD", "--", os.path.abspath(file_path),
     )
     if out is None:

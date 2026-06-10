@@ -5,6 +5,7 @@ output stays identical to before the module existed; signals are file-level
 and language-agnostic (docs-only repos work the same as code repos).
 """
 
+import os
 import shutil
 import subprocess
 
@@ -15,10 +16,14 @@ from scantool.git_signals import collect_git_signals, file_churn, format_activit
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 
 
-def _git(cwd, *args):
+def _git(cwd, *args, date=None):
+    env = None
+    if date:
+        env = {**os.environ,
+               "GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date}
     subprocess.run(
         ["git", "-c", "user.name=test", "-c", "user.email=test@test", *args],
-        cwd=cwd, check=True, capture_output=True,
+        cwd=cwd, check=True, capture_output=True, env=env,
     )
 
 
@@ -94,6 +99,47 @@ class TestSignals:
 
         # single-commit files are noise, not a "hot" section
         assert format_activity(quiet) == ""
+
+
+@requires_git
+class TestActivityAnchoredWindow:
+    """The window covers the last 90 days OF ACTIVITY, anchored at the
+    repo's most recent commit — an older project (e.g. last touched 7
+    months ago) keeps its signals instead of going silent."""
+
+    @pytest.fixture
+    def old_repo(self, tmp_path):
+        _git(tmp_path, "init", "-q")
+        # a.py: bare én gammel commit, >90d før siste aktivitet
+        (tmp_path / "a.py").write_text("x = 1\n")
+        _git(tmp_path, "add", ".")
+        _git(tmp_path, "commit", "-qm", "ancient", date="2019-06-01T12:00:00")
+        # b.py: to commits innenfor de siste 90 aktive dagene
+        (tmp_path / "b.py").write_text("y = 2\n")
+        _git(tmp_path, "add", ".")
+        _git(tmp_path, "commit", "-qm", "first", date="2020-01-01T12:00:00")
+        (tmp_path / "b.py").write_text("y = 22\n")
+        _git(tmp_path, "add", ".")
+        _git(tmp_path, "commit", "-qm", "last", date="2020-03-01T12:00:00")
+        return tmp_path
+
+    def test_old_project_keeps_signals(self, old_repo):
+        signals = collect_git_signals(str(old_repo))
+
+        assert signals is not None
+        assert signals.churn.get("b.py") == 2
+        # a.py sist endret >90d før siste aktivitet — utenfor vinduet
+        assert "a.py" not in signals.churn
+
+    def test_file_churn_anchored(self, old_repo):
+        assert file_churn(str(old_repo / "b.py")) == 2
+        assert file_churn(str(old_repo / "a.py")) == 0
+
+    def test_line_edits_anchored(self, old_repo):
+        from scantool.git_signals import recent_line_edits
+
+        assert recent_line_edits(str(old_repo / "b.py"))
+        assert recent_line_edits(str(old_repo / "a.py")) == {}
 
 
 @requires_git
