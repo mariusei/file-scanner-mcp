@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 from mcp.types import TextContent
 
 from .code_health import analyze_health
+from .content_search import search_content, format_hits
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits
@@ -606,7 +607,7 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search structures across all file types - USE THIS INSTEAD of Grep for classes, functions, headings, sections by name/type/decorator"
+    description="Search across all file types - USE THIS INSTEAD of Grep: content_pattern finds text WITH its structural context (which function/class/section each hit lives in), name/type/decorator find structures"
 )
 def search_structures(
     directory: str,
@@ -614,24 +615,25 @@ def search_structures(
     name_pattern: Optional[str] = None,
     has_decorator: Optional[str] = None,
     min_complexity: Optional[int] = None,
+    content_pattern: Optional[str] = None,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
-    Search for specific structures across a directory.
+    Search for structures — or for text in its structural context — across a directory.
 
     **When to use this vs other tools:**
-    - Use search_structures() INSTEAD of Grep → when searching for code constructs (classes, functions)
-    - Use search_structures() to find by decorator → e.g., all @pytest.fixture or @dataclass
-    - Use search_structures() to find by pattern → e.g., all test_* functions or *Manager classes
-    - Use Grep INSTEAD for literal text search → when you need to find specific strings/comments
+    - Use content_pattern INSTEAD of Grep → text hits come embedded in their
+      structural context: which function/class/section each hit lives in,
+      with the node chain and line range — grep gives a location, this gives
+      a place in the architecture
+    - Use name_pattern/type_filter → find code constructs (classes, functions)
+    - Use has_decorator → e.g., all @pytest.fixture or @dataclass
 
     **Recommended for:** Local codebases - semantic search for classes, functions, methods
 
     SEMANTIC CODE SEARCH. Understands code structure, not just text matching.
-    Can filter by decorators, complexity, and structure type.
-
-    Perfect for: "find all test functions", "show async methods", "locate
-    classes with @dataclass", "find complex functions to refactor".
+    content_pattern works for ANY file type: a hit in markdown returns its
+    section, in SQL its table, in code its enclosing function.
 
     Args:
         directory: Directory to search in
@@ -639,24 +641,36 @@ def search_structures(
         name_pattern: Regex pattern to match names (e.g., "^test_", ".*Manager$")
         has_decorator: Filter by decorator (e.g., "@property", "@staticmethod")
         min_complexity: Minimum complexity (lines) to include
+        content_pattern: Regex searched in raw file content (case-insensitive);
+            hits are grouped by their containing structure. Combine with
+            type_filter/name_pattern to restrict which structures count.
         output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
         Matching structures with line numbers and metadata
 
     Examples:
-        # Find all async functions
-        search_structures("./src", name_pattern="async.*")
+        # Where is retry logic? (concept search with structural answers)
+        search_structures("./src", content_pattern="retry|backoff")
+
+        # Which functions touch fx_rates?
+        search_structures("./src", content_pattern="fx_rates", type_filter="function")
 
         # Find all classes ending in "Manager"
         search_structures("./src", type_filter="class", name_pattern=".*Manager$")
-
-        # Find functions with staticmethod decorator
-        search_structures("./src", type_filter="function", has_decorator="@staticmethod")
     """
     try:
         # Scan directory (recursively scan all files)
         results = scanner.scan_directory(directory, "**/*")
+
+        if content_pattern is not None:
+            found = search_content(results, content_pattern)
+            if type_filter:
+                found = [h for h in found if h.node_type and type_filter in h.node_type]
+            if name_pattern:
+                name_re = re.compile(name_pattern)
+                found = [h for h in found if h.node_name and name_re.search(h.node_name)]
+            return [TextContent(type="text", text=format_hits(found, content_pattern))]
 
         # Filter structures
         matching = {}
