@@ -28,6 +28,41 @@ generasjon ligger i `selection_before.json` (opprinnelig metrikk),
 `selection_after.json` (betinget kompresjon, partisjonsbasert) og
 `selection_node_direct.json` (dagens).
 
+## Skjelett-dybde etter saliency (målt 2026-06-10, ikke integrert)
+
+`skeleton_depth_experiment.py` testet om gradert dybde (mer salient = dypere
+skjelett) gir flere synlige metode-fakta (unike kall-navn) per token.
+10 Python-filer i src/, dybdekutt på AST-skjelettets innrykksnivå.
+
+Forhåndssjekk (null-hypotesen overlevde ikke, men nyansert): 60 % av
+skjelettlinjene ligger på dybde ≤ 1, 81 % på ≤ 2 — dybdekutt har moderat,
+ikke stor, sparemasse.
+
+| Strategi | Noder | Tokens | Fakta-dekning | Fakta/1k tok |
+|---|---|---|---|---|
+| S1 dagens (topp 20 % full) | 27 | 9 385 | 32,8 % | 23,3 |
+| S2 gradert (20 full/15 d2/15 d1) | 73 | 11 692 | 43,0 % | 24,5 |
+| **S7 alle noder dybde 2** | 146 | 10 708 | **47,4 %** | **29,5** |
+| S6 topp 20 % full + alle d2 | 146 | 15 712 | 56,4 % | 23,9 |
+| S8 alle full (referanse) | 146 | 18 548 | 63,4 % | 22,8 |
+
+**Hovedfunn (uventet):** hypotesen «saliency-gradert dybde» er bare svakt
+støttet (S2: +5 % effektivitet). Det reelle funnet er at *grunne skjeletter
+er fakta-tette*: dybde-2 for ALLE noder (S7) dominerer både dagens og
+gradert — +14 % tokens mot dagens gir +14,6 pp dekning og høyest
+effektivitet. Saliency-rangeringens verdi for *dybde-tildeling* er liten;
+verdien ligger i å velge hvem som får *full* dybde.
+
+**Anbefalingskandidat:** S6 = universelt dybde-2-skjelett + full dybde for
+topp 20 % (saliency beholder rollen «hvem fortjener hele metoden» — de mest
+salient nodene har per definisjon dyp unik logikk, som er det dybdekuttet
+fjerner). Prisen er +67 % skjelett-tokens mot dagens; S7 er
+effektivitetsvalget hvis budsjettet er hellig.
+
+**Forbehold:** fakta-metrikken teller unike kall-navn, ikke lesbarhet;
+dybdekutt etterlater `if x:` fulgt av `…` — outline, ikke metode. Gjelder
+Python-AST-skjeletter; generisk skjelett må normalisere innrykk først.
+
 ---
 
 # Kompresjonsmetrikk-eksperiment: betinget kompresjon vs dagens ratio
