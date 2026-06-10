@@ -1,0 +1,125 @@
+"""Tests for git_signals: churn, co-change, graceful absence.
+
+Hard requirements: without git/repo every entry point returns None and
+output stays identical to before the module existed; signals are file-level
+and language-agnostic (docs-only repos work the same as code repos).
+"""
+
+import shutil
+import subprocess
+
+import pytest
+
+from scantool.git_signals import collect_git_signals, file_churn, format_activity
+
+requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+
+
+def _git(cwd, *args):
+    subprocess.run(
+        ["git", "-c", "user.name=test", "-c", "user.email=test@test", *args],
+        cwd=cwd, check=True, capture_output=True,
+    )
+
+
+@pytest.fixture
+def repo(tmp_path):
+    """Tiny docs+code repo: a.py+b.py committed together twice, notes.md once,
+    deleted.py removed again."""
+    _git(tmp_path, "init", "-q")
+    (tmp_path / "a.py").write_text("x = 1\n")
+    (tmp_path / "b.py").write_text("y = 2\n")
+    _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
+    (tmp_path / "a.py").write_text("x = 11\n")
+    (tmp_path / "b.py").write_text("y = 22\n")
+    _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
+    (tmp_path / "notes.md").write_text("# Notater\n")
+    (tmp_path / "deleted.py").write_text("gone = True\n")
+    _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "third")
+    _git(tmp_path, "rm", "-q", "deleted.py")
+    _git(tmp_path, "commit", "-qm", "remove")
+    return tmp_path
+
+
+class TestGracefulAbsence:
+    def test_non_git_directory_returns_none(self, tmp_path):
+        (tmp_path / "f.py").write_text("x = 1\n")
+
+        assert collect_git_signals(str(tmp_path)) is None
+        assert file_churn(str(tmp_path / "f.py")) is None
+
+    def test_missing_directory_returns_none(self, tmp_path):
+        assert collect_git_signals(str(tmp_path / "finnes-ikke")) is None
+
+
+@requires_git
+class TestSignals:
+    def test_churn_counts_commits_per_file(self, repo):
+        signals = collect_git_signals(str(repo))
+
+        assert signals is not None
+        assert signals.churn["a.py"] == 2
+        assert signals.churn["b.py"] == 2
+        # non-code files count the same way — signals are language-agnostic
+        assert signals.churn["notes.md"] == 1
+
+    def test_deleted_files_excluded(self, repo):
+        signals = collect_git_signals(str(repo))
+
+        assert "deleted.py" not in signals.churn
+
+    def test_co_change_pairs(self, repo):
+        signals = collect_git_signals(str(repo))
+
+        pairs = {(a, b): c for a, b, c in signals.co_change}
+        assert pairs.get(("a.py", "b.py")) == 2
+
+    def test_file_churn_single_file(self, repo):
+        assert file_churn(str(repo / "a.py")) == 2
+        assert file_churn(str(repo / "notes.md")) == 1
+
+    def test_format_activity(self, repo):
+        signals = collect_git_signals(str(repo))
+
+        section = format_activity(signals)
+
+        assert "GIT ACTIVITY" in section
+        assert "a.py" in section
+        assert "a.py <-> b.py 2x" in section
+
+    def test_format_activity_empty_when_quiet(self):
+        from scantool.git_signals import GitSignals
+
+        quiet = GitSignals(churn={"f.py": 1}, co_change=[], window_days=90)
+
+        # single-commit files are noise, not a "hot" section
+        assert format_activity(quiet) == ""
+
+
+@requires_git
+class TestFormatterIntegration:
+    def test_directory_scan_shows_churn_label(self, repo):
+        from scantool.scanner import FileScanner
+        from scantool.directory_formatter import DirectoryFormatter
+        from scantool.server import _annotate_churn
+
+        results = FileScanner().scan_directory(str(repo), pattern="**/*.py")
+        _annotate_churn(results, str(repo))
+        output = DirectoryFormatter(include_structures=True,
+                                    flatten_structures=True).format(str(repo), results)
+
+        assert "2x/90d" in output
+
+    def test_non_git_directory_has_no_labels(self, tmp_path):
+        from scantool.scanner import FileScanner
+        from scantool.directory_formatter import DirectoryFormatter
+        from scantool.server import _annotate_churn, _git_activity_section
+
+        (tmp_path / "f.py").write_text("def fn():\n    return call_something()\n")
+        results = FileScanner().scan_directory(str(tmp_path), pattern="**/*.py")
+        _annotate_churn(results, str(tmp_path))
+        output = DirectoryFormatter(include_structures=True,
+                                    flatten_structures=True).format(str(tmp_path), results)
+
+        assert "/90d" not in output
+        assert _git_activity_section(str(tmp_path)) == ""

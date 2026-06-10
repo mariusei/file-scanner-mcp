@@ -82,10 +82,12 @@ class TreeFormatter:
             else:
                 modified_str = ""
 
+            churn = meta.get("churn_90d")
             parts = [
                 f"{prefix}{connector} {node.type}:",
                 meta['size_formatted'],
-                f"modified: {modified_str}" if modified_str else ""
+                f"modified: {modified_str}" if modified_str else "",
+                f"churn: {churn} commits/90d" if churn else ""
             ]
             lines.append(" ".join(p for p in parts if p))
             return lines

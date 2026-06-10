@@ -230,8 +230,10 @@ class DirectoryFormatter:
                     modified_iso = metadata.get("modified", "")
                     modified_relative = self._format_relative_time(modified_iso) if modified_iso else ""
 
-                    # Build metadata string: size, relative time
-                    meta_parts = [size, modified_relative]
+                    # Build metadata string: size, relative time, git churn
+                    churn = metadata.get("churn_90d")
+                    meta_parts = [size, modified_relative,
+                                  f"{churn}x/90d" if churn else ""]
                     meta_str = ", ".join(p for p in meta_parts if p)
                     lines.append(f"{prefix}{connector} {name} [{meta_str}]")
                 else:
@@ -244,14 +246,16 @@ class DirectoryFormatter:
                     if structures and structures[0].type == "file-info":
                         file_metadata = structures[0].file_metadata
 
-                    # Format metadata (size and modified time)
+                    # Format metadata (size, modified time, git churn)
                     metadata_str = ""
                     if file_metadata:
                         size = file_metadata.get("size_formatted", "")
                         modified_iso = file_metadata.get("modified", "")
                         modified_relative = self._format_relative_time(modified_iso) if modified_iso else ""
+                        churn = file_metadata.get("churn_90d")
 
-                        meta_parts = [size, modified_relative]
+                        meta_parts = [size, modified_relative,
+                                      f"{churn}x/90d" if churn else ""]
                         metadata_str = " [" + ", ".join(p for p in meta_parts if p) + "]"
 
                     # Format file line
