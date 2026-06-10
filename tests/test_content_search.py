@@ -97,6 +97,71 @@ class TestContentSearch:
 
         assert "zzz_dense.py" in found[0].file  # tettest først, tross filnavn
 
+    def test_leads_point_to_definitions_in_other_files(self, tmp_path):
+        from scantool.content_search import find_leads
+
+        results = scan(tmp_path, {
+            "caller.py": '''\
+def orchestrate(items):
+    if check_skipif(items):
+        return evaluate_condition(items)
+    return None
+''',
+            "lib.py": '''\
+def evaluate_condition(items):
+    return all(i.valid for i in items)
+''',
+        })
+
+        found = search_content(results, "skipif")
+        leads = find_leads(found, results)
+
+        assert any(name == "evaluate_condition" and "lib.py" in file
+                   for name, file, line in leads)
+
+    def test_no_lead_for_same_file_definitions(self, tmp_path):
+        from scantool.content_search import find_leads
+
+        results = scan(tmp_path, {"solo.py": '''\
+def orchestrate(items):
+    return local_helper(items)  # skipif-relatert
+
+
+def local_helper(items):
+    return items
+'''})
+
+        found = search_content(results, "skipif")
+
+        assert find_leads(found, results) == []
+
+    def test_ambiguous_names_excluded(self, tmp_path):
+        from scantool.content_search import find_leads
+
+        files = {"caller.py": "def run():\n    return process_widget()  # skipif\n"}
+        for i in range(3):
+            files[f"impl_{i}.py"] = "def process_widget():\n    return 1\n"
+        results = scan(tmp_path, files)
+
+        found = search_content(results, "skipif")
+
+        # definert i 3 filer — for tvetydig til å være et spor
+        assert find_leads(found, results) == []
+
+    def test_leads_rendered_in_output(self, tmp_path):
+        from scantool.content_search import find_leads
+
+        results = scan(tmp_path, {
+            "caller.py": "def run(x):\n    return transform_payload(x)  # skipif\n",
+            "lib.py": "def transform_payload(x):\n    return x * 2\n",
+        })
+        found = search_content(results, "skipif")
+
+        output = format_hits(found, "skipif", find_leads(found, results))
+
+        assert "leads (called in hits, defined elsewhere):" in output
+        assert "transform_payload → " in output
+
     def test_hit_cap_per_node(self, tmp_path):
         body = "\n".join(f"    target_{i} = call_{i}()" for i in range(8))
         results = scan(tmp_path, {"many.py": f"def crowded():\n{body}\n"})

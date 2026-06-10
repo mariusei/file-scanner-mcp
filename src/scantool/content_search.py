@@ -115,6 +115,67 @@ def _is_test_path(file_path: str) -> bool:
             or name.startswith("test_") or name.endswith("_test.py"))
 
 
+# ── spor: ett strukturelt hopp fra treff til definisjon ────────────────────
+
+_CALL_IN_HIT = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]{4,})\s*\(")
+_LEAD_MAX = 5
+_LEAD_MAX_DEFINITIONS = 2  # navn definert i flere filer er for tvetydige
+
+
+def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, str, int]]:
+    """Identifiers called in hit lines but DEFINED in another scanned file —
+    the structural hop a grep anchor hides. Measured rationale: concept
+    searches often land in the caller while the answer lives one call away
+    (SWE-bench pytest-7373).
+
+    Returns (name, defining file, line), most-called first, capped.
+    """
+    definitions: dict[str, list[tuple[str, int]]] = {}
+    for file_path, structures in results.items():
+        def walk(nodes):
+            for node in nodes or []:
+                if node.name and node.type != "file-info":
+                    definitions.setdefault(node.name, []).append(
+                        (file_path, node.start_line))
+                walk(node.children)
+        walk(structures)
+
+    # kall hentes fra hele den containende noden, ikke bare trefflinjene —
+    # hoppet til nabofilen står ofte på linjen ved siden av treffet.
+    # Kun fra de øverste viste IMPLEMENTASJONS-strukturene: spor skal følge
+    # av det agenten ser, og testfilers hjelperkall er støy
+    sources = [n for n in found if not _is_test_path(n.file)][:10]
+    call_counts: dict[str, int] = {}
+    hit_files: dict[str, set[str]] = {}
+    block_cache: dict[str, list[str]] = {}
+    for node_hits in sources:
+        if node_hits.file not in block_cache:
+            try:
+                block_cache[node_hits.file] = Path(node_hits.file).read_text(
+                    errors="replace").split("\n")
+            except OSError:
+                block_cache[node_hits.file] = []
+        lines = block_cache[node_hits.file]
+        block = "\n".join(lines[node_hits.start_line - 1:node_hits.end_line])
+        for name in _CALL_IN_HIT.findall(block):
+            call_counts[name] = call_counts.get(name, 0) + 1
+            hit_files.setdefault(name, set()).add(node_hits.file)
+
+    leads = []
+    for name, count in sorted(call_counts.items(), key=lambda kv: -kv[1]):
+        defined_in = definitions.get(name, [])
+        if not 1 <= len(defined_in) <= _LEAD_MAX_DEFINITIONS:
+            continue
+        # kun hopp UT av treff-filene — definisjon i samme fil er allerede synlig
+        external = [(f, line) for f, line in defined_in if f not in hit_files[name]]
+        if not external:
+            continue
+        leads.append((name, external[0][0], external[0][1]))
+        if len(leads) >= _LEAD_MAX:
+            break
+    return leads
+
+
 def _containing_node(structures, line_no: int):
     """Deepest named node whose range contains the line, with its chain."""
     best = None
@@ -136,8 +197,10 @@ def _containing_node(structures, line_no: int):
     return best, best_chain
 
 
-def format_hits(found: list[NodeHits], pattern: str) -> str:
-    """Compact structural rendering: node chain + line-numbered hits."""
+def format_hits(found: list[NodeHits], pattern: str,
+                leads: Optional[list[tuple[str, str, int]]] = None) -> str:
+    """Compact structural rendering: node chain + line-numbered hits,
+    plus one-hop leads to definitions in other files."""
     if not found:
         return f"No content matches for /{pattern}/"
 
@@ -162,4 +225,8 @@ def format_hits(found: list[NodeHits], pattern: str) -> str:
 
     if len(found) > _MAX_NODES:
         lines.append(f"\n+{len(found) - _MAX_NODES} more structures — narrow the pattern")
+    if leads:
+        # full sti — agenten skal kunne følge sporet med ett scan_file-kall
+        lines.append("\nleads (called in hits, defined elsewhere): " + ", ".join(
+            f"{name} → {file}@{line}" for name, file, line in leads))
     return "\n".join(lines)
