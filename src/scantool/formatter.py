@@ -109,6 +109,10 @@ class TreeFormatter:
             modifiers_str = " ".join(node.modifiers)
             parts.append(f"[{modifiers_str}]")
 
+        # Per-node git activity (only set when counts differ across nodes)
+        if node.recent_edits:
+            parts.append(f"[{node.recent_edits} edits/90d]")
+
         # Add complexity indicator if enabled
         if self.show_complexity and node.complexity:
             complexity_str = self._format_complexity(node.complexity)

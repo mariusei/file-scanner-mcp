@@ -40,6 +40,7 @@ class StructureNode:
     code_excerpt: Optional[list[str]] = None  # Verbatim source lines for salient nodes
     code_skeleton: Optional[list[str]] = None  # Condensed method skeleton (preferred display)
     saliency: Optional[float] = None  # Normalized saliency score for selected nodes
+    recent_edits: Optional[int] = None  # Distinct commits behind this node's lines (90d window)
 
     def __repr__(self):
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"

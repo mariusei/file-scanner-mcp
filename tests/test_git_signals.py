@@ -97,6 +97,92 @@ class TestSignals:
 
 
 @requires_git
+class TestPerNodeChurn:
+    def test_line_edits_map_recent_commits_onto_current_lines(self, tmp_path):
+        from scantool.git_signals import recent_line_edits
+
+        _git(tmp_path, "init", "-q")
+        (tmp_path / "mod.py").write_text(
+            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
+        # endre kun beta — alpha-linjene beholder commit 1, beta får commit 2
+        (tmp_path / "mod.py").write_text(
+            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2 + 2\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
+
+        line_map = recent_line_edits(str(tmp_path / "mod.py"))
+
+        assert line_map is not None
+        # linje 6 (beta-kroppen) har en annen commit enn linje 2 (alpha-kroppen)
+        assert line_map[6] != line_map[2]
+
+    def test_node_labels_differentiate_edited_function(self, tmp_path):
+        from scantool.scanner import FileScanner
+        from scantool.git_signals import recent_line_edits
+        from scantool.server import _annotate_node_edits
+
+        _git(tmp_path, "init", "-q")
+        path = tmp_path / "mod.py"
+        path.write_text(
+            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
+        path.write_text(
+            "def alpha():\n    return 1\n\n\ndef beta():\n    x = 2\n    return x + 2\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
+
+        structures = FileScanner().scan_file(str(path))
+        _annotate_node_edits(structures, recent_line_edits(str(path)))
+
+        by_name = {n.name: n.recent_edits for n in structures if n.name in ("alpha", "beta")}
+        assert by_name["beta"] == 2      # def-linje fra c1, kropp fra c2
+        assert by_name["alpha"] == 1
+
+    def test_uniform_counts_suppressed(self, tmp_path):
+        """Nyopprettet fil: alle noder har samme count — labels uten
+        differensiering gjentar fil-churn og undertrykkes."""
+        from scantool.scanner import FileScanner
+        from scantool.git_signals import recent_line_edits
+        from scantool.server import _annotate_node_edits
+
+        _git(tmp_path, "init", "-q")
+        path = tmp_path / "fresh.py"
+        path.write_text(
+            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "only")
+
+        structures = FileScanner().scan_file(str(path))
+        _annotate_node_edits(structures, recent_line_edits(str(path)))
+
+        assert all(n.recent_edits is None for n in structures)
+
+    def test_language_agnostic_markdown(self, tmp_path):
+        """Blame er linjebasert — markdown-seksjoner får samme behandling."""
+        from scantool.scanner import FileScanner
+        from scantool.git_signals import recent_line_edits
+        from scantool.server import _annotate_node_edits
+
+        _git(tmp_path, "init", "-q")
+        path = tmp_path / "doc.md"
+        path.write_text("# Intro\n\nTekst.\n\n# Detaljer\n\nMer tekst.\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
+        path.write_text("# Intro\n\nTekst.\n\n# Detaljer\n\nOppdatert tekst her.\n")
+        _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
+
+        structures = FileScanner().scan_file(str(path))
+        line_map = recent_line_edits(str(path))
+
+        assert line_map is not None
+        _annotate_node_edits(structures, line_map)  # skal ikke feile på prosa
+
+    def test_no_git_returns_none(self, tmp_path):
+        from scantool.git_signals import recent_line_edits
+
+        (tmp_path / "f.py").write_text("x = 1\n")
+
+        assert recent_line_edits(str(tmp_path / "f.py")) is None
+
+
+@requires_git
 class TestFormatterIntegration:
     def test_directory_scan_shows_churn_label(self, repo):
         from scantool.scanner import FileScanner

@@ -12,7 +12,7 @@ from mcp.types import TextContent
 from .code_health import analyze_health
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
-from .git_signals import collect_git_signals, file_churn, format_activity
+from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits
 from .scanner import FileScanner
 from .languages import StructureNode
 from .preview import preview_directory as preview_dir_func
@@ -33,6 +33,30 @@ def _git_activity_section(directory: str) -> str:
     if signals is None:
         return ""
     return format_activity(signals)
+
+
+def _annotate_node_edits(structures: list, line_map: dict[int, str]) -> None:
+    """Per-node edit counts from a blame line map. Labels are only set when
+    they discriminate — a uniform value across all nodes (e.g. a freshly
+    created file) repeats the file-level churn and carries no information."""
+    eligible: list[tuple] = []
+
+    def walk(nodes):
+        for node in nodes:
+            if node.type != "file-info" and node.name and node.end_line >= node.start_line:
+                commits = {line_map[line]
+                           for line in range(node.start_line, node.end_line + 1)
+                           if line in line_map}
+                eligible.append((node, len(commits)))
+            if node.children:
+                walk(node.children)
+
+    walk(structures)
+    if len({count for _, count in eligible}) <= 1:
+        return
+    for node, count in eligible:
+        if count:
+            node.recent_edits = count
 
 
 def _annotate_churn(results: dict, directory: str) -> None:
@@ -403,7 +427,10 @@ def scan_file(
     - HTML/CSS: tags, selectors, rules
 
     The file-info line includes git churn ("churn: N commits/90d") when the
-    file is in a git repository — absent otherwise, never an error.
+    file is in a git repository — absent otherwise, never an error. Nodes
+    additionally carry "[N edits/90d]" labels (git blame projected onto
+    current lines, so no hunk drift) when — and only when — the counts
+    differ between nodes; a uniform value repeats file churn and is omitted.
 
     Args:
         file_path: Absolute or relative path to the file to scan
@@ -455,6 +482,11 @@ def scan_file(
             churn = file_churn(file_path)
             if churn:
                 structures[0].file_metadata["churn_90d"] = churn
+                # per-node edit counts (blame-based) only when the file has
+                # any recent activity — saves a blame call on cold files
+                line_map = recent_line_edits(file_path)
+                if line_map:
+                    _annotate_node_edits(structures, line_map)
 
         # Format output
         if output_format == "json":

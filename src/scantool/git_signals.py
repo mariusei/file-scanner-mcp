@@ -135,6 +135,48 @@ def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
     return f"\n━━━ GIT ACTIVITY (last {signals.window_days}d) ━━━\n" + "\n".join(lines)
 
 
+def recent_line_edits(file_path: str, window_days: int = 90) -> Optional[dict[int, str]]:
+    """Map current line numbers to the commit that last touched them,
+    filtered to the window. Built on git blame, so history is projected
+    onto TODAY's line numbers — no hunk drift. Line-based and therefore
+    language-agnostic. None without git/repo; uncommitted lines count as
+    one in-progress edit.
+
+    One blame call per file (~20-40ms) — suited for scan_file, too costly
+    to run per file in directory scans.
+    """
+    import time
+
+    parent = str(Path(file_path).parent) or "."
+    out = _run_git(parent, "blame", "--line-porcelain", "--",
+                   os.path.abspath(file_path))
+    if out is None:
+        return None
+
+    cutoff = time.time() - window_days * 86400
+    edits: dict[int, str] = {}
+    current_sha = ""
+    current_line = 0
+    current_ts = 0.0
+    known_ts: dict[str, float] = {}
+
+    for line in out.split("\n"):
+        if line.startswith("\t"):
+            if current_ts >= cutoff:
+                edits[current_line] = current_sha
+            continue
+        parts = line.split()
+        if len(parts) >= 3 and len(parts[0]) == 40 and all(
+                c in "0123456789abcdef" for c in parts[0]):
+            current_sha = parts[0]
+            current_line = int(parts[2])
+            current_ts = known_ts.get(current_sha, 0.0)
+        elif line.startswith("committer-time "):
+            current_ts = float(line.split()[1])
+            known_ts[current_sha] = current_ts
+    return edits
+
+
 def file_churn(file_path: str, window_days: int = 90) -> Optional[int]:
     """Commits touching a single file in the window; None without git/repo."""
     parent = str(Path(file_path).parent) or "."
