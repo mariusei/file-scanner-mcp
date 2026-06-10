@@ -68,3 +68,23 @@ scantool-agentene ga målbart bedre svar (88 % vs 73 % fakta-dekning):
 - sg-T4 avdekket en semantisk tvetydighet begge verktøysett arvet:
   TTL=None tolkes som «cacher evig» (grep-agent) vs «cacher ikke»
   (scantool-agent) — fasiten skiller ikke
+
+## Addendum: konsum-styring (M2b-v2, 2026-06-11)
+
+Akseptkriterium fra BACKLOG punkt 1: re-kjør episodene med kostnads-
+transparente verktøybeskrivelser (samme styring som nå ligger i
+produksjons-docstringene: search som førstevalg, budsjett-påbud på
+scanfile, preview merket dyr, «stopp når du kan svare»).
+
+| 6 episoder | grep | scan-v1 | scan-v2 |
+|---|---|---|---|
+| Verktøy-tokens | 19 113 | 53 264 | **23 551 (−56 %)** |
+| Fakta-dekning | 14/21 (67 %) | 19/21 (90 %) | **18/21 (86 %)** |
+
+Token-gapet lukket fra 2,8× til 1,2× uten reelt kvalitetstap.
+pytest-7373 ble løst FULLT (3/3, opp fra 2/3) på 654 tokens:
+søk → spor → svar. Ærlig nyanse: sg-T5 (arkitektur) falt 5/5 → 3/5 —
+styringen fikk agenten til å økonomisere nøyaktig der rikdom var riktig
+(åpne oversiktsspørsmål). Lærdom: kostnadsstyring må være oppgavebetinget
+— beskrivelsene sier nå «preview for førstegangsorientering», og det er
+riktig retning, men spenningen er reell og dokumentert.
