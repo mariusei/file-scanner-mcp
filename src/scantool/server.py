@@ -11,6 +11,7 @@ from mcp.types import TextContent
 
 from .code_health import analyze_health
 from .content_search import search_content, format_hits
+from .delta import ScanMemory, apply_node_delta
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits
@@ -25,6 +26,9 @@ mcp = FastMCP("File Scanner MCP")
 scanner = FileScanner()
 formatter = TreeFormatter()
 dir_formatter = DirectoryFormatter()
+
+# Session-scoped scan memory for delta mode — lives as long as the server
+scan_memory = ScanMemory()
 
 
 def _git_activity_section(directory: str) -> str:
@@ -384,6 +388,7 @@ def scan_file(
     show_complexity: bool = False,
     condense: bool = True,
     budget: Optional[int] = None,
+    delta: bool = True,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -426,6 +431,12 @@ def scan_file(
             Presets for the exploration funnel — use instead of grep:
             budget=300 ≈ file preview (top functions only), budget=1500 ≈
             compact overview, None = full two-tier detail
+        delta: Re-scans show only what changed since YOUR previous scan of
+            the same file in this session: unchanged file → one line;
+            modified file → full structure but code detail only for new or
+            changed functions ([ny]/[endret] labels, removed ones listed).
+            First scan is always full. Pass delta=False for full output
+            (default: True)
         output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -448,6 +459,15 @@ def scan_file(
         - validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
+        # Delta: unchanged since this session's previous scan → one line
+        if delta and output_format != "json":
+            prev_seq = scan_memory.file_unchanged(file_path)
+            if prev_seq is not None:
+                return [TextContent(type="text", text=(
+                    f"{file_path}: uendret siden forrige scan i denne økten "
+                    f"— strukturen er identisk med forrige svar "
+                    f"(delta=False for full output)"))]
+
         # Git activity first — recent line edits feed saliency selection
         # (weight 0.15 toward actively-worked nodes) and "[N edits/90d]"
         # labels. Cold files (zero churn) skip the blame call; silently
@@ -467,6 +487,18 @@ def scan_file(
         if churn and structures[0].type == "file-info" and structures[0].file_metadata is not None:
             structures[0].file_metadata["churn_90d"] = churn
 
+        delta_note = ""
+        if delta and output_format != "json":
+            source_lines = Path(file_path).read_text(errors="replace").split("\n")
+            diff = scan_memory.diff_and_record(file_path, structures, source_lines)
+            if diff is not None:
+                changed, unchanged = apply_node_delta(structures, diff)
+                removed = f"; fjernet: {', '.join(diff.removed)}" if diff.removed else ""
+                delta_note = (
+                    f"(delta siden forrige scan: {changed} endret/ny, "
+                    f"{unchanged} uendret — kodedetalj kun for endrede"
+                    f"{removed}; delta=False for alt)\n")
+
         # Format output
         if output_format == "json":
             return [TextContent(type="text", text=json.dumps(_structures_to_json(structures, file_path), indent=2))]
@@ -479,7 +511,7 @@ def scan_file(
                 show_complexity=show_complexity,
                 condense=condense
             )
-            result = custom_formatter.format(file_path, structures)
+            result = delta_note + custom_formatter.format(file_path, structures)
             return [TextContent(type="text", text=result)]
 
     except FileNotFoundError as e:
@@ -498,6 +530,7 @@ def scan_directory(
     max_files: Optional[int] = None,
     respect_gitignore: bool = True,
     exclude_patterns: Optional[list[str]] = None,
+    delta: bool = True,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -548,6 +581,10 @@ def scan_directory(
         max_files: Maximum files to process (default: None = unlimited)
         respect_gitignore: Respect .gitignore exclusions (default: True)
         exclude_patterns: Additional patterns to exclude (gitignore syntax)
+        delta: Re-scans aggregate files unchanged since YOUR previous scan
+            in this session to a single line — full detail only for changed
+            or new files. The CODE HEALTH section always covers everything.
+            Pass delta=False for full output (default: True)
         output_format: "tree" or "json" (default: "tree")
 
     Returns:
@@ -590,12 +627,44 @@ def scan_directory(
             return [TextContent(type="text", text=warning + json.dumps(json_results, indent=2))]
         else:
             _annotate_churn(results, directory)
+
+            # Delta: files unchanged since this session's previous scan are
+            # aggregated to one line; full detail only for changed/new files.
+            # Health runs on the FULL set regardless — "unreferenced" must
+            # see references living in unchanged files.
+            unchanged_paths = []
+            display_results = results
+            if delta:
+                for path in results:
+                    if scan_memory.file_unchanged(path) is not None:
+                        unchanged_paths.append(path)
+                    elif results[path]:
+                        try:
+                            lines = Path(path).read_text(errors="replace").split("\n")
+                            scan_memory.diff_and_record(path, results[path], lines)
+                        except OSError:
+                            pass
+                if unchanged_paths:
+                    display_results = {p: s for p, s in results.items()
+                                       if p not in set(unchanged_paths)}
+
+            if delta and not display_results:
+                names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
+                return [TextContent(type="text", text=(
+                    f"{directory}: alle {len(unchanged_paths)} filer uendret "
+                    f"siden forrige scan i denne økten ({names}) — "
+                    f"delta=False for full output"))]
+
             # ALWAYS use compact inline format for directory scans
             custom_formatter = DirectoryFormatter(
                 include_structures=True,
                 flatten_structures=True  # Always flat for directory overview
             )
-            result = warning + custom_formatter.format(directory, results)
+            result = warning + custom_formatter.format(directory, display_results)
+            if unchanged_paths:
+                names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
+                result += (f"\nuendret siden forrige scan ({len(unchanged_paths)} "
+                           f"filer): {names} (delta=False for alt)")
             result += analyze_health(results)
             return [TextContent(type="text", text=result)]
 
