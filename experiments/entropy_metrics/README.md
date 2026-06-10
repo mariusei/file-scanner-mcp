@@ -44,13 +44,17 @@ kompresjon fanger unikhet og kompleksitet i én metrikk.
 | C level 9 | 13,8 ms | #1/7 | −0,23 |
 | `_structural_uniqueness` (dagens, O(n²)) | 10,8 ms | — | — |
 
-## Konklusjonskandidat (ikke integrert ennå)
+## Konklusjon — integrert 2026-06-10
 
-C kan erstatte **både** `_compression_ratio` og `_structural_uniqueness`
-(som alene koster 10,8 ms/fil): netto kostnadsnøytralt eller raskere, og
-fikser den inverterte rangeringen. Forslag til ny saliency-vekting:
-shannon + betinget kompresjon + centrality. Krever re-validering av
-excerpt-utvalget på ekte filer før integrasjon.
+C erstattet **både** `_compression_ratio` og `_structural_uniqueness` i
+`entropy/core.py` (`_conditional_compression`, zlib level 6, 16 KB kontekst
+per side). Ny vekting: 0,30 shannon + 0,50 betinget + 0,20 centrality
+(0,35/0,65 uten centrality). Netto raskere: 14,6 → 11,2 ms/fil.
+
+Effekt på excerpt-utvalget: se `selection_compare.md` — duplikater og
+boilerplate ut (C++-kopier, literal-`__init__`), unik kjernelogikk inn
+(`_discover_files`, `condense_excerpt`, `validate_email`). Tre null-funn
+der utvalget var uendret.
 
 ## Forbehold
 

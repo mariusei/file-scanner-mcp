@@ -192,18 +192,17 @@ def _rank_partitions(
     if not partitions:
         return
 
-    # Cache entropy calculations
-    entropy_cache = {i: _shannon_entropy(p["data"]) for i, p in enumerate(partitions)}
-
-    # Compute metrics
+    # Compute metrics: byte diversity + new-information-given-context.
+    # Conditional compression covers both complexity and uniqueness (a
+    # partition duplicated elsewhere in the file compresses to ~nothing),
+    # replacing the old compression ratio (which measured size, r=-0.80)
+    # and the O(n²) structural uniqueness — see experiments/entropy_metrics/.
     shannon_scores = []
-    compression_scores = []
-    uniqueness_scores = []
+    conditional_scores = []
 
-    for i, partition in enumerate(partitions):
-        shannon_scores.append(entropy_cache[i])
-        compression_scores.append(_compression_ratio(partition["data"]))
-        uniqueness_scores.append(_structural_uniqueness(i, partitions, entropy_cache))
+    for partition in partitions:
+        shannon_scores.append(_shannon_entropy(partition["data"]))
+        conditional_scores.append(_conditional_compression(data, partition))
 
     # Normalize to [0, 1]
     def normalize(scores):
@@ -213,8 +212,7 @@ def _rank_partitions(
         return np.zeros_like(arr)
 
     shannon_norm = normalize(shannon_scores)
-    compression_norm = normalize(compression_scores)
-    uniqueness_norm = normalize(uniqueness_scores)
+    conditional_norm = normalize(conditional_scores)
 
     # Optional centrality
     if use_centrality:
@@ -228,8 +226,7 @@ def _rank_partitions(
             for i, partition in enumerate(partitions):
                 partition["saliency"] = (
                     0.30 * shannon_norm[i]
-                    + 0.20 * compression_norm[i]
-                    + 0.30 * uniqueness_norm[i]
+                    + 0.50 * conditional_norm[i]
                     + 0.20 * centrality_norm[i]
                 )
         except Exception:
@@ -240,7 +237,7 @@ def _rank_partitions(
         # Without centrality
         for i, partition in enumerate(partitions):
             partition["saliency"] = (
-                0.35 * shannon_norm[i] + 0.25 * compression_norm[i] + 0.40 * uniqueness_norm[i]
+                0.35 * shannon_norm[i] + 0.65 * conditional_norm[i]
             )
 
 
@@ -254,41 +251,35 @@ def _shannon_entropy(data: bytes) -> float:
     return float(-np.sum(probs * np.log2(probs)))
 
 
-def _compression_ratio(data: bytes) -> float:
-    """Compression ratio as proxy for Kolmogorov complexity."""
-    if len(data) == 0:
+# zlib's fixed output overhead — subtracted so short partitions aren't
+# scored as incompressible by the header alone
+_ZLIB_EMPTY_OVERHEAD = len(zlib.compress(b"", 6))
+
+# Context window per side of the partition; zlib's zdict caps at 32KB total
+_CONTEXT_WINDOW = 16384
+
+
+def _conditional_compression(data: bytes, partition: dict) -> float:
+    """New information per byte, given surrounding file content as context.
+
+    Compresses the partition with up to 16KB on each side as zlib
+    dictionary: boilerplate that repeats elsewhere compresses to ~nothing,
+    unique logic does not. Proxy for conditional Kolmogorov complexity.
+    """
+    p = partition["data"]
+    if len(p) == 0:
         return 0.0
 
+    offset, size = partition["offset"], partition["size"]
+    context = data[max(0, offset - _CONTEXT_WINDOW):offset] + \
+        data[offset + size:offset + size + _CONTEXT_WINDOW]
+
     try:
-        compressed = zlib.compress(data, level=9)
-        return len(compressed) / len(data)
+        if context:
+            compressor = zlib.compressobj(level=6, zdict=context)
+        else:
+            compressor = zlib.compressobj(level=6)
+        compressed_size = len(compressor.compress(p) + compressor.flush())
+        return max(0, compressed_size - _ZLIB_EMPTY_OVERHEAD) / len(p)
     except Exception:
         return 1.0  # Incompressible
-
-
-def _structural_uniqueness(idx: int, partitions: list[dict], entropy_cache: dict) -> float:
-    """How unique is this partition compared to others?"""
-    if len(partitions) <= 1:
-        return 1.0
-
-    partition = partitions[idx]
-    similar_count = 0
-    p_entropy = entropy_cache[idx]
-
-    for i, other in enumerate(partitions):
-        if i == idx:
-            continue
-
-        # Consider similar if size within 20% and entropy within 10%
-        size_ratio = min(partition["size"], other["size"]) / max(partition["size"], other["size"])
-        o_entropy = entropy_cache[i]
-
-        if o_entropy > 0:
-            entropy_ratio = min(p_entropy, o_entropy) / max(p_entropy, o_entropy)
-        else:
-            entropy_ratio = 1.0 if p_entropy == 0 else 0.0
-
-        if size_ratio > 0.8 and entropy_ratio > 0.9:
-            similar_count += 1
-
-    return 1.0 / (1.0 + similar_count)

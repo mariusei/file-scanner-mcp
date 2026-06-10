@@ -1,0 +1,659 @@
+{
+  "src/scantool/scanner.py": [
+    {
+      "name": "get_supported_extensions",
+      "type": "method",
+      "lines": [
+        425,
+        427
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "get_scanner_info",
+      "type": "method",
+      "lines": [
+        429,
+        431
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "src/scantool/preview.py": [
+    {
+      "name": "DirectoryStats",
+      "type": "class",
+      "lines": [
+        12,
+        54
+      ],
+      "coverage": 0.558
+    },
+    {
+      "name": "format_size",
+      "type": "method",
+      "lines": [
+        29,
+        36
+      ],
+      "coverage": 0.625
+    },
+    {
+      "name": "format_extensions",
+      "type": "method",
+      "lines": [
+        38,
+        54
+      ],
+      "coverage": 0.706
+    },
+    {
+      "name": "_format_size",
+      "type": "method",
+      "lines": [
+        568,
+        574
+      ],
+      "coverage": 0.714
+    }
+  ],
+  "src/scantool/code_map.py": [
+    {
+      "name": "_discover_files",
+      "type": "method",
+      "lines": [
+        172,
+        222
+      ],
+      "coverage": 0.549
+    },
+    {
+      "name": "_calculate_centrality",
+      "type": "method",
+      "lines": [
+        322,
+        331
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_format_age",
+      "type": "method",
+      "lines": [
+        402,
+        417
+      ],
+      "coverage": 0.562
+    },
+    {
+      "name": "_format_file_size",
+      "type": "method",
+      "lines": [
+        419,
+        426
+      ],
+      "coverage": 0.75
+    }
+  ],
+  "src/scantool/formatter.py": [],
+  "src/scantool/entropy/core.py": [
+    {
+      "name": "SalientPartition",
+      "type": "class",
+      "lines": [
+        14,
+        24
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "line_range",
+      "type": "method",
+      "lines": [
+        23,
+        24
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_bytes_to_line_number",
+      "type": "function",
+      "lines": [
+        88,
+        90
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_shannon_entropy",
+      "type": "function",
+      "lines": [
+        244,
+        251
+      ],
+      "coverage": 0.75
+    }
+  ],
+  "src/scantool/languages/python.py": [
+    {
+      "name": "__init__",
+      "type": "method",
+      "lines": [
+        42,
+        45
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "get_extensions",
+      "type": "method",
+      "lines": [
+        52,
+        53
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "get_language_name",
+      "type": "method",
+      "lines": [
+        56,
+        57
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "get_priority",
+      "type": "method",
+      "lines": [
+        60,
+        61
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "is_low_value_for_inventory",
+      "type": "method",
+      "lines": [
+        81,
+        100
+      ],
+      "coverage": 0.7
+    },
+    {
+      "name": "condense_excerpt",
+      "type": "method",
+      "lines": [
+        125,
+        146
+      ],
+      "coverage": 0.864
+    },
+    {
+      "name": "_get_ancestors",
+      "type": "method",
+      "lines": [
+        338,
+        352
+      ],
+      "coverage": 0.533
+    },
+    {
+      "name": "extract_definitions",
+      "type": "method",
+      "lines": [
+        549,
+        562
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "_ShortenLiterals",
+      "type": "class",
+      "lines": [
+        822,
+        831
+      ],
+      "coverage": 0.9
+    },
+    {
+      "name": "visit_Lambda",
+      "type": "method",
+      "lines": [
+        825,
+        826
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "visit_Constant",
+      "type": "method",
+      "lines": [
+        828,
+        831
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_ElideNestedArgs",
+      "type": "class",
+      "lines": [
+        834,
+        850
+      ],
+      "coverage": 0.529
+    },
+    {
+      "name": "__init__",
+      "type": "method",
+      "lines": [
+        837,
+        838
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_strip_docstring",
+      "type": "function",
+      "lines": [
+        853,
+        857
+      ],
+      "coverage": 0.8
+    },
+    {
+      "name": "_has_substance",
+      "type": "function",
+      "lines": [
+        879,
+        887
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "src/scantool/languages/base.py": [
+    {
+      "name": "__init__",
+      "type": "method",
+      "lines": [
+        64,
+        72
+      ],
+      "coverage": 0.556
+    },
+    {
+      "name": "is_low_value_for_inventory",
+      "type": "method",
+      "lines": [
+        144,
+        168
+      ],
+      "coverage": 0.68
+    },
+    {
+      "name": "_fragment_prefix",
+      "type": "method",
+      "lines": [
+        200,
+        202
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "condense_excerpt",
+      "type": "method",
+      "lines": [
+        204,
+        240
+      ],
+      "coverage": 0.541
+    },
+    {
+      "name": "find_entry_points",
+      "type": "method",
+      "lines": [
+        343,
+        359
+      ],
+      "coverage": 0.588
+    },
+    {
+      "name": "get_file_extension",
+      "type": "method",
+      "lines": [
+        538,
+        545
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "_should_use_fallback",
+      "type": "method",
+      "lines": [
+        579,
+        585
+      ],
+      "coverage": 0.571
+    }
+  ],
+  "tests/go/samples/edge_cases.go": [
+    {
+      "name": "ProcessWithIgnored",
+      "type": "function",
+      "lines": [
+        146,
+        148
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/go/samples/basic.go": [
+    {
+      "name": "ValidateEmail",
+      "type": "function",
+      "lines": [
+        76,
+        78
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "FormatTimestamp",
+      "type": "function",
+      "lines": [
+        81,
+        83
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/rust/samples/edge_cases.rs": [
+    {
+      "name": "process",
+      "type": "method",
+      "lines": [
+        61,
+        66
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "async_fetch",
+      "type": "function",
+      "lines": [
+        71,
+        73
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "raw_pointer_access",
+      "type": "function",
+      "lines": [
+        76,
+        78
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "const_multiply",
+      "type": "function",
+      "lines": [
+        81,
+        83
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "ffi_function",
+      "type": "function",
+      "lines": [
+        86,
+        88
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "impl_trait_return",
+      "type": "function",
+      "lines": [
+        141,
+        143
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/typescript/samples/basic.ts": [
+    {
+      "name": "Config",
+      "type": "interface",
+      "lines": [
+        11,
+        14
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "constructor",
+      "type": "method",
+      "lines": [
+        26,
+        29
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "generateId",
+      "type": "function",
+      "lines": [
+        95,
+        97
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "validateEmail",
+      "type": "function",
+      "lines": [
+        102,
+        104
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "calculateStats",
+      "type": "function",
+      "lines": [
+        109,
+        114
+      ],
+      "coverage": 0.5
+    }
+  ],
+  "tests/c_cpp/samples/edge_cases.cpp": [
+    {
+      "name": "insert",
+      "type": "method",
+      "lines": [
+        17,
+        19
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "Complex",
+      "type": "method",
+      "lines": [
+        53,
+        53
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "DataCache",
+      "type": "method",
+      "lines": [
+        92,
+        92
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "~Shape",
+      "type": "method",
+      "lines": [
+        115,
+        115
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "area",
+      "type": "method",
+      "lines": [
+        118,
+        118
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "draw",
+      "type": "method",
+      "lines": [
+        121,
+        123
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "validate_input",
+      "type": "function",
+      "lines": [
+        187,
+        189
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "NonCopyable",
+      "type": "class",
+      "lines": [
+        192,
+        199
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "NonCopyable",
+      "type": "method",
+      "lines": [
+        194,
+        194
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "print_all",
+      "type": "function",
+      "lines": [
+        203,
+        205
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "lambda_example",
+      "type": "function",
+      "lines": [
+        208,
+        215
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "factorial",
+      "type": "function",
+      "lines": [
+        218,
+        220
+      ],
+      "coverage": 1.0
+    }
+  ],
+  "tests/ruby/samples/basic.rb": [
+    {
+      "name": "validate_email",
+      "type": "method",
+      "lines": [
+        64,
+        66
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "main",
+      "type": "method",
+      "lines": [
+        69,
+        73
+      ],
+      "coverage": 1.0
+    }
+  ],
+  "tests/swift/samples/basic.swift": [
+    {
+      "name": "host",
+      "type": "property",
+      "lines": [
+        8,
+        8
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "logError",
+      "type": "method",
+      "lines": [
+        74,
+        76
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "validateEmail",
+      "type": "function",
+      "lines": [
+        104,
+        106
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "formatTimestamp",
+      "type": "function",
+      "lines": [
+        109,
+        113
+      ],
+      "coverage": 0.6
+    },
+    {
+      "name": "UserID",
+      "type": "typealias",
+      "lines": [
+        116,
+        116
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "CompletionHandler",
+      "type": "typealias",
+      "lines": [
+        117,
+        117
+      ],
+      "coverage": 1.0
+    }
+  ]
+}
