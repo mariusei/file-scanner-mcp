@@ -11,6 +11,7 @@ from mcp.types import TextContent
 
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
+from .git_signals import collect_git_signals, file_churn, format_activity
 from .scanner import FileScanner
 from .languages import StructureNode
 from .preview import preview_directory as preview_dir_func
@@ -22,6 +23,30 @@ mcp = FastMCP("File Scanner MCP")
 scanner = FileScanner()
 formatter = TreeFormatter()
 dir_formatter = DirectoryFormatter()
+
+
+def _git_activity_section(directory: str) -> str:
+    """Git activity for preview output; "" outside git repos (signals are
+    optional — output without git must look exactly like before)."""
+    signals = collect_git_signals(directory)
+    if signals is None:
+        return ""
+    return format_activity(signals)
+
+
+def _annotate_churn(results: dict, directory: str) -> None:
+    """Inject per-file churn into file-info metadata; no-op without git."""
+    signals = collect_git_signals(directory)
+    if signals is None:
+        return
+    for file_str, structures in results.items():
+        if not structures or structures[0].type != "file-info":
+            continue
+        if structures[0].file_metadata is None:
+            continue
+        count = signals.churn.get(os.path.relpath(file_str, directory))
+        if count:
+            structures[0].file_metadata["churn_90d"] = count
 
 
 @mcp.tool(
@@ -55,6 +80,9 @@ def preview_directory(
     - ✅ Import Graph: How files depend on each other
     - ✅ Hot Functions: Most called functions (critical code paths)
     - ✅ Call Graph: Function-to-function dependencies
+    - ✅ Git Activity: hot files (churn) and co-changed file pairs over the
+         last 90 days — works for any repo content (code, docs, config);
+         section is silently absent outside git repositories
     - ✅ Noise Filtered: Skips .git/, node_modules/, __pycache__, etc.
 
     **Why use this instead of ls/grep:**
@@ -110,7 +138,7 @@ def preview_directory(
                 show_top_n=max_entries,
                 respect_gitignore=respect_gitignore
             )
-            return [TextContent(type="text", text=result)]
+            return [TextContent(type="text", text=result + _git_activity_section(directory))]
 
         elif depth in ("normal", "deep"):
             # Code analysis (Layer 1 for normal, Layer 1+2 for deep)
@@ -126,7 +154,7 @@ def preview_directory(
             result = cm.analyze()
             output = cm.format_tree(result, max_entries=max_entries)
 
-            return [TextContent(type="text", text=output)]
+            return [TextContent(type="text", text=output + _git_activity_section(directory))]
 
         else:
             return [TextContent(type="text", text=f"Error: Invalid depth '{depth}'. Use 'quick', 'normal', or 'deep'.")]
@@ -372,6 +400,9 @@ def scan_file(
     - Text: sections, structure
     - HTML/CSS: tags, selectors, rules
 
+    The file-info line includes git churn ("churn: N commits/90d") when the
+    file is in a git repository — absent otherwise, never an error.
+
     Args:
         file_path: Absolute or relative path to the file to scan
         show_signatures: Include function signatures with types (default: True)
@@ -412,6 +443,12 @@ def scan_file(
 
         if not structures:
             return [TextContent(type="text", text=f"{file_path} (empty file or no structure found)")]
+
+        # Git churn label on the file-info node; silently absent without git
+        if structures[0].type == "file-info" and structures[0].file_metadata is not None:
+            churn = file_churn(file_path)
+            if churn:
+                structures[0].file_metadata["churn_90d"] = churn
 
         # Format output
         if output_format == "json":
@@ -522,6 +559,7 @@ def scan_directory(
                     json_results[file_path] = _structures_to_json(structures, file_path, return_dict=True)
             return [TextContent(type="text", text=warning + json.dumps(json_results, indent=2))]
         else:
+            _annotate_churn(results, directory)
             # ALWAYS use compact inline format for directory scans
             custom_formatter = DirectoryFormatter(
                 include_structures=True,
