@@ -13,6 +13,10 @@ from .glob_expander import expand_braces
 class FileScanner:
     """Main scanner that delegates to language-specific scanner plugins."""
 
+    # Skeleton depth for candidate nodes outside the full-display tier —
+    # depth-2 measured as best fact-coverage per token (experiments/entropy_metrics/)
+    BROAD_TIER_DEPTH = 2
+
     def __init__(self, show_errors: bool = True, fallback_on_errors: bool = True):
         """
         Initialize file scanner.
@@ -177,37 +181,54 @@ class FileScanner:
         language=None
     ) -> None:
         """
-        Annotate the most salient structure nodes with code excerpts.
+        Annotate structure nodes with code in two tiers by saliency.
 
         Nodes are scored directly on their byte ranges (entropy, conditional
-        new information, centrality); the top N% get full code display, the
-        rest show only signature/docstring.
+        new information, centrality). The top N% get full display (verbatim
+        excerpt + full-depth skeleton); every other candidate gets a shallow
+        depth-2 skeleton — measured as the best fact-coverage per token
+        (see experiments/entropy_metrics/, S6).
 
         Args:
             structures: List of StructureNode objects to annotate
             file_path: Path to the file being analyzed (for error messages)
             source_code: Raw source code bytes
-            top_percent: Share of candidate nodes to select (default: top 20%)
+            top_percent: Share of candidates given full display (default: top 20%)
             language: BaseLanguage instance used to condense excerpts to skeletons (optional)
         """
         try:
             from .entropy import select_salient_nodes
+            from .languages.base import limit_skeleton_depth
 
             source_lines = source_code.decode('utf-8', errors='replace').split('\n')
 
-            for node, score in select_salient_nodes(source_code, structures, top_percent=top_percent):
+            ranked = select_salient_nodes(source_code, structures, top_percent=1.0)
+            full_count = max(1, int(len(ranked) * top_percent))
+
+            for rank, (node, score) in enumerate(ranked):
                 start_idx = max(0, node.start_line - 1)
                 end_idx = min(len(source_lines), node.end_line)
+                excerpt = source_lines[start_idx:end_idx]
 
-                node.code_excerpt = source_lines[start_idx:end_idx]
-                node.saliency = score
+                skeleton = language.condense_excerpt(excerpt) if language is not None else None
 
-                # Condense to skeleton where the language supports it
-                # (None → formatter falls back to verbatim excerpt)
-                if language is not None:
-                    skeleton = language.condense_excerpt(node.code_excerpt)
+                if rank < full_count:
+                    # Full tier: verbatim excerpt (shown when condense=False)
+                    # + full-depth skeleton
+                    node.code_excerpt = excerpt
+                    node.saliency = score
                     if skeleton:
                         node.code_skeleton = skeleton
+                elif skeleton:
+                    # Broad tier: shallow skeleton only — no verbatim fallback,
+                    # and compact-strategy output (declarative content) is
+                    # never depth-cut
+                    if getattr(language, "CONDENSE_STRATEGY", None) != "compact":
+                        skeleton = limit_skeleton_depth(skeleton, self.BROAD_TIER_DEPTH)
+                    # all-fold skeletons ("…" only) carry no information
+                    if any(line.strip() != "…" for line in skeleton):
+                        node.code_skeleton = skeleton
+                        node.saliency = score
 
         except Exception as e:
             # Fail gracefully if entropy analysis fails (e.g., file too small, import error)

@@ -378,9 +378,10 @@ def scan_file(
         show_decorators: Include decorators like @property, @staticmethod (default: True)
         show_docstrings: Include first line of docstrings (default: True)
         show_complexity: Show complexity metrics for long/complex functions (default: False)
-        condense: Show salient code as condensed method skeletons in ⟨⟩ instead of
-            verbatim lines — same control flow, calls and returns at ~half the tokens
-            (default: True; set False for verbatim excerpts with line numbers)
+        condense: Show code as condensed method skeletons in ⟨⟩ — every function
+            gets a shallow depth-2 outline, the most salient get full depth
+            (default: True; set False for verbatim excerpts with line numbers,
+            top-tier nodes only)
         output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -388,8 +389,9 @@ def scan_file(
 
     Example output (token-optimized tree format with entropy-based code excerpts):
         Compact format: @line instead of (start-end), inline docstrings with #
-        High-entropy functions show their method as a condensed skeleton in ⟨⟩
-        (control flow + calls + returns; trivial statements folded to …)
+        Every function shows its method as a condensed skeleton in ⟨⟩
+        (control flow + calls + returns; trivial statements folded to …);
+        the most salient functions in full depth, the rest as depth-2 outlines
 
         example.py (3-57)
         ├ import statements @3
