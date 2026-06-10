@@ -119,7 +119,6 @@ class TestPerNodeChurn:
     def test_node_labels_differentiate_edited_function(self, tmp_path):
         from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
-        from scantool.server import _annotate_node_edits
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "mod.py"
@@ -130,8 +129,7 @@ class TestPerNodeChurn:
             "def alpha():\n    return 1\n\n\ndef beta():\n    x = 2\n    return x + 2\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
 
-        structures = FileScanner().scan_file(str(path))
-        _annotate_node_edits(structures, recent_line_edits(str(path)))
+        structures = FileScanner().scan_file(str(path), line_edits=recent_line_edits(str(path)))
 
         by_name = {n.name: n.recent_edits for n in structures if n.name in ("alpha", "beta")}
         assert by_name["beta"] == 2      # def-linje fra c1, kropp fra c2
@@ -142,7 +140,6 @@ class TestPerNodeChurn:
         differensiering gjentar fil-churn og undertrykkes."""
         from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
-        from scantool.server import _annotate_node_edits
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "fresh.py"
@@ -150,8 +147,7 @@ class TestPerNodeChurn:
             "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "only")
 
-        structures = FileScanner().scan_file(str(path))
-        _annotate_node_edits(structures, recent_line_edits(str(path)))
+        structures = FileScanner().scan_file(str(path), line_edits=recent_line_edits(str(path)))
 
         assert all(n.recent_edits is None for n in structures)
 
@@ -159,7 +155,6 @@ class TestPerNodeChurn:
         """Blame er linjebasert — markdown-seksjoner får samme behandling."""
         from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
-        from scantool.server import _annotate_node_edits
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "doc.md"
@@ -168,11 +163,10 @@ class TestPerNodeChurn:
         path.write_text("# Intro\n\nTekst.\n\n# Detaljer\n\nOppdatert tekst her.\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
 
-        structures = FileScanner().scan_file(str(path))
         line_map = recent_line_edits(str(path))
 
         assert line_map is not None
-        _annotate_node_edits(structures, line_map)  # skal ikke feile på prosa
+        FileScanner().scan_file(str(path), line_edits=line_map)  # skal ikke feile på prosa
 
     def test_no_git_returns_none(self, tmp_path):
         from scantool.git_signals import recent_line_edits

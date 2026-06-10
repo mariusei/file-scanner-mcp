@@ -108,7 +108,8 @@ class FileScanner:
         self,
         file_path: str,
         include_file_metadata: bool = True,
-        budget: Optional[int] = None
+        budget: Optional[int] = None,
+        line_edits: Optional[dict[int, str]] = None
     ) -> Optional[list[StructureNode]]:
         """
         Scan a single file and return its structure.
@@ -119,6 +120,9 @@ class FileScanner:
             budget: Approximate token cap for code skeletons — the least
                 salient nodes degrade (full → depth-2 → depth-1 → header
                 only) until the estimate fits. None = no cap.
+            line_edits: line number -> commit id for recently edited lines
+                (from git_signals.recent_line_edits); boosts actively-worked
+                nodes in selection and sets "[N edits/90d]" labels
 
         Returns:
             List of StructureNode objects, or None if file type not supported
@@ -156,7 +160,8 @@ class FileScanner:
         binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.pdf'}
         if structures is not None and suffix not in binary_extensions:
             self._annotate_salient_code(structures, file_path, source_code,
-                                        language=scanner, budget=budget)
+                                        language=scanner, budget=budget,
+                                        line_edits=line_edits)
 
         # Prepend file metadata if requested and structures exist
         if include_file_metadata and structures is not None:
@@ -192,6 +197,31 @@ class FileScanner:
     # fact-dense representation (experiments/entropy_metrics/)
     _LEVEL_DOWN = {"full": 2, 2: 1, 1: 0}
 
+    @staticmethod
+    def _annotate_node_edits(structures: list, line_edits: dict[int, str]) -> None:
+        """Per-node edit-count labels from a blame line map. Labels are only
+        set when they discriminate — a uniform value across all nodes (e.g.
+        a freshly created file) repeats the file-level churn and carries no
+        information."""
+        eligible: list[tuple] = []
+
+        def walk(nodes):
+            for node in nodes:
+                if node.type != "file-info" and node.name and node.end_line >= node.start_line:
+                    commits = {line_edits[line]
+                               for line in range(node.start_line, node.end_line + 1)
+                               if line in line_edits}
+                    eligible.append((node, len(commits)))
+                if node.children:
+                    walk(node.children)
+
+        walk(structures)
+        if len({count for _, count in eligible}) <= 1:
+            return
+        for node, count in eligible:
+            if count:
+                node.recent_edits = count
+
     def _annotate_salient_code(
         self,
         structures: list[StructureNode],
@@ -199,7 +229,8 @@ class FileScanner:
         source_code: bytes,
         top_percent: float = 0.20,
         language=None,
-        budget: Optional[int] = None
+        budget: Optional[int] = None,
+        line_edits: Optional[dict[int, str]] = None
     ) -> None:
         """
         Annotate structure nodes with code in tiers by saliency, optionally
@@ -227,9 +258,12 @@ class FileScanner:
 
             source_lines = source_code.decode('utf-8', errors='replace').split('\n')
 
-            ranked = select_salient_nodes(source_code, structures, top_percent=1.0)
+            ranked = select_salient_nodes(source_code, structures, top_percent=1.0,
+                                          line_edits=line_edits)
             if not ranked:
                 return
+            if line_edits:
+                self._annotate_node_edits(structures, line_edits)
             full_count = max(1, int(len(ranked) * top_percent))
             # Compact-strategy skeletons (declarative content) are never
             # depth-cut — their downgrade path is skeleton → nothing

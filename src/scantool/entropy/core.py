@@ -38,11 +38,18 @@ _CONTEXT_WINDOW = 16384
 _CALL_RE = re.compile(r"\b(\w+)\s*\(")
 
 
+# Weight for recent-edit activity when line edits are provided. Measured:
+# 0.15 gives few, targeted selection shifts toward actively-worked code;
+# 0.30 displaces core logic with fresh helpers — too aggressive.
+_CHURN_WEIGHT = 0.15
+
+
 def select_salient_nodes(
     data: bytes,
     structures: Optional[list],
     top_percent: float = 0.20,
     use_centrality: bool = True,
+    line_edits: Optional[dict[int, str]] = None,
 ) -> list[tuple]:
     """Select the most salient structure nodes in a file.
 
@@ -51,6 +58,8 @@ def select_salient_nodes(
         structures: StructureNode tree from the scanner
         top_percent: Share of candidate nodes to select (0.2 = top 20%)
         use_centrality: Include call-count centrality in the score
+        line_edits: line number -> commit id for recently edited lines
+            (git blame); boosts actively-worked nodes with weight 0.15
 
     Returns:
         List of (node, saliency) pairs, highest saliency first
@@ -65,11 +74,17 @@ def select_salient_nodes(
     shannon = []
     conditional = []
     centrality = []
+    churn = []
     for node in candidates:
         start, end = _byte_range(node, line_starts, len(data))
         shannon.append(_shannon_entropy(data[start:end]))
         conditional.append(np.log1p(_new_information(data, start, end)))
         centrality.append(float(call_counts.get(node.name, 0)))
+        if line_edits:
+            commits = {line_edits[line]
+                       for line in range(node.start_line, node.end_line + 1)
+                       if line in line_edits}
+            churn.append(float(len(commits)))
 
     if use_centrality:
         saliency = (
@@ -79,6 +94,10 @@ def select_salient_nodes(
         )
     else:
         saliency = 0.35 * _normalize(shannon) + 0.65 * _normalize(conditional)
+
+    # Recent activity boosts only when it discriminates between nodes
+    if churn and max(churn) > min(churn):
+        saliency = (1 - _CHURN_WEIGHT) * saliency + _CHURN_WEIGHT * _normalize(churn)
 
     order = np.argsort(saliency)[::-1]
     count = max(1, int(len(candidates) * top_percent))
