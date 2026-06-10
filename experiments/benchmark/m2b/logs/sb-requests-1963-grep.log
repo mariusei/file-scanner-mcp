@@ -1,0 +1,217 @@
+=== CALL: find /tmp/swb/psf__requests-1963 -type f -name *.py ===
+/tmp/swb/psf__requests-1963/docs/_themes/flask_theme_support.py
+/tmp/swb/psf__requests-1963/docs/conf.py
+/tmp/swb/psf__requests-1963/requests/cookies.py
+/tmp/swb/psf__requests-1963/requests/auth.py
+/tmp/swb/psf__requests-1963/requests/sessions.py
+/tmp/swb/psf__requests-1963/requests/hooks.py
+/tmp/swb/psf__requests-1963/requests/compat.py
+/tmp/swb/psf__requests-1963/requests/models.py
+/tmp/swb/psf__requests-1963/requests/certs.py
+/tmp/swb/psf__requests-1963/requests/__init__.py
+/tmp/swb/psf__requests-1963/requests/status_codes.py
+/tmp/swb/psf__requests-1963/requests/api.py
+/tmp/swb/psf__requests-1963/requests/utils.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/langhungarianmodel.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/mbcssm.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/langthaimodel.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/compat.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/langbulgarianmodel.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/euckrprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/sjisprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/cp949prober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/constants.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/__init__.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/euctwfreq.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/langhebrewmodel.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/chardistribution.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/latin1prober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/charsetprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/gb2312prober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/mbcharsetprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/langcyrillicmodel.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/euctwprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/codingstatemachine.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/escprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/universaldetector.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/utf8prober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/gb2312freq.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/mbcsgroupprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/chardetect.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/langgreekmodel.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/eucjpprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/jisfreq.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/escsm.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/sbcharsetprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/big5freq.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/euckrfreq.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/big5prober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/hebrewprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/charsetgroupprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/sbcsgroupprober.py
+/tmp/swb/psf__requests-1963/requests/packages/chardet/jpcntx.py
+/tmp/swb/psf__requests-1963/requests/packages/__init__.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/filepost.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/fields.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/util.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/request.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/__init__.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/poolmanager.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/response.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/contrib/__init__.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/contrib/pyopenssl.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/contrib/ntlmpool.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/connection.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/_collections.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/__init__.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/ordered_dict.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/six.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/ssl_match_hostname/__init__.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/ssl_match_hostname/_implementation.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/exceptions.py
+/tmp/swb/psf__requests-1963/requests/packages/urllib3/connectionpool.py
+/tmp/swb/psf__requests-1963/requests/exceptions.py
+/tmp/swb/psf__requests-1963/requests/structures.py
+/tmp/swb/psf__requests-1963/requests/adapters.py
+/tmp/swb/psf__requests-1963/setup.py
+/tmp/swb/psf__requests-1963/test_requests.py
+=== CALL: grep -n resolve_redirects /tmp/swb/psf__requests-1963/requests/sessions.py ===
+84:    def resolve_redirects(self, resp, req, stream=False, timeout=None,
+480:        # Set up variables needed for resolve_redirects and dispatching of hooks
+514:        gen = self.resolve_redirects(r, request,
+=== CALL: sed -n 84,150p /tmp/swb/psf__requests-1963/requests/sessions.py ===
+    def resolve_redirects(self, resp, req, stream=False, timeout=None,
+                          verify=True, cert=None, proxies=None):
+        """Receives a Response. Returns a generator of Responses."""
+
+        i = 0
+
+        while resp.is_redirect:
+            prepared_request = req.copy()
+
+            resp.content  # Consume socket so it can be released
+
+            if i >= self.max_redirects:
+                raise TooManyRedirects('Exceeded %s redirects.' % self.max_redirects)
+
+            # Release the connection back into the pool.
+            resp.close()
+
+            url = resp.headers['location']
+            method = req.method
+
+            # Handle redirection without scheme (see: RFC 1808 Section 4)
+            if url.startswith('//'):
+                parsed_rurl = urlparse(resp.url)
+                url = '%s:%s' % (parsed_rurl.scheme, url)
+
+            # The scheme should be lower case...
+            parsed = urlparse(url)
+            url = parsed.geturl()
+
+            # Facilitate non-RFC2616-compliant 'location' headers
+            # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')
+            # Compliant with RFC3986, we percent encode the url.
+            if not urlparse(url).netloc:
+                url = urljoin(resp.url, requote_uri(url))
+            else:
+                url = requote_uri(url)
+
+            prepared_request.url = to_native_string(url)
+
+            # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.4
+            if (resp.status_code == codes.see_other and
+                    method != 'HEAD'):
+                method = 'GET'
+
+            # Do what the browsers do, despite standards...
+            # First, turn 302s into GETs.
+            if resp.status_code == codes.found and method != 'HEAD':
+                method = 'GET'
+
+            # Second, if a POST is responded to with a 301, turn it into a GET.
+            # This bizarre behaviour is explained in Issue 1704.
+            if resp.status_code == codes.moved and method == 'POST':
+                method = 'GET'
+
+            prepared_request.method = method
+
+            # https://github.com/kennethreitz/requests/issues/1084
+            if resp.status_code not in (codes.temporary, codes.resume):
+                if 'Content-Length' in prepared_request.headers:
+                    del prepared_request.headers['Content-Length']
+
+                prepared_request.body = None
+
+            headers = prepared_request.headers
+            try:
+                del headers['Cookie']
+            except KeyError:
+=== CALL: sed -n 150,200p /tmp/swb/psf__requests-1963/requests/sessions.py ===
+            except KeyError:
+                pass
+
+            extract_cookies_to_jar(prepared_request._cookies, prepared_request, resp.raw)
+            prepared_request._cookies.update(self.cookies)
+            prepared_request.prepare_cookies(prepared_request._cookies)
+
+            if 'Authorization' in headers:
+                # If we get redirected to a new host, we should strip out any
+                # authentication headers.
+                original_parsed = urlparse(resp.request.url)
+                redirect_parsed = urlparse(url)
+
+                if (original_parsed.hostname != redirect_parsed.hostname):
+                    del headers['Authorization']
+
+            # .netrc might have more auth for us.
+            new_auth = get_netrc_auth(url) if self.trust_env else None
+            if new_auth is not None:
+                prepared_request.prepare_auth(new_auth)
+
+            resp = self.send(
+                prepared_request,
+                stream=stream,
+                timeout=timeout,
+                verify=verify,
+                cert=cert,
+                proxies=proxies,
+                allow_redirects=False,
+            )
+
+            extract_cookies_to_jar(self.cookies, prepared_request, resp.raw)
+
+            i += 1
+            yield resp
+
+
+class Session(SessionRedirectMixin):
+    """A Requests session.
+
+    Provides cookie persistence, connection-pooling, and configuration.
+
+    Basic Usage::
+
+      >>> import requests
+      >>> s = requests.Session()
+      >>> s.get('http://httpbin.org/get')
+      200
+    """
+
+    __attrs__ = [
+=== CALL: grep -n class SessionRedirectMixin /tmp/swb/psf__requests-1963/requests/sessions.py ===
+83:class SessionRedirectMixin(object):
+=== CALL: sed -n 83,95p /tmp/swb/psf__requests-1963/requests/sessions.py ===
+class SessionRedirectMixin(object):
+    def resolve_redirects(self, resp, req, stream=False, timeout=None,
+                          verify=True, cert=None, proxies=None):
+        """Receives a Response. Returns a generator of Responses."""
+
+        i = 0
+
+        while resp.is_redirect:
+            prepared_request = req.copy()
+
+            resp.content  # Consume socket so it can be released
+
+            if i >= self.max_redirects:

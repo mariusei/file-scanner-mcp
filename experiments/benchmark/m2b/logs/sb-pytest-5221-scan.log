@@ -1,0 +1,665 @@
+=== CALL: scantool preview /tmp/swb/pytest-dev__pytest-5221 ===
+📂 pytest-dev__pytest-5221/
+
+━━━ STRUCTURE ━━━
+  doc/           en                   [.rst]
+  testing/       code, example_scripts, examples +4 [Python]
+  src/           _pytest              [Python]
+  changelog/     (25 files)           [.rst]
+  scripts/       (6 files)            [.rst]
+  bench/         (5 files)            [Python]
+  .github/       (4 files)            [Markdown]
+  extra/         setup-py.test        [Python]
+  (root files)     11 files            [.rst]
+
+━━━ FILE ARCHETYPES ━━━
+  (project span: just now - just now)
+
+  🚀 Active Development (recent + large):
+     tox.ini                                       just now 5.2KB    
+     testing/test_warnings.py                      just now 20.6KB   
+     testing/test_unittest.py                      just now 28.8KB   
+     testing/test_tmpdir.py                        just now 10.3KB   
+     ... +40 more
+
+  💤 Potentially Stale (old + small + unused):
+     .github/ISSUE_TEMPLATE.md                     just now 290B     
+     .github/PULL_REQUEST_TEMPLATE.md              just now 892B     
+     .github/config.yml                            just now 23B      
+     bench/bench.py                                just now 347B     
+     ... +113 more
+
+━━━ ENTRY POINTS ━━━
+  pyproject.toml:python_project @1
+  setup.py:main() @20
+  setup.py:if __name__ @40
+  bench/bench_argcomplete.py:if __name__ @17
+  bench/bench.py:if __name__ @3
+  testing/test_unittest.py:if __name__ @743
+  testing/test_runner.py:if __name__ @781
+  testing/test_capture.py:if __name__ @809
+  testing/freeze/create_executable.py:if __name__ @4
+  testing/freeze/tox_run.py:if __name__ @5
+  testing/freeze/runtests_script.py:if __name__ @6
+  testing/example_scripts/perf_examples/collect_stats/generate_folders.py:if __name__ @25
+  extra/get_issues.py:main() @33
+  extra/get_issues.py:if __name__ @74
+  extra/setup-py.test/setup.py:if __name__ @4
+  scripts/release.py:main() @106
+  scripts/release.py:if __name__ @114
+  doc/en/_themes/flask/layout.html:viewport meta @7
+  src/pytest.py:if __name__ @96
+  src/_pytest/__init__.py:__all__ (1 items)
+
+━━━ CORE FILES (by centrality) ━━━
+  src/pytest.py: imports 15, used by 111 files
+  src/_pytest/__init__.py: imports 0, used by 31 files
+  src/_pytest/config/__init__.py: imports 15, used by 21 files
+     class PytestPluginManager((PluginManager)) [called by 28]
+     class Config((object)) [called by 6]
+     class ConftestImportFailure((Exception)) [called by 2]
+     class cmdline((object))
+     def create_terminal_writer(config, *args, **kwargs) [called by 14]
+     def _prepareconfig(args=None, plugins=None) [called by 13]
+     def get_config(args=None) [called by 12]
+     def _get_plugin_specs_as_list(specs) [called by 6]
+     def _iter_rewritable_modules(package_files) [called by 4]
+     ... +58 more
+  src/_pytest/compat.py: imports 4, used by 23 files
+     class CaptureIO((TextIO)) [called by 10]
+     class CaptureIO((io.TextIOWrapper)) [called by 10]
+     class _PytestWrapper((object)) [called by 4]
+     class FuncargnamesCompatAttr((object))
+     def getfslineno(obj) [called by 21]
+     def get_real_func(obj) [called by 20]
+     def getfuncargnames(function, is_method=False, cls=None) [called by 16]
+     def safe_str(v) [called by 15]
+     def safe_str(v) [called by 15]
+     ... +25 more
+  src/_pytest/main.py: imports 7, used by 21 files
+     class Session((nodes.FSCollector)) [called by 14]
+     class Interrupted((KeyboardInterrupt)) [called by 4]
+     class _ConfigDeprecated((object)) [called by 2]
+     class FSHookProxy((object)) [called by 2]
+     def wrap_session(config, doit) [called by 18]
+     def _in_venv(path) [called by 4]
+     def _main(config, session) [called by 2]
+     def _patched_find_module() [called by 2]
+     def pytest_addoption(parser)
+     ... +36 more
+  src/_pytest/_code/__init__.py: imports 2, used by 22 files
+  src/_pytest/outcomes.py: imports 0, used by 19 files
+     class Failed((OutcomeException)) [called by 6]
+     class OutcomeException((BaseException)) [called by 4]
+     class Skipped((OutcomeException)) [called by 4]
+     class Exit((Exception)) [called by 2]
+     def importorskip(modname, minversion=None, reason=None) [called by 84]
+     def fail(msg="", pytrace=True) [called by 67]
+     def skip(msg="", **kwargs) [called by 53]
+     def xfail(reason="") [called by 23]
+     def exit(msg, returncode=None) [called by 7]
+     ... +5 more
+  src/_pytest/warning_types.py: imports 0, used by 14 files
+     class PytestWarning((UserWarning)) [called by 8]
+     class PytestConfigWarning((PytestWarning)) [called by 6]
+     class PytestAssertRewriteWarning((PytestWarning)) [called by 4]
+     class PytestCollectionWarning((PytestWarning)) [called by 4]
+     ... +9 more
+  src/_pytest/warnings.py: imports 2, used by 12 files
+     def _issue_warning_captured(warning, hook, stacklevel) [called by 14]
+     def catch_warnings_for_item(config, ihook, when, item) [called by 10]
+     def warning_record_to_str(warning_message) [called by 8]
+     def _setoption(wmod, arg) [called by 4]
+     def pytest_addoption(parser)
+     ... +4 more
+  src/_pytest/_code/code.py: imports 6, used by 10 files
+     class FormattedExcinfo((object)) [called by 42]
+     class Code((object)) [called by 30]
+     class Traceback((list)) [called by 16]
+     class ReprFileLocation((TerminalRepr)) [called by 12]
+     def getrawcode(obj, trycall=True) [called by 8]
+     def is_recursion_error(excinfo) [called by 4]
+     def is_recursion_error(excinfo) [called by 4]
+     def filter_traceback(entry) [called by 4]
+     ... +97 more
+  src/_pytest/python.py: imports 13, used by 6 files
+     class Function((FunctionMixin, nodes.Item, fixtures.FuncargnamesCompatAttr)) [called by 8]
+     class Module((nodes.File, PyCollector)) [called by 4]
+     class CallSpec2((object)) [called by 4]
+     class Package((Module)) [called by 2]
+     def idmaker(argnames, parametersets, idfn=None, ids=None, config=None, item=None) [called by 27]
+     def _idval(val, argname, idx, idfn, item, config) [called by 16]
+     def _get_non_fixture_func(obj, name) [called by 13]
+     def _showfixtures_main(config, session) [called by 9]
+     def write_docstring(tw, doc, indent=" ") [called by 5]
+     ... +85 more
+  src/_pytest/pathlib.py: imports 1, used by 12 files
+     def make_numbered_dir(root, prefix) [called by 19]
+     def create_cleanup_lock(p) [called by 16]
+     def rmtree(path, force=False) [called by 11]
+     def parts(s) [called by 10]
+     def maybe_delete_a_numbered_dir(path) [called by 9]
+     ... +15 more
+  src/_pytest/fixtures.py: imports 8, used by 8 files
+     class FixtureRequest((FuncargnamesCompatAttr)) [called by 26]
+     class FixtureLookupError((LookupError)) [called by 4]
+     class FixtureDef((object)) [called by 4]
+     class FixtureManager((object)) [called by 4]
+     def fixture(scope="function", params=None, autouse=False, ids=None, name=None) [called by 19]
+     def add_funcarg_pseudo_fixture_def(collector, metafunc, fixturemanager) [called by 7]
+     def fillfixtures(function) [called by 7]
+     def fail_fixturefunc(fixturefunc, msg) [called by 7]
+     def get_scope_node(node, scope) [called by 6]
+     ... +76 more
+  src/_pytest/deprecated.py: imports 1, used by 10 files
+  src/_pytest/pytester.py: imports 11, used by 4 files
+     class SysModulesSnapshot((object)) [called by 16]
+     class LineMatcher((object)) [called by 16]
+     class SysPathsSnapshot((object)) [called by 10]
+     class HookRecorder((object)) [called by 6]
+     def raise_on_kwargs(kwargs) [called by 7]
+     def get_public_names(values) [called by 4]
+     def _sys_snapshot() [called by 3]
+     def _config_for_test() [called by 2]
+     def _pytest(request) [called by 1]
+     ... +104 more
+  src/_pytest/nodes.py: imports 6, used by 5 files
+     class Node((object)) [called by 2]
+     class Collector((Node))
+     class CollectError((Exception))
+     class FSCollector((Collector))
+     def ischildnode(baseid, nodeid) [called by 5]
+     def _check_initialpaths_for_relpath(session, fspath) [called by 4]
+     def get_fslocation_from_item(item) [called by 3]
+     def _splitnode(nodeid) [called by 2]
+     ... +29 more
+  src/_pytest/config/exceptions.py: imports 0, used by 7 files
+     class UsageError((Exception)) [called by 28]
+     class PrintHelp((Exception))
+  src/_pytest/_io/saferepr.py: imports 0, used by 7 files
+     class SafeRepr((reprlib.Repr)) [called by 4]
+     def saferepr(obj, maxsize=240) [called by 44]
+     def _call_and_format_exception(call, x, *args) [called by 7]
+     def safeformat(obj) [called by 3]
+     ... +4 more
+  src/_pytest/runner.py: imports 4, used by 4 files
+     class SetupState((object)) [called by 14]
+     class CallInfo((object))
+     def runtestprotocol(item, log=True, nextitem=None) [called by 21]
+     def pytest_make_collect_report(collector) [called by 18]
+     def pytest_terminal_summary(terminalreporter) [called by 17]
+     def collect_one_node(collector) [called by 17]
+     def _update_current_test_var(item, when) [called by 8]
+     ... +25 more
+  src/_pytest/mark/structures.py: imports 6, used by 3 files
+     class Mark((object)) [called by 10]
+     class ParameterSet [called by 2]
+     class MarkDecorator((object)) [called by 2]
+     class NodeKeywords((MappingMixin)) [called by 2]
+     def get_empty_parameterset_mark(config, argnames, func) [called by 10]
+     def get_unpacked_marks(obj) [called by 7]
+     def normalize_mark_list(mark_list) [called by 7]
+     def store_mark(obj, mark) [called by 3]
+     def alias(name, warning=None) [called by 2]
+     ... +24 more
+
+━━━ ARCHITECTURE ━━━
+  Entry Points: 13 files
+    - setup.py
+       def main() [×35]
+    - bench/bench_argcomplete.py
+    - bench/bench.py
+    ... +10 more
+  Config: 10 files
+    - .pre-commit-config.yaml
+    - pyproject.toml
+    - azure-pipelines.yml
+    ... +7 more
+  Tests: 138 files
+    - bench/skip.py
+    - bench/manyparam.py
+    - testing/test_assertrewrite.py
+    ... +135 more
+
+━━━ KEY DEPENDENCIES ━━━
+  src/pytest.py
+    └→ imports: src/_pytest/__init__.py
+    └→ imports: src/_pytest/assertion/__init__.py
+    └→ imports: src/_pytest/config/__init__.py
+       ... +12 more
+  src/_pytest/config/__init__.py
+    └→ imports: src/_pytest/config/exceptions.py
+    └→ imports: src/_pytest/config/findpaths.py
+    └→ imports: src/_pytest/__init__.py
+       ... +12 more
+  src/_pytest/compat.py
+    └→ imports: src/_pytest/_io/saferepr.py
+    └→ imports: src/_pytest/outcomes.py
+    └→ imports: src/_pytest/__init__.py
+       ... +1 more
+  src/_pytest/main.py
+    └→ imports: src/_pytest/__init__.py
+    └→ imports: src/_pytest/config/__init__.py
+    └→ imports: src/_pytest/deprecated.py
+       ... +4 more
+
+━━━ HOT FUNCTIONS (most called) ━━━
+  Testdir.makepyfile (method): called by 917, calls 1 @src/_pytest/pytester.py
+  Testdir.runpytest (method): called by 694, calls 1 @src/_pytest/pytester.py
+  LineMatcher.fnmatch_lines (method): called by 588, calls 1 @src/_pytest/pytester.py
+  LineMatcher.str (method): called by 356, calls 0 @src/_pytest/pytester.py
+  Testdir.inline_run (method): called by 207, calls 11 @src/_pytest/pytester.py
+  raises (function): called by 189, calls 13 @src/_pytest/python_api.py
+  ColoredLevelFormatter.format (method): called by 184, calls 1 @src/_pytest/logging.py
+  HookRecorder.assertoutcome (method): called by 163, calls 1 @src/_pytest/pytester.py
+  Testdir.makeconftest (method): called by 158, calls 1 @src/_pytest/pytester.py
+  TWMock.write (method): called by 149, calls 3 @testing/code/test_excinfo.py
+
+━━━ FILE INVENTORY ━━━
+  doc/en/                  failure_demo.py, conf.py, multipython.py, xfail_demo.py, conftest.py, conftest.py, conftest.py, conftest.py, +174
+  src/_pytest/             __init__.py, __init__.py, compat.py, main.py, __init__.py, outcomes.py, warning_types.py, warnings.py, +46
+  testing/example_scripts/ issue_519.py, test_parametrized_fixture_error_message.py, conftest.py, test_marks_as_keywords.py, conftest.py, fixture_mock_integration.py, tmpdir_fixture.py, test_getfixturevalue_dynamic.py, +25
+  (root)                   CONTRIBUTING.rst, .pre-commit-config.yaml, pyproject.toml, HOWTORELEASE.rst, azure-pipelines.yml, setup.py, tox.ini, setup.cfg, +3
+  testing/python/          collect.py, fixtures.py, integration.py, metafunc.py, raises.py, approx.py, show_fixtures_per_test.py, setup_plan.py, +1
+  testing/freeze/          create_executable.py, runtests_script.py, tox_run.py, test_trivial.py
+  testing/code/            test_excinfo.py, test_code.py, test_source.py
+  testing/logging/         test_reporting.py, test_fixture.py, test_formatter.py
+  bench/bench_argcomplete.py/ bench_argcomplete.py
+  bench/skip.py/           skip.py
+  bench/manyparam.py/      manyparam.py
+  bench/empty.py/          empty.py
+  (30 low-value files hidden: __init__.py, configs, etc.)
+
+━━━ NEXT STEPS ━━━
+  Drill down: overview → structure → code
+
+    scan_directory("testing/")  → see code structure inside active area
+    scan_file("src/pytest.py")  → see functions/classes in core file
+    Read("src/_pytest/pytester.py", offset=N)  → read Testdir.makepyfile() implementation
+
+  What each tool gives you:
+    scan_directory  → functions, classes, line numbers per file
+    scan_file       → full structure + signatures + entropy-based code snippets
+    Read(offset=N)  → actual source code at specific lines
+
+Analysis: 428 files in 1.41s (layer1+layer2)
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-5221/src fixtures.*scope ===
+8 hits in 7 structures for /fixtures.*scope/
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py
+- _find_parametrized_scope (argnames, arg2fixturedefs, indirect) @1134-1164  (2 hits)
+   1140 | (e.g. fixtures), return the most narrow scope based on the fixtures used.
+   1144 | from _pytest.fixtures import scopes
+- Module > _inject_setup_module_fixture (self) @453-479
+   471 | @fixtures.fixture(autouse=True, scope="module")
+- Module > _inject_setup_function_fixture (self) @481-506
+   493 | @fixtures.fixture(autouse=True, scope="function")
+- Class > _inject_setup_class_fixture (self) @745-767
+   757 | @fixtures.fixture(autouse=True, scope="class")
+- Class > _inject_setup_method_fixture (self) @769-792
+   781 | @fixtures.fixture(autouse=True, scope="function")
+- CallSpec2 > setall (self, funcargs, id, param) @914-924
+   924 | self._arg2scopenum[arg] = fixtures.scopenum_function
+- Metafunc > parametrize (self, argnames, argvalues, indirect=False, ids=None, scope=None) @961-1041
+   999 | from _pytest.fixtures import scope2index
+
+leads (called in hits, defined elsewhere): fixture → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/fixtures.py@998, getimfunc → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@331, append → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/junitxml.py@103, update → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/mark/structures.py@380, names → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/argparsing.py@222
+=== CALL: scantool searchname /tmp/swb/pytest-dev__pytest-5221/src .*show.*fixture.* ===
+python.py (1239-1355)
+- show_fixtures_per_test (config) @1239
+   …
+   return wrap_session(config, _show_fixtures_per_test)
+- _show_fixtures_per_test (config, session) @1245
+   …
+   session.perform_collect()
+   curdir = py.path.local()
+   tw = _pytest.config.create_terminal_writer(config)
+   verbose = config.getvalue('verbose')
+   def get_best_relpath(…):
+    loc = getlocation(func, curdir)
+    return curdir.bestrelpath(loc)
+   def write_fixture(…):
+    …
+    if verbose <= 0 and argname.startswith('_'):
+     return
+    if verbose > 0:
+     bestrel = get_best_relpath(fixture_def.func)
+     funcargspec = '{} -- {}'.format(argname, bestrel)
+    else:
+     …
+    tw.line(funcargspec, green=True)
+    …
+    if fixture_doc:
+     write_docstring(tw, fixture_doc)
+    else:
+     tw.line(' no docstring available', red=True)
+   def write_item(…):
+    try:
+     …
+    except AttributeError:
+     return
+    if not info.name2fixturedefs:
+     return
+    tw.line()
+    tw.sep('-', 'fixtures used by {}'.format(item.name))
+    tw.sep('-', '({})'.format(get_best_relpath(item.function)))
+    for (_, fixturedefs) in sorted(info.name2fixturedefs.items()):
+     assert fixturedefs is not None
+     if not fixturedefs:
+      continue
+     write_fixture(fixturedefs[-1])
+   for session_item in session.items:
+    write_item(session_item)
+- showfixtures (config) @1297
+   …
+   return wrap_session(config, _showfixtures_main)
+- _showfixtures_main (config, session) @1303
+   …
+   session.perform_collect()
+   curdir = py.path.local()
+   tw = _pytest.config.create_terminal_writer(config)
+   verbose = config.getvalue('verbose')
+   …
+   seen = set()
+   for (argname, fixturedefs) in fm._arg2fixturedefs.items():
+    assert fixturedefs is not None
+    if not fixturedefs:
+     …
+    for fixturedef in fixturedefs:
+     …
+   available.sort()
+   …
+   for (baseid, module, bestrel, argname, fixturedef) in available:
+    if currentmodule != module:
+     …
+    if verbose <= 0 and argname[0] == '_':
+     …
+    if verbose > 0:
+     …
+    else:
+     …
+    tw.line(funcargspec, green=True)
+    loc = getlocation(fixturedef.func, curdir)
+    doc = fixturedef.func.__doc__ or ''
+    if doc:
+     …
+    else:
+     …
+
+setuponly.py (53-82)
+- _show_fixture_action (fixturedef, msg) @53
+   …
+   capman = config.pluginmanager.getplugin('capturemanager')
+   if capman:
+    capman.suspend_global_capture()
+    (out, err) = capman.read_global_capture()
+   tw = config.get_terminal_writer()
+   tw.line()
+   tw.write(' ' * 2 * fixturedef.scopenum)
+   tw.write('{step} {scope…'.format(…))
+   if msg == 'SETUP':
+    deps = sorted((arg for arg in fixturedef.argnames if arg != 'request'))
+    if deps:
+     tw.write(' (fixtures used: {})'.format(', '.join(deps)))
+   if hasattr(fixturedef, 'cached_param'):
+    tw.write('[{}]'.format(fixturedef.cached_param))
+   if capman:
+    capman.resume_global_capture()
+    sys.stdout.write(out)
+    sys.stderr.write(err)
+=== CALL: scantool scanfile /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py 400 ===
+python.py (1-1481)
+- file-info: 53.8KB modified: 2026-06-10 23:49 [ts:1781128187] churn: 1 commits/90d
+- import statements @6
+- pyobj_property (name) @52
+- pytest_addoption (parser) @64
+- pytest_cmdline_main (config) @124
+- pytest_generate_tests (metafunc) @133
+- pytest_configure (config) @145
+- pytest_pyfunc_call (pyfuncitem) @166
+   @hookimpl(trylast=True)
+- pytest_collect_file (path, parent) @183
+- path_matches_patterns (path, patterns) @195 # Returns True if the given py.path.local matches one of the patterns in the list of globs given
+- pytest_pycollect_makemodule (path, parent) @200
+- pytest_pycollect_makeitem (collector, name, obj) @207
+   @hookimpl(hookwrapper=True)
+- pytest_make_parametrize_id (config, val, argname=None) @243
+- PyobjContext (object) @247
+- PyobjMixin (PyobjContext) @253
+  - __init__ (self, *k, **kw) @256
+  - obj (self) @260 [property] # Underlying Python object.
+     @property
+  - obj (self, value) @272
+     @obj.setter
+  - _getobj (self) @275 # Gets the underlying Python object. May be overwritten by subclasses.
+  - getmodpath (self, stopatmodule=True, includemodule=False) @279 # return python path relative to the containing module.
+  - reportinfo (self) @299
+- PyCollector (PyobjMixin, nodes.Collector) @316
+  - funcnamefilter (self, name) @317
+  - isnosetest (self, obj) @320 # Look for the __test__ attribute, which is applied by the
+  - classnamefilter (self, name) @329
+  - istestfunction (self, obj, name) @332
+  - istestclass (self, obj, name) @344
+  - _matches_prefix_or_glob_option (self, option_name, name) @347 # checks if the given name matches the prefix or glob-pattern defined
+  - collect (self) @364
+  - _makeitem (self, name, obj) @389
+  - _genfunctions (self, name, funcobj) @393
+- Module (nodes.File, PyCollector) @441 # Collector for test classes and functions.
+  - _getobj (self) @444
+  - collect (self) @447
+  - _inject_setup_module_fixture (self) @453 # Injects a hidden autouse, module scoped fixture into the collected module object
+  - _inject_setup_function_fixture (self) @481 # Injects a hidden autouse, function scoped fixture into the collected module object
+  - _importtestmodule (self) @508
+- Package (Module) @559
+  - __init__ (self, fspath, parent=None, config=None, session=None, nodeid=None) @560
+  - setup (self) @570
+  - _recurse (self, dirpath) @586
+  - gethookproxy (self, fspath) @599
+  - _collectfile (self, path, handle_dupes=True) @613
+  - isinitpath (self, path) @639
+  - collect (self) @642
+- _get_xunit_setup_teardown (holder, attr_name, param_obj=None) @674 # Return a callable to perform xunit-style setup or teardown if
+- _call_with_optional_argument (func, arg) @695 # Call the given function with the given argument if func accepts one argument, otherwise
+- _get_non_fixture_func (obj, name) @707 # Return the attribute from the given object to be used as a setup/teardown
+   meth = getattr(obj, name, None)
+   if fixtures.getfixturemarker(meth) is None:
+    …
+- Class (PyCollector) @717 # Collector for test methods.
+  - collect (self) @720
+  - _inject_setup_class_fixture (self) @745 # Injects a hidden autouse, class scoped fixture into the collected class object
+  - _inject_setup_method_fixture (self) @769 # Injects a hidden autouse, function scoped fixture into the collected class object
+- Instance (PyCollector) @795
+  - _getobj (self) @801
+  - collect (self) @804
+  - newinstance (self) @808
+- FunctionMixin (PyobjMixin) @813 # mixin for the code common to Function and Generator.
+  - setup (self) @817 # perform setup for this test function.
+  - _prunetraceback (self, excinfo) @823
+  - repr_failure (self, excinfo, outerr=None) @844
+- hasinit (obj) @852
+- hasnew (obj) @858
+- CallSpec2 (object) @864
+  - __init__ (self, metafunc) @865
+  - copy (self) @876
+  - _checkargnotcontained (self, arg) @888
+  - getparam (self, name) @892
+  - id (self) @901 [property]
+     @property
+  - setmulti2 (self, valtypes, argnames, valset, id, marks, scopenum, param_index) @904
+  - setall (self, funcargs, id, param) @914
+- Metafunc (fixtures.FuncargnamesCompatAttr) @927 # Metafunc objects are passed to the :func:`pytest_generate_tests <_pytest.hookspec.pytest_generate_tests>` hook.
+  - __init__ (self, definition, fixtureinfo, config, cls=None, module=None) @935
+  - parametrize (self, argnames, argvalues, indirect=False, ids=None, scope=None) @961 # Add new invocations to the underlying test function using the list
+     …
+     (argnames, parameters) = ParameterSet._for_parametrize(argnames, argvalues, self.function, self.config, function_definition=self.definition)
+     …
+     if scope is None:
+      …
+     self._validate_if_using_arg_names(argnames, indirect)
+     arg_values_types = self._resolve_arg_value_types(argnames, indirect)
+     ids = self._resolve_arg_ids(argnames, ids, parameters, item=self.definition)
+     scopenum = scope2index(scope, descr='parametrize()…'.format(…))
+     …
+     for callspec in self._calls or [CallSpec2(self)]:
+      …
+     …
+  - _resolve_arg_ids (self, argnames, ids, parameters, item) @1043 # Resolves the actual ids for the given argnames, based on the ``ids`` parameter given
+  - _resolve_arg_value_types (self, argnames, indirect) @1075 # Resolves if each parametrized argument must be considered a parameter to a fixture or a "funcarg"
+  - _validate_if_using_arg_names (self, argnames, indirect) @1104 # Check if all argnames are being used, by default values, or directly/indirectly.
+- _find_parametrized_scope (argnames, arg2fixturedefs, indirect) @1134 # Find the most appropriate scope for a parametrized call based on its arguments.
+- _ascii_escaped_by_config (val, config) @1167
+- _idval (val, argname, idx, idfn, item, config) @1177
+   if idfn:
+    …
+   elif config:
+    …
+   if isinstance(val, STRING_TYPES):
+    …
+   elif isinstance(val, (float, int, bool, NoneType)):
+    …
+   elif isinstance(val, REGEX_TYPE):
+    …
+   elif enum is not None and isinstance(val, enum.Enum):
+    …
+   elif (isclass(val) or isfunction(val)) and hasattr(val, '__name__'):
+    …
+   return str(argname) + str(idx)
+- _idvalset (idx, parameterset, argnames, idfn, ids, item, config) @1210
+- idmaker (argnames, parametersets, idfn=None, ids=None, config=None, item=None) @1223
+- show_fixtures_per_test (config) @1239
+- _show_fixtures_per_test (config, session) @1245
+- showfixtures (config) @1297
+- _showfixtures_main (config, session) @1303
+- write_docstring (tw, doc, indent=" ") @1358
+- Function (FunctionMixin, nodes.Item, fixtures.FuncargnamesCompatAttr) @1373 # a Function Item is responsible for setting up and executing a
+  - __init__ ( self, name, parent, args=None, config=None, callspec=None, callobj=NOTSET, keywords=None, session=None, fixtureinfo=None, originalname=None, ) @1381
+     super(Function, self).__init__(name, parent, config=config, session=session)
+     …
+     if callobj is not NOTSET:
+      …
+     self.keywords.update(self.obj.__dict__)
+     self.own_markers.extend(get_unpacked_marks(self.obj))
+     if callspec:
+      …
+     if keywords:
+      …
+     self.keywords.update(dict.fromkeys(…))
+     if fixtureinfo is None:
+      …
+     …
+     self._initrequest()
+     …
+  - _initrequest (self) @1442
+  - function (self) @1447 [property] # underlying python 'function' object
+     @property
+  - _getobj (self) @1451
+  - _pyfuncitem (self) @1459 [property] # (compatonly) for code expecting pytest-2.2 style request objects
+     @property
+  - runtest (self) @1463 # execute the underlying test function.
+  - setup (self) @1467
+- FunctionDefinition (Function) @1472 # internal hack until we get actual definition nodes instead of the
+  - runtest (self) @1478
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-5221/src _showfixtures_main ===
+2 hits in 2 structures for /_showfixtures_main/
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py
+- showfixtures (config) @1297-1300
+   1300 | return wrap_session(config, _showfixtures_main)
+- _showfixtures_main (config, session) @1303-1355
+   1303 | def _showfixtures_main(config, session):
+
+leads (called in hits, defined elsewhere): getlocation → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@92, wrap_session → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@198, perform_collect → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@495, create_terminal_writer → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/__init__.py@1079, getvalue → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@432
+=== CALL: scantool searchname /tmp/swb/pytest-dev__pytest-5221/src/_pytest .*scope.* ===
+fixtures.py (75-695)
+- scopeproperty (name=None, doc=None) @75
+   def decoratescope(…):
+    scopename = name or func.__name__
+    def provide(…):
+     if func.__name__ in scope2props[self.scope]:
+      return func(self)
+     raise AttributeError('%s not availa…' % (scopename, self.scope))
+    return property(provide, None, None, func.__doc__)
+   return decoratescope
+- get_scope_package (node, fixturedef) @91
+   …
+   fixture_package_name = '%s/%s' % (fixturedef.baseid, '__init__.py')
+   while current and (type(current) is not cls or fixture_package_name != current.nodeid):
+    …
+   if current is None:
+    return node.session
+   return current
+- get_scope_node (node, scope) @106
+   cls = scopename2class.get(scope)
+   if cls is None:
+    raise ValueError('unknown scope')
+   return node.getparent(cls)
+- reorder_items_atscope (items, argkeys_cache, items_by_argkey, scopenum) @236
+   if scopenum >= scopenum_function or len(items) < 3:
+    return items
+   ignore = set()
+   items_deque = deque(items)
+   items_done = OrderedDict()
+   …
+   while items_deque:
+    no_argkey_group = OrderedDict()
+    …
+    while items_deque:
+     item = items_deque.popleft()
+     if item in items_done or item in no_argkey_group:
+      continue
+     argkeys = OrderedDict.fromkeys((k for k in scoped_argkeys_cache.get(…) if k not in ignore))
+     if not argkeys:
+      …
+     else:
+      (slicing_argkey, _) = argkeys.popitem()
+      matching_items = [i for i in scoped_items_by_argkey[slicing_argkey] if i in items]
+      for i in reversed(matching_items):
+       fix_cache_order(i, argkeys_cache, items_by_argkey)
+       items_deque.appendleft(i)
+      break
+    if no_argkey_group:
+     no_argkey_group = reorder_items_atscope(no_argkey_group, argkeys_cache, items_by_argkey, scopenum + 1)
+     for item in no_argkey_group:
+      …
+    ignore.add(slicing_argkey)
+   return items_done
+- _check_scope (self, argname, invoking_scope, requested_scope) @596
+   if argname == 'request':
+    return
+   if scopemismatch(invoking_scope, requested_scope):
+    lines = self._factorytraceback()
+    fail('ScopeMismatch…' % (requested_scope, argname, invoking_scope, '\n'.join(…)), pytrace=False)
+- _getscopeitem (self, scope) @620
+   if scope == 'function':
+    return self._pyfuncitem
+   if scope == 'package':
+    node = get_scope_package(self._pyfuncitem, self._fixturedef)
+   else:
+    node = get_scope_node(self._pyfuncitem, scope)
+   if node is None and scope == 'class':
+    …
+   assert node
+   return node
+- scopemismatch (currentscope, newscope) @679
+   return scopes.index(newscope) > scopes.index(currentscope)
+- scope2index (scope, descr, where=None) @683 # Look up the index of ``scope`` and raise a descriptive value error
+   try:
+    return scopes.index(scope)
+   except ValueError:
+    fail('{} {}got an u…'.format(…), pytrace=False)
+
+python.py (1134-1164)
+- _find_parametrized_scope (argnames, arg2fixturedefs, indirect) @1134 # Find the most appropriate scope for a parametrized call based on its arguments.
+   …
+   if isinstance(indirect, (list, tuple)):
+    all_arguments_are_fixtures = len(indirect) == len(argnames)
+   else:
+    all_arguments_are_fixtures = bool(indirect)
+   if all_arguments_are_fixtures:
+    fixturedefs = arg2fixturedefs or {}
+    used_scopes = [fixturedef[0].scope for name, fixturedef in fixturedefs.items() if name in argnames]
+    if used_scopes:
+     for scope in reversed(scopes):
+      if scope in used_scopes:
+       return scope
+   return 'function'

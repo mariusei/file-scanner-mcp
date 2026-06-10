@@ -1,0 +1,541 @@
+=== CALL: scantool preview /tmp/swb/psf__requests-1963 ===
+📂 psf__requests-1963/
+
+━━━ STRUCTURE ━━━
+  docs/          _templates, _themes, community +2 [.rst]
+  requests/      (15 files)           [Python]
+  (root files)     8 files            [.rst]
+
+━━━ FILE ARCHETYPES ━━━
+  (project span: just now - just now)
+
+  🏛️ Core Infrastructure (old + central + stable):
+     requests/compat.py                            just now 2.5KB    used by 7
+     requests/cookies.py                           just now 16.3KB   used by 6
+     requests/exceptions.py                        just now 1.8KB    used by 6
+     requests/__init__.py                          just now 1.8KB    used by 5
+     ... +4 more
+
+  🔧 Active Core (central + recently changed):
+     requests/structures.py                        just now 3.5KB    used by 6
+     requests/utils.py                             just now 19.2KB   used by 5
+     requests/status_codes.py                      just now 3.1KB    used by 3
+     requests/sessions.py                          just now 19.5KB   used by 1
+
+  🚀 Active Development (recent + large):
+     test_requests.py                              just now 40.6KB   
+
+  📦 Stable Utilities (central + small + old):
+     requests/hooks.py                             just now 820B     used by 2
+
+  💤 Potentially Stale (old + small + unused):
+     MANIFEST.in                                   just now 100B     
+     docs/MANIFEST.in                              just now 38B      
+     docs/_themes/README.rst                       just now 743B     
+     docs/_themes/kr/relations.html                just now 590B     
+     ... +9 more
+
+━━━ ENTRY POINTS ━━━
+  test_requests.py:if __name__ @1190
+  docs/_themes/kr/layout.html:viewport meta @7
+  requests/certs.py:if __name__ @23
+  requests/__init__.py:re-exports (4 items)
+
+━━━ CORE FILES (by centrality) ━━━
+  requests/__init__.py: imports 5, used by 5 files
+     class NullHandler((logging.Handler))
+     ... +1 more
+  requests/utils.py: imports 5, used by 5 files
+     def get_auth_from_url(url) [called by 14]
+     def get_encodings_from_content(content) [called by 12]
+     def get_environ_proxies(url) [called by 10]
+     def to_key_val_list(value) [called by 7]
+     def super_len(o) [called by 6]
+     ... +25 more
+  requests/compat.py: imports 0, used by 7 files
+  requests/models.py: imports 8, used by 3 files
+     class Request((RequestHooksMixin)) [called by 42]
+     class Response((object)) [called by 8]
+     class PreparedRequest((RequestEncodingMixin, RequestHooksMixin)) [called by 6]
+     class RequestEncodingMixin((object))
+     ... +39 more
+  requests/cookies.py: imports 1, used by 6 files
+     class RequestsCookieJar((cookielib.CookieJar, collections.MutableMapping)) [called by 18]
+     class MockRequest((object)) [called by 4]
+     class MockResponse((object)) [called by 2]
+     class CookieConflictError((RuntimeError)) [called by 2]
+     def cookiejar_from_dict(cookie_dict, cookiejar=None, overwrite=True) [called by 17]
+     def morsel_to_cookie(morsel) [called by 15]
+     def extract_cookies_to_jar(jar, request, response) [called by 10]
+     def create_cookie(name, value, **kwargs) [called by 8]
+     def get_cookie_header(jar, request) [called by 5]
+     ... +41 more
+  requests/exceptions.py: imports 0, used by 6 files
+     class HTTPError((RequestException)) [called by 4]
+     class MissingSchema((RequestException, ValueError)) [called by 4]
+     class InvalidURL((RequestException, ValueError)) [called by 4]
+     class ConnectionError((RequestException)) [called by 2]
+     ... +10 more
+  requests/structures.py: imports 0, used by 6 files
+     class CaseInsensitiveDict((collections.MutableMapping)) [called by 48]
+     class IteratorProxy((object))
+     class LookupDict((dict))
+     ... +18 more
+  requests/sessions.py: imports 9, used by 1 files
+     class Session((SessionRedirectMixin)) [called by 32]
+     class SessionRedirectMixin((object))
+     def session() [called by 29]
+     def merge_setting(request_setting, session_setting, dict_class=OrderedDict) [called by 9]
+     def merge_hooks(request_hooks, session_hooks, dict_class=OrderedDict) [called by 4]
+     ... +19 more
+  requests/adapters.py: imports 7, used by 2 files
+     class HTTPAdapter((BaseAdapter)) [called by 4]
+     class BaseAdapter((object))
+     ... +15 more
+  requests/auth.py: imports 3, used by 3 files
+     class HTTPDigestAuth((AuthBase)) [called by 12]
+     class HTTPBasicAuth((AuthBase)) [called by 2]
+     class AuthBase((object))
+     class HTTPProxyAuth((HTTPBasicAuth))
+     def _basic_auth_str(username, password) [called by 4]
+     ... +8 more
+  test_requests.py: imports 8, used by 0 files
+     class RequestsTestCase((unittest.TestCase))
+     class TestContentEncodingDetection((unittest.TestCase))
+     class TestCaseInsensitiveDict((unittest.TestCase))
+     class UtilsTestCase((unittest.TestCase))
+     def httpbin(*suffix) [called by 104]
+     ... +125 more
+  requests/status_codes.py: imports 1, used by 3 files
+  requests/hooks.py: imports 0, used by 2 files
+     def dispatch_hook(key, hooks, hook_data, **kwargs) [called by 3]
+     def default_hooks() [called by 2]
+  requests/api.py: imports 1, used by 1 files
+     def request(method, url, **kwargs)
+     def get(url, **kwargs)
+     def options(url, **kwargs)
+     def head(url, **kwargs)
+     def post(url, data=None, **kwargs)
+     ... +3 more
+  setup.py: imports 1, used by 0 files
+  docs/conf.py: imports 1, used by 0 files
+
+━━━ ARCHITECTURE ━━━
+  Entry Points: 1 files
+    - requests/certs.py
+       def where()
+  Utilities: 1 files
+    - requests/utils.py
+  Tests: 1 files
+    - test_requests.py
+
+━━━ KEY DEPENDENCIES ━━━
+  requests/__init__.py
+    └→ imports: requests/models.py
+    └→ imports: requests/api.py
+    └→ imports: requests/sessions.py
+       ... +2 more
+  requests/utils.py
+    └→ imports: requests/__init__.py
+    └→ imports: requests/compat.py
+    └→ imports: requests/cookies.py
+       ... +2 more
+  requests/models.py
+    └→ imports: requests/hooks.py
+    └→ imports: requests/structures.py
+    └→ imports: requests/auth.py
+       ... +5 more
+  requests/cookies.py
+    └→ imports: requests/compat.py
+
+━━━ HOT FUNCTIONS (most called) ━━━
+  RequestsCookieJar.get (method): called by 53, calls 2 @requests/cookies.py
+  httpbin (function): called by 52, calls 0 @test_requests.py
+  CaseInsensitiveDict (class): called by 24, calls 0 @requests/structures.py
+  Request (class): called by 21, calls 0 @requests/models.py
+  Request.prepare (method): called by 15, calls 8 @requests/models.py
+  Session.send (method): called by 9, calls 16 @requests/sessions.py
+  RequestsCookieJar.items (method): called by 16, calls 1 @requests/cookies.py
+  Session (class): called by 16, calls 0 @requests/sessions.py
+  session (function): called by 14, calls 1 @requests/sessions.py
+  RequestsCookieJar.update (method): called by 13, calls 1 @requests/cookies.py
+
+━━━ FILE INVENTORY ━━━
+  docs/_themes/            flask_theme_support.py, README.rst, layout.html, theme.conf, relations.html, flasky.css_t, layout.html, theme.conf, +1
+  (root)                   test_requests.py, setup.py, requirements.txt, MANIFEST.in, HISTORY.rst, AUTHORS.rst, setup.cfg, README.rst
+  docs/user/               install.rst, authentication.rst, intro.rst, quickstart.rst, advanced.rst
+  docs/dev/                todo.rst, philosophy.rst, authors.rst, internals.rst
+  docs/community/          support.rst, out-there.rst, faq.rst, updates.rst
+  docs/_templates/         sidebarintro.html, sidebarlogo.html
+  docs/index.rst/          index.rst
+  docs/conf.py/            conf.py
+  docs/MANIFEST.in/        MANIFEST.in
+  docs/make.bat/           make.bat
+  docs/api.rst/            api.rst
+  (1 low-value files hidden: __init__.py, configs, etc.)
+
+━━━ NEXT STEPS ━━━
+  Drill down: overview → structure → code
+
+    scan_directory("requests/")  → see code structure inside active area
+    scan_file("requests/compat.py")  → see functions/classes in core file
+    Read("requests/cookies.py", offset=N)  → read RequestsCookieJar.get() implementation
+
+  What each tool gives you:
+    scan_directory  → functions, classes, line numbers per file
+    scan_file       → full structure + signatures + entropy-based code snippets
+    Read(offset=N)  → actual source code at specific lines
+
+Analysis: 60 files in 0.15s (layer1+layer2)
+=== CALL: scantool scanfile /tmp/swb/psf__requests-1963/requests/sessions.py 400 ===
+sessions.py (1-571)
+- file-info: 19.5KB modified: 2026-06-10 23:49 [ts:1781128185] churn: 1 commits/90d
+- import statements @11
+- merge_setting (request_setting, session_setting, dict_class=OrderedDict) @34 # Determines appropriate setting for a given request, taking into account the
+- merge_hooks (request_hooks, session_hooks, dict_class=OrderedDict) @67 # Properly merges both requests and session hooks.
+- SessionRedirectMixin (object) @83
+  - resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None) @84 # Receives a Response. Returns a generator of Responses.
+     …
+     while resp.is_redirect:
+      …
+- Session (SessionRedirectMixin) @187 # A Requests session.
+  - __init__ (self) @205
+  - __enter__ (self) @256
+  - __exit__ (self, *args) @259
+  - prepare_request (self, request) @262 # Constructs a :class:`PreparedRequest <PreparedRequest>` for
+  - request (self, method, url, params=None, data=None, headers=None, cookies=None, files=None, auth=None, timeout=None, allow_redirects=True, proxies=None, hooks=None, stream=None, verify=None, cert=None) @301 # Constructs a :class:`Request <Request>`, prepares it and sends it.
+     method = builtin_str(method)
+     req = Request(method=method.upper(), url=url, headers=headers, fi…
+     prep = self.prepare_request(req)
+     proxies = proxies or {}
+     if self.trust_env:
+      …
+     proxies = merge_setting(proxies, self.proxies)
+     stream = merge_setting(stream, self.stream)
+     verify = merge_setting(verify, self.verify)
+     cert = merge_setting(cert, self.cert)
+     …
+     resp = self.send(prep, **send_kwargs)
+     return resp
+  - get (self, url, **kwargs) @397 # Sends a GET request. Returns :class:`Response` object.
+  - options (self, url, **kwargs) @407 # Sends a OPTIONS request. Returns :class:`Response` object.
+  - head (self, url, **kwargs) @417 # Sends a HEAD request. Returns :class:`Response` object.
+  - post (self, url, data=None, **kwargs) @427 # Sends a POST request. Returns :class:`Response` object.
+  - put (self, url, data=None, **kwargs) @437 # Sends a PUT request. Returns :class:`Response` object.
+  - patch (self, url, data=None, **kwargs) @447 # Sends a PATCH request. Returns :class:`Response` object.
+  - delete (self, url, **kwargs) @457 # Sends a DELETE request. Returns :class:`Response` object.
+  - send (self, request, **kwargs) @466 # Send a given PreparedRequest.
+     kwargs.setdefault('stream', self.stream)
+     kwargs.setdefault('verify', self.verify)
+     kwargs.setdefault('cert', self.cert)
+     kwargs.setdefault('proxies', self.proxies)
+     if not isinstance(request, PreparedRequest):
+      …
+     allow_redirects = kwargs.pop('allow_redirects', True)
+     stream = kwargs.get('stream')
+     timeout = kwargs.get('timeout')
+     verify = kwargs.get('verify')
+     cert = kwargs.get('cert')
+     proxies = kwargs.get('proxies')
+     …
+     adapter = self.get_adapter(url=request.url)
+     start = datetime.utcnow()
+     r = adapter.send(request, **kwargs)
+     r.elapsed = datetime.utcnow() - start
+     r = dispatch_hook('response', hooks, r, **kwargs)
+     if r.history:
+      …
+     extract_cookies_to_jar(self.cookies, request, r.raw)
+     gen = self.resolve_redirects(r, request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)
+     history = [resp for resp in gen] if allow_redirects else []
+     if history:
+      …
+     return r
+  - get_adapter (self, url) @534 # Returns the appropriate connnection adapter for the given URL.
+  - close (self) @544 # Closes all adapters and as such the session
+  - mount (self, prefix, adapter) @549 # Registers a connection adapter to a prefix.
+  - __getstate__ (self) @560
+  - __setstate__ (self, state) @563
+- session () @568 # Returns a :class:`Session` for context-management.
+=== CALL: scantool search /tmp/swb/psf__requests-1963 resolve_redirects ===
+4 hits in 3 structures for /resolve_redirects/
+
+/private/tmp/swb/psf__requests-1963/requests/sessions.py
+- Session > send (self, request, **kwargs) @466-532  (2 hits)
+   480 | # Set up variables needed for resolve_redirects and dispatching of hooks
+   514 | gen = self.resolve_redirects(r, request,
+- SessionRedirectMixin > resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None) @84-184
+   84 | def resolve_redirects(self, resp, req, stream=False, timeout=None,
+
+/private/tmp/swb/psf__requests-1963/requests/models.py
+- Response > is_redirect (self) @604-608
+   606 | been processed automatically (by :meth:`Session.resolve_redirects`).
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/ordered_dict.py@191, extract_cookies_to_jar → /private/tmp/swb/psf__requests-1963/requests/cookies.py@114, requote_uri → /private/tmp/swb/psf__requests-1963/requests/utils.py@407, dispatch_hook → /private/tmp/swb/psf__requests-1963/requests/hooks.py@29, TooManyRedirects → /private/tmp/swb/psf__requests-1963/requests/exceptions.py@54
+=== CALL: scantool scanfile /tmp/swb/psf__requests-1963/requests/sessions.py 600 ===
+sessions.py (1-571)
+- file-info: 19.5KB modified: 2026-06-10 23:49 [ts:1781128185] churn: 1 commits/90d
+- import statements @11
+- merge_setting (request_setting, session_setting, dict_class=OrderedDict) @34 # Determines appropriate setting for a given request, taking into account the
+   if session_setting is None:
+    …
+   if request_setting is None:
+    …
+   if not (isinstance(session_setting, Mapping) and isinstance(request_setting, Mapping)):
+    …
+   merged_setting = dict_class(to_key_val_list(session_setting))
+   merged_setting.update(to_key_val_list(request_setting))
+   for (k, v) in request_setting.items():
+    …
+   merged_setting = dict(((k, v) for k, v in merged_setting.items() if v is not None))
+   return merged_setting
+- merge_hooks (request_hooks, session_hooks, dict_class=OrderedDict) @67 # Properly merges both requests and session hooks.
+- SessionRedirectMixin (object) @83
+  - resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None) @84 # Receives a Response. Returns a generator of Responses.
+     …
+     while resp.is_redirect:
+      …
+- Session (SessionRedirectMixin) @187 # A Requests session.
+  - __init__ (self) @205
+     self.headers = default_headers()
+     …
+     self.hooks = default_hooks()
+     …
+     self.cookies = cookiejar_from_dict({})
+     self.adapters = OrderedDict()
+     self.mount('https://', HTTPAdapter())
+     self.mount('http://', HTTPAdapter())
+  - __enter__ (self) @256
+  - __exit__ (self, *args) @259
+  - prepare_request (self, request) @262 # Constructs a :class:`PreparedRequest <PreparedRequest>` for
+  - request (self, method, url, params=None, data=None, headers=None, cookies=None, files=None, auth=None, timeout=None, allow_redirects=True, proxies=None, hooks=None, stream=None, verify=None, cert=None) @301 # Constructs a :class:`Request <Request>`, prepares it and sends it.
+     method = builtin_str(method)
+     req = Request(method=method.upper(), url=url, headers=headers, fi…
+     prep = self.prepare_request(req)
+     proxies = proxies or {}
+     if self.trust_env:
+      …
+     proxies = merge_setting(proxies, self.proxies)
+     stream = merge_setting(stream, self.stream)
+     verify = merge_setting(verify, self.verify)
+     cert = merge_setting(cert, self.cert)
+     …
+     resp = self.send(prep, **send_kwargs)
+     return resp
+  - get (self, url, **kwargs) @397 # Sends a GET request. Returns :class:`Response` object.
+  - options (self, url, **kwargs) @407 # Sends a OPTIONS request. Returns :class:`Response` object.
+  - head (self, url, **kwargs) @417 # Sends a HEAD request. Returns :class:`Response` object.
+  - post (self, url, data=None, **kwargs) @427 # Sends a POST request. Returns :class:`Response` object.
+  - put (self, url, data=None, **kwargs) @437 # Sends a PUT request. Returns :class:`Response` object.
+  - patch (self, url, data=None, **kwargs) @447 # Sends a PATCH request. Returns :class:`Response` object.
+  - delete (self, url, **kwargs) @457 # Sends a DELETE request. Returns :class:`Response` object.
+  - send (self, request, **kwargs) @466 # Send a given PreparedRequest.
+     kwargs.setdefault('stream', self.stream)
+     kwargs.setdefault('verify', self.verify)
+     kwargs.setdefault('cert', self.cert)
+     kwargs.setdefault('proxies', self.proxies)
+     if not isinstance(request, PreparedRequest):
+      …
+     allow_redirects = kwargs.pop('allow_redirects', True)
+     stream = kwargs.get('stream')
+     timeout = kwargs.get('timeout')
+     verify = kwargs.get('verify')
+     cert = kwargs.get('cert')
+     proxies = kwargs.get('proxies')
+     …
+     adapter = self.get_adapter(url=request.url)
+     start = datetime.utcnow()
+     r = adapter.send(request, **kwargs)
+     r.elapsed = datetime.utcnow() - start
+     r = dispatch_hook('response', hooks, r, **kwargs)
+     if r.history:
+      …
+     extract_cookies_to_jar(self.cookies, request, r.raw)
+     gen = self.resolve_redirects(r, request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies)
+     history = [resp for resp in gen] if allow_redirects else []
+     if history:
+      …
+     return r
+  - get_adapter (self, url) @534 # Returns the appropriate connnection adapter for the given URL.
+  - close (self) @544 # Closes all adapters and as such the session
+  - mount (self, prefix, adapter) @549 # Registers a connection adapter to a prefix.
+  - __getstate__ (self) @560
+  - __setstate__ (self, state) @563
+- session () @568 # Returns a :class:`Session` for context-management.
+=== CALL: scantool search /tmp/swb/psf__requests-1963 copy\|clone\|\.copy() ===
+No content matches for /copy\|clone\|\.copy()/
+=== CALL: scantool search /tmp/swb/psf__requests-1963 prepare|method|url ===
+969 hits in 238 structures for /prepare|method|url/
+
+/private/tmp/swb/psf__requests-1963/requests/models.py
+- PreparedRequest > prepare_url (self, url, params) @324-388  (15 hits)
+   324 | def prepare_url(self, url, params):
+   325 | """Prepares the given HTTP URL."""
+   328 | url = unicode(url)
+   331 | url = str(url)
+   +11 more in this structure
+- PreparedRequest > prepare (self, method=None, url=None, headers=None, files=None, data=None, params=None, auth=None, cookies=None, hooks=None) @289-303  (12 hits)
+   289 | def prepare(self, method=None, url=None, headers=None, files=None,
+   291 | """Prepares the entire request with the given parameters."""
+   293 | self.prepare_method(method)
+   294 | self.prepare_url(url, params)
+   +8 more in this structure
+- RequestEncodingMixin > path_url (self) @50-68  (8 hits)
+   50 | def path_url(self):
+   51 | """Build the path URL to use."""
+   53 | url = []
+   55 | p = urlsplit(self.url)
+   +4 more in this structure
+- (module level) @19-19  (7 hits)
+   19 | from .packages.urllib3.fields import RequestField
+   20 | from .packages.urllib3.filepost import encode_multipart_formdata
+   21 | from .packages.urllib3.util import parse_url
+   22 | from .packages.urllib3.exceptions import DecodeError
+   +3 more in this structure
+- Request (RequestHooksMixin) @181-252  (6 hits)
+   184 | Used to prepare a :class:`PreparedRequest <PreparedRequest>`, which is sent to the server.
+   186 | :param method: HTTP method to use.
+   187 | :param url: URL to send.
+   191 | :param params: dictionary of URL parameters to append to the URL.
+   +2 more in this structure
+- Request > prepare (self) @238-252  (6 hits)
+   238 | def prepare(self):
+   239 | """Constructs a :class:`PreparedRequest <PreparedRequest>` for transmission and returns it."""
+   240 | p = PreparedRequest()
+   241 | p.prepare(
+   +2 more in this structure
+- PreparedRequest > prepare_auth (self, auth, url='') @463-483  (6 hits)
+   463 | def prepare_auth(self, auth, url=''):
+   464 | """Prepares the given HTTP auth data."""
+   466 | # If no Auth is explicitly provided, extract it from the URL first.
+   468 | url_auth = get_auth_from_url(self.url)
+   +2 more in this structure
+- PreparedRequest > prepare_method (self, method) @318-322  (5 hits)
+   318 | def prepare_method(self, method):
+   319 | """Prepares the given HTTP method."""
+   320 | self.method = method
+   321 | if self.method is not None:
+   +1 more in this structure
+- Request > __init__ (self, method=None, url=None, headers=None, files=None, data=None, params=None, auth=None, cookies=None, hooks=None) @204-233  (4 hits)
+   205 | method=None,
+   206 | url=None,
+   226 | self.method = method
+   227 | self.url = url
+- PreparedRequest (RequestEncodingMixin, RequestHooksMixin) @255-500  (4 hits)
+   255 | class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
+   256 | """The fully mutable :class:`PreparedRequest <PreparedRequest>` object,
+   265 | >>> r = req.prepare()
+   266 | <PreparedRequest [GET]>
+- PreparedRequest > __init__ (self) @274-287  (4 hits)
+   276 | self.method = None
+   277 | #: HTTP URL to send the request to.
+   278 | self.url = None
+   282 | # after prepare_cookies is called
+- PreparedRequest > prepare_body (self, data, files) @398-449  (4 hits)
+   398 | def prepare_body(self, data, files):
+   399 | """Prepares the given HTTP body data."""
+   441 | content_type = 'application/x-www-form-urlencoded'
+   443 | self.prepare_content_length(body)
+- PreparedRequest > copy (self) @308-316  (3 hits)
+   309 | p = PreparedRequest()
+   310 | p.method = self.method
+   311 | p.url = self.url
+- RequestEncodingMixin (object) @48-154  (2 hits)
+   70 | @staticmethod
+   97 | @staticmethod
+- PreparedRequest > prepare_headers (self, headers) @390-396  (2 hits)
+   390 | def prepare_headers(self, headers):
+   391 | """Prepares the given HTTP headers."""
+- PreparedRequest > prepare_content_length (self, body) @451-461  (2 hits)
+   451 | def prepare_content_length(self, body):
+   460 | elif self.method not in ('GET', 'HEAD'):
+- PreparedRequest > prepare_cookies (self, cookies) @485-495  (2 hits)
+   485 | def prepare_cookies(self, cookies):
+   486 | """Prepares the given HTTP cookie data."""
+- PreparedRequest > prepare_hooks (self, hooks) @497-500  (2 hits)
+   497 | def prepare_hooks(self, hooks):
+   498 | """Prepares the given hooks."""
+- Response > __init__ (self) @521-559  (2 hits)
+   540 | #: Final URL location of Response.
+   541 | self.url = None
+- RequestEncodingMixin > _encode_params (data) @71-95
+   93 | return urlencode(result, doseq=True)
+- Request > __repr__ (self) @235-236
+   236 | return '<Request [%s]>' % (self.method)
+- PreparedRequest > __repr__ (self) @305-306
+   306 | return '<PreparedRequest [%s]>' % (self.method)
+- Response (object) @503-801
+   512 | 'url',
+- Response > iter_content (self, chunk_size=1, decode_unicode=False) @615-651
+   628 | # Special case for urllib3.
+- Response > content (self) @679-700
+   698 | # don't need to release the connection; that's been handled by urllib3
+- Response > links (self) @764-779
+   776 | key = link.get('rel') or link.get('url')
+
+/private/tmp/swb/psf__requests-1963/requests/sessions.py
+- SessionRedirectMixin > resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None) @84-184  (33 hits)
+   91 | prepared_request = req.copy()
+   101 | url = resp.headers['location']
+   102 | method = req.method
+   105 | if url.startswith('//'):
+   +29 more in this structure
+- Session > request (self, method, url, params=None, data=None, headers=None, cookies=None, files=None, auth=None, timeout=None, allow_redirects=True, proxies=None, hooks=None, stream=None, verify=None, cert=None) @301-395  (12 hits)
+   301 | def request(self, method, url,
+   315 | """Constructs a :class:`Request <Request>`, prepares it and sends it.
+   318 | :param method: method for the new :class:`Request` object.
+   319 | :param url: URL for the new :class:`Request` object.
+   +8 more in this structure
+- Session > prepare_request (self, request) @262-299  (9 hits)
+   262 | def prepare_request(self, request):
+   263 | """Constructs a :class:`PreparedRequest <PreparedRequest>` for
+   264 | transmission and returns it. The :class:`PreparedRequest` has settings
+   268 | :param request: :class:`Request` instance to prepare with this
+   +5 more in this structure
+- Session > send (self, request, **kwargs) @466-532  (4 hits)
+   467 | """Send a given PreparedRequest."""
+   477 | if not isinstance(request, PreparedRequest):
+   478 | raise ValueError('You can only send PreparedRequests.')
+   490 | adapter = self.get_adapter(url=request.url)
+- Session > get_adapter (self, url) @534-542  (4 hits)
+   534 | def get_adapter(self, url):
+   535 | """Returns the appropriate connnection adapter for the given URL."""
+   538 | if url.lower().startswith(prefix):
+   542 | raise InvalidSchema("No connection adapters were found for '%s'" % url)
+- Session > get (self, url, **kwargs) @397-405  (3 hits)
+   397 | def get(self, url, **kwargs):
+   400 | :param url: URL for the new :class:`Request` object.
+   405 | return self.request('GET', url, **kwargs)
+- Session > options (self, url, **kwargs) @407-415  (3 hits)
+   407 | def options(self, url, **kwargs):
+   410 | :param url: URL for the new :class:`Request` object.
+   415 | return self.request('OPTIONS', url, **kwargs)
+- Session > head (self, url, **kwargs) @417-425  (3 hits)
+   417 | def head(self, url, **kwargs):
+   420 | :param url: URL for the new :class:`Request` object.
+   425 | return self.request('HEAD', url, **kwargs)
+- Session > post (self, url, data=None, **kwargs) @427-435  (3 hits)
+   427 | def post(self, url, data=None, **kwargs):
+   430 | :param url: URL for the new :class:`Request` object.
+   435 | return self.request('POST', url, data=data, **kwargs)
+- Session > put (self, url, data=None, **kwargs) @437-445  (3 hits)
+   437 | def put(self, url, data=None, **kwargs):
+   440 | :param url: URL for the new :class:`Request` object.
+   445 | return self.request('PUT', url, data=data, **kwargs)
+- Session > patch (self, url, data=None, **kwargs) @447-455  (3 hits)
+   447 | def patch(self, url, data=None, **kwargs):
+   450 | :param url: URL for the new :class:`Request` object.
+   455 | return self.request('PATCH', url,  data=data, **kwargs)
+- Session > delete (self, url, **kwargs) @457-464  (3 hits)
+   457 | def delete(self, url, **kwargs):
+   460 | :param url: URL for the new :class:`Request` object.
+   464 | return self.request('DELETE', url, **kwargs)
+- (module level) @15-15  (2 hits)
+   15 | from .compat import cookielib, OrderedDict, urljoin, urlparse, builtin_str
+   18 | from .models import Request, PreparedRequest, DEFAULT_REDIRECT_LIMIT
+- Session > __init__ (self) @205-254
+   216 | #: Dictionary mapping protocol to the URL of the proxy (e.g.
+
++198 more structures — narrow the pattern
+
+leads (called in hits, defined elsewhere): InvalidURL → /private/tmp/swb/psf__requests-1963/requests/exceptions.py@66, default_hooks → /private/tmp/swb/psf__requests-1963/requests/hooks.py@20, items → /private/tmp/swb/psf__requests-1963/requests/cookies.py@229, parse_url → /private/tmp/swb/psf__requests-1963/requests/packages/urllib3/util.py@335, MissingSchema → /private/tmp/swb/psf__requests-1963/requests/exceptions.py@58

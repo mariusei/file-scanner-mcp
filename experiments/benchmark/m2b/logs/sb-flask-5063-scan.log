@@ -1,0 +1,509 @@
+=== CALL: scantool preview /tmp/swb/pallets__flask-5063 ===
+📂 pallets__flask-5063/
+
+━━━ STRUCTURE ━━━
+  docs/          deploying, patterns, tutorial [.rst]
+  tests/         static, templates, test_apps +1 [Python]
+  examples/      celery, javascript, tutorial [Python]
+  src/           flask                [Python]
+  requirements/  (12 files)           [.txt]
+  .github/       ISSUE_TEMPLATE, workflows [Markdown]
+  artwork/       (3 files)            [.svg]
+  .devcontainer/ (2 files)            [.sh]
+  (root files)     10 files            [.rst]
+
+━━━ FILE ARCHETYPES ━━━
+  (project span: just now - just now)
+
+  🏛️ Core Infrastructure (old + central + stable):
+     examples/celery/src/task_app/__init__.py      just now 1019B    used by 1
+
+  🔧 Active Core (central + recently changed):
+     src/flask/wrappers.py                         just now 5.6KB    used by 9
+     src/flask/templating.py                       just now 7.4KB    used by 4
+     src/flask/views.py                            just now 6.6KB    used by 4
+     src/flask/testing.py                          just now 10.0KB   used by 3
+
+  🚀 Active Development (recent + large):
+     tests/typing/typing_route.py                  just now 2.5KB    
+     tests/test_views.py                           just now 6.5KB    
+     tests/test_user_error_handler.py              just now 8.2KB    
+     tests/test_testing.py                         just now 10.5KB   
+     ... +15 more
+
+  💤 Potentially Stale (old + small + unused):
+     .devcontainer/devcontainer.json               just now 434B     
+     .devcontainer/on-create-command.sh            just now 187B     
+     .github/ISSUE_TEMPLATE/bug-report.md          just now 607B     
+     .github/ISSUE_TEMPLATE/config.yml             just now 489B     
+     ... +23 more
+
+━━━ ENTRY POINTS ━━━
+  pyproject.toml:python_project @1
+  pyproject.toml:project_scripts @45
+  tests/conftest.py:Flask app @48
+  tests/test_async.py:Flask app @103
+  tests/test_config.py:Flask app @206
+  tests/test_cli.py:Flask app @456
+  tests/test_apps/blueprintapp/__init__.py:Flask app @3
+  tests/test_apps/blueprintapp/apps/frontend/templates/frontend/index.html:index @1
+  tests/test_apps/blueprintapp/apps/admin/templates/admin/index.html:index @1
+  tests/test_apps/helloworld/hello.py:Flask app @3
+  tests/test_apps/cliapp/importerrorapp.py:Flask app @5
+  tests/test_apps/cliapp/app.py:Flask app @3
+  tests/test_apps/cliapp/inner1/inner2/flask.py:Flask app @3
+  tests/typing/typing_route.py:Flask app @15
+  tests/typing/typing_app_decorators.py:Flask app @8
+  tests/typing/typing_error_handler.py:Flask app @10
+  tests/static/index.html:index @1
+  examples/tutorial/pyproject.toml:python_project @1
+  examples/tutorial/flaskr/__init__.py:Flask app @8
+  examples/tutorial/flaskr/static/style.css:style.css (main stylesheet)
+
+━━━ CORE FILES (by centrality) ━━━
+  src/flask/__init__.py: imports 9, used by 51 files
+     def __getattr__(name)
+  src/flask/globals.py: imports 4, used by 17 files
+     class _FakeStack
+     def __getattr__(name: str) -> t.Any
+     ... +2 more
+  src/flask/app.py: imports 15, used by 11 files
+     class Flask((Scaffold)) [called by 118]
+     def iscoroutinefunction(func: t.Any) -> bool [called by 2]
+     def _make_timedelta(value: t.Union[timedelta, int, None]) -> t.Optional[timedelta]
+     ... +60 more
+  src/flask/wrappers.py: imports 4, used by 9 files
+     class Response((ResponseBase)) [called by 12]
+     class Request((RequestBase))
+     ... +7 more
+  src/flask/helpers.py: imports 4, used by 7 files
+     class locked_cached_property((werkzeug.utils.cached_property))
+     def flash(message: str, category: str = "message") -> None [called by 13]
+     def get_debug_flag() -> bool [called by 11]
+     def abort( code: t.Union[int, "BaseResponse"], *args: t.Any, **kwargs: t.Any ) -> "te.NoReturn" [called by 10]
+     def _prepare_send_file_kwargs(**kwargs: t.Any) -> t.Dict[str, t.Any] [called by 6]
+     def get_load_dotenv(default: bool = True) -> bool [called by 5]
+     ... +15 more
+  src/flask/sessions.py: imports 3, used by 6 files
+     class SessionMixin((MutableMapping))
+     class SecureCookieSession((CallbackDict, SessionMixin))
+     class NullSession((SecureCookieSession))
+     class SessionInterface
+     ... +23 more
+  src/flask/templating.py: imports 6, used by 4 files
+     class DispatchingJinjaLoader((BaseLoader)) [called by 2]
+     class Environment((BaseEnvironment))
+     def render_template( template_name_or_list: t.Union[str, Template, t.List[t.Union[str, Template]]], **context: t.Any, ) -> str [called by 23]
+     def render_template_string(source: str, **context: t.Any) -> str [called by 17]
+     def _stream( app: "Flask", template: Template, context: t.Dict[str, t.Any] ) -> t.Iterator[str] [called by 6]
+     def _render(app: "Flask", template: Template, context: t.Dict[str, t.Any]) -> str [called by 5]
+     def stream_template( template_name_or_list: t.Union[str, Template, t.List[t.Union[str, Template]]], **context: t.Any, ) -> t.Iterator[str] [called by 3]
+     ... +9 more
+  src/flask/cli.py: imports 4, used by 5 files
+     class ScriptInfo [called by 12]
+     class FlaskGroup((AppGroup)) [called by 12]
+     class NoAppException((click.UsageError)) [called by 8]
+     class AppGroup((click.Group)) [called by 2]
+     def load_dotenv(path: str | os.PathLike | None = None) -> bool [called by 12]
+     def locate_app(module_name, app_name, raise_if_not_found=True) [called by 11]
+     def find_best_app(module) [called by 6]
+     def _called_with_wrong_args(f) [called by 4]
+     def find_app_by_string(module, app_name) [called by 4]
+     ... +28 more
+  src/flask/scaffold.py: imports 6, used by 3 files
+     class Scaffold
+     def _path_is_relative_to(path: pathlib.PurePath, base: str) -> bool [called by 4]
+     def _find_package_path(import_name) [called by 4]
+     def find_package(import_name: str) [called by 4]
+     def _endpoint_from_view_func(view_func: t.Callable) -> str [called by 2]
+     def _matching_loader_thinks_module_is_package(loader, mod_name) [called by 2]
+     ... +31 more
+  src/flask/ctx.py: imports 6, used by 3 files
+     class AppContext [called by 2]
+     class RequestContext [called by 2]
+     class _AppCtxGlobals
+     def has_request_context() -> bool [called by 3]
+     def copy_current_request_context(f: t.Callable) -> t.Callable [called by 2]
+     def after_this_request(f: ft.AfterRequestCallable) -> ft.AfterRequestCallable [called by 1]
+     def has_app_context() -> bool [called by 1]
+     ... +22 more
+  src/flask/debughelpers.py: imports 3, used by 4 files
+     class DebugFilesKeyError((KeyError, AssertionError)) [called by 2]
+     class FormDataRoutingRedirect((AssertionError)) [called by 2]
+     class UnexpectedUnicodeError((AssertionError, UnicodeError))
+     def explain_template_loading_attempts(app: Flask, template, attempts) -> None [called by 3]
+     def attach_enctype_error_multidict(request) [called by 2]
+     def _dump_loader_info(loader) -> t.Generator [called by 2]
+     ... +3 more
+  src/flask/signals.py: imports 0, used by 5 files
+     def __getattr__(name: str) -> t.Any
+  src/flask/views.py: imports 2, used by 4 files
+     class View [called by 2]
+     class MethodView((View))
+     ... +4 more
+  src/flask/blueprints.py: imports 3, used by 3 files
+     class Blueprint((Scaffold)) [called by 104]
+     class BlueprintSetupState [called by 2]
+     ... +23 more
+  src/flask/testing.py: imports 3, used by 3 files
+     class EnvironBuilder((werkzeug.test.EnvironBuilder)) [called by 14]
+     class FlaskClient((Client))
+     class FlaskCliRunner((CliRunner))
+     ... +11 more
+  src/flask/json/__init__.py: imports 3, used by 3 files
+     def jsonify(*args: t.Any, **kwargs: t.Any) -> Response [called by 17]
+     def dumps(obj: t.Any, **kwargs: t.Any) -> str
+     def dump(obj: t.Any, fp: t.IO[str], **kwargs: t.Any) -> None
+     def loads(s: str | bytes, **kwargs: t.Any) -> t.Any
+     def load(fp: t.IO[t.AnyStr], **kwargs: t.Any) -> t.Any
+  src/flask/json/provider.py: imports 2, used by 3 files
+     class JSONProvider
+     class DefaultJSONProvider((JSONProvider))
+     def _default(o: t.Any) -> t.Any
+     ... +10 more
+  examples/javascript/js_example/templates/base.html: imports 0, used by 3 files
+  src/flask/logging.py: imports 2, used by 2 files
+     def has_level_handler(logger: logging.Logger) -> bool [called by 4]
+     def create_logger(app: "Flask") -> logging.Logger [called by 3]
+     def wsgi_errors_stream() -> t.TextIO
+  tests/test_testing.py: imports 5, used by 0 files
+     def test_blueprint_with_subdomain() [called by 7]
+     def test_subdomain() [called by 6]
+     def test_nosubdomain(app, client) [called by 4]
+     def test_cli_custom_obj(app) [called by 4]
+     def test_environ_defaults_from_config(app, client) [called by 3]
+     ... +20 more
+
+━━━ ARCHITECTURE ━━━
+  Entry Points: 10 files
+    - tests/test_apps/blueprintapp/apps/frontend/templates/frontend/index.html
+    - tests/test_apps/blueprintapp/apps/admin/templates/admin/index.html
+    - tests/test_apps/cliapp/app.py
+    ... +7 more
+  Core Logic: 2 files
+    - docs/patterns/mongoengine.rst
+    - docs/patterns/urlprocessors.rst
+  Utilities: 4 files
+    - tests/templates/simple_template.html
+    - tests/templates/escaping_template.html
+    - tests/templates/template_filter.html
+    ... +1 more
+  Config: 16 files
+    - .pre-commit-config.yaml
+    - pyproject.toml
+    - tox.ini
+    ... +13 more
+  Tests: 31 files
+    - tests/test_basic.py
+    - tests/conftest.py
+    - tests/test_converters.py
+    ... +28 more
+
+━━━ KEY DEPENDENCIES ━━━
+  src/flask/__init__.py
+    └→ imports: src/flask/app.py
+    └→ imports: src/flask/blueprints.py
+    └→ imports: src/flask/config.py
+       ... +6 more
+  src/flask/globals.py
+    └→ imports: src/flask/app.py
+    └→ imports: src/flask/ctx.py
+    └→ imports: src/flask/sessions.py
+       ... +1 more
+  src/flask/app.py
+    └→ imports: src/flask/__init__.py
+    └→ imports: src/flask/config.py
+    └→ imports: src/flask/ctx.py
+       ... +12 more
+  src/flask/wrappers.py
+    └→ imports: src/flask/__init__.py
+    └→ imports: src/flask/globals.py
+    └→ imports: src/flask/helpers.py
+       ... +1 more
+  src/flask/helpers.py
+    └→ imports: src/flask/globals.py
+    └→ imports: src/flask/signals.py
+    └→ imports: src/flask/wrappers.py
+       ... +1 more
+
+━━━ HOT FUNCTIONS (most called) ━━━
+  AsyncMethodView.get (method): called by 193, calls 2 @tests/test_async.py
+  Scaffold.route (method): called by 152, calls 0 @src/flask/scaffold.py
+  Flask (class): called by 59, calls 0 @src/flask/app.py
+  Blueprint (class): called by 52, calls 0 @src/flask/blueprints.py
+  Blueprint.register_blueprint (method): called by 51, calls 1 @src/flask/blueprints.py
+  Flask.test_client (method): called by 42, calls 0 @src/flask/app.py
+  Flask.test_request_context (method): called by 33, calls 2 @src/flask/app.py
+  AsyncMethodView.post (method): called by 31, calls 1 @tests/test_async.py
+  Flask.url_for (method): called by 29, calls 5 @src/flask/app.py
+  BlueprintSetupState.add_url_rule (method): called by 26, calls 6 @src/flask/blueprints.py
+
+━━━ FILE INVENTORY ━━━
+  docs/patterns/           index.rst, mongoengine.rst, sqlalchemy.rst, fileuploads.rst, wtforms.rst, javascript.rst, streaming.rst, lazyloading.rst, +17
+  src/flask/               __init__.py, globals.py, app.py, wrappers.py, helpers.py, sessions.py, templating.py, cli.py, +15
+  examples/tutorial/       test_auth.py, auth.py, db.py, __init__.py, blog.py, pyproject.toml, MANIFEST.in, LICENSE.rst, +14
+  tests/test_apps/         __init__.py, __init__.py, __init__.py, hello.py, __init__.py, importerrorapp.py, factory.py, multiapp.py, +3
+  docs/tutorial/           install.rst, templates.rst, index.rst, factory.rst, static.rst, tests.rst, views.rst, deploy.rst, +4
+  examples/javascript/     base.html, __init__.py, views.py, jquery.html, fetch.html, xhr.html, test_js_example.py, pyproject.toml, +4
+  docs/deploying/          index.rst, eventlet.rst, proxy_fix.rst, apache-httpd.rst, asgi.rst, mod_wsgi.rst, uwsgi.rst, gunicorn.rst, +3
+  (root)                   CODE_OF_CONDUCT.md, CONTRIBUTING.rst, .pre-commit-config.yaml, pyproject.toml, MANIFEST.in, tox.ini, LICENSE.rst, README.rst, +2
+  tests/templates/         escaping_template.html, non_escaping_template.txt
+  examples/celery/         __init__.py, views.py, requirements.txt, pyproject.toml, README.md, make_celery.py, tasks.py, index.html
+  tests/typing/            typing_route.py, typing_app_decorators.py, typing_error_handler.py
+  tests/static/            config.json
+  (19 low-value files hidden: __init__.py, configs, etc.)
+
+━━━ NEXT STEPS ━━━
+  Drill down: overview → structure → code
+
+    scan_directory("src/")  → see code structure inside active area
+    scan_directory("tests/")  → see code structure inside active area
+    scan_file("src/flask/__init__.py")  → see functions/classes in core file
+
+  What each tool gives you:
+    scan_directory  → functions, classes, line numbers per file
+    scan_file       → full structure + signatures + entropy-based code snippets
+    Read(offset=N)  → actual source code at specific lines
+
+Analysis: 248 files in 0.35s (layer1+layer2)
+=== CALL: scantool search /tmp/swb/pallets__flask-5063/src domain ===
+58 hits in 16 structures for /domain/
+
+/private/tmp/swb/pallets__flask-5063/src/flask/app.py
+- Flask > create_url_adapter ( self, request: t.Optional[Request] ) -> t.Optional[MapAdapter] @1874-1914  (8 hits)
+   1888 | :data:`SERVER_NAME` no longer implicitly enables subdomain
+   1889 | matching. Use :attr:`subdomain_matching` instead.
+   1892 | # If subdomain matching is disabled (the default), use the
+   1893 | # default subdomain in all cases. This should be the default
+   +4 more in this structure
+- Flask > url_for ( self, endpoint: str, *, _anchor: t.Optional[str] = None, _method: t.Optional[str] = None, _scheme: t.Optional[str] = None, _external: t.Optional[bool] = None, **values: t.Any, ) -> str @1595-1718  (5 hits)
+   1617 | the scheme and domain, like ``https://example.com/hello``. When
+   1620 | domain to use. :data:`APPLICATION_ROOT` and
+   1642 | include the scheme and domain. When not in an active
+   1666 | # domain by default, unless a scheme is given.
+   +1 more in this structure
+- Flask (Scaffold) @105-2230  (3 hits)
+   167 | The ``subdomain_matching`` parameter was added. Subdomain
+   183 | :param subdomain_matching: consider the subdomain relative to
+   318 | "SESSION_COOKIE_DOMAIN": None,
+- Flask > __init__ ( self, import_name: str, static_url_path: t.Optional[str] = None, static_folder: t.Optional[t.Union[str, os.PathLike]] = "static", static_host: t.Optional[str] = None, host_matching: bool = False, subdomain_matching: bool = False, template_folder: t.Optional[t.Union[str, os.PathLike]] = "templates", instance_path: t.Optional[str] = None, instance_relative_config: bool = False, root_path: t.Optional[str] = None, ) @367-520  (2 hits)
+   374 | subdomain_matching: bool = False,
+   493 | self.subdomain_matching = subdomain_matching
+- Flask > test_request_context (self, *args: t.Any, **kwargs: t.Any) -> RequestContext @2121-2175  (2 hits)
+   2152 | :data:`PREFERRED_URL_SCHEME`, ``subdomain``,
+   2154 | :param subdomain: Subdomain name to append to
+- Flask > register_blueprint (self, blueprint: "Blueprint", **options: t.Any) -> None @985-1010
+   995 | :param subdomain: Blueprint routes will match on this subdomain.
+
+/private/tmp/swb/pallets__flask-5063/src/flask/blueprints.py
+- Blueprint > register (self, app: "Flask", options: dict) -> None @271-405  (10 hits)
+   283 | Nested blueprints now correctly apply subdomains.
+   380 | bp_subdomain = bp_options.get("subdomain")
+   382 | if bp_subdomain is None:
+   383 | bp_subdomain = blueprint.subdomain
+   +6 more in this structure
+- BlueprintSetupState > __init__ ( self, blueprint: "Blueprint", app: "Flask", options: t.Any, first_registration: bool, ) -> None @39-83  (5 hits)
+   62 | subdomain = self.options.get("subdomain")
+   63 | if subdomain is None:
+   64 | subdomain = self.blueprint.subdomain
+   66 | #: The subdomain that the blueprint should be active for, ``None``
+   +1 more in this structure
+- Blueprint > __init__ ( self, name: str, import_name: str, static_folder: t.Optional[t.Union[str, os.PathLike]] = None, static_url_path: t.Optional[str] = None, template_folder: t.Optional[t.Union[str, os.PathLike]] = None, url_prefix: t.Optional[str] = None, subdomain: t.Optional[str] = None, url_defaults: t.Optional[dict] = None, root_path: t.Optional[str] = None, cli_group: t.Optional[str] = _sentinel, # type: ignore ) @172-209  (2 hits)
+   180 | subdomain: t.Optional[str] = None,
+   201 | self.subdomain = subdomain
+- BlueprintSetupState > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @85-114
+   101 | options.setdefault("subdomain", self.subdomain)
+- Blueprint (Scaffold) @117-624
+   153 | :param subdomain: A subdomain that blueprint routes will match on by
+
+/private/tmp/swb/pallets__flask-5063/src/flask/sessions.py
+- SessionInterface > get_cookie_domain (self, app: "Flask") -> t.Optional[str] @181-192  (6 hits)
+   181 | def get_cookie_domain(self, app: "Flask") -> t.Optional[str]:
+   182 | """The value of the ``Domain`` parameter on the session cookie. If not set,
+   183 | browsers will only send the cookie to the exact domain it was set from.
+   184 | Otherwise, they will send it to any subdomain of the given value as well.
+   +2 more in this structure
+- SecureCookieSessionInterface > save_session ( self, app: "Flask", session: SessionMixin, response: "Response" ) -> None @329-372  (3 hits)
+   333 | domain = self.get_cookie_domain(app)
+   345 | domain=domain,
+   368 | domain=domain,
+
+/private/tmp/swb/pallets__flask-5063/src/flask/testing.py
+- EnvironBuilder > __init__ ( self, app: "Flask", path: str = "/", base_url: t.Optional[str] = None, subdomain: t.Optional[str] = None, url_scheme: t.Optional[str] = None, *args: t.Any, **kwargs: t.Any, ) -> None @44-82  (6 hits)
+   49 | subdomain: t.Optional[str] = None,
+   54 | assert not (base_url or subdomain or url_scheme) or (
+   57 | subdomain or url_scheme
+   58 | ), 'Cannot pass "subdomain" or "url_scheme" with "base_url".'
+   +2 more in this structure
+- EnvironBuilder (werkzeug.test.EnvironBuilder) @22-90  (2 hits)
+   30 | :data:`PREFERRED_URL_SCHEME`, ``subdomain``,
+   32 | :param subdomain: Subdomain name to append to :data:`SERVER_NAME`.
+
+/private/tmp/swb/pallets__flask-5063/src/flask/helpers.py
+- url_for ( endpoint: str, *, _anchor: t.Optional[str] = None, _method: t.Optional[str] = None, _scheme: t.Optional[str] = None, _external: t.Optional[bool] = None, **values: t.Any, ) -> str @180-231
+   205 | scheme and domain. When not in an active request, URLs are
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/pallets__flask-5063/src/flask/sessions.py@84, register → /private/tmp/swb/pallets__flask-5063/src/flask/json/tag.py@253, route → /private/tmp/swb/pallets__flask-5063/src/flask/scaffold.py@408, ConfigAttribute → /private/tmp/swb/pallets__flask-5063/src/flask/config.py@10, url_for → /private/tmp/swb/pallets__flask-5063/src/flask/helpers.py@180
+=== CALL: scantool scanfile /tmp/swb/pallets__flask-5063/src/flask/wrappers.py 400 ===
+wrappers.py (1-171)
+- file-info: 5.6KB modified: 2026-06-10 23:49 [ts:1781128185] churn: 1 commits/90d
+- import statements @1
+- Request (RequestBase) @15 # The request object used by default in Flask.  Remembers the
+  - max_content_length (self) -> t.Optional[int] @53 [property] # Read-only view of the ``MAX_CONTENT_LENGTH`` config key.
+     @property
+     if current_app:
+      return current_app.config['MAX_CONTENT_LENGTH']
+     else:
+      return None
+  - endpoint (self) -> t.Optional[str] @61 [property] # The endpoint that matched the request URL.
+     @property
+     if self.url_rule is not None:
+      return self.url_rule.endpoint
+     return None
+  - blueprint (self) -> t.Optional[str] @76 [property] # The registered name of the current blueprint.
+     @property
+     …
+     if endpoint is not None and '.' in endpoint:
+      return endpoint.rpartition('.')[0]
+     return None
+  - blueprints (self) -> t.List[str] @95 [property] # The registered names of the current blueprint upwards through
+     @property
+     …
+     if name is None:
+      return []
+     return _split_blueprint_path(name)
+  - _load_form_data (self) -> None @111
+     super()._load_form_data()
+     if current_app and current_app.debug and (self.mimetype != 'multipart/for…') and (not self.files):
+      …
+      attach_enctype_error_multidict(self)
+  - on_json_loading_failed (self, e: t.Optional[ValueError]) -> t.Any @126
+     try:
+      return super().on_json_loading_failed(e)
+     except BadRequest as e:
+      if current_app and current_app.debug:
+       …
+      raise BadRequest()
+- Response (ResponseBase) @136 # The response object that is used by default in Flask.  Works like the
+  - max_cookie_size (self) -> int @161 [property] # Read-only view of the :data:`MAX_COOKIE_SIZE` config key.
+     @property
+     if current_app:
+      return current_app.config['MAX_COOKIE_SIZE']
+     return super().max_cookie_size
+=== CALL: scantool searchname /tmp/swb/pallets__flask-5063/src url_rule ===
+app.py (1020-1076)
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[ft.RouteCallable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @1020
+   @setupmethod
+   if endpoint is None:
+    endpoint = _endpoint_from_view_func(view_func)
+   …
+   methods = options.pop('methods', None)
+   if methods is None:
+    methods = getattr(view_func, 'methods', None) or ('GET',)
+   if isinstance(methods, str):
+    raise TypeError('Allowed metho…')
+   methods = {item.upper() for item in methods}
+   required_methods = set(getattr(view_func, 'required_methods', ()))
+   if provide_automatic_options is None:
+    provide_automatic_options = getattr(view_func, 'provide_automatic_options', None)
+   if provide_automatic_options is None:
+    if 'OPTIONS' not in methods:
+     …
+     required_methods.add('OPTIONS')
+    else:
+     …
+   methods |= required_methods
+   rule = self.url_rule_class(rule, methods=methods, **options)
+   …
+   self.url_map.add(rule)
+   if view_func is not None:
+    old_func = self.view_functions.get(endpoint)
+    if old_func is not None and old_func != view_func:
+     raise AssertionError(f'View function…{endpoint}')
+    …
+
+blueprints.py (85-436)
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @85 # A helper method to register a rule (and optionally a view function)
+   if self.url_prefix is not None:
+    if rule:
+     …
+    else:
+     …
+   options.setdefault('subdomain', self.subdomain)
+   if endpoint is None:
+    endpoint = _endpoint_from_view_func(view_func)
+   …
+   if 'defaults' in options:
+    defaults = dict(defaults, **options.pop('defaults'))
+   self.app.add_url_rule(rule, f'{self.name_prefix}.{self.name…
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[ft.RouteCallable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @408 # Register a URL rule with the blueprint. See :meth:`.Flask.add_url_rule` for
+   @setupmethod
+   if endpoint and '.' in endpoint:
+    raise ValueError("'endpoint' ma…")
+   if view_func and hasattr(view_func, '__name__') and ('.' in view_func.__name__):
+    raise ValueError("'view_func' n…")
+   self.record(λ)
+
+scaffold.py (440-505)
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[ft.RouteCallable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @440 # Register a rule for routing incoming requests and building
+   @setupmethod
+   raise NotImplementedError
+=== CALL: scantool search /tmp/swb/pallets__flask-5063/src url_rule ===
+28 hits in 15 structures for /url_rule/
+
+/private/tmp/swb/pallets__flask-5063/src/flask/scaffold.py
+- Scaffold > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[ft.RouteCallable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @440-505  (3 hits)
+   440 | def add_url_rule(
+   463 | app.add_url_rule("/", view_func=index)
+   483 | app.add_url_rule("/", endpoint="index")
+- Scaffold > route (self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route] @408-437  (2 hits)
+   410 | rule and options. Calls :meth:`add_url_rule`, which has more
+   434 | self.add_url_rule(rule, endpoint, f, **options)
+- Scaffold > endpoint (self, endpoint: str) -> t.Callable[[F], F] @508-529  (2 hits)
+   511 | :meth:`add_url_rule`.
+   515 | app.add_url_rule("/ex", endpoint="example")
+
+/private/tmp/swb/pallets__flask-5063/src/flask/app.py
+- Flask (Scaffold) @105-2230  (2 hits)
+   336 | #: :meth:`add_url_rule`.  Defaults to :class:`werkzeug.routing.Rule`.
+   339 | url_rule_class = Rule
+- Flask > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[ft.RouteCallable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @1020-1076  (2 hits)
+   1020 | def add_url_rule(
+   1065 | rule = self.url_rule_class(rule, methods=methods, **options)
+- Flask > __init__ ( self, import_name: str, static_url_path: t.Optional[str] = None, static_folder: t.Optional[t.Union[str, os.PathLike]] = "static", static_host: t.Optional[str] = None, host_matching: bool = False, subdomain_matching: bool = False, template_folder: t.Optional[t.Union[str, os.PathLike]] = "templates", instance_path: t.Optional[str] = None, instance_relative_config: bool = False, root_path: t.Optional[str] = None, ) @367-520
+   511 | self.add_url_rule(
+- Flask > dispatch_request (self) -> ft.ResponseReturnValue @1461-1484
+   1474 | rule: Rule = req.url_rule  # type: ignore[assignment]
+
+/private/tmp/swb/pallets__flask-5063/src/flask/blueprints.py
+- Blueprint > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[ft.RouteCallable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @408-436  (3 hits)
+   408 | def add_url_rule(
+   416 | """Register a URL rule with the blueprint. See :meth:`.Flask.add_url_rule` for
+   429 | lambda s: s.add_url_rule(
+- BlueprintSetupState > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @85-114  (2 hits)
+   85 | def add_url_rule(
+   108 | self.app.add_url_rule(
+- Blueprint > register (self, app: "Flask", options: dict) -> None @271-405
+   322 | state.add_url_rule(
+
+/private/tmp/swb/pallets__flask-5063/src/flask/views.py
+- View @13-132  (3 hits)
+   30 | app.add_url_rule(
+   47 | #: ``add_url_rule`` by default.
+   52 | #: ``add_url_rule`` by default.
+- MethodView (View) @135-188
+   157 | app.add_url_rule(
+
+/private/tmp/swb/pallets__flask-5063/src/flask/wrappers.py
+- Request (RequestBase) @15-133  (2 hits)
+   32 | #: a before/after handler (``request.url_rule.methods``) etc.
+   40 | url_rule: t.Optional["Rule"] = None
+- Request > endpoint (self) -> t.Optional[str] @61-73  (2 hits)
+   70 | if self.url_rule is not None:
+   71 | return self.url_rule.endpoint
+
+/private/tmp/swb/pallets__flask-5063/src/flask/ctx.py
+- RequestContext > match_request (self) -> None @346-354
+   352 | self.request.url_rule, self.request.view_args = result  # type: ignore
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/pallets__flask-5063/src/flask/sessions.py@84, endpoint → /private/tmp/swb/pallets__flask-5063/src/flask/wrappers.py@61, ConfigAttribute → /private/tmp/swb/pallets__flask-5063/src/flask/config.py@10, register → /private/tmp/swb/pallets__flask-5063/src/flask/json/tag.py@253, _endpoint_from_view_func → /private/tmp/swb/pallets__flask-5063/src/flask/scaffold.py@773

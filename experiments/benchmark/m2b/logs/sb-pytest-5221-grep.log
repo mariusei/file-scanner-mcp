@@ -1,0 +1,257 @@
+=== CALL: find /tmp/swb/pytest-dev__pytest-5221 -type f -name *.py ===
+/tmp/swb/pytest-dev__pytest-5221/bench/bench_argcomplete.py
+/tmp/swb/pytest-dev__pytest-5221/bench/skip.py
+/tmp/swb/pytest-dev__pytest-5221/bench/manyparam.py
+/tmp/swb/pytest-dev__pytest-5221/bench/empty.py
+/tmp/swb/pytest-dev__pytest-5221/bench/bench.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_assertrewrite.py
+/tmp/swb/pytest-dev__pytest-5221/testing/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_modimport.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_warnings.py
+/tmp/swb/pytest-dev__pytest-5221/testing/freeze/create_executable.py
+/tmp/swb/pytest-dev__pytest-5221/testing/freeze/tox_run.py
+/tmp/swb/pytest-dev__pytest-5221/testing/freeze/tests/test_trivial.py
+/tmp/swb/pytest-dev__pytest-5221/testing/freeze/runtests_script.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_mark.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/approx.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/show_fixtures_per_test.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/collect.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/metafunc.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/integration.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/setup_plan.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/setup_only.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/raises.py
+/tmp/swb/pytest-dev__pytest-5221/testing/python/fixtures.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_pdb.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_recwarn.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_session.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_skipping.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_pastebin.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_nodes.py
+/tmp/swb/pytest-dev__pytest-5221/testing/io/test_saferepr.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_unittest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/code/test_excinfo.py
+/tmp/swb/pytest-dev__pytest-5221/testing/code/test_code.py
+/tmp/swb/pytest-dev__pytest-5221/testing/code/test_source.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_collection.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_terminal.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_reports.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_pluginmanager.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_runner.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_monkeypatch.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_doctest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/examples/test_issue519.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_compat.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_config.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_capture.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_parseopt.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_resultlog.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_entry_points.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_helpconfig.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_cacheprovider.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_assertion.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_pytester.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_argcomplete.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_tmpdir.py
+/tmp/swb/pytest-dev__pytest-5221/testing/deprecated_test.py
+/tmp/swb/pytest-dev__pytest-5221/testing/acceptance_test.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_junitxml.py
+/tmp/swb/pytest-dev__pytest-5221/testing/logging/test_fixture.py
+/tmp/swb/pytest-dev__pytest-5221/testing/logging/test_reporting.py
+/tmp/swb/pytest-dev__pytest-5221/testing/logging/test_formatter.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_runner_xunit.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_stepwise.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/package_infinite_recursion/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/package_infinite_recursion/tests/test_basic.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/package_infinite_recursion/tests/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/collect_init_tests/tests/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/collect_init_tests/tests/test_foo.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/package_init_given_as_arg/pkg/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/collect/package_init_given_as_arg/pkg/test_foo.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/unittest/test_setup_skip.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/unittest/test_setup_skip_module.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/unittest/test_setup_skip_class.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/unittest/test_parametrized_fixture_error_message.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/conftest_usageerror/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/marks/marks_considered_keywords/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/marks/marks_considered_keywords/test_marks_as_keywords.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/issue_519.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/config/collect_pytest_prefix/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/config/collect_pytest_prefix/test_foo.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/issue88_initial_file_multinodes/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/issue88_initial_file_multinodes/test_hello.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/acceptance/fixture_mock_integration.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/perf_examples/collect_stats/template_test.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/perf_examples/collect_stats/generate_folders.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/tmpdir/tmpdir_fixture.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_module_class.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_detect_recursive_dependency_error.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/test_spam.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/test_extend_fixture_conftest_module.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/test_in_sub1.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/test_in_sub2.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_basic.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookupfails.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_modulelevel.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_classlevel.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/test_getfixturevalue_dynamic.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/custom_item/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/custom_item/foo/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/fixtures/custom_item/foo/test_foo.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/warnings/test_group_warnings_by_message.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/dataclasses/test_compare_two_different_dataclasses.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/dataclasses/test_compare_dataclasses.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/dataclasses/test_compare_dataclasses_field_comparison_off.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/dataclasses/test_compare_dataclasses_verbose.py
+/tmp/swb/pytest-dev__pytest-5221/testing/example_scripts/deprecated/test_fixture_named_request.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_pathlib.py
+/tmp/swb/pytest-dev__pytest-5221/testing/test_nose.py
+/tmp/swb/pytest-dev__pytest-5221/setup.py
+/tmp/swb/pytest-dev__pytest-5221/extra/setup-py.test/setup.py
+/tmp/swb/pytest-dev__pytest-5221/extra/get_issues.py
+/tmp/swb/pytest-dev__pytest-5221/scripts/release.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/_themes/flask_theme_support.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/multipython.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/assertion/failure_demo.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/assertion/test_setup_flow_example.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/assertion/global_testmodule_config/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/assertion/global_testmodule_config/test_hello_world.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/assertion/test_failures.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/py2py3/test_py2.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/py2py3/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/py2py3/test_py3.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/costlysetup/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/costlysetup/sub_a/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/costlysetup/sub_a/test_quick.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/costlysetup/sub_b/test_two.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/costlysetup/sub_b/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/nonpython/conftest.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/nonpython/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/pythoncollection.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/example/xfail_demo.py
+/tmp/swb/pytest-dev__pytest-5221/doc/en/conf.py
+/tmp/swb/pytest-dev__pytest-5221/src/pytest.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/skipping.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/resultlog.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/logging.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/unittest.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/runner.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/helpconfig.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/pastebin.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/terminal.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/findpaths.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/exceptions.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/argparsing.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/warnings.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/deprecated.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/recwarn.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/mark/legacy.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/mark/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/mark/evaluate.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/mark/structures.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/tmpdir.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_code/code.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_code/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_code/source.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_code/_py2traceback.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/debugging.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/assertion/truncate.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/assertion/util.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/assertion/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/assertion/rewrite.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python_api.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_argcomplete.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/capture.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/hookspec.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_io/saferepr.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/_io/__init__.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/pytester.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/outcomes.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/stepwise.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/junitxml.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/reports.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/doctest.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/setuponly.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/nose.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/nodes.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/monkeypatch.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/setupplan.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/pathlib.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/freeze_support.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/fixtures.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/cacheprovider.py
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/warning_types.py
+=== CALL: grep -r fixtures /tmp/swb/pytest-dev__pytest-5221/src/pytest --include=*.py ===
+=== CALL: find /tmp/swb/pytest-dev__pytest-5221/src/pytest -type f -name *.py ===
+find: /tmp/swb/pytest-dev__pytest-5221/src/pytest: No such file or directory
+=== CALL: find /tmp/swb/pytest-dev__pytest-5221 -type f -name *.py -path */pytest/* ===
+=== CALL: ls -la /tmp/swb/pytest-dev__pytest-5221/ ===
+total 688
+drwxr-xr-x@ 28 mariusbergeeide  wheel     896 Jun 10 23:49 .
+drwxr-xr-x@  8 mariusbergeeide  wheel     256 Jun 10 23:49 ..
+-rw-r--r--@  1 mariusbergeeide  wheel     374 Jun 10 23:49 .coveragerc
+drwxr-xr-x@ 13 mariusbergeeide  wheel     416 Jun 10 23:49 .git
+-rw-r--r--@  1 mariusbergeeide  wheel      21 Jun 10 23:49 .gitattributes
+drwxr-xr-x@  6 mariusbergeeide  wheel     192 Jun 10 23:49 .github
+-rw-r--r--@  1 mariusbergeeide  wheel     590 Jun 10 23:49 .gitignore
+-rw-r--r--@  1 mariusbergeeide  wheel    2175 Jun 10 23:49 .pre-commit-config.yaml
+-rw-r--r--@  1 mariusbergeeide  wheel    4925 Jun 10 23:49 .travis.yml
+-rw-r--r--@  1 mariusbergeeide  wheel    3934 Jun 10 23:49 AUTHORS
+-rw-r--r--@  1 mariusbergeeide  wheel    3551 Jun 10 23:49 azure-pipelines.yml
+drwxr-xr-x@  7 mariusbergeeide  wheel     224 Jun 10 23:49 bench
+drwxr-xr-x@ 27 mariusbergeeide  wheel     864 Jun 10 23:49 changelog
+-rw-r--r--@  1 mariusbergeeide  wheel  266847 Jun 10 23:49 CHANGELOG.rst
+-rw-r--r--@  1 mariusbergeeide  wheel     475 Jun 10 23:49 CITATION
+-rw-r--r--@  1 mariusbergeeide  wheel   11910 Jun 10 23:49 CONTRIBUTING.rst
+drwxr-xr-x@  3 mariusbergeeide  wheel      96 Jun 10 23:49 doc
+drwxr-xr-x@  4 mariusbergeeide  wheel     128 Jun 10 23:49 extra
+-rw-r--r--@  1 mariusbergeeide  wheel    1645 Jun 10 23:49 HOWTORELEASE.rst
+-rw-r--r--@  1 mariusbergeeide  wheel    1096 Jun 10 23:49 LICENSE
+-rw-r--r--@  1 mariusbergeeide  wheel    1063 Jun 10 23:49 pyproject.toml
+-rw-r--r--@  1 mariusbergeeide  wheel    3744 Jun 10 23:49 README.rst
+drwxr-xr-x@  8 mariusbergeeide  wheel     256 Jun 10 23:49 scripts
+-rw-r--r--@  1 mariusbergeeide  wheel    1723 Jun 10 23:49 setup.cfg
+-rw-r--r--@  1 mariusbergeeide  wheel    1047 Jun 10 23:49 setup.py
+drwxr-xr-x@  4 mariusbergeeide  wheel     128 Jun 10 23:49 src
+drwxr-xr-x@ 48 mariusbergeeide  wheel    1536 Jun 10 23:49 testing
+-rw-r--r--@  1 mariusbergeeide  wheel    5295 Jun 10 23:49 tox.ini
+=== CALL: grep -r show.*fixtures\|--fixtures /tmp/swb/pytest-dev__pytest-5221/src --include=*.py ===
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/helpconfig.py:    tw.line("to see available fixtures type: pytest --fixtures")
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        "--fixtures",
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        dest="showfixtures",
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        help="show available fixtures, sorted by plugin appearance "
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        "--fixtures-per-test",
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        dest="show_fixtures_per_test",
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        help="show fixtures per test",
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:    if config.option.showfixtures:
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        showfixtures(config)
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:    if config.option.show_fixtures_per_test:
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:        show_fixtures_per_test(config)
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:def show_fixtures_per_test(config):
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:    return wrap_session(config, _show_fixtures_per_test)
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:def _show_fixtures_per_test(config, session):
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:def showfixtures(config):
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:    return wrap_session(config, _showfixtures_main)
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:def _showfixtures_main(config, session):
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/setuponly.py:        help="show setup of fixtures while executing tests.",
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/setupplan.py:        help="show what fixtures and tests would be executed but "
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/fixtures.py:            msg += "\n use 'pytest --fixtures [testpath]' for help on them."
+=== CALL: grep -n def _showfixtures_main\|def showfixtures /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py ===
+1297:def showfixtures(config):
+1303:def _showfixtures_main(config, session):

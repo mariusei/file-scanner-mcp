@@ -1,0 +1,155 @@
+=== CALL: scantool search /tmp/swb/psf__requests-2674 urllib3 ===
+176 hits in 75 structures for /urllib3/
+
+/private/tmp/swb/psf__requests-2674/HISTORY.rst
+- (module level) @15-15  (35 hits)
+   15 | - Updated urllib3 to 1.10.4, resolving several bugs involving chunked transfer
+   63 | - Fix error when urllib3 is unbundled and requests continues to use the
+   66 | - Include fixes to ``urllib3``'s header handling.
+   91 | - Add sha256 fingerprint support. (`shazow/urllib3#540`_)
+   +31 more in this structure
+
+/private/tmp/swb/psf__requests-2674/requests/adapters.py
+- (module level) @14-14  (12 hits)
+   14 | from .packages.urllib3.poolmanager import PoolManager, proxy_from_url
+   15 | from .packages.urllib3.response import HTTPResponse
+   16 | from .packages.urllib3.util import Timeout as TimeoutSauce
+   17 | from .packages.urllib3.util.retry import Retry
+   +8 more in this structure
+- HTTPAdapter (BaseAdapter) @54-435  (3 hits)
+   55 | """The built-in HTTP Adapter for urllib3.
+   62 | :param pool_connections: The number of urllib3 connection pools to cache.
+   69 | which we retry a request, import urllib3's ``Retry`` class and pass
+- HTTPAdapter > init_poolmanager (self, connections, maxsize, block=DEFAULT_POOLBLOCK, **pool_kwargs) @117-135  (2 hits)
+   118 | """Initializes a urllib3 PoolManager.
+   124 | :param connections: The number of urllib3 connection pools to cache.
+- HTTPAdapter > proxy_manager_for (self, proxy, **proxy_kwargs) @137-158  (2 hits)
+   138 | """Return urllib3 ProxyManager for the given proxy.
+   144 | :param proxy: The proxy to return a urllib3 ProxyManager for.
+- HTTPAdapter > build_response (self, req, resp) @197-231  (2 hits)
+   198 | """Builds a :class:`Response <requests.Response>` object from a urllib3
+   204 | :param resp: The urllib3 response object.
+- HTTPAdapter > cert_verify (self, conn, url, verify, cert) @160-195
+   165 | :param conn: The urllib3 connection object associated with the cert.
+- HTTPAdapter > get_connection (self, url, proxies=None) @233-254
+   234 | """Returns a urllib3 connection for the given URL. This should not be
+- HTTPAdapter > proxy_headers (self, proxy) @302-322
+   304 | through a proxy. This works with urllib3 magic to ensure that they are
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/connectionpool.py
+- HTTPConnectionPool (ConnectionPool, RequestMethods) @94-650  (6 hits)
+   117 | or an instance of :class:`urllib3.util.Timeout` which gives you more
+   119 | been parsed, this is always a `urllib3.util.Timeout` object.
+   143 | :class:`urllib3.connectionpool.ProxyManager`"
+   147 | instead, see :class:`urllib3.connectionpool.ProxyManager`"
+   +2 more in this structure
+- HTTPConnectionPool > urlopen (self, method, url, body=None, headers=None, retries=None, redirect=True, assert_same_host=True, timeout=_Default, pool_timeout=None, release_conn=None, **response_kw) @421-650  (5 hits)
+   456 | :class:`~urllib3.exceptions.MaxRetryError` exception.
+   459 | :class:`~urllib3.util.retry.Retry` object for fine-grained control
+   468 | :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+   483 | :class:`urllib3.util.Timeout`.
+   +1 more in this structure
+- HTTPConnectionPool > _make_request (self, conn, method, url, timeout=_Default, **httplib_request_kw) @317-384  (2 hits)
+   330 | :class:`urllib3.util.Timeout`, which gives you more fine-grained
+   348 | # urllib3.request. It also calls makefile (recv) on the socket.
+- HTTPConnectionPool > _get_conn (self, timeout=None) @210-246
+   219 | :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
+- HTTPConnectionPool > _get_timeout (self, timeout) @288-298
+   289 | """ Helper that always returns a :class:`urllib3.util.Timeout` """
+- HTTPSConnectionPool (HTTPConnectionPool) @653-768
+   667 | :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
+- HTTPSConnectionPool > _prepare_conn (self, conn) @694-709
+   696 | Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
+- HTTPSConnectionPool > _validate_conn (self, conn) @753-768
+   767 | 'https://urllib3.readthedocs.org/en/latest/security.html'),
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/contrib/pyopenssl.py
+- (module level) @17-17  (8 hits)
+   17 | :func:`~urllib3.contrib.pyopenssl.inject_into_urllib3` from your Python code
+   19 | module, or at any other time before your application begins using ``urllib3``,
+   23 | import urllib3.contrib.pyopenssl
+   24 | urllib3.contrib.pyopenssl.inject_into_urllib3()
+   +4 more in this structure
+- inject_into_urllib3 () @93-97  (2 hits)
+   93 | def inject_into_urllib3():
+   94 | 'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
+- extract_from_urllib3 () @100-104  (2 hits)
+   100 | def extract_from_urllib3():
+   101 | 'Undo monkey-patching by :func:`inject_into_urllib3`.'
+
+/private/tmp/swb/psf__requests-2674/docs/user/advanced.rst
+- (module level) @220-220  (7 hits)
+   220 | urllib3 :class:`urllib3.HTTPResponse <urllib3.response.HTTPResponse>` at
+   242 | Excellent news — thanks to urllib3, keep-alive is 100% automatic within a session!
+   691 | interaction with HTTP and HTTPS using the powerful `urllib3`_ library. Whenever
+   719 | default in the underlying library (`urllib3`_). Normally this is fine, but from
+   +3 more in this structure
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/poolmanager.py
+- PoolManager > connection_from_url (self, url) @129-139  (2 hits)
+   131 | Similar to :func:`urllib3.connectionpool.connection_from_url` but
+   133 | :class:`urllib3.connectionpool.ConnectionPool` constructor.
+- PoolManager > urlopen (self, method, url, redirect=True, **kw) @141-189  (2 hits)
+   143 | Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
+   148 | :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
+- PoolManager (RequestMethods) @31-189
+   46 | :class:`urllib3.connectionpool.ConnectionPool` instances.
+- PoolManager > connection_from_host (self, host, port=None, scheme='http') @101-127
+   106 | ``urllib3.connectionpool.port_by_scheme``.
+- ProxyManager (PoolManager) @192-276
+   207 | >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/util/ssl_.py
+- create_urllib3_context (ssl_version=None, cert_reqs=None, options=None, ciphers=None) @181-241  (3 hits)
+   181 | def create_urllib3_context(ssl_version=None, cert_reqs=None,
+   193 | from urllib3.util import ssl_
+   194 | context = ssl_.create_urllib3_context()
+- SSLContext > wrap_socket (self, socket, server_hostname=None) @83-102  (2 hits)
+   86 | 'urllib3 from configuring SSL appropriately and may cause '
+   88 | 'https://urllib3.readthedocs.org/en/latest/security.html'
+- ssl_wrap_socket (sock, keyfile=None, certfile=None, cert_reqs=None, ca_certs=None, server_hostname=None, ssl_version=None, ciphers=None, ssl_context=None) @244-280  (2 hits)
+   255 | be created using :func:`create_urllib3_context`.
+   262 | context = create_urllib3_context(ssl_version, cert_reqs,
+
+/private/tmp/swb/psf__requests-2674/requests/models.py
+- (module level) @19-19  (4 hits)
+   19 | from .packages.urllib3.fields import RequestField
+   20 | from .packages.urllib3.filepost import encode_multipart_formdata
+   21 | from .packages.urllib3.util import parse_url
+   22 | from .packages.urllib3.exceptions import (
+- Response > iter_content (self, chunk_size=1, decode_unicode=False) @642-687
+   654 | # Special case for urllib3.
+- Response > content (self) @721-742
+   740 | # don't need to release the connection; that's been handled by urllib3
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/util/timeout.py
+- Timeout > read_timeout (self) @212-240  (2 hits)
+   220 | established, a :exc:`~urllib3.exceptions.TimeoutStateError` will be
+   225 | :raises urllib3.exceptions.TimeoutStateError: If :meth:`start_connect`
+- (module level) @9-9
+   9 | # urllib3
+- Timeout (object) @19-240
+   69 | Many factors can affect the total amount of time for urllib3 to return
+- Timeout > start_connect (self) @169-178
+   172 | :raises urllib3.exceptions.TimeoutStateError: if you attempt
+- Timeout > get_connect_duration (self) @180-191
+   185 | :raises urllib3.exceptions.TimeoutStateError: if you attempt
+
+/private/tmp/swb/psf__requests-2674/setup.py
+- (module level) @22-22  (5 hits)
+   22 | 'requests.packages.urllib3',
+   23 | 'requests.packages.urllib3.packages',
+   24 | 'requests.packages.urllib3.contrib',
+   25 | 'requests.packages.urllib3.util',
+   +1 more in this structure
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/filepost.py
+- iter_fields (fields) @40-55  (2 hits)
+   46 | The addition of :class:`~urllib3.fields.RequestField` makes this function
+   48 | :class:`~urllib3.fields.RequestField` objects.
+- iter_field_objects (fields) @20-37
+   25 | :class:`~urllib3.fields.RequestField`.
+
++35 more structures — narrow the pattern
+
+leads (called in hits, defined elsewhere): connection_from_url → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/poolmanager.py@129, ReadTimeoutError → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/exceptions.py@104, build_response → /private/tmp/swb/psf__requests-2674/test_requests.py@1536, increment → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/util/retry.py@209, from_int → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/util/retry.py@145

@@ -1,0 +1,733 @@
+=== CALL: scantool preview /tmp/swb/pytest-dev__pytest-7373 ===
+📂 pytest-dev__pytest-7373/
+
+━━━ STRUCTURE ━━━
+  doc/           en                   [.rst]
+  testing/       code, example_scripts, examples +4 [Python]
+  changelog/     (65 files)           [.rst]
+  src/           _pytest, pytest      [Python]
+  scripts/       (8 files)            [Python]
+  .github/       workflows            [YAML]
+  bench/         (5 files)            [Python]
+  extra/         setup-py.test        [Python]
+  (root files)     14 files            [.rst]
+
+━━━ FILE ARCHETYPES ━━━
+  (project span: just now - just now)
+
+  🚀 Active Development (recent + large):
+     tox.ini                                       just now 4.4KB    
+     testing/test_warnings.py                      just now 24.8KB   
+     testing/test_unittest.py                      just now 34.3KB   
+     testing/test_tmpdir.py                        just now 12.8KB   
+     ... +52 more
+
+  💤 Potentially Stale (old + small + unused):
+     .github/FUNDING.yml                           just now 215B     
+     .github/ISSUE_TEMPLATE.md                     just now 290B     
+     .github/config.yml                            just now 23B      
+     .github/workflows/release-on-comment.yml      just now 858B     
+     ... +173 more
+
+━━━ ENTRY POINTS ━━━
+  pyproject.toml:python_project @1
+  setup.py:main() @4
+  setup.py:if __name__ @8
+  bench/bench_argcomplete.py:if __name__ @17
+  bench/bench.py:if __name__ @3
+  testing/test_unittest.py:if __name__ @770
+  testing/test_runner.py:if __name__ @781
+  testing/test_capture.py:if __name__ @772
+  testing/freeze/create_executable.py:if __name__ @4
+  testing/freeze/tox_run.py:if __name__ @5
+  testing/freeze/runtests_script.py:if __name__ @6
+  testing/example_scripts/perf_examples/collect_stats/generate_folders.py:if __name__ @25
+  extra/get_issues.py:main() @33
+  extra/get_issues.py:if __name__ @74
+  extra/setup-py.test/setup.py:if __name__ @4
+  scripts/append_codecov_token.py:main() @13
+  scripts/append_codecov_token.py:if __name__ @35
+  scripts/release.py:main() @114
+  scripts/release.py:if __name__ @123
+  scripts/publish-gh-release-notes.py:main() @69
+
+━━━ CORE FILES (by centrality) ━━━
+  src/pytest/__init__.py: imports 14, used by 122 files
+  src/_pytest/config/__init__.py: imports 18, used by 54 files
+     class PytestPluginManager((PluginManager)) [called by 28]
+     class ExitCode((enum.IntEnum)) [called by 8]
+     class ConftestImportFailure((Exception)) [called by 4]
+     class Config [called by 4]
+     def create_terminal_writer(config: Config, *args, **kwargs) -> TerminalWriter [called by 15]
+     def _prepareconfig( args: Optional[Union[py.path.local, List[str]]] = None, plugins=None ) [called by 14]
+     def get_config(args=None, plugins=None) [called by 13]
+     def _get_plugin_specs_as_list(specs) [called by 6]
+     def _iter_rewritable_modules(package_files) [called by 6]
+     ... +67 more
+  src/_pytest/compat.py: imports 2, used by 46 files
+     class _PytestWrapper [called by 4]
+     class NotSetType((enum.Enum))
+     class cached_property
+     def getfuncargnames( function: Callable[..., Any], *, name: str = "", is_method: bool = False, cls: Optional[type] = None ) -> Tuple[str, ...] [called by 24]
+     def get_real_func(obj) [called by 22]
+     def safe_getattr(object: Any, name: str, default: Any) -> Any [called by 12]
+     def fspath(p) [called by 11]
+     def assert_never(value: "NoReturn") -> "NoReturn" [called by 10]
+     ... +19 more
+  src/_pytest/__init__.py: imports 0, used by 35 files
+  src/_pytest/fixtures.py: imports 14, used by 21 files
+     class FixtureRequest [called by 26]
+     class FixtureLookupError((LookupError)) [called by 4]
+     class FixtureDef [called by 4]
+     class FixtureManager [called by 4]
+     def fixture( fixture_function: _FixtureFunction, *, scope: "Union[_Scope, Callable[[str, Config], _Scope]]" = ..., params: Optional[Iterable[object]] = ..., autouse: bool = ..., ids: Optional[ Union[ Iterable[Union[None, str, float, int, bool]], Callable[[object], Optional[object]], ] ] = ..., name: Optional[str] = ... ) -> _FixtureFunction [called by 28]
+     def fixture( # noqa: F811 fixture_function: None = ..., *, scope: "Union[_Scope, Callable[[str, Config], _Scope]]" = ..., params: Optional[Iterable[object]] = ..., autouse: bool = ..., ids: Optional[ Union[ Iterable[Union[None, str, float, int, bool]], Callable[[object], Optional[object]], ] ] = ..., name: Optional[str] = None ) -> FixtureFunctionMarker [called by 28]
+     def fixture( # noqa: F811 fixture_function: Optional[_FixtureFunction] = None, *args: Any, scope: "Union[_Scope, Callable[[str, Config], _Scope]]" = "function", params: Optional[Iterable[object]] = None, autouse: bool = False, ids: Optional[ Union[ Iterable[Union[None, str, float, int, bool]], Callable[[object], Optional[object]], ] ] = None, name: Optional[str] = None ) -> Union[FixtureFunctionMarker, _FixtureFunction] [called by 28]
+     def add_funcarg_pseudo_fixture_def( collector, metafunc: "Metafunc", fixturemanager: "FixtureManager" ) -> None [called by 8]
+     def fail_fixturefunc(fixturefunc, msg: str) -> "NoReturn" [called by 8]
+     ... +83 more
+  src/_pytest/config/argparsing.py: imports 4, used by 26 files
+     class Argument [called by 10]
+     class Parser [called by 8]
+     class OptionGroup [called by 8]
+     class ArgumentError((Exception)) [called by 6]
+     ... +30 more
+  src/_pytest/nodes.py: imports 13, used by 21 files
+     class Node [called by 2]
+     class FSHookProxy [called by 2]
+     class NodeMeta((type))
+     class Collector((Node))
+     def ischildnode(baseid: str, nodeid: str) -> bool [called by 5]
+     def _check_initialpaths_for_relpath(session, fspath) [called by 4]
+     def get_fslocation_from_item( node: "Node", ) -> Tuple[Union[str, py.path.local], Optional[int]] [called by 3]
+     def _splitnode(nodeid: str) -> Tuple[str, ...] [called by 2]
+     ... +46 more
+  src/_pytest/pytester.py: imports 16, used by 17 files
+     class LineMatcher [called by 26]
+     class SysModulesSnapshot [called by 16]
+     class SysPathsSnapshot [called by 10]
+     class HookRecorder [called by 6]
+     def get_public_names(values) [called by 4]
+     def _sys_snapshot() [called by 3]
+     def _config_for_test() -> Generator[Config, None, None] [called by 2]
+     def _pytest(request: FixtureRequest) -> "PytestArg" [called by 1]
+     def linecomp() -> "LineComp" [called by 1]
+     ... +108 more
+  src/_pytest/_code/__init__.py: imports 2, used by 24 files
+  src/_pytest/pathlib.py: imports 3, used by 22 files
+     class ImportMode((Enum)) [called by 2]
+     class ImportPathMismatchError((ImportError)) [called by 2]
+     def import_path( p: Union[str, py.path.local, Path], *, mode: Union[str, ImportMode] = ImportMode.prepend ) -> ModuleType [called by 50]
+     def make_numbered_dir(root: Path, prefix: str) -> Path [called by 18]
+     def create_cleanup_lock(p: Path) -> Path [called by 17]
+     def symlink_or_skip(src, dst, **kwargs) [called by 15]
+     def rm_rf(path: Path) -> None [called by 14]
+     ... +21 more
+  src/_pytest/outcomes.py: imports 0, used by 23 files
+     class OutcomeException((BaseException)) [called by 6]
+     class Failed((OutcomeException)) [called by 6]
+     class Skipped((OutcomeException)) [called by 4]
+     class Exit((Exception)) [called by 2]
+     def importorskip( modname: str, minversion: Optional[str] = None, reason: Optional[str] = None ) -> Any [called by 77]
+     def fail(msg: str = "", pytrace: bool = True) -> "NoReturn" [called by 65]
+     def skip(msg: str = "", *, allow_module_level: bool = False) -> "NoReturn" [called by 43]
+     def xfail(reason: str = "") -> "NoReturn" [called by 15]
+     def exit(msg: str, returncode: Optional[int] = None) -> "NoReturn" [called by 9]
+     ... +7 more
+  src/_pytest/main.py: imports 11, used by 17 files
+     class Interrupted((KeyboardInterrupt)) [called by 4]
+     class NoMatch((Exception)) [called by 2]
+     class _bestrelpath_cache((dict)) [called by 2]
+     class Failed((Exception))
+     def wrap_session( config: Config, doit: Callable[[Config, "Session"], Optional[Union[int, ExitCode]]] ) -> Union[int, ExitCode] [called by 19]
+     def validate_basetemp(path: str) -> str [called by 5]
+     def _in_venv(path: py.path.local) -> bool [called by 4]
+     def _main(config: Config, session: "Session") -> Optional[Union[int, ExitCode]] [called by 2]
+     def pytest_addoption(parser: Parser) -> None
+     ... +29 more
+  src/_pytest/python.py: imports 17, used by 11 files
+     class CallSpec2 [called by 4]
+     class Class((PyCollector)) [called by 2]
+     class Function((PyobjMixin, nodes.Item)) [called by 2]
+     class PyobjMixin
+     def idmaker( argnames: Iterable[str], parametersets: Iterable[ParameterSet], idfn: Optional[Callable[[object], Optional[object]]] = None, ids: Optional[List[Union[None, str]]] = None, config: Optional[Config] = None, item=None, ) -> List[str] [called by 31]
+     def _idval( val: object, argname: str, idx: int, idfn: Optional[Callable[[object], Optional[object]]], item, config: Optional[Config], ) -> str [called by 17]
+     def _get_first_non_fixture_func(obj, names) [called by 11]
+     def _showfixtures_main(config: Config, session: Session) -> None [called by 11]
+     def async_warn_and_skip(nodeid: str) -> None [called by 6]
+     ... +86 more
+  src/_pytest/reports.py: imports 8, used by 15 files
+     class CollectReport((BaseReport)) [called by 2]
+     class CollectErrorRepr((TerminalRepr)) [called by 2]
+     class BaseReport
+     class TestReport((BaseReport))
+     def _report_kwargs_from_json(reportdict) [called by 6]
+     def _report_to_json(report: BaseReport) [called by 4]
+     def getworkerinfoline(node) [called by 3]
+     def _report_unserialization_failure( type_name: str, report_class: "Type[BaseReport]", reportdict ) -> "NoReturn" [called by 1]
+     def pytest_report_to_serializable(report: BaseReport)
+     ... +23 more
+  src/_pytest/_code/code.py: imports 5, used by 15 files
+     class FormattedExcinfo [called by 42]
+     class Code [called by 30]
+     class Traceback [called by 14]
+     class Frame [called by 10]
+     def getfslineno(obj: Any) -> Tuple[Union[str, py.path.local], int] [called by 21]
+     def filter_traceback(entry: TracebackEntry) -> bool [called by 6]
+     ... +93 more
+  src/_pytest/terminal.py: imports 14, used by 8 files
+     class TerminalReporter [called by 12]
+     class WarningReport [called by 2]
+     class MoreQuietAction((argparse.Action))
+     def _plugin_nameversions(plugininfo) -> List[str] [called by 6]
+     def format_session_duration(seconds: float) -> str [called by 5]
+     def getreportopt(config: Config) -> str [called by 4]
+     def _get_line_with_reprcrash_message( config: Config, rep: BaseReport, termwidth: int ) -> str [called by 4]
+     def _folded_skips( startdir: py.path.local, skipped: Sequence[CollectReport], ) -> List[Tuple[int, str, Optional[int], str]] [called by 4]
+     ... +73 more
+  src/_pytest/runner.py: imports 9, used by 9 files
+     class SetupState [called by 14]
+     class CallInfo
+     def pytest_make_collect_report(collector: Collector) -> CollectReport [called by 22]
+     def runtestprotocol( item: Item, log: bool = True, nextitem: Optional[Item] = None ) -> List[TestReport] [called by 21]
+     def pytest_terminal_summary(terminalreporter: "TerminalReporter") -> None [called by 17]
+     def collect_one_node(collector: Collector) -> CollectReport [called by 17]
+     def _update_current_test_var( item: Item, when: Optional["Literal['setup', 'call', 'teardown']"] ) -> None [called by 8]
+     ... +25 more
+  src/_pytest/warning_types.py: imports 1, used by 13 files
+     class PytestWarning((UserWarning)) [called by 8]
+     class PytestConfigWarning((PytestWarning)) [called by 8]
+     class PytestAssertRewriteWarning((PytestWarning)) [called by 4]
+     class PytestCollectionWarning((PytestWarning)) [called by 4]
+     ... +8 more
+  src/_pytest/_io/__init__.py: imports 1, used by 13 files
+  src/_pytest/store.py: imports 0, used by 13 files
+     class Store [called by 14]
+     class StoreKey
+     ... +7 more
+
+━━━ ARCHITECTURE ━━━
+  Entry Points: 17 files
+    - setup.py
+       def main() [×43]
+    - bench/bench_argcomplete.py
+    - bench/bench.py
+    ... +14 more
+  Config: 14 files
+    - codecov.yml
+    - .pre-commit-config.yaml
+    - pyproject.toml
+    ... +11 more
+  Tests: 150 files
+    - bench/skip.py
+    - bench/manyparam.py
+    - testing/test_setuponly.py
+    ... +147 more
+
+━━━ KEY DEPENDENCIES ━━━
+  src/pytest/__init__.py
+    └→ imports: src/_pytest/__init__.py
+    └→ imports: src/_pytest/assertion/__init__.py
+    └→ imports: src/_pytest/config/__init__.py
+       ... +11 more
+  src/_pytest/config/__init__.py
+    └→ imports: src/_pytest/config/exceptions.py
+    └→ imports: src/_pytest/config/findpaths.py
+    └→ imports: src/_pytest/_code/__init__.py
+       ... +15 more
+  src/_pytest/compat.py
+    └→ imports: src/_pytest/_io/saferepr.py
+    └→ imports: src/_pytest/outcomes.py
+  src/_pytest/fixtures.py
+    └→ imports: src/_pytest/_code/__init__.py
+    └→ imports: src/_pytest/_code/code.py
+    └→ imports: src/_pytest/_io/__init__.py
+       ... +11 more
+
+━━━ HOT FUNCTIONS (most called) ━━━
+  Testdir.makepyfile (method): called by 1023, calls 1 @src/_pytest/pytester.py
+  Testdir.runpytest (method): called by 769, calls 4 @src/_pytest/pytester.py
+  LineMatcher.fnmatch_lines (method): called by 661, calls 1 @src/_pytest/pytester.py
+  LineMatcher.str (method): called by 387, calls 0 @src/_pytest/pytester.py
+  ColoredLevelFormatter.format (method): called by 307, calls 4 @src/_pytest/logging.py
+  raises (function): called by 223, calls 7 @src/_pytest/python_api.py
+  Testdir.inline_run (method): called by 220, calls 7 @src/_pytest/pytester.py
+  TerminalReporter.write (method): called by 175, calls 3 @src/_pytest/terminal.py
+  Testdir.makeconftest (method): called by 173, calls 1 @src/_pytest/pytester.py
+  HookRecorder.assertoutcome (method): called by 170, calls 1 @src/_pytest/pytester.py
+
+━━━ FILE INVENTORY ━━━
+  doc/en/                  conf.py, failure_demo.py, multipython.py, xfail_demo.py, conftest.py, conftest.py, test_fixtures_order.py, parametrize.rst, +200
+  testing/example_scripts/ issue_519.py, test_parametrized_fixture_error_message.py, conftest.py, test_marks_as_keywords.py, conftest.py, fixture_mock_integration.py, tmpdir_fixture.py, test_getfixturevalue_dynamic.py, +40
+  src/_pytest/             __init__.py, compat.py, __init__.py, fixtures.py, argparsing.py, nodes.py, pytester.py, __init__.py, +51
+  (root)                   CODE_OF_CONDUCT.md, codecov.yml, CONTRIBUTING.rst, .pre-commit-config.yaml, pyproject.toml, TIDELIFT.rst, setup.py, tox.ini, +6
+  testing/python/          collect.py, fixtures.py, metafunc.py, integration.py, raises.py, approx.py, show_fixtures_per_test.py
+  testing/freeze/          create_executable.py, runtests_script.py, tox_run.py, test_trivial.py
+  testing/io/              test_terminalwriter.py, test_saferepr.py, test_wcwidth.py
+  testing/code/            test_excinfo.py, test_source.py, test_code.py
+  testing/logging/         test_reporting.py, test_fixture.py, test_formatter.py
+  src/pytest/              __init__.py, collect.py, __main__.py
+  .github/workflows/       release-on-comment.yml, main.yml
+  bench/bench_argcomplete.py/ bench_argcomplete.py
+  (26 low-value files hidden: __init__.py, configs, etc.)
+
+━━━ NEXT STEPS ━━━
+  Drill down: overview → structure → code
+
+    scan_directory("testing/")  → see code structure inside active area
+    scan_file("src/pytest/__init__.py")  → see functions/classes in core file
+    Read("src/_pytest/pytester.py", offset=N)  → read Testdir.makepyfile() implementation
+
+  What each tool gives you:
+    scan_directory  → functions, classes, line numbers per file
+    scan_file       → full structure + signatures + entropy-based code snippets
+    Read(offset=N)  → actual source code at specific lines
+
+Analysis: 529 files in 1.86s (layer1+layer2)
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-7373 skipif|xfail ===
+723 hits in 197 structures for /skipif|xfail/
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/changelog.rst
+- (module level) @238-238  (78 hits)
+   238 | - `#310 <https://github.com/pytest-dev/pytest/issues/310>`_: Add support for calling `pytest.xfail()` and `pytest.import
+   574 | - `#6069 <https://github.com/pytest-dev/pytest/issues/6069>`_: ``pytester.spawn`` does not skip/xfail tests on FreeBSD a
+   592 | - `#6181 <https://github.com/pytest-dev/pytest/issues/6181>`_: The reason for a stopped session, e.g. with ``--maxfail``
+   826 | - `#5615 <https://github.com/pytest-dev/pytest/issues/5615>`_: ``pytest.fail``, ``pytest.xfail`` and ``pytest.skip`` no 
+   +74 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/skipping.rst
+- (module level) @1-1  (64 hits)
+   1 | .. _`skip and xfail`:
+   5 | Skip and xfail: dealing with tests that cannot succeed
+   17 | A **xfail** means that you expect a test to fail for some reason.
+   19 | When a test passes despite being expected to fail (marked with ``pytest.mark.xfail``),
+   +60 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/skipping.py
+- pytest_runtest_makereport (item: Item, call: CallInfo[None]) @136-183  (13 hits)
+   139 | evalxfail = item._store.get(evalxfail_key, None)
+   149 | elif item.config.option.runxfail:
+   151 | elif call.excinfo and isinstance(call.excinfo.value, xfail.Exception):
+   153 | rep.wasxfail = "reason: " + call.excinfo.value.msg
+   +9 more in this structure
+- check_strict_xfail (pyfuncitem: Function) -> None @123-132  (9 hits)
+   123 | def check_strict_xfail(pyfuncitem: Function) -> None:
+   124 | """check xfail(strict=True) for the given PASSING test"""
+   125 | evalxfail = pyfuncitem._store[evalxfail_key]
+   126 | if evalxfail.istrue():
+   +5 more in this structure
+- pytest_configure (config: Config) -> None @43-80  (8 hits)
+   44 | if config.option.runxfail:
+   48 | old = pytest.xfail
+   49 | config._cleanup.append(lambda: setattr(pytest, "xfail", old))
+   54 | nop.Exception = xfail.Exception  # type: ignore[attr-defined] # noqa: F821
+   +4 more in this structure
+- check_xfail_no_run (item: Item) -> None @114-120  (7 hits)
+   114 | def check_xfail_no_run(item: Item) -> None:
+   115 | """check xfail(run=False)"""
+   116 | if not item.config.option.runxfail:
+   117 | evalxfail = item._store[evalxfail_key]
+   +3 more in this structure
+- pytest_runtest_setup (item: Item) -> None @84-102  (6 hits)
+   85 | # Check if skip or skipif are specified as pytest marks
+   87 | eval_skipif = MarkEvaluator(item, "skipif")
+   88 | if eval_skipif.istrue():
+   90 | skip(eval_skipif.getexplanation())
+   +2 more in this structure
+- pytest_addoption (parser: Parser) -> None @24-40  (5 hits)
+   27 | "--runxfail",
+   29 | dest="runxfail",
+   31 | help="report the results of xfail tests as if they were not marked",
+   35 | "xfail_strict",
+   +1 more in this structure
+- (module level) @1-1  (3 hits)
+   1 | """ support for skip/xfail functions and markers. """
+   12 | from _pytest.outcomes import xfail
+   20 | evalxfail_key = StoreKey[MarkEvaluator]()
+- pytest_pyfunc_call (pyfuncitem: Function) @106-111  (2 hits)
+   107 | check_xfail_no_run(pyfuncitem)
+   111 | check_strict_xfail(pyfuncitem)
+- pytest_report_teststatus (report: BaseReport) -> Optional[Tuple[str, str, str]] @189-195  (2 hits)
+   190 | if hasattr(report, "wasxfail"):
+   192 | return "xfailed", "x", "XFAIL"
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/reference.rst
+- (module level) @39-39  (24 hits)
+   39 | pytest.xfail
+   42 | .. autofunction:: _pytest.outcomes.xfail
+   158 | .. _`pytest.mark.skipif ref`:
+   160 | pytest.mark.skipif
+   +20 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/historical-notes.rst
+- (module level) @58-58  (16 hits)
+   58 | 2. Marks compose in an additive manner. E.g. ``skipif(condition)`` marks mean you just want to evaluate all of them,
+   66 | skipif = item.get_marker("skipif")
+   67 | if skipif:
+   68 | for condition in skipif.args:
+   +12 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/usage.rst
+- (module level) @60-60  (14 hits)
+   60 | .. _maxfail:
+   70 | pytest --maxfail=2  # stop after two failures
+   173 | making it easy in large test suites to get a clear picture of all failures, skips, xfails, etc.
+   206 | def test_xfail():
+   +10 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/terminal.py
+- TerminalReporter > short_test_summary (self) -> None @1076-1143  (6 hits)
+   1090 | def show_xfailed(lines: List[str]) -> None:
+   1091 | xfailed = self.stats.get("xfailed", [])
+   1092 | for rep in xfailed:
+   1096 | reason = rep.wasxfail
+   +2 more in this structure
+- TerminalReporter > pytest_runtest_logreport (self, report: TestReport) -> None @516-565  (3 hits)
+   533 | was_xfail = hasattr(report, "wasxfail")
+   534 | if rep.passed and not was_xfail:
+   536 | elif rep.passed and was_xfail:
+- (module level) @63-63
+   63 | "xfailed",
+- TerminalReporter > hasopt (self, char: str) -> bool @393-395
+   394 | char = {"xfailed": "x", "skipped": "s"}.get(char, char)
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/outcomes.py
+- xfail (reason: str = "") -> "NoReturn" @164-175  (5 hits)
+   164 | def xfail(reason: str = "") -> "NoReturn":
+   166 | Imperatively xfail an executing test or setup functions with the given reason.
+   171 | It is better to use the :ref:`pytest.mark.xfail ref` marker when possible to declare a test to be
+   172 | xfailed under certain conditions like known bugs or missing features.
+   +1 more in this structure
+- XFailed (Failed) @159-160  (2 hits)
+   159 | class XFailed(Failed):
+   160 | """ raised from an explicit call to pytest.xfail() """
+- skip (msg: str = "", *, allow_module_level: bool = False) -> "NoReturn" @123-143
+   135 | It is better to use the :ref:`pytest.mark.skipif ref` marker when possible to declare a test to be
+- (module level) @163-163
+   163 | @_with_exception(XFailed)
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/example/xfail_demo.py
+- (module level) @3-3  (7 hits)
+   3 | xfail = pytest.mark.xfail
+   6 | @xfail
+   11 | @xfail(run=False)
+   16 | @xfail("hasattr(os, 'sep')")
+   +3 more in this structure
+- test_hello6 () @31-32
+   32 | pytest.xfail("reason")
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/junitxml.py
+- _NodeReporter > append_skipped (self, report: TestReport) -> None @245-269  (5 hits)
+   246 | if hasattr(report, "wasxfail"):
+   247 | xfailreason = report.wasxfail
+   248 | if xfailreason.startswith("reason: "):
+   249 | xfailreason = xfailreason[8:]
+   +1 more in this structure
+- _NodeReporter > append_failure (self, report: TestReport) -> None @213-226  (2 hits)
+   215 | if hasattr(report, "wasxfail"):
+   216 | self._add_simple(Junit.skipped, "xfail-marked test passes unexpectedly")
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/announce/release-2.0.2.rst
+- (module level) @1-1  (6 hits)
+   1 | py.test 2.0.2: bug fixes, improved xfail/skip expressions, speed ups
+   29 | - fix issue30 - extended xfail/skipif handling and improved reporting.
+   30 | If you have a syntax error in your skip/xfail
+   33 | Also you can now access module globals from xfail/skipif
+   +2 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/announce/release-2.3.0.rst
+- (module level) @80-80  (6 hits)
+   80 | - fix xfail/skip confusion: a skip-mark or an imperative pytest.skip
+   81 | will now take precedence before xfail-markers because we
+   82 | can't determine xfail/xpass status in case of a skip. see also:
+   83 | http://stackoverflow.com/questions/11105828/in-py-test-when-i-explicitly-skip-a-test-that-is-marked-as-xfail-how-can-i-g
+   +2 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/main.py
+- pytest_addoption (parser: Parser) -> None @48-196  (3 hits)
+   67 | dest="maxfail",
+   72 | "--maxfail",
+   76 | dest="maxfail",
+- Session > pytest_runtest_logreport ( self, report: Union[TestReport, CollectReport] ) -> None @484-491  (3 hits)
+   487 | if report.failed and not hasattr(report, "wasxfail"):
+   489 | maxfail = self.config.getvalue("maxfail")
+   490 | if maxfail and self.testsfailed >= maxfail:
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/example/markers.rst
+- (module level) @231-231  (5 hits)
+   231 | @pytest.mark.skipif(condition): skip the given test function if eval(condition) results in a True value.  Evaluation hap
+   233 | @pytest.mark.xfail(condition, reason=None, run=True, raises=None, strict=False): mark the test function as an expected f
+   338 | Skip and xfail marks can also be applied in this way, see :ref:`skip/xfail with parametrize`.
+   436 | @pytest.mark.skipif(condition): skip the given test function if eval(condition) results in a True value.  Evaluation hap
+   +1 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/example/simple.rst
+- (module level) @11-11  (5 hits)
+   11 | detailed info on skipped and xfailed tests, as well as have terser "dot"
+   560 | pytest.xfail("previous test failed ({})".format(test_name))
+   612 | XFAIL test_step.py::TestUserHandling::test_deletion
+   614 | ================== 1 failed, 2 passed, 1 xfailed in 0.12s ==================
+   +1 more in this structure
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/example/parametrize.rst
+- (module level) @616-616  (4 hits)
+   616 | "6*9", 42, marks=[pytest.mark.basic, pytest.mark.xfail], id="basic_6*9"
+   625 | and for the fourth test we also use the built-in mark ``xfail`` to indicate this
+   641 | test_pytest_param_example.py::test_eval[basic_6*9] XFAIL             [100%]
+   643 | =============== 2 passed, 11 deselected, 1 xfailed in 0.12s ================
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/parametrize.rst
+- (module level) @105-105  (4 hits)
+   105 | for example with the builtin ``mark.xfail``:
+   115 | [("3+5", 8), ("2+4", 6), pytest.param("6*9", 42, marks=pytest.mark.xfail)],
+   133 | ======================= 2 passed, 1 xfailed in 0.12s =======================
+   136 | shows up as an "xfailed" (expected to fail) test.
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/announce/release-2.4.0.rst
+- (module level) @29-29  (3 hits)
+   29 | - allow boolean expression directly with skipif/xfail
+   91 | - allow boolean expression directly with skipif/xfail
+   144 | - fix issue 308 - allow to mark/xfail/skip individual parameter sets
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/announce/release-2.5.0.rst
+- (module level) @134-134  (3 hits)
+   134 | - make "--runxfail" turn imperative pytest.xfail calls into no ops
+   135 | (it already did neutralize pytest.mark.xfail markers)
+   155 | - xfail a test on pypy that checks wrong encoding/ascii (pypy does
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/announce/release-2.6.1.rst
+- (module level) @1-1  (3 hits)
+   1 | pytest-2.6.1: fixes and new xfail feature
+   8 | to the xfail marker which now recognizes expected exceptions,
+   43 | - address issue170: allow pytest.mark.xfail(...) to specify expected exceptions via
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/assert.rst
+- (module level) @138-138  (3 hits)
+   138 | ``pytest.mark.xfail``, which checks that the test is failing in a more
+   143 | @pytest.mark.xfail(raises=IndexError)
+   149 | ``@pytest.mark.xfail`` with a check function is probably better for something
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/deprecations.rst
+- (module level) @289-289  (3 hits)
+   289 | pytest.mark.xfail(reason="flaky")(6, 36),
+   299 | This code applies the ``pytest.mark.xfail(reason="flaky")`` mark to the ``(6, 36)`` value of the above parametrization
+   313 | pytest.param(6, 36, marks=pytest.mark.xfail(reason="flaky")),
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/__init__.py
+- pytest_configure (config: Config) -> None @263-273  (2 hits)
+   269 | if empty_parameterset not in ("skip", "xfail", "fail_at_collect", None, ""):
+   271 | "{!s} must be one of skip, xfail or fail_at_collect"
+
++157 more structures — narrow the pattern
+
+leads (called in hits, defined elsewhere): xfail → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/outcomes.py@164, getexplanation → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py@128, istrue → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py@57, addinivalue_line → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/config/__init__.py@1157, getini → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/config/__init__.py@1165
+=== CALL: scantool scanfile /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py ===
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+   …
+   evalcache = config._store.setdefault(evalcache_key, default)
+   try:
+    return evalcache[expr]
+   except KeyError:
+    …
+    exprcode = _pytest._code.compile(expr, mode='eval')
+    evalcache[expr], x = eval(exprcode, d)
+    return x
+- MarkEvaluator @34
+  - __init__ (self, item: Item, name: str) -> None @35
+  - __bool__ (self) -> bool @41
+     return bool(self._get_marks())
+  - wasvalid (self) -> bool @45
+     return not hasattr(self, 'exc')
+  - _get_marks (self) -> List[Mark] @48
+     return list(self.item.iter_markers(name=self._mark_name))
+  - invalidraise (self, exc) -> Optional[bool] @51
+     raises = self.get('raises')
+     if not raises:
+      return None
+     return not isinstance(exc, raises)
+  - istrue (self) -> bool @57
+     try:
+      return self._istrue()
+     except TEST_OUTCOME:
+      self.exc = sys.exc_info()
+      if isinstance(self.exc[1], SyntaxError):
+       assert self.exc[1].offset is not None
+       msg = [' ' * (self.exc[1].offset + 4) + '^']
+       msg.append('SyntaxError: invalid syntax')
+      else:
+       msg = traceback.format_exception_only(*self.exc[:2])
+      fail('Error evaluat…' % (self._mark_name, self.expr, '\n'.join(…)), pytrace=False)
+  - _getglobals (self) -> Dict[str, object] @76
+     …
+     if hasattr(self.item, 'obj'):
+      d.update(self.item.obj.__globals__)
+     return d
+  - _istrue (self) -> bool @82
+     if hasattr(self, 'result'):
+      result = getattr(self, 'result')
+      return result
+     self._marks = self._get_marks()
+     if self._marks:
+      …
+      for mark in self._marks:
+       …
+     return False
+  - get (self, attr, default=None) @123
+     if self._mark is None:
+      return default
+     return self._mark.kwargs.get(attr, default)
+  - getexplanation (self) @128
+     expl = getattr(self, 'reason', None) or self.get('reason', None)
+     if not expl:
+      if not hasattr(self, 'expr'):
+       …
+      else:
+       …
+     return expl
+=== CALL: scantool scanfile /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py 400 ===
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+   …
+   evalcache = config._store.setdefault(evalcache_key, default)
+   try:
+    return evalcache[expr]
+   except KeyError:
+    …
+    exprcode = _pytest._code.compile(expr, mode='eval')
+    evalcache[expr], x = eval(exprcode, d)
+    return x
+- MarkEvaluator @34
+  - __init__ (self, item: Item, name: str) -> None @35
+  - __bool__ (self) -> bool @41
+     return bool(self._get_marks())
+  - wasvalid (self) -> bool @45
+     return not hasattr(self, 'exc')
+  - _get_marks (self) -> List[Mark] @48
+     return list(self.item.iter_markers(name=self._mark_name))
+  - invalidraise (self, exc) -> Optional[bool] @51
+     raises = self.get('raises')
+     if not raises:
+      return None
+     return not isinstance(exc, raises)
+  - istrue (self) -> bool @57
+     try:
+      return self._istrue()
+     except TEST_OUTCOME:
+      self.exc = sys.exc_info()
+      if isinstance(self.exc[1], SyntaxError):
+       assert self.exc[1].offset is not None
+       msg = [' ' * (self.exc[1].offset + 4) + '^']
+       msg.append('SyntaxError: invalid syntax')
+      else:
+       msg = traceback.format_exception_only(*self.exc[:2])
+      fail('Error evaluat…' % (self._mark_name, self.expr, '\n'.join(…)), pytrace=False)
+  - _getglobals (self) -> Dict[str, object] @76
+     …
+     if hasattr(self.item, 'obj'):
+      d.update(self.item.obj.__globals__)
+     return d
+  - _istrue (self) -> bool @82
+     if hasattr(self, 'result'):
+      result = getattr(self, 'result')
+      return result
+     self._marks = self._get_marks()
+     if self._marks:
+      …
+      for mark in self._marks:
+       …
+     return False
+  - get (self, attr, default=None) @123
+     if self._mark is None:
+      return default
+     return self._mark.kwargs.get(attr, default)
+  - getexplanation (self) @128
+     expl = getattr(self, 'reason', None) or self.get('reason', None)
+     if not expl:
+      if not hasattr(self, 'expr'):
+       …
+      else:
+       …
+     return expl
+=== CALL: scantool scanfile /tmp/swb/pytest-dev__pytest-7373/src/_pytest/skipping.py 500 ===
+skipping.py (1-195)
+- file-info: 6.9KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @2
+- pytest_addoption (parser: Parser) -> None @24
+   group = parser.getgroup('general')
+   group.addoption('--runxfail', action='store_true', dest='runxfail', default=False, help='report the re…')
+   parser.addini('xfail_strict', 'default for t…', default=False, type='bool')
+- pytest_configure (config: Config) -> None @43
+   if config.option.runxfail:
+    …
+    config._cleanup.append(λ)
+    def nop(…):
+     …
+    …
+    setattr(pytest, 'xfail', nop)
+   config.addinivalue_line('markers', 'skip(reason=N…')
+   config.addinivalue_line('markers', 'skipif(condit…')
+   config.addinivalue_line('markers', 'xfail(conditi…')
+- pytest_runtest_setup (item: Item) -> None @84
+   @hookimpl(tryfirst=True)
+   …
+   eval_skipif = MarkEvaluator(item, 'skipif')
+   if eval_skipif.istrue():
+    …
+   for skip_info in item.iter_markers(name='skip'):
+    …
+   item._store[evalxfail_key] = MarkEvaluator(item, 'xfail')
+   check_xfail_no_run(item)
+- pytest_pyfunc_call (pyfuncitem: Function) @106
+   @hookimpl(hookwrapper=True)
+   check_xfail_no_run(pyfuncitem)
+   …
+   passed = outcome.excinfo is None
+   if passed:
+    …
+- check_xfail_no_run (item: Item) -> None @114 # check xfail(run=False)
+   if not item.config.option.runxfail:
+    …
+- check_strict_xfail (pyfuncitem: Function) -> None @123 # check xfail(strict=True) for the given PASSING test
+   …
+   if evalxfail.istrue():
+    strict_default = pyfuncitem.config.getini('xfail_strict')
+    is_strict_xfail = evalxfail.get('strict', strict_default)
+    if is_strict_xfail:
+     …
+- pytest_runtest_makereport (item: Item, call: CallInfo[None]) @136
+   @hookimpl(hookwrapper=True)
+   …
+   rep = outcome.get_result()
+   evalxfail = item._store.get(evalxfail_key, None)
+   if unexpectedsuccess_key in item._store and rep.when == 'call':
+    …
+    if reason:
+     …
+    else:
+     …
+    …
+   elif item.config.option.runxfail:
+    …
+   elif call.excinfo and isinstance(call.excinfo.value, xfail.Exception):
+    assert call.excinfo.value.msg is not None
+    rep.wasxfail = 'reason: ' + call.excinfo.value.msg
+    …
+   elif evalxfail and (not rep.skipped) and evalxfail.wasvalid() and evalxfail.istrue():
+    if call.excinfo:
+     …
+    elif call.when == 'call':
+     …
+   elif item._store.get(skipped_by_mark_key, True) and rep.skipped and (type(rep.longrepr) is tuple):
+    …
+    (filename, line) = item.reportinfo()[:2]
+    assert line is not None
+    rep.longrepr = (str(filename), line + 1, reason)
+- pytest_report_teststatus (report: BaseReport) -> Optional[Tuple[str, str, str]] @189
+   if hasattr(report, 'wasxfail'):
+    …
+   return None

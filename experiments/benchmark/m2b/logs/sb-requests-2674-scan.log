@@ -1,0 +1,595 @@
+=== CALL: scantool preview /tmp/swb/psf__requests-2674 ===
+📂 psf__requests-2674/
+
+━━━ STRUCTURE ━━━
+  docs/          _templates, _themes, community +2 [.rst]
+  requests/      (15 files)           [Python]
+  ext/           (1 files)            [.svg]
+  (root files)     8 files            [.rst]
+
+━━━ FILE ARCHETYPES ━━━
+  (project span: just now - just now)
+
+  🏛️ Core Infrastructure (old + central + stable):
+     requests/compat.py                            just now 1.4KB    used by 7
+     requests/cookies.py                           just now 16.9KB   used by 6
+     requests/exceptions.py                        just now 2.5KB    used by 6
+     requests/auth.py                              just now 6.6KB    used by 4
+     ... +4 more
+
+  🔧 Active Core (central + recently changed):
+     requests/structures.py                        just now 2.9KB    used by 6
+     requests/utils.py                             just now 20.9KB   used by 5
+     requests/status_codes.py                      just now 3.1KB    used by 4
+     requests/sessions.py                          just now 23.7KB   used by 2
+
+  🚀 Active Development (recent + large):
+     test_requests.py                              just now 55.7KB   
+
+  📦 Stable Utilities (central + small + old):
+     requests/hooks.py                             just now 820B     used by 3
+
+  💤 Potentially Stale (old + small + unused):
+     MANIFEST.in                                   just now 100B     
+     docs/MANIFEST.in                              just now 38B      
+     docs/_templates/sidebarlogo.html              just now 834B     
+     docs/_themes/README.rst                       just now 743B     
+     ... +8 more
+
+━━━ ENTRY POINTS ━━━
+  test_requests.py:if __name__ @1665
+  docs/_themes/kr/layout.html:viewport meta @7
+  requests/certs.py:if __name__ @24
+  requests/__init__.py:re-exports (4 items)
+
+━━━ CORE FILES (by centrality) ━━━
+  requests/models.py: imports 8, used by 4 files
+     class Request((RequestHooksMixin)) [called by 52]
+     class PreparedRequest((RequestEncodingMixin, RequestHooksMixin)) [called by 16]
+     class Response((object)) [called by 10]
+     class RequestEncodingMixin((object))
+     ... +40 more
+  requests/utils.py: imports 5, used by 5 files
+     def get_auth_from_url(url) [called by 16]
+     def get_encodings_from_content(content) [called by 12]
+     def guess_filename(obj) [called by 10]
+     def to_native_string(string, encoding='ascii') [called by 10]
+     def requote_uri(uri) [called by 9]
+     ... +27 more
+  requests/sessions.py: imports 10, used by 2 files
+     class Session((SessionRedirectMixin)) [called by 40]
+     class SessionRedirectMixin((object))
+     def session() [called by 31]
+     def merge_setting(request_setting, session_setting, dict_class=OrderedDict) [called by 9]
+     def merge_hooks(request_hooks, session_hooks, dict_class=OrderedDict) [called by 4]
+     ... +22 more
+  requests/compat.py: imports 0, used by 7 files
+  requests/cookies.py: imports 1, used by 6 files
+     class RequestsCookieJar((cookielib.CookieJar, collections.MutableMapping)) [called by 18]
+     class MockRequest((object)) [called by 4]
+     class MockResponse((object)) [called by 2]
+     class CookieConflictError((RuntimeError)) [called by 2]
+     def cookiejar_from_dict(cookie_dict, cookiejar=None, overwrite=True) [called by 17]
+     def morsel_to_cookie(morsel) [called by 15]
+     def extract_cookies_to_jar(jar, request, response) [called by 10]
+     def create_cookie(name, value, **kwargs) [called by 8]
+     def get_cookie_header(jar, request) [called by 5]
+     ... +42 more
+  requests/__init__.py: imports 5, used by 4 files
+     class NullHandler((logging.Handler))
+     ... +1 more
+  requests/auth.py: imports 4, used by 4 files
+     class HTTPDigestAuth((AuthBase)) [called by 12]
+     class HTTPBasicAuth((AuthBase)) [called by 2]
+     class AuthBase((object))
+     class HTTPProxyAuth((HTTPBasicAuth))
+     def _basic_auth_str(username, password) [called by 9]
+     ... +9 more
+  requests/exceptions.py: imports 0, used by 6 files
+     class HTTPError((RequestException)) [called by 4]
+     class InvalidURL((RequestException, ValueError)) [called by 4]
+     class ConnectionError((RequestException)) [called by 2]
+     class ProxyError((ConnectionError)) [called by 2]
+     ... +14 more
+  requests/structures.py: imports 0, used by 6 files
+     class CaseInsensitiveDict((collections.MutableMapping)) [called by 52]
+     class LookupDict((dict))
+     ... +14 more
+  test_requests.py: imports 11, used by 0 files
+     class RedirectSession((SessionRedirectMixin)) [called by 2]
+     class RequestsTestCase((unittest.TestCase))
+     class TestContentEncodingDetection((unittest.TestCase))
+     class TestCaseInsensitiveDict((unittest.TestCase))
+     def httpbin(*suffix) [called by 146]
+     def u(s) [called by 8]
+     def u(s) [called by 8]
+     def assert_copy(p, p_copy) [called by 8]
+     def test_prepared_request_no_cookies_copy() [called by 5]
+     ... +173 more
+  requests/adapters.py: imports 7, used by 2 files
+     class HTTPAdapter((BaseAdapter)) [called by 6]
+     class BaseAdapter((object))
+     ... +16 more
+  requests/status_codes.py: imports 1, used by 4 files
+  requests/hooks.py: imports 0, used by 3 files
+     def default_hooks() [called by 8]
+     def dispatch_hook(key, hooks, hook_data, **kwargs) [called by 3]
+  requests/api.py: imports 1, used by 1 files
+     def request(method, url, **kwargs)
+     def get(url, params=None, **kwargs)
+     def options(url, **kwargs)
+     def head(url, **kwargs)
+     def post(url, data=None, json=None, **kwargs)
+     ... +3 more
+  docs/conf.py: imports 1, used by 0 files
+
+━━━ ARCHITECTURE ━━━
+  Entry Points: 1 files
+    - requests/certs.py
+       def where()
+  Utilities: 1 files
+    - requests/utils.py
+  Tests: 1 files
+    - test_requests.py
+
+━━━ KEY DEPENDENCIES ━━━
+  requests/models.py
+    └→ imports: requests/hooks.py
+    └→ imports: requests/structures.py
+    └→ imports: requests/auth.py
+       ... +5 more
+  requests/utils.py
+    └→ imports: requests/__init__.py
+    └→ imports: requests/compat.py
+    └→ imports: requests/cookies.py
+       ... +2 more
+  requests/sessions.py
+    └→ imports: requests/auth.py
+    └→ imports: requests/compat.py
+    └→ imports: requests/cookies.py
+       ... +7 more
+  requests/cookies.py
+    └→ imports: requests/compat.py
+
+━━━ HOT FUNCTIONS (most called) ━━━
+  RequestsCookieJar.get (method): called by 73, calls 2 @requests/cookies.py
+  httpbin (function): called by 73, calls 0 @test_requests.py
+  Request.prepare (method): called by 23, calls 8 @requests/models.py
+  Request (class): called by 26, calls 0 @requests/models.py
+  CaseInsensitiveDict (class): called by 26, calls 0 @requests/structures.py
+  Session (class): called by 20, calls 0 @requests/sessions.py
+  RedirectSession.send (method): called by 10, calls 19 @test_requests.py
+  RequestsCookieJar.items (method): called by 16, calls 1 @requests/cookies.py
+  session (function): called by 15, calls 1 @requests/sessions.py
+  RequestsCookieJar.update (method): called by 14, calls 2 @requests/cookies.py
+
+━━━ FILE INVENTORY ━━━
+  docs/_themes/            flask_theme_support.py, README.rst, layout.html, theme.conf, relations.html, flasky.css_t, layout.html, theme.conf, +1
+  (root)                   test_requests.py, MANIFEST.in, setup.py, HISTORY.rst, AUTHORS.rst, setup.cfg, README.rst
+  docs/community/          support.rst, release-process.rst, out-there.rst, vulnerabilities.rst, recommended.rst, faq.rst, updates.rst
+  docs/user/               install.rst, authentication.rst, intro.rst, quickstart.rst, advanced.rst
+  docs/dev/                contributing.rst, todo.rst, philosophy.rst, authors.rst
+  docs/_templates/         sidebarintro.html, sidebarlogo.html
+  ext/requests-logo.svg/   requests-logo.svg
+  docs/index.rst/          index.rst
+  docs/conf.py/            conf.py
+  docs/MANIFEST.in/        MANIFEST.in
+  docs/make.bat/           make.bat
+  (2 low-value files hidden: __init__.py, configs, etc.)
+
+━━━ NEXT STEPS ━━━
+  Drill down: overview → structure → code
+
+    scan_directory("requests/")  → see code structure inside active area
+    scan_file("requests/compat.py")  → see functions/classes in core file
+    Read("requests/cookies.py", offset=N)  → read RequestsCookieJar.get() implementation
+
+  What each tool gives you:
+    scan_directory  → functions, classes, line numbers per file
+    scan_file       → full structure + signatures + entropy-based code snippets
+    Read(offset=N)  → actual source code at specific lines
+
+Analysis: 64 files in 0.22s (layer1+layer2)
+=== CALL: scantool scanfile /tmp/swb/psf__requests-2674/requests/adapters.py ===
+adapters.py (1-435)
+- file-info: 16.3KB modified: 2026-06-10 23:49 [ts:1781128186] churn: 1 commits/90d
+- import statements @11
+- BaseAdapter (object) @41 # The Base Transport Adapter
+  - __init__ (self) @44
+     super(BaseAdapter, self).__init__()
+  - send (self) @47
+     raise NotImplementedError
+  - close (self) @50
+     raise NotImplementedError
+- HTTPAdapter (BaseAdapter) @54 # The built-in HTTP Adapter for urllib3.
+  - __init__ (self, pool_connections=DEFAULT_POOLSIZE, pool_maxsize=DEFAULT_POOLSIZE, max_retries=DEFAULT_RETRIES, pool_block=DEFAULT_POOLBLOCK) @83
+     if max_retries == DEFAULT_RETRIES:
+      self.max_retries = Retry(0, read=False)
+     else:
+      self.max_retries = Retry.from_int(max_retries)
+     …
+     super(HTTPAdapter, self).__init__()
+     …
+     self.init_poolmanager(pool_connections, pool_maxsize, block=pool_block)
+  - __getstate__ (self) @101
+     return dict(((attr, getattr(…)) for attr in self.__attrs__))
+  - __setstate__ (self, state) @105
+     …
+     for (attr, value) in state.items():
+      setattr(self, attr, value)
+     self.init_poolmanager(self._pool_connections, self._pool_maxsize, block=self._pool_block)
+  - init_poolmanager (self, connections, maxsize, block=DEFAULT_POOLBLOCK, **pool_kwargs) @117 # Initializes a urllib3 PoolManager.
+     …
+     self.poolmanager = PoolManager(num_pools=connections, maxsize=maxsize, block=block, strict=True, **pool_kwargs)
+  - proxy_manager_for (self, proxy, **proxy_kwargs) @137 # Return urllib3 ProxyManager for the given proxy.
+     if not proxy in self.proxy_manager:
+      proxy_headers = self.proxy_headers(proxy)
+      self.proxy_manager[proxy] = proxy_from_url(proxy, proxy_headers=proxy_headers, num_pool…
+     return self.proxy_manager[proxy]
+  - cert_verify (self, conn, url, verify, cert) @160 # Verify a SSL certificate. This method should not be called from user
+     if url.lower().startswith('https') and verify:
+      …
+      if verify is not True:
+       …
+      if not cert_loc:
+       …
+      if not cert_loc:
+       …
+      …
+     else:
+      …
+     if cert:
+      if not isinstance(cert, basestring):
+       …
+      else:
+       …
+  - build_response (self, req, resp) @197 # Builds a :class:`Response <requests.Response>` object from a urllib3
+     response = Response()
+     response.status_code = getattr(resp, 'status', None)
+     response.headers = CaseInsensitiveDict(getattr(resp, 'headers', {}))
+     response.encoding = get_encoding_from_headers(response.headers)
+     …
+     if isinstance(req.url, bytes):
+      response.url = req.url.decode('utf-8')
+     else:
+      …
+     extract_cookies_to_jar(response.cookies, req, resp)
+     …
+     return response
+  - get_connection (self, url, proxies=None) @233 # Returns a urllib3 connection for the given URL. This should not be
+     proxies = proxies or {}
+     proxy = proxies.get(urlparse(url.lower()).scheme)
+     if proxy:
+      proxy = prepend_scheme_if_needed(proxy, 'http')
+      proxy_manager = self.proxy_manager_for(proxy)
+      conn = proxy_manager.connection_from_url(url)
+     else:
+      parsed = urlparse(url)
+      url = parsed.geturl()
+      conn = self.poolmanager.connection_from_url(url)
+     return conn
+  - close (self) @256 # Disposes of any internal state.
+     self.poolmanager.clear()
+  - request_url (self, request, proxies) @264 # Obtain the url to use when making the final request.
+     proxies = proxies or {}
+     scheme = urlparse(request.url).scheme
+     proxy = proxies.get(scheme)
+     if proxy and scheme != 'https':
+      url = urldefragauth(request.url)
+     else:
+      …
+     return url
+  - add_headers (self, request, **kwargs) @288 # Add any headers needed by the connection. As of v2.0 this does
+  - proxy_headers (self, proxy) @302 # Returns a dictionary of the headers to add to any request sent
+     …
+     (username, password) = get_auth_from_url(proxy)
+     if username and password:
+      headers['Proxy-Authorization'] = _basic_auth_str(username, password)
+     return headers
+  - send (self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None) @324 # Sends PreparedRequest object. Returns Response object.
+     conn = self.get_connection(request.url, proxies)
+     self.cert_verify(conn, request.url, verify, cert)
+     url = self.request_url(request, proxies)
+     self.add_headers(request)
+     chunked = not (request.body is None or 'Content-Length' in request.headers)
+     if isinstance(timeout, tuple):
+      try:
+       …
+       timeout = TimeoutSauce(connect=connect, read=read)
+      except ValueError as e:
+       err = 'Invalid timeo…'.format(timeout)
+       raise ValueError(err)
+     else:
+      timeout = TimeoutSauce(connect=timeout, read=timeout)
+     try:
+      if not chunked:
+       resp = conn.urlopen(method=request.method, url=url, body=request.b…
+      else:
+       if hasattr(conn, 'proxy_pool'):
+        …
+       low_conn = conn._get_conn(timeout=DEFAULT_POOL_TIMEOUT)
+       try:
+        low_conn.putrequest(request.method, url, skip_accept_encoding=True)
+        for (header, value) in request.headers.items():
+         low_conn.putheader(header, value)
+        low_conn.endheaders()
+        for i in request.body:
+         low_conn.send(hex(len(i))[2:].encode('utf-8'))
+         low_conn.send(b'\r\n')
+         low_conn.send(i)
+         low_conn.send(b'\r\n')
+        low_conn.send(b'0\r\n\r\n')
+        r = low_conn.getresponse()
+        resp = HTTPResponse.from_httplib(r, pool=conn, connection=low_conn, preload_content=False, decode_content=False)
+       except:
+        low_conn.close()
+        raise
+     except (ProtocolError, socket.error) as err:
+      raise ConnectionError(err, request=request)
+     except MaxRetryError as e:
+      if isinstance(e.reason, ConnectTimeoutError):
+       raise ConnectTimeout(e, request=request)
+      if isinstance(e.reason, ResponseError):
+       raise RetryError(e, request=request)
+      raise ConnectionError(e, request=request)
+     except _ProxyError as e:
+      raise ProxyError(e)
+     except (_SSLError, _HTTPError) as e:
+      if isinstance(e, _SSLError):
+       raise SSLError(e, request=request)
+      elif isinstance(e, ReadTimeoutError):
+       raise ReadTimeout(e, request=request)
+      else:
+       raise
+     return self.build_response(request, resp)
+=== CALL: scantool scanfile /tmp/swb/psf__requests-2674/requests/sessions.py 400 ===
+sessions.py (1-677)
+- file-info: 23.7KB modified: 2026-06-10 23:49 [ts:1781128186] churn: 1 commits/90d
+- import statements @11
+- merge_setting (request_setting, session_setting, dict_class=OrderedDict) @42 # Determines appropriate setting for a given request, taking into account the
+   if session_setting is None:
+    …
+   if request_setting is None:
+    …
+   if not (isinstance(session_setting, Mapping) and isinstance(request_setting, Mapping)):
+    …
+   merged_setting = dict_class(to_key_val_list(session_setting))
+   merged_setting.update(to_key_val_list(request_setting))
+   for (k, v) in request_setting.items():
+    …
+   merged_setting = dict(((k, v) for k, v in merged_setting.items() if v is not None))
+   return merged_setting
+- merge_hooks (request_hooks, session_hooks, dict_class=OrderedDict) @75 # Properly merges both requests and session hooks.
+- SessionRedirectMixin (object) @91
+  - resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None, **adapter_kwargs) @92 # Receives a Response. Returns a generator of Responses.
+  - rebuild_auth (self, prepared_request, response) @204 # When being redirected we may want to strip authentication from the
+  - rebuild_proxies (self, prepared_request, proxies) @229 # This method re-evaluates the proxy configuration by considering the
+- Session (SessionRedirectMixin) @267 # A Requests session.
+  - __init__ (self) @286
+  - __enter__ (self) @340
+  - __exit__ (self, *args) @343
+  - prepare_request (self, request) @346 # Constructs a :class:`PreparedRequest <PreparedRequest>` for
+  - request (self, method, url, params=None, data=None, headers=None, cookies=None, files=None, auth=None, timeout=None, allow_redirects=True, proxies=None, hooks=None, stream=None, verify=None, cert=None, json=None) @386 # Constructs a :class:`Request <Request>`, prepares it and sends it.
+     method = to_native_string(method)
+     req = Request(method=method.upper(), url=url, headers=headers, fi…
+     prep = self.prepare_request(req)
+     proxies = proxies or {}
+     settings = self.merge_environment_settings(prep.url, proxies, stream, verify, cert)
+     …
+     send_kwargs.update(settings)
+     resp = self.send(prep, **send_kwargs)
+     return resp
+  - get (self, url, **kwargs) @469 # Sends a GET request. Returns :class:`Response` object.
+  - options (self, url, **kwargs) @479 # Sends a OPTIONS request. Returns :class:`Response` object.
+  - head (self, url, **kwargs) @489 # Sends a HEAD request. Returns :class:`Response` object.
+  - post (self, url, data=None, json=None, **kwargs) @499 # Sends a POST request. Returns :class:`Response` object.
+  - put (self, url, data=None, **kwargs) @510 # Sends a PUT request. Returns :class:`Response` object.
+  - patch (self, url, data=None, **kwargs) @520 # Sends a PATCH request. Returns :class:`Response` object.
+  - delete (self, url, **kwargs) @530 # Sends a DELETE request. Returns :class:`Response` object.
+  - send (self, request, **kwargs) @539 # Send a given PreparedRequest.
+  - merge_environment_settings (self, url, proxies, stream, verify, cert) @609 # Check the environment and merge it with some settings.
+  - get_adapter (self, url) @633 # Returns the appropriate connnection adapter for the given URL.
+  - close (self) @643 # Closes all adapters and as such the session
+  - mount (self, prefix, adapter) @648 # Registers a connection adapter to a prefix.
+  - __getstate__ (self) @659
+  - __setstate__ (self, state) @664
+- session () @674 # Returns a :class:`Session` for context-management.
+=== CALL: scantool search /tmp/swb/psf__requests-2674/requests def send ===
+4 hits in 4 structures for /def send/
+
+/private/tmp/swb/psf__requests-2674/requests/adapters.py
+- BaseAdapter > send (self) @47-48
+   47 | def send(self):
+- HTTPAdapter > send (self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None) @324-435
+   324 | def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/contrib/pyopenssl.py
+- WrappedSocket > sendall (self, data) @206-209
+   206 | def sendall(self, data):
+
+/private/tmp/swb/psf__requests-2674/requests/sessions.py
+- Session > send (self, request, **kwargs) @539-607
+   539 | def send(self, request, **kwargs):
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/packages/ordered_dict.py@190, ConnectionError → /private/tmp/swb/psf__requests-2674/requests/exceptions.py@34, extract_cookies_to_jar → /private/tmp/swb/psf__requests-2674/requests/cookies.py@115, _get_conn → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/connectionpool.py@210, from_httplib → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/response.py@313
+=== CALL: scantool scanfile /tmp/swb/psf__requests-2674/requests/exceptions.py ===
+exceptions.py (1-99)
+- file-info: 2.5KB modified: 2026-06-10 23:49 [ts:1781128186] churn: 1 commits/90d
+- import statements @10
+- RequestException (IOError) @13 # There was an ambiguous exception that occurred while handling your
+  - __init__ (self, *args, **kwargs) @17 # Initialize RequestException with `request` and `response` objects.
+     response = kwargs.pop('response', None)
+     …
+     self.request = kwargs.pop('request', None)
+     if response is not None and (not self.request) and hasattr(response, 'request'):
+      …
+     super(RequestException, self).__init__(*args, **kwargs)
+- HTTPError (RequestException) @30 # An HTTP error occurred.
+- ConnectionError (RequestException) @34 # A Connection error occurred.
+- ProxyError (ConnectionError) @38 # A proxy error occurred.
+- SSLError (ConnectionError) @42 # An SSL error occurred.
+- Timeout (RequestException) @46 # The request timed out.
+   46 | class Timeout(RequestException):
+   47 |     """The request timed out.
+   48 | 
+   49 |     Catching this error will catch both
+   50 |     :exc:`~requests.exceptions.ConnectTimeout` and
+   51 |     :exc:`~requests.exceptions.ReadTimeout` errors.
+   52 |     """
+- ConnectTimeout (ConnectionError, Timeout) @55 # The request timed out while trying to connect to the remote server.
+- ReadTimeout (Timeout) @62 # The server did not send any data in the allotted amount of time.
+- URLRequired (RequestException) @66 # A valid URL is required to make a request.
+- TooManyRedirects (RequestException) @70 # Too many redirects.
+- MissingSchema (RequestException, ValueError) @74 # The URL schema (e.g. http or https) is missing.
+- InvalidSchema (RequestException, ValueError) @78 # See defaults.py for valid schemas.
+- InvalidURL (RequestException, ValueError) @82 # The URL provided was somehow invalid.
+   82 | class InvalidURL(RequestException, ValueError):
+   83 |     """ The URL provided was somehow invalid. """
+- ChunkedEncodingError (RequestException) @86 # The server declared chunked encoding but sent an invalid chunk.
+- ContentDecodingError (RequestException, BaseHTTPError) @90 # Failed to decode response content
+- StreamConsumedError (RequestException, TypeError) @94 # The content for this response was already consumed
+- RetryError (RequestException) @98 # Custom retries logic failed
+=== CALL: scantool search /tmp/swb/psf__requests-2674/requests urllib3|ProtocolError|MaxRetryError ===
+138 hits in 73 structures for /urllib3|ProtocolError|MaxRetryError/
+
+/private/tmp/swb/psf__requests-2674/requests/adapters.py
+- (module level) @14-14  (12 hits)
+   14 | from .packages.urllib3.poolmanager import PoolManager, proxy_from_url
+   15 | from .packages.urllib3.response import HTTPResponse
+   16 | from .packages.urllib3.util import Timeout as TimeoutSauce
+   17 | from .packages.urllib3.util.retry import Retry
+   +8 more in this structure
+- HTTPAdapter (BaseAdapter) @54-435  (3 hits)
+   55 | """The built-in HTTP Adapter for urllib3.
+   62 | :param pool_connections: The number of urllib3 connection pools to cache.
+   69 | which we retry a request, import urllib3's ``Retry`` class and pass
+- HTTPAdapter > init_poolmanager (self, connections, maxsize, block=DEFAULT_POOLBLOCK, **pool_kwargs) @117-135  (2 hits)
+   118 | """Initializes a urllib3 PoolManager.
+   124 | :param connections: The number of urllib3 connection pools to cache.
+- HTTPAdapter > proxy_manager_for (self, proxy, **proxy_kwargs) @137-158  (2 hits)
+   138 | """Return urllib3 ProxyManager for the given proxy.
+   144 | :param proxy: The proxy to return a urllib3 ProxyManager for.
+- HTTPAdapter > build_response (self, req, resp) @197-231  (2 hits)
+   198 | """Builds a :class:`Response <requests.Response>` object from a urllib3
+   204 | :param resp: The urllib3 response object.
+- HTTPAdapter > send (self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None) @324-435  (2 hits)
+   412 | except (ProtocolError, socket.error) as err:
+   415 | except MaxRetryError as e:
+- HTTPAdapter > cert_verify (self, conn, url, verify, cert) @160-195
+   165 | :param conn: The urllib3 connection object associated with the cert.
+- HTTPAdapter > get_connection (self, url, proxies=None) @233-254
+   234 | """Returns a urllib3 connection for the given URL. This should not be
+- HTTPAdapter > proxy_headers (self, proxy) @302-322
+   304 | through a proxy. This works with urllib3 magic to ensure that they are
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/connectionpool.py
+- HTTPConnectionPool > urlopen (self, method, url, body=None, headers=None, retries=None, redirect=True, assert_same_host=True, timeout=_Default, pool_timeout=None, release_conn=None, **response_kw) @421-650  (8 hits)
+   456 | :class:`~urllib3.exceptions.MaxRetryError` exception.
+   459 | :class:`~urllib3.util.retry.Retry` object for fine-grained control
+   465 | immediately. Also, instead of raising a MaxRetryError on redirects,
+   468 | :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+   +4 more in this structure
+- HTTPConnectionPool (ConnectionPool, RequestMethods) @94-650  (6 hits)
+   117 | or an instance of :class:`urllib3.util.Timeout` which gives you more
+   119 | been parsed, this is always a `urllib3.util.Timeout` object.
+   143 | :class:`urllib3.connectionpool.ProxyManager`"
+   147 | instead, see :class:`urllib3.connectionpool.ProxyManager`"
+   +2 more in this structure
+- (module level) @18-18  (2 hits)
+   18 | ProtocolError,
+   22 | MaxRetryError,
+- HTTPConnectionPool > _make_request (self, conn, method, url, timeout=_Default, **httplib_request_kw) @317-384  (2 hits)
+   330 | :class:`urllib3.util.Timeout`, which gives you more fine-grained
+   348 | # urllib3.request. It also calls makefile (recv) on the socket.
+- HTTPConnectionPool > _get_conn (self, timeout=None) @210-246
+   219 | :class:`urllib3.exceptions.EmptyPoolError` if the pool is empty and
+- HTTPConnectionPool > _get_timeout (self, timeout) @288-298
+   289 | """ Helper that always returns a :class:`urllib3.util.Timeout` """
+- HTTPSConnectionPool (HTTPConnectionPool) @653-768
+   667 | :meth:`urllib3.util.ssl_wrap_socket` to upgrade the connection socket
+- HTTPSConnectionPool > _prepare_conn (self, conn) @694-709
+   696 | Prepare the ``connection`` for :meth:`urllib3.util.ssl_wrap_socket`
+- HTTPSConnectionPool > _validate_conn (self, conn) @753-768
+   767 | 'https://urllib3.readthedocs.org/en/latest/security.html'),
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/contrib/pyopenssl.py
+- (module level) @17-17  (8 hits)
+   17 | :func:`~urllib3.contrib.pyopenssl.inject_into_urllib3` from your Python code
+   19 | module, or at any other time before your application begins using ``urllib3``,
+   23 | import urllib3.contrib.pyopenssl
+   24 | urllib3.contrib.pyopenssl.inject_into_urllib3()
+   +4 more in this structure
+- inject_into_urllib3 () @93-97  (2 hits)
+   93 | def inject_into_urllib3():
+   94 | 'Monkey-patch urllib3 with PyOpenSSL-backed SSL-support.'
+- extract_from_urllib3 () @100-104  (2 hits)
+   100 | def extract_from_urllib3():
+   101 | 'Undo monkey-patching by :func:`inject_into_urllib3`.'
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/poolmanager.py
+- PoolManager > urlopen (self, method, url, redirect=True, **kw) @141-189  (3 hits)
+   143 | Same as :meth:`urllib3.connectionpool.HTTPConnectionPool.urlopen`
+   148 | :class:`urllib3.connectionpool.ConnectionPool` can be chosen for it.
+   180 | except MaxRetryError:
+- PoolManager > connection_from_url (self, url) @129-139  (2 hits)
+   131 | Similar to :func:`urllib3.connectionpool.connection_from_url` but
+   133 | :class:`urllib3.connectionpool.ConnectionPool` constructor.
+- (module level) @11-11
+   11 | from .exceptions import LocationValueError, MaxRetryError
+- PoolManager (RequestMethods) @31-189
+   46 | :class:`urllib3.connectionpool.ConnectionPool` instances.
+- PoolManager > connection_from_host (self, host, port=None, scheme='http') @101-127
+   106 | ``urllib3.connectionpool.port_by_scheme``.
+- ProxyManager (PoolManager) @192-276
+   207 | >>> proxy = urllib3.ProxyManager('http://localhost:3128/')
+
+/private/tmp/swb/psf__requests-2674/requests/models.py
+- (module level) @19-19  (5 hits)
+   19 | from .packages.urllib3.fields import RequestField
+   20 | from .packages.urllib3.filepost import encode_multipart_formdata
+   21 | from .packages.urllib3.util import parse_url
+   22 | from .packages.urllib3.exceptions import (
+   +1 more in this structure
+- Response > iter_content (self, chunk_size=1, decode_unicode=False) @642-687  (2 hits)
+   654 | # Special case for urllib3.
+   659 | except ProtocolError as e:
+- Response > content (self) @721-742
+   740 | # don't need to release the connection; that's been handled by urllib3
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/util/retry.py
+- Retry (object) @17-281  (3 hits)
+   37 | Errors will be wrapped in :class:`~urllib3.exceptions.MaxRetryError` unless
+   91 | A backoff factor to apply between attempts. urllib3 will sleep for::
+   102 | exhausted, to raise a MaxRetryError, or to return a response with a
+- (module level) @6-6  (2 hits)
+   6 | MaxRetryError,
+   7 | ProtocolError,
+- Retry > increment (self, method=None, url=None, response=None, error=None, _pool=None, _stacktrace=None) @209-275  (2 hits)
+   214 | :type response: :class:`~urllib3.response.HTTPResponse`
+   271 | raise MaxRetryError(_pool, url, error or ResponseError(cause))
+- Retry > _is_read_error (self, err) @186-190
+   190 | return isinstance(err, (ReadTimeoutError, ProtocolError))
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/exceptions.py
+- (module level) @56-56  (2 hits)
+   56 | #: Renamed to ProtocolError but aliased for backwards compatibility.
+   57 | ConnectionError = ProtocolError
+- MaxRetryError (RequestError) @62-78  (2 hits)
+   62 | class MaxRetryError(RequestError):
+   66 | :type pool: :class:`~urllib3.connectionpool.HTTPConnectionPool`
+- ProtocolError (HTTPError) @51-53
+   51 | class ProtocolError(HTTPError):
+- ResponseError (HTTPError) @141-144
+   142 | "Used as a container for an error reason supplied in a MaxRetryError."
+- ResponseNotChunked (ProtocolError, ValueError) @167-169
+   167 | class ResponseNotChunked(ProtocolError, ValueError):
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/util/ssl_.py
+- create_urllib3_context (ssl_version=None, cert_reqs=None, options=None, ciphers=None) @181-241  (3 hits)
+   181 | def create_urllib3_context(ssl_version=None, cert_reqs=None,
+   193 | from urllib3.util import ssl_
+   194 | context = ssl_.create_urllib3_context()
+
++33 more structures — narrow the pattern
+
+leads (called in hits, defined elsewhere): connection_from_url → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/poolmanager.py@129, ConnectionError → /private/tmp/swb/psf__requests-2674/requests/exceptions.py@34, from_httplib → /private/tmp/swb/psf__requests-2674/requests/packages/urllib3/response.py@313, ProxyError → /private/tmp/swb/psf__requests-2674/requests/exceptions.py@38, SSLError → /private/tmp/swb/psf__requests-2674/requests/exceptions.py@42

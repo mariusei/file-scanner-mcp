@@ -1,0 +1,174 @@
+=== CALL: find /tmp/swb/pallets__flask-5063 -type f -name *.py ===
+/tmp/swb/pallets__flask-5063/tests/test_basic.py
+/tmp/swb/pallets__flask-5063/tests/conftest.py
+/tmp/swb/pallets__flask-5063/tests/test_converters.py
+/tmp/swb/pallets__flask-5063/tests/test_logging.py
+/tmp/swb/pallets__flask-5063/tests/test_signals.py
+/tmp/swb/pallets__flask-5063/tests/test_async.py
+/tmp/swb/pallets__flask-5063/tests/test_session_interface.py
+/tmp/swb/pallets__flask-5063/tests/test_instance_config.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/blueprintapp/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/blueprintapp/apps/frontend/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/blueprintapp/apps/admin/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/blueprintapp/apps/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/helloworld/hello.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/helloworld/wsgi.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/subdomaintestmodule/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/inner1/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/inner1/inner2/flask.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/inner1/inner2/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/importerrorapp.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/__init__.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/factory.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/multiapp.py
+/tmp/swb/pallets__flask-5063/tests/test_apps/cliapp/app.py
+/tmp/swb/pallets__flask-5063/tests/test_views.py
+/tmp/swb/pallets__flask-5063/tests/test_json_tag.py
+/tmp/swb/pallets__flask-5063/tests/test_subclassing.py
+/tmp/swb/pallets__flask-5063/tests/typing/typing_route.py
+/tmp/swb/pallets__flask-5063/tests/typing/typing_app_decorators.py
+/tmp/swb/pallets__flask-5063/tests/typing/typing_error_handler.py
+/tmp/swb/pallets__flask-5063/tests/test_reqctx.py
+/tmp/swb/pallets__flask-5063/tests/test_blueprints.py
+/tmp/swb/pallets__flask-5063/tests/test_config.py
+/tmp/swb/pallets__flask-5063/tests/test_user_error_handler.py
+/tmp/swb/pallets__flask-5063/tests/test_helpers.py
+/tmp/swb/pallets__flask-5063/tests/test_json.py
+/tmp/swb/pallets__flask-5063/tests/test_cli.py
+/tmp/swb/pallets__flask-5063/tests/test_templating.py
+/tmp/swb/pallets__flask-5063/tests/test_appctx.py
+/tmp/swb/pallets__flask-5063/tests/test_regression.py
+/tmp/swb/pallets__flask-5063/tests/test_testing.py
+/tmp/swb/pallets__flask-5063/docs/conf.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/tests/conftest.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/tests/test_auth.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/tests/test_db.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/tests/test_factory.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/tests/test_blog.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/flaskr/auth.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/flaskr/db.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/flaskr/__init__.py
+/tmp/swb/pallets__flask-5063/examples/tutorial/flaskr/blog.py
+/tmp/swb/pallets__flask-5063/examples/celery/make_celery.py
+/tmp/swb/pallets__flask-5063/examples/celery/src/task_app/tasks.py
+/tmp/swb/pallets__flask-5063/examples/celery/src/task_app/__init__.py
+/tmp/swb/pallets__flask-5063/examples/celery/src/task_app/views.py
+/tmp/swb/pallets__flask-5063/examples/javascript/js_example/__init__.py
+/tmp/swb/pallets__flask-5063/examples/javascript/js_example/views.py
+/tmp/swb/pallets__flask-5063/examples/javascript/tests/test_js_example.py
+/tmp/swb/pallets__flask-5063/examples/javascript/tests/conftest.py
+/tmp/swb/pallets__flask-5063/src/flask/logging.py
+/tmp/swb/pallets__flask-5063/src/flask/signals.py
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py
+/tmp/swb/pallets__flask-5063/src/flask/config.py
+/tmp/swb/pallets__flask-5063/src/flask/templating.py
+/tmp/swb/pallets__flask-5063/src/flask/globals.py
+/tmp/swb/pallets__flask-5063/src/flask/__init__.py
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py
+/tmp/swb/pallets__flask-5063/src/flask/json/provider.py
+/tmp/swb/pallets__flask-5063/src/flask/json/__init__.py
+/tmp/swb/pallets__flask-5063/src/flask/json/tag.py
+/tmp/swb/pallets__flask-5063/src/flask/cli.py
+/tmp/swb/pallets__flask-5063/src/flask/wrappers.py
+/tmp/swb/pallets__flask-5063/src/flask/app.py
+/tmp/swb/pallets__flask-5063/src/flask/debughelpers.py
+/tmp/swb/pallets__flask-5063/src/flask/scaffold.py
+/tmp/swb/pallets__flask-5063/src/flask/ctx.py
+/tmp/swb/pallets__flask-5063/src/flask/typing.py
+/tmp/swb/pallets__flask-5063/src/flask/testing.py
+/tmp/swb/pallets__flask-5063/src/flask/helpers.py
+/tmp/swb/pallets__flask-5063/src/flask/__main__.py
+/tmp/swb/pallets__flask-5063/src/flask/views.py
+=== CALL: find /tmp/swb/pallets__flask-5063/src -type f -name *.py ===
+/tmp/swb/pallets__flask-5063/src/flask/logging.py
+/tmp/swb/pallets__flask-5063/src/flask/signals.py
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py
+/tmp/swb/pallets__flask-5063/src/flask/config.py
+/tmp/swb/pallets__flask-5063/src/flask/templating.py
+/tmp/swb/pallets__flask-5063/src/flask/globals.py
+/tmp/swb/pallets__flask-5063/src/flask/__init__.py
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py
+/tmp/swb/pallets__flask-5063/src/flask/json/provider.py
+/tmp/swb/pallets__flask-5063/src/flask/json/__init__.py
+/tmp/swb/pallets__flask-5063/src/flask/json/tag.py
+/tmp/swb/pallets__flask-5063/src/flask/cli.py
+/tmp/swb/pallets__flask-5063/src/flask/wrappers.py
+/tmp/swb/pallets__flask-5063/src/flask/app.py
+/tmp/swb/pallets__flask-5063/src/flask/debughelpers.py
+/tmp/swb/pallets__flask-5063/src/flask/scaffold.py
+/tmp/swb/pallets__flask-5063/src/flask/ctx.py
+/tmp/swb/pallets__flask-5063/src/flask/typing.py
+/tmp/swb/pallets__flask-5063/src/flask/testing.py
+/tmp/swb/pallets__flask-5063/src/flask/helpers.py
+/tmp/swb/pallets__flask-5063/src/flask/__main__.py
+/tmp/swb/pallets__flask-5063/src/flask/views.py
+=== CALL: grep -r domain /tmp/swb/pallets__flask-5063/src/flask --include=*.py ===
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py:    def get_cookie_domain(self, app: "Flask") -> t.Optional[str]:
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py:        browsers will only send the cookie to the exact domain it was set from.
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py:        Otherwise, they will send it to any subdomain of the given value as well.
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py:        domain = self.get_cookie_domain(app)
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py:                    domain=domain,
+/tmp/swb/pallets__flask-5063/src/flask/sessions.py:            domain=domain,
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        subdomain = self.options.get("subdomain")
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        if subdomain is None:
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            subdomain = self.blueprint.subdomain
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        #: The subdomain that the blueprint should be active for, ``None``
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        self.subdomain = subdomain
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        options.setdefault("subdomain", self.subdomain)
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:    :param subdomain: A subdomain that blueprint routes will match on by
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        subdomain: t.Optional[str] = None,
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:        self.subdomain = subdomain
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            Nested blueprints now correctly apply subdomains.
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            bp_subdomain = bp_options.get("subdomain")
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            if bp_subdomain is None:
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:                bp_subdomain = blueprint.subdomain
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            if state.subdomain is not None and bp_subdomain is not None:
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:                bp_options["subdomain"] = bp_subdomain + "." + state.subdomain
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            elif bp_subdomain is not None:
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:                bp_options["subdomain"] = bp_subdomain
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:            elif state.subdomain is not None:
+/tmp/swb/pallets__flask-5063/src/flask/blueprints.py:                bp_options["subdomain"] = state.subdomain
+/tmp/swb/pallets__flask-5063/src/flask/app.py:       The ``subdomain_matching`` parameter was added. Subdomain
+/tmp/swb/pallets__flask-5063/src/flask/app.py:    :param subdomain_matching: consider the subdomain relative to
+/tmp/swb/pallets__flask-5063/src/flask/app.py:        subdomain_matching: bool = False,
+/tmp/swb/pallets__flask-5063/src/flask/app.py:        self.subdomain_matching = subdomain_matching
+/tmp/swb/pallets__flask-5063/src/flask/app.py:        :param subdomain: Blueprint routes will match on this subdomain.
+/tmp/swb/pallets__flask-5063/src/flask/app.py:        the scheme and domain, like ``https://example.com/hello``. When
+/tmp/swb/pallets__flask-5063/src/flask/app.py:        domain to use. :data:`APPLICATION_ROOT` and
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            include the scheme and domain. When not in an active
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            # domain by default, unless a scheme is given.
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            # domain by default.
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            :data:`SERVER_NAME` no longer implicitly enables subdomain
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            matching. Use :attr:`subdomain_matching` instead.
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            # If subdomain matching is disabled (the default), use the
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            # default subdomain in all cases. This should be the default
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            if not self.subdomain_matching:
+/tmp/swb/pallets__flask-5063/src/flask/app.py:                subdomain = self.url_map.default_subdomain or None
+/tmp/swb/pallets__flask-5063/src/flask/app.py:                subdomain = None
+/tmp/swb/pallets__flask-5063/src/flask/app.py:                subdomain=subdomain,
+/tmp/swb/pallets__flask-5063/src/flask/app.py:            :data:`PREFERRED_URL_SCHEME`, ``subdomain``,
+/tmp/swb/pallets__flask-5063/src/flask/app.py:        :param subdomain: Subdomain name to append to
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:        :data:`PREFERRED_URL_SCHEME`, ``subdomain``,
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:    :param subdomain: Subdomain name to append to :data:`SERVER_NAME`.
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:        subdomain: t.Optional[str] = None,
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:        assert not (base_url or subdomain or url_scheme) or (
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:            subdomain or url_scheme
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:        ), 'Cannot pass "subdomain" or "url_scheme" with "base_url".'
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:            if subdomain:
+/tmp/swb/pallets__flask-5063/src/flask/testing.py:                http_host = f"{subdomain}.{http_host}"
+/tmp/swb/pallets__flask-5063/src/flask/helpers.py:        scheme and domain. When not in an active request, URLs are
+=== CALL: grep -r def route /tmp/swb/pallets__flask-5063/src/flask --include=*.py -A 3 ===
+/tmp/swb/pallets__flask-5063/src/flask/cli.py:def routes_command(sort: str, all_methods: bool) -> None:
+/tmp/swb/pallets__flask-5063/src/flask/cli.py-    """Show all registered routes with endpoints and methods."""
+/tmp/swb/pallets__flask-5063/src/flask/cli.py-
+/tmp/swb/pallets__flask-5063/src/flask/cli.py-    rules = list(current_app.url_map.iter_rules())
+--
+/tmp/swb/pallets__flask-5063/src/flask/scaffold.py:    def route(self, rule: str, **options: t.Any) -> t.Callable[[T_route], T_route]:
+/tmp/swb/pallets__flask-5063/src/flask/scaffold.py-        """Decorate a view function to register it with the given URL
+/tmp/swb/pallets__flask-5063/src/flask/scaffold.py-        rule and options. Calls :meth:`add_url_rule`, which has more
+/tmp/swb/pallets__flask-5063/src/flask/scaffold.py-        details about the implementation.
+=== CALL: grep -r class Rule /tmp/swb/pallets__flask-5063/src/flask --include=*.py -B 2 -A 10 ===
+=== CALL: grep -n routes_command\|iter_rules\|subdomain /tmp/swb/pallets__flask-5063/src/flask/cli.py ===
+543:            self.add_command(routes_command)
+1001:def routes_command(sort: str, all_methods: bool) -> None:
+1004:    rules = list(current_app.url_map.iter_rules())
