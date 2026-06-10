@@ -1085,21 +1085,6 @@ class SQLLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract SQL definitions by reusing scan() output.
-
-        This is the key optimization: instead of re-parsing,
-        we convert the StructureNode output from scan() to DefinitionInfo.
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions(file_path, structures)
-        except Exception:
-            # Fallback to regex-based extraction
-            return self._extract_definitions_regex(file_path, content)
-
     def _structures_to_definitions(
         self, file_path: str, structures: list[StructureNode], parent: str = None
     ) -> list[DefinitionInfo]:

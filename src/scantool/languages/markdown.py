@@ -589,19 +589,6 @@ class MarkdownLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2 (reusing scan() output)
     # ===========================================================================
 
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract definitions by reusing scan() output.
-
-        For Markdown, definitions are headings (as they define document structure).
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions(file_path, structures)
-        except Exception:
-            return []
-
     # ===========================================================================
     # Classification (from MarkdownAnalyzer)
     # ===========================================================================

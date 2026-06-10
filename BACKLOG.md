@@ -22,11 +22,16 @@ token-paritet eller bedre under budsjettpress. Bevis: harness 6/6 vs 5/6
    (M2B.md addendum). Restnyanse: åpne arkitekturspørsmål taper litt på
    økonomisering (sg-T5) — vurder oppgavebetinget styring senere.
 
-2. **Dogfooding-refaktor**: ~18 copy-pastede metoder på tvers av
-   språkplugins, funnet av vår egen helse-flagging (extract_definitions
-   ×6, _get_ancestors ×5, extract_calls ×7) → opp i BaseLanguage.
-   Aksept: CODE HEALTH på src/scantool viser null duplikat-grupper;
-   alle tester grønne. Bevis: kjør scan_directory på src/scantool.
+2. ~~**Dogfooding-refaktor**~~ **LEVERT 2026-06-11**: 36 metodekopier
+   fjernet i 16 språkplugins (−548/+56 linjer); BaseLanguage fikk
+   defaults med kroker (_extract_definitions_regex,
+   _extract_calls_tree_sitter/_regex, _handle_import, _get_ancestors).
+   Akseptkriteriet innfridd: CODE HEALTH på src/scantool viser null
+   duplikat-grupper — inkludert _extract_keyframes (css/scss) som lå
+   skjult bak visningstaket på 5 grupper; 877/877 tester grønne.
+   Reelle overstyringer bevart: swift (_structures_to_definitions_swift),
+   java (is_cross_file-merking), rust («use statements»),
+   sql/scss/generic/config (egen logikk).
 
 3. **Golden-output-tester / formatkontrakt**: output ER API-et for
    LLM-konsumenter. Snapshot-tester per språk + dokumentert kontrakt

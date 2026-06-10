@@ -16,6 +16,7 @@ import tree_sitter_scss
 from tree_sitter import Language, Parser, Node
 
 from .base import BaseLanguage
+from .css import CSSLanguage
 from .models import (
     StructureNode,
     ImportInfo,
@@ -413,23 +414,8 @@ class SCSSLanguage(BaseLanguage):
             children=children
         )
 
-    def _extract_keyframes(
-        self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
-        """Extract @keyframes statement."""
-        name = None
-        for child in node.children:
-            if child.type == "keyframes_name":
-                name = self._get_node_text(child, source_code)
-                break
-
-        return StructureNode(
-            type="keyframes",
-            name=name or "animation",
-            start_line=node.start_point[0] + 1,
-            end_line=node.end_point[0] + 1,
-            modifiers=["keyframes"]
-        )
+    # @keyframes is plain CSS — share CSSLanguage's implementation
+    _extract_keyframes = CSSLanguage._extract_keyframes
 
     def _extract_rule_set(
         self, node: Node, source_code: bytes
@@ -731,21 +717,6 @@ class SCSSLanguage(BaseLanguage):
     # ===========================================================================
     # Semantic Analysis - Layer 2
     # ===========================================================================
-
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract mixin/function definitions by reusing scan() output.
-
-        This is the key optimization: instead of re-parsing with tree-sitter,
-        we convert the StructureNode output from scan() to DefinitionInfo.
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions(file_path, structures)
-        except Exception:
-            # Fallback to regex-based extraction
-            return self._extract_definitions_regex(file_path, content)
 
     def _structures_to_definitions(
         self, file_path: str, structures: list[StructureNode], parent: str = None

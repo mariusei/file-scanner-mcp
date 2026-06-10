@@ -515,20 +515,6 @@ class TypeScriptLanguage(BaseLanguage):
 
         return modifiers
 
-    def _handle_import(self, node: Node, parent_structures: list):
-        """Group import statements together."""
-        if not parent_structures or parent_structures[-1].type != "imports":
-            import_node = StructureNode(
-                type="imports",
-                name="import statements",
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
-            )
-            parent_structures.append(import_node)
-        else:
-            # Extend the end line of the existing import group
-            parent_structures[-1].end_line = node.end_point[0] + 1
-
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
@@ -753,21 +739,6 @@ class TypeScriptLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract function/class/interface definitions by reusing scan() output.
-
-        This is the key optimization: instead of re-parsing with tree-sitter,
-        we convert the StructureNode output from scan() to DefinitionInfo.
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions(file_path, structures)
-        except Exception:
-            # Fallback to regex-based extraction
-            return self._extract_definitions_regex(file_path, content)
-
     def _structures_to_definitions(
         self, file_path: str, structures: list[StructureNode], parent: str = None
     ) -> list[DefinitionInfo]:
@@ -864,23 +835,6 @@ class TypeScriptLanguage(BaseLanguage):
             )
 
         return definitions
-
-    def extract_calls(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Extract function/method calls using tree-sitter.
-
-        Note: This still needs tree-sitter parsing because call sites are
-        not captured in the structure scan (which only captures definitions).
-        """
-        try:
-            source_bytes = content.encode("utf-8")
-            tree = self.parser.parse(source_bytes)
-            return self._extract_calls_tree_sitter(
-                file_path, tree.root_node, source_bytes, definitions
-            )
-        except Exception:
-            return self._extract_calls_regex(file_path, content, definitions)
 
     def _extract_calls_tree_sitter(
         self, file_path: str, root, source_bytes: bytes, definitions: list[DefinitionInfo]
