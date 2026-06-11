@@ -1,0 +1,23 @@
+focus: Project Documentation.Installation.Quick Start @13-23
+basic.md (1-119)
+- Project Documentation @1
+  - Installation @5
+    - code block (bash) bash @9
+    - Quick Start @13
+       13 | ### Quick Start
+       14 | 
+       15 | Here's a simple example:
+       16 | 
+       17 | ```python
+       18 | from scantool import FileScanner
+       19 | 
+       20 | scanner = FileScanner()
+       21 | structures = scanner.scan_file("example.py")
+       22 | ```
+       23 | 
+  - Features @24
+  - Configuration @48
+  - API Reference @61
+  - Contributing @77
+  - License @93
+- Alternative Heading Style @99

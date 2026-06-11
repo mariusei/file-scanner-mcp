@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from scantool.directory_formatter import DirectoryFormatter
+from scantool.focus import format_focus
 from scantool.formatter import TreeFormatter
 from scantool.scanner import FileScanner
 
@@ -91,3 +92,22 @@ def test_scan_file_output_is_frozen(lang):
 
 def test_scan_directory_output_is_frozen():
     _assert_matches_golden("directory", _render_directory(GOLDEN_DIR / "fixture_dir"))
+
+
+def _render_focus(sample: Path, focus: str) -> str:
+    structures = FileScanner().scan_file(str(sample), include_file_metadata=False)
+    assert structures, f"no structure for sample: {sample}"
+    source_lines = sample.read_text(encoding="utf-8").split("\n")
+    return format_focus(str(sample), structures, source_lines, focus)
+
+
+def test_focus_python_method_is_frozen():
+    _assert_matches_golden(
+        "focus_python",
+        _render_focus(TESTS_DIR / SAMPLES["python"], "DatabaseManager.query"))
+
+
+def test_focus_markdown_heading_is_frozen():
+    _assert_matches_golden(
+        "focus_markdown",
+        _render_focus(TESTS_DIR / SAMPLES["markdown"], "Quick Start"))

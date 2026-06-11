@@ -1,0 +1,14 @@
+focus: DatabaseManager.query @24-26
+basic.py (3-57)
+- import statements @3
+- DatabaseManager @8 # Manages database connections and queries.
+  - __init__ (self, connection_string: str) @11
+  - connect (self) @15 # Establish database connection.
+  - disconnect (self) @19 # Close database connection.
+  - query (self, sql: str) -> list @24 # Execute a SQL query.
+     24 |     def query(self, sql: str) -> list:
+     25 |         """Execute a SQL query."""
+     26 |         return []
+- UserService @29 # Handles user-related operations.
+- validate_email (email: str) -> bool @48 # Validate email format.
+- main () @53 # Main entry point.
