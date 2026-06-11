@@ -740,19 +740,20 @@ class BaseLanguage(ABC):
             return source_code[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
 
     def _get_ancestors(self, root, target) -> list:
-        """Get all ancestor nodes of a target node."""
+        """Get all ancestor nodes of a target node (root first, parent last).
+
+        Walks the parent chain upward — O(depth) per call. A DFS from root
+        made directory scans quadratic in file size (measured 284s on a
+        2MB Python file; 0.4s after this rewrite — experiments/size_gate/).
+        """
         ancestors = []
-
-        def find_path(node, path: list) -> bool:
-            if node == target:
-                ancestors.extend(path)
-                return True
-            for child in node.children:
-                if find_path(child, path + [node]):
-                    return True
-            return False
-
-        find_path(root, [])
+        node = target.parent
+        while node is not None:
+            ancestors.append(node)
+            if node == root:
+                break
+            node = node.parent
+        ancestors.reverse()
         return ancestors
 
     def _handle_import(self, node, parent_structures: list):
