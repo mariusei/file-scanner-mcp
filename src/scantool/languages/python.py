@@ -10,8 +10,10 @@ Key optimizations:
 
 import ast
 import copy
+import io
 import re
 import textwrap
+import tokenize
 from typing import Optional
 from pathlib import Path
 
@@ -124,7 +126,7 @@ class PythonLanguage(BaseLanguage):
             body = body[0].body
         body = _strip_docstring(body)
 
-        return _skeleton_stmts(body, 0) or None
+        return _skeleton_stmts(body, 0, _trailing_comments(source)) or None
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
@@ -750,92 +752,115 @@ def _has_substance(value: ast.AST) -> bool:
     return False
 
 
-def _skeleton_stmts(stmts: list[ast.stmt], depth: int) -> list[str]:
+def _trailing_comments(source: str) -> dict[int, str]:
+    """Map 1-based row → trailing comment on rows where code precedes it.
+
+    Full-line comments are excluded by design (measured away in the
+    condensation experiments); a trailing comment annotates the kept
+    statement itself ("return None  # Never expires" — sg-T4).
+    """
+    comments: dict[int, str] = {}
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+            if tok.type == tokenize.COMMENT and tok.line[: tok.start[1]].strip():
+                comments[tok.start[0]] = tok.string.rstrip()
+    except (tokenize.TokenError, IndentationError):
+        return {}
+    return comments
+
+
+def _skeleton_stmts(
+    stmts: list[ast.stmt], depth: int, comments: Optional[dict[int, str]] = None
+) -> list[str]:
     """Recursively render statements as skeleton lines (1 space per level)."""
     out: list[str] = []
     ind = " " * depth
 
-    def emit(text: str) -> None:
+    def emit(text: str, row: Optional[int] = None) -> None:
+        if comments and row is not None:
+            comment = comments.pop(row, None)
+            if comment:
+                text = f"{text}  {comment}"
         out.append(f"{ind}{text}")
 
     def fold() -> None:
         if not out or out[-1] != f"{ind}…":
-            emit("…")
+            out.append(f"{ind}…")
 
     for stmt in stmts:
         if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            emit(f"def {stmt.name}(…):")
-            out.extend(_skeleton_stmts(_strip_docstring(stmt.body), depth + 1))
+            emit(f"def {stmt.name}(…):", stmt.lineno)
+            out.extend(_skeleton_stmts(_strip_docstring(stmt.body), depth + 1, comments))
         elif isinstance(stmt, ast.ClassDef):
-            emit(f"class {stmt.name}:")
-            out.extend(_skeleton_stmts(_strip_docstring(stmt.body), depth + 1))
+            emit(f"class {stmt.name}:", stmt.lineno)
+            out.extend(_skeleton_stmts(_strip_docstring(stmt.body), depth + 1, comments))
         elif isinstance(stmt, ast.If):
-            emit(f"if {_trunc(stmt.test)}:")
-            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            emit(f"if {_trunc(stmt.test)}:", stmt.lineno)
+            out.extend(_skeleton_stmts(stmt.body, depth + 1, comments))
             orelse = stmt.orelse
             while len(orelse) == 1 and isinstance(orelse[0], ast.If):
-                emit(f"elif {_trunc(orelse[0].test)}:")
-                out.extend(_skeleton_stmts(orelse[0].body, depth + 1))
+                emit(f"elif {_trunc(orelse[0].test)}:", orelse[0].lineno)
+                out.extend(_skeleton_stmts(orelse[0].body, depth + 1, comments))
                 orelse = orelse[0].orelse
             if orelse:
                 emit("else:")
-                out.extend(_skeleton_stmts(orelse, depth + 1))
+                out.extend(_skeleton_stmts(orelse, depth + 1, comments))
         elif isinstance(stmt, (ast.For, ast.AsyncFor)):
-            emit(f"for {_trunc(stmt.target)} in {_trunc(stmt.iter)}:")
-            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            emit(f"for {_trunc(stmt.target)} in {_trunc(stmt.iter)}:", stmt.lineno)
+            out.extend(_skeleton_stmts(stmt.body, depth + 1, comments))
         elif isinstance(stmt, ast.While):
-            emit(f"while {_trunc(stmt.test)}:")
-            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            emit(f"while {_trunc(stmt.test)}:", stmt.lineno)
+            out.extend(_skeleton_stmts(stmt.body, depth + 1, comments))
         elif isinstance(stmt, (ast.With, ast.AsyncWith)):
             items = ", ".join(
                 _trunc(item.context_expr)
                 + (f" as {_trunc(item.optional_vars)}" if item.optional_vars else "")
                 for item in stmt.items
             )
-            emit(f"with {items}:")
-            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            emit(f"with {items}:", stmt.lineno)
+            out.extend(_skeleton_stmts(stmt.body, depth + 1, comments))
         elif isinstance(stmt, ast.Try):
-            emit("try:")
-            out.extend(_skeleton_stmts(stmt.body, depth + 1))
+            emit("try:", stmt.lineno)
+            out.extend(_skeleton_stmts(stmt.body, depth + 1, comments))
             for handler in stmt.handlers:
                 exc = f" {_trunc(handler.type)}" if handler.type else ""
                 if handler.name:
                     exc += f" as {handler.name}"
-                emit(f"except{exc}:")
-                out.extend(_skeleton_stmts(handler.body, depth + 1))
+                emit(f"except{exc}:", handler.lineno)
+                out.extend(_skeleton_stmts(handler.body, depth + 1, comments))
             if stmt.finalbody:
                 emit("finally:")
-                out.extend(_skeleton_stmts(stmt.finalbody, depth + 1))
+                out.extend(_skeleton_stmts(stmt.finalbody, depth + 1, comments))
         elif isinstance(stmt, ast.Match):
-            emit(f"match {_trunc(stmt.subject)}:")
+            emit(f"match {_trunc(stmt.subject)}:", stmt.lineno)
             for case in stmt.cases:
                 emit(f" case {_trunc(case.pattern)}:")
-                out.extend(_skeleton_stmts(case.body, depth + 2))
+                out.extend(_skeleton_stmts(case.body, depth + 2, comments))
         elif isinstance(stmt, ast.Return):
-            emit(f"return {_trunc(stmt.value)}" if stmt.value else "return")
+            emit(f"return {_trunc(stmt.value)}" if stmt.value else "return", stmt.lineno)
         elif isinstance(stmt, ast.Raise):
-            emit(f"raise {_trunc(stmt.exc)}" if stmt.exc else "raise")
+            emit(f"raise {_trunc(stmt.exc)}" if stmt.exc else "raise", stmt.lineno)
         elif isinstance(stmt, ast.Assert):
-            emit(f"assert {_trunc(stmt.test)}")
+            emit(f"assert {_trunc(stmt.test)}", stmt.lineno)
         elif isinstance(stmt, (ast.Break, ast.Continue)):
-            emit("break" if isinstance(stmt, ast.Break) else "continue")
+            emit("break" if isinstance(stmt, ast.Break) else "continue", stmt.lineno)
         elif isinstance(stmt, ast.Assign):
             if _has_substance(stmt.value):
                 targets = ", ".join(_trunc(t) for t in stmt.targets)
-                emit(f"{targets} = {_trunc(stmt.value)}")
+                emit(f"{targets} = {_trunc(stmt.value)}", stmt.lineno)
             else:
                 fold()
         elif isinstance(stmt, ast.AugAssign):
             symbol = _AUG_OP_SYMBOLS.get(type(stmt.op), "?")
-            emit(f"{_trunc(stmt.target)} {symbol}= {_trunc(stmt.value)}")
+            emit(f"{_trunc(stmt.target)} {symbol}= {_trunc(stmt.value)}", stmt.lineno)
         elif isinstance(stmt, ast.AnnAssign):
             if stmt.value is not None and _has_substance(stmt.value):
-                emit(f"{_trunc(stmt.target)} = {_trunc(stmt.value)}")
+                emit(f"{_trunc(stmt.target)} = {_trunc(stmt.value)}", stmt.lineno)
             else:
                 fold()
         elif isinstance(stmt, ast.Expr):
             if isinstance(stmt.value, (ast.Call, ast.Await, ast.Yield, ast.YieldFrom)):
-                emit(_trunc(stmt.value))
+                emit(_trunc(stmt.value), stmt.lineno)
             else:
                 fold()  # bare constants/expressions
         else:
