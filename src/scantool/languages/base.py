@@ -34,6 +34,8 @@ _SIGNIFICANT_NODE = re.compile(
     r"|call|invocation|invoke|new|await|macro"
     r"|assignment|augmented"
     r"|function|method|class|struct|enum|interface|impl|trait|lambda|closure"
+    r"|constructor|destructor"
+    r"|init declaration|deinit declaration|subscript declaration"
     r"|let|const|short_var|local)\b"
 )
 

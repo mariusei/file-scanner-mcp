@@ -284,6 +284,28 @@ CREATE TABLE users (
         # prose: every line is content, no condensation strategy
         assert MarkdownLanguage.CONDENSE_STRATEGY is None
 
+    def test_swift_multiline_init_keeps_header(self):
+        from scantool.languages.swift import SwiftLanguage
+
+        excerpt = '''\
+init(
+    store: Store<GameState, GameAction>,
+    nub: Nub? = nil
+) {
+    self.store = store
+}'''.split("\n")
+
+        skeleton = SwiftLanguage().condense_excerpt(excerpt)
+
+        # init_declaration is a significant header: kept in full, no
+        # leading fold (the old behavior dropped to "…" + ") {" noise)
+        assert skeleton is not None
+        assert skeleton[0] == "init("
+        text = "\n".join(skeleton)
+        assert "store: Store<GameState, GameAction>," in text
+        assert ") {" in text
+        assert "self.store = store" in text
+
 
 class TestFormatterRendering:
     def _node(self, **kwargs) -> StructureNode:
