@@ -67,12 +67,6 @@ class PHPLanguage(BaseLanguage):
     # Skip Logic (combined from scanner + analyzer)
     # ===========================================================================
 
-    @classmethod
-    def should_skip(cls, filename: str) -> bool:
-        """Skip compiled/cached PHP files."""
-        # .phps is for syntax highlighting, not executable
-        return False
-
     def should_analyze(self, file_path: str) -> bool:
         """Skip PHP files that should not be analyzed.
 

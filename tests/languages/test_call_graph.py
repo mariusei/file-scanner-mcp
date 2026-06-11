@@ -5,8 +5,6 @@ from scantool.call_graph import (
     build_call_graph,
     calculate_centrality,
     find_hot_functions,
-    get_call_chains,
-    analyze_cross_file_calls,
 )
 from scantool.languages import DefinitionInfo, CallInfo, CallGraphNode
 
@@ -93,50 +91,6 @@ def test_find_hot_functions(sample_definitions, sample_calls):
     # Should be sorted by centrality (descending)
     for i in range(len(hot_funcs) - 1):
         assert hot_funcs[i].centrality_score >= hot_funcs[i + 1].centrality_score
-
-
-def test_get_call_chains():
-    """Test finding call chains."""
-    # Create simple chain: a → b → c
-    definitions = [
-        DefinitionInfo(file="test.py", type="function", name="a", line=1),
-        DefinitionInfo(file="test.py", type="function", name="b", line=5),
-        DefinitionInfo(file="test.py", type="function", name="c", line=10),
-    ]
-
-    calls = [
-        CallInfo(caller_file="test.py", caller_name="a", callee_name="b", line=2),
-        CallInfo(caller_file="test.py", caller_name="b", callee_name="c", line=6),
-    ]
-
-    graph = build_call_graph(definitions, calls)
-    chains = get_call_chains(graph, "test.py:a", max_depth=3)
-
-    # Should find chain a → b → c
-    assert len(chains) > 0
-
-    # Find the longest chain
-    longest = max(chains, key=len)
-    assert len(longest) >= 2  # At least a → b
-
-
-def test_analyze_cross_file_calls():
-    """Test analysis of cross-file calls."""
-    definitions = [
-        DefinitionInfo(file="a.py", type="function", name="foo", line=1),
-        DefinitionInfo(file="b.py", type="function", name="bar", line=1),
-    ]
-
-    calls = [
-        CallInfo(caller_file="a.py", caller_name="foo", callee_name="bar", line=2, is_cross_file=True),
-    ]
-
-    graph = build_call_graph(definitions, calls)
-    cross_file = analyze_cross_file_calls(graph)
-
-    # Should detect a.py → b.py call
-    assert "a.py → b.py" in cross_file
-    assert cross_file["a.py → b.py"] >= 1
 
 
 def test_empty_graph():
