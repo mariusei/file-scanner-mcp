@@ -112,7 +112,7 @@ Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, Swift
 
 ### Analysis Tools
 - **preview_directory**: Intelligent codebase analysis with entry points, import graph, call graph, and hot functions (5-10s)
-- **scan_file**: Detailed file structure with signatures and metadata
+- **scan_file**: Detailed file structure with signatures and metadata; `focus=` reads one named function/class/section verbatim with parent context
 - **scan_directory**: Compact directory tree with inline function/class names
 - **search_structures**: Filter by type, name pattern, decorator, or complexity
 - **list_directories**: Directory tree (folders only)
@@ -183,6 +183,9 @@ Analysis: 486 files in 4.82s (layer1+layer2)
 ```python
 scan_file(
     file_path="path/to/file.py",
+    focus=None,                # Read ONE node verbatim by name ("query",
+                               # "DatabaseManager.query", a markdown heading)
+                               # instead of guessing line ranges — see below
     show_signatures=True,      # Include function signatures with types
     show_decorators=True,      # Include @decorator annotations
     show_docstrings=True,      # Include first line of docstrings
@@ -227,6 +230,41 @@ Go, Rust, Java, ...) get fold-by-default skeletons, declarative ones (CSS,
 SQL, HTML) keep their content and drop only blanks, comments and closing
 punctuation, and prose/config stay verbatim — where there is nothing safe to
 fold, the original excerpt is shown unchanged.
+
+#### focus= — the read step
+
+After a scan or search has located a node, pass `focus=` to read exactly
+that function/class/method/heading verbatim — instead of guessing a line
+range for Read/cat/sed:
+
+```python
+scan_file(file_path="example.py", focus="DatabaseManager.query")
+```
+
+```
+focus: DatabaseManager.query @24-26
+example.py (3-57)
+- import statements @3
+- DatabaseManager @8 # Manages database connections and queries.
+  - __init__ (self, connection_string: str) @11
+  - connect (self) @15 # Establish database connection.
+  - disconnect (self) @19 # Close database connection.
+  - query (self, sql: str) -> list @24 # Execute a SQL query.
+     24 |     def query(self, sql: str) -> list:
+     25 |         """Execute a SQL query."""
+     26 |         return []
+- UserService @29 # Handles user-related operations.
+- validate_email (email: str) -> bool @48 # Validate email format.
+- main () @53 # Main entry point.
+```
+
+The rest of the file stays as a depth-1 skeleton, so the node arrives with
+its parent context. Names resolve in three tiers: exact match, qualified
+path (`ClassA.method`, works for markdown headings too), then
+case-insensitive substring; an ambiguous name returns the qualified
+candidate list instead of guessing. Measured on real agent episodes
+(`experiments/benchmark/M2C.md`): equal answer quality at 75% fewer
+read tokens than cat/sed line-range guessing.
 
 ### scan_file_content - Analyze content directly
 
