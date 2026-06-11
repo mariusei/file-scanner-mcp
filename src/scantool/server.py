@@ -13,6 +13,7 @@ from .code_health import analyze_health
 from .content_search import search_content, format_hits, find_leads
 from .delta import ScanMemory, apply_node_delta, format_age
 from .ref_diff import diff_against_ref
+from .focus import format_focus
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
 from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits
@@ -425,10 +426,11 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass"
+    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges"
 )
 def scan_file(
     file_path: str,
+    focus: Optional[str] = None,
     show_signatures: bool = True,
     show_decorators: bool = True,
     show_docstrings: bool = True,
@@ -465,6 +467,11 @@ def scan_file(
     Args (tiered — most calls need only Common):
         Common:
             file_path: Absolute or relative path to the file to scan
+            focus: Read ONE node verbatim by name instead of guessing line
+                ranges: a function/class/method/heading from a previous scan,
+                qualified if needed ("ClassA.method"). Returns the file
+                skeleton at depth 1 (parent context) plus the focused node's
+                full body with line numbers. Ambiguous name → candidate list
         Cost & slicing:
             budget: Approximate token cap for skeleton content. The least salient
                 functions degrade first (full depth → outline → header only), so
@@ -512,8 +519,10 @@ def scan_file(
         - validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
-        # Delta: unchanged since this session's previous scan → one line
-        if delta and output_format != "json":
+        # Delta: unchanged since this session's previous scan → one line.
+        # Focused reads bypass delta entirely — they request content, not
+        # structure changes
+        if delta and focus is None and output_format != "json":
             age = scan_memory.file_unchanged(file_path)
             if age is not None:
                 return [TextContent(type="text", text=(
@@ -540,6 +549,11 @@ def scan_file(
 
         if churn and structures[0].type == "file-info" and structures[0].file_metadata is not None:
             structures[0].file_metadata["churn_90d"] = churn
+
+        if focus is not None:
+            source_lines = Path(file_path).read_text(errors="replace").split("\n")
+            return [TextContent(type="text", text=format_focus(
+                file_path, structures, source_lines, focus))]
 
         delta_note = ""
         if delta and output_format != "json":
