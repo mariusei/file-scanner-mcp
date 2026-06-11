@@ -344,6 +344,25 @@ list_directories(
 └─ docs/
 ```
 
+## Output Contract
+
+The default output format IS the API: LLM agents consume scantool output
+directly and uncritically, so format drift is behavior drift in the
+consumer (measured in `experiments/benchmark/M2B.md`). Two consequences:
+
+- **Defaults are the measured optimum — parameters are escape hatches.**
+  Every default (two-tier condensation, saliency selection, skeleton
+  depth, compact vs verbatim per language) is backed by measurements in
+  `experiments/condensation/`, `experiments/entropy_metrics/` and
+  `experiments/benchmark/`. Override them when a specific situation
+  demands it, not as a style preference.
+- **The default format is frozen by golden tests** (`tests/test_golden.py`,
+  snapshots in `tests/golden/`). A deliberate format change requires a
+  deliberate snapshot update (`UPDATE_GOLDEN=1 uv run pytest
+  tests/test_golden.py`); an accidental change fails CI. Environment-
+  dependent parts (file size/mtime, git churn, delta memory) live outside
+  the frozen layer.
+
 ## Supported Languages
 
 | Extension | Language | Extracted Elements |

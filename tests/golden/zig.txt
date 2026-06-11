@@ -1,0 +1,38 @@
+basic.zig (4-61)
+- Config @4 [pub] # Configuration for the application
+  - total (self: Config) i32 @9 [pub] # Calculate the total value
+     pub fn total(self: Config) i32 {
+         return self.value * 2;
+  - private_helper (self: Config) void @13
+     fn private_helper(self: Config) void {
+         …
+- Status @19 [pub] # Status enumeration
+   pub const Status = enum {
+       …
+- Result @26
+   const Result = union(enum) {
+       …
+       err: []const u8,
+- main () !void @32 [pub] # Main entry point for the application
+   pub fn main() !void {
+       …
+       var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+       const stdout = &stdout_writer.interface;
+       try stdout.print("Hello, {s}!\n", .{"World"});
+       try stdout.flush();
+- helper (x: i32, y: i32) i32 @41
+   fn helper(x: i32, y: i32) i32 {
+       return x + y;
+- fastAdd (a: u32, b: u32) u32 @45 [pub inline]
+   pub inline fn fastAdd(a: u32, b: u32) u32 {
+       return a + b;
+- c_api_function (ptr: [*]u8, len: usize) void @49 [export]
+   export fn c_api_function(ptr: [*]u8, len: usize) void {
+       …
+- basic test @54
+   …
+       try std.testing.expect(true);
+- addition works @58
+   …
+       const result = helper(2, 3);
+       try std.testing.expectEqual(result, 5);

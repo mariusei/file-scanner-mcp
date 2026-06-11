@@ -1,0 +1,51 @@
+basic.go (4-90)
+- import statements @4
+- Config @10 [public] # Config holds application configuration
+   type Config struct {
+    …
+- Logger @16 [public] # Logger is an interface for logging operations
+   type Logger interface {
+   	Log(message string) error
+   	LogError(err error)
+- DatabaseManager @22 [public] # DatabaseManager manages database connections and queries
+   type DatabaseManager struct {
+    …
+- NewDatabaseManager (connStr string) *DatabaseManager @28 [public] # NewDatabaseManager creates a new DatabaseManager instance
+   func NewDatabaseManager(connStr string) *DatabaseManager {
+     …
+     …
+- Connect (db *DatabaseManager) () error @36 [public] # Connect establishes database connection
+   func (db *DatabaseManager) Connect() error {
+   	fmt.Println("Connecting to database")
+   	db.connected = true
+   	return nil
+- Disconnect (db *DatabaseManager) () @43 [public] # Disconnect closes database connection
+   func (db *DatabaseManager) Disconnect() {
+   	if db.connected {
+     …
+- Query (db *DatabaseManager) (sql string) ([]map[string]interface{}, error) @51 [public] # Query executes a SQL query and returns results
+   func (db *DatabaseManager) Query(sql string) ([]map[string]interface{}, error) {
+   	return nil, nil
+- UserService @56 [public] # UserService handles user-related operations
+   type UserService struct {
+    …
+- CreateUser (s *UserService) (username, email string) (int, error) @61 [public] # CreateUser creates a new user in the database
+   func (s *UserService) CreateUser(username, email string) (int, error) {
+   	return 1, nil
+- GetUser (s *UserService) (userID int) (map[string]interface{}, error) @66 [public] # GetUser retrieves user by ID
+   func (s *UserService) GetUser(userID int) (map[string]interface{}, error) {
+   	return nil, nil
+- DeleteUser (s *UserService) (userID int) error @71 [public] # DeleteUser deletes a user by ID
+   func (s *UserService) DeleteUser(userID int) error {
+   	return nil
+- ValidateEmail (email string) bool @76 [public] # ValidateEmail validates email format
+   func ValidateEmail(email string) bool {
+   	return len(email) > 0 && email[0] != '@'
+- FormatTimestamp (t time.Time) string @81 [public] # FormatTimestamp formats a timestamp to string
+   func FormatTimestamp(t time.Time) string {
+   	return t.Format("2006-01-02 15:04:05")
+- main () @86 # main is the entry point
+   func main() {
+   	db := NewDatabaseManager("postgresql://localhost/mydb")
+   	db.Connect()
+   	fmt.Println("Application started")

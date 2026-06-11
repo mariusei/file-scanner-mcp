@@ -1,0 +1,48 @@
+basic.rb (3-73)
+- require statements @3
+- DataAccess @8 # Data access layer module
+  - DatabaseManager @10 # Manages database connections and queries
+    - initialize (connection_string) @14
+       def initialize(connection_string)
+         @connection_string = connection_string
+         @connection = nil
+       …
+    - connect () @20 # Establish database connection
+       def connect
+         puts "Connecting to #{@connection_string}"
+       …
+    - disconnect () @25 # Close database connection
+       def disconnect
+         @connection&.close
+       …
+    - query (sql) @30 # Execute a SQL query
+       def query(sql)
+         …
+    - self.create_default () @35 [class] # Class method for creating a default instance
+       def self.create_default
+         new("postgresql://localhost/mydb")
+       …
+- UserService @42 # Handles user-related operations
+  - initialize (db) @43
+     def initialize(db)
+       @db = db
+     …
+  - create_user (username, email) @48 # Create a new user
+     def create_user(username, email)
+       …
+  - get_user (user_id) @53 # Retrieve user by ID
+     def get_user(user_id)
+       …
+  - delete_user (user_id) @58 # Delete a user
+     def delete_user(user_id)
+       …
+- validate_email (email) @64 # Validate email format
+   def validate_email(email)
+     email.include?('@')
+   …
+- main () @69 # Main entry point
+   def main
+     db = DataAccess::DatabaseManager.create_default
+     service = UserService.new(db)
+     puts "Application started"
+   …

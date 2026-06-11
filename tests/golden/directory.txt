@@ -1,0 +1,9 @@
+fixture_dir/ (4 files, 1 class, 3 functions, 3 methods)
+- lib/ 
+  - utils.ts (3-17) - Task, byPriority, formatTask
+     > formatTask: if (task.priority > 5) { ; return task.name;
+- app.py (4-29) - TaskQueue, drain
+   > push: if len(self.items) >= self.capacity: ; return False ; self.items.append((priority, task)) ;…
+- notes.md (1-12) - Task queue notes
+- schema.sql (3-9) - tasks, idx_tasks_priority
+   > tasks: id BIGINT PRIMARY KEY, ; name VARCHAR(100) NOT NULL, ; priority INT DEFAULT 0

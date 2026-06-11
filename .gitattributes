@@ -1,0 +1,4 @@
+# Golden-testene (tests/test_golden.py) fryser output som en funksjon av
+# filbytes; CRLF-checkout på Windows ville endret input-bytene og dermed
+# outputen. LF i arbeidstreet på alle plattformer holder bytene identiske.
+* text=auto eol=lf

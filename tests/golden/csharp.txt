@@ -1,0 +1,75 @@
+Basic.cs (5-169)
+- using directives @5
+- MyApp.Services @9
+  - IConfig @14 [public] # Configuration interface for application settings.
+     public interface IConfig
+     …
+    - ApiKey : string @16
+    - Endpoint : string @17
+    - Timeout : int @18
+  - DatabaseManager @24 [public] # Manages database connections and queries.
+    - DatabaseManager (string connectionString) @32 [public] # Constructs a new DatabaseManager with the given connection string.
+       public DatabaseManager(string connectionString)
+       …
+           _connectionString = connectionString;
+           _connection = null;
+    - ConnectionString : string @41 [public] # Gets or sets the connection string.
+       public string ConnectionString
+       …
+           get => _connectionString;
+           set => _connectionString = value;
+    - Connect () : void @50 [public] # Establishes a connection to the database.
+       public void Connect()
+       …
+           Console.WriteLine($"Connecting to {_connectionString}");
+    - Disconnect () : void @58 [public] # Closes the database connection.
+       public void Disconnect()
+       …
+           if (_connection != null)
+           …
+         …
+    - Query (string sql) : List<Dictionary<string, object>> @69 [public] # Executes a SQL query and returns the results.
+       public List<Dictionary<string, object>> Query(string sql)
+       …
+           return new List<Dictionary<string, object>>();
+  - UserService @78 [public] # Handles user-related operations.
+    - UserService (DatabaseManager db) @85 [public] # Constructs a UserService with a database manager.
+       public UserService(DatabaseManager db)
+       …
+           _db = db;
+    - Database : DatabaseManager @93 [public] # Gets the database manager.
+    - CreateUser (string username, string email) : int @98 [public] # Creates a new user in the system.
+       public int CreateUser(string username, string email)
+       …
+           return 1;
+    - GetUser (int userId) : Dictionary<string, object>? @106 [public] # Retrieves a user by their ID.
+       public Dictionary<string, object>? GetUser(int userId)
+       …
+           return null;
+    - DeleteUser (int userId) : bool @114 [public] # Deletes a user from the system.
+       public bool DeleteUser(int userId)
+       …
+           return true;
+  - EmailValidator @123 [public static] # Utility class for email validation.
+    - ValidateEmail (string email) : bool @128 [public static] # Validates an email address format.
+       public static bool ValidateEmail(string email)
+       …
+           return email != null && email.Contains("@");
+  - Point @137 [public] # Represents a point in 2D space.
+    - X : double @139 [public]
+    - Y : double @140 [public]
+    - Point (double x, double y) @145 [public] # Constructs a new point.
+       public Point(double x, double y)
+       …
+           X = x;
+           Y = y;
+    - DistanceFromOrigin () : double @154 [public] # Calculates the distance from origin.
+       public double DistanceFromOrigin()
+       …
+           return Math.Sqrt(X * X + Y * Y);
+  - UserRole @163 [public] # User role enumeration.
+     public enum UserRole
+     {
+         Admin,
+         User,
+         Guest

@@ -1,0 +1,43 @@
+basic.ts (5-114)
+- import statements @5
+- Config @11 # Configuration interface for authentication service.
+   interface Config {
+     …
+- AuthService @19 # Service for handling user authentication and authorization.
+  - constructor (config: Config) @26 # Constructs a new AuthService instance.
+     constructor(config: Config) {
+       this.apiKey = config.apiKey;
+       this.users = new Map();
+  - login (username: string, password: string) : Promise<User | null> @34 [async] # Authenticates a user with username and password.
+     …
+       return null;
+  - logout (userId: string) : Promise<void> @42 [async] # Logs out a user by their ID.
+  - validateToken (token: string) : boolean @49 # Validates an authentication token.
+     validateToken(token: string): boolean {
+       return token.length > 0;
+- UserManager @57 # Manager class for user CRUD operations.
+  - constructor (database: Database) @60
+     constructor(database: Database) {
+       this.db = database;
+  - createUser (username: string, email: string) : Promise<User> @67 [async] # Creates a new user in the system.
+     …
+       const user: User = {
+       …
+       return user;
+  - getUser (id: string) : Promise<User | null> @80 [async] # Retrieves a user by their ID.
+     …
+       return null;
+  - updateUser (id: string, data: Partial<User>) : Promise<User> @87 [async] # Updates a user's information.
+     …
+       return {} as User;
+- generateId () : string @95 # Generates a random unique identifier.
+   function generateId(): string {
+     return Math.random().toString(36).substr(2, 9);
+- validateEmail (email: string) : boolean @102 # Validates an email address format.
+   function validateEmail(email: string): boolean {
+     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+- calculateStats (users: User[]) : { total: number; active: number } @109 # Arrow function to calculate statistics.
+   const calculateStats = (users: User[]): { total: number; active: number } => {
+     return {
+       …
+       active: users.filter(u => u.isActive).length,
