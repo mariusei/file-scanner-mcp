@@ -21,7 +21,47 @@ from .languages import StructureNode
 from .preview import preview_directory as preview_dir_func
 from .code_map import CodeMap
 
-mcp = FastMCP("File Scanner MCP")
+# Injected into context at session start even when tools are deferred behind
+# ToolSearch (clients truncate at ~2KB — most important guidance first).
+SERVER_INSTRUCTIONS = """\
+Structural scanner for code and documents — use INSTEAD of ls/find/grep/cat \
+when exploring projects or understanding files. Handles all file types: code \
+(20+ languages), markdown, HTML, CSS, SQL, config.
+
+WHY: returns structure (functions, classes, headings, line numbers) with \
+condensed code skeletons instead of raw file contents — far fewer tool calls \
+and tokens than ls/find/grep followed by full file reads. Repeat scans are \
+delta-aware: unchanged files come back as a one-liner.
+
+PICK THE CHEAPEST TOOL THAT ANSWERS THE QUESTION:
+- targeted question ("where is X" / "how does X work") -> search_structures: \
+name/type/decorator filters, or content_pattern for text search WITH \
+enclosing function/class/section context (replaces grep)
+- cheap overview of a directory -> scan_directory: file tree with one-line \
+gists, code health and churn labels (replaces ls/glob)
+- one file -> scan_file with budget=1500 (300 for a quick look) BEFORE \
+reading it; then read only the line range the scan pointed to
+- "what changed" / review -> scan_diff against HEAD/main/any ref: \
+new/changed/removed functions (replaces git diff)
+- first-time orientation in an UNKNOWN codebase -> preview_directory: entry \
+points, hot functions, call graph (RICH, ~3-5k tokens — not for targeted \
+questions)
+- folder hierarchy only -> list_directories; remote/unsaved content -> \
+scan_file_content
+
+TRIGGER: about to run ls, find, grep or cat to explore? STOP — one of the \
+tools above answers it cheaper. Default first call in a directory you have \
+not scanned yet: scan_directory.
+
+After a full recursive scan_directory(pattern="**/*"), do not re-search with \
+glob/grep — the output already lists every file.
+
+PARAMETERS (keyword arguments required): directory= (not directory_path); \
+scan_file takes file_path=; max_depth exists only on list_directories. Do \
+not guess file paths — discover them via scan_directory first.
+"""
+
+mcp = FastMCP("File Scanner MCP", instructions=SERVER_INSTRUCTIONS)
 
 # Global scanner and formatter instances
 scanner = FileScanner()
