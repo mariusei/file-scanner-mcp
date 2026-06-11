@@ -221,6 +221,10 @@ class BaseLanguage(ABC):
     #:   "trivial" lines ARE the content)
     CONDENSE_STRATEGY: Optional[str] = None
 
+    # Label for grouped import statements in the structure tree
+    # (e.g. Rust shows "use statements")
+    IMPORT_GROUP_LABEL: str = "import statements"
+
     def _fragment_prefix(self) -> str:
         """Prefix needed for a detached excerpt to parse (e.g. PHP's '<?php')."""
         return ""
@@ -619,7 +623,7 @@ class BaseLanguage(ABC):
         if not parent_structures or parent_structures[-1].type != "imports":
             import_node = StructureNode(
                 type="imports",
-                name="import statements",
+                name=self.IMPORT_GROUP_LABEL,
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1
             )

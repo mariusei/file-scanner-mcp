@@ -37,6 +37,7 @@ class RustLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    IMPORT_GROUP_LABEL = "use statements"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -487,20 +488,6 @@ class RustLanguage(BaseLanguage):
                 modifiers.append(child.type)
 
         return modifiers
-
-    def _handle_import(self, node: Node, parent_structures: list):
-        """Group use statements together."""
-        if not parent_structures or parent_structures[-1].type != "imports":
-            import_node = StructureNode(
-                type="imports",
-                name="use statements",
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
-            )
-            parent_structures.append(import_node)
-        else:
-            # Extend the end line of the existing import group
-            parent_structures[-1].end_line = node.end_point[0] + 1
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""

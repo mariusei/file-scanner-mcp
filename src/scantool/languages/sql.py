@@ -79,15 +79,6 @@ class SQLLanguage(BaseLanguage):
     # Skip Logic (combined from scanner + analyzer)
     # ===========================================================================
 
-    @classmethod
-    def should_skip(cls, filename: str) -> bool:
-        """SQL files are generally not skipped."""
-        return False
-
-    def should_analyze(self, file_path: str) -> bool:
-        """All SQL files should be analyzed."""
-        return True
-
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value SQL files for inventory listing.
 

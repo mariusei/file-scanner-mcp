@@ -134,46 +134,8 @@ class GenericLanguage(BaseLanguage):
         return []
 
     # ===========================================================================
-    # Analysis helpers
-    # ===========================================================================
-
-    def should_analyze(self, file_path: str) -> bool:
-        """Generic files can be analyzed (even though results are empty).
-
-        This returns True to allow the file to go through the analysis pipeline.
-        The analysis will simply return empty results.
-
-        Args:
-            file_path: Relative path to the file
-
-        Returns:
-            True (always)
-        """
-        return True
-
-    # ===========================================================================
     # CodeMap Integration
     # ===========================================================================
-
-    def resolve_import_to_file(
-        self,
-        module: str,
-        source_file: str,
-        all_files: list[str],
-        definitions_map: dict[str, str],
-    ) -> Optional[str]:
-        """No import resolution for generic files.
-
-        Args:
-            module: Module name to resolve (ignored)
-            source_file: Path of file doing the import (ignored)
-            all_files: List of all files in project (ignored)
-            definitions_map: Map of definitions to file paths (ignored)
-
-        Returns:
-            None
-        """
-        return None
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Use default formatting for generic files.

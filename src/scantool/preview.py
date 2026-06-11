@@ -453,21 +453,6 @@ class DirectoryPreview:
 
         return score
 
-    def _get_immediate_subdirs(self, parent_path: str) -> list[tuple[str, DirectoryStats]]:
-        """Get immediate subdirectories of a path with their stats."""
-        subdirs = []
-
-        for path, stats in self.dir_stats.items():
-            # Check if this is a direct child
-            if path.startswith(parent_path + "/"):
-                relative = path[len(parent_path)+1:]
-                if "/" not in relative and stats.file_count > 0:
-                    subdirs.append((relative, stats))
-
-        # Sort by file count
-        subdirs.sort(key=lambda x: x[1].file_count, reverse=True)
-        return subdirs
-
     def _get_subdirs_with_collapse(self, parent_path: str) -> list[tuple[str, DirectoryStats]]:
         """
         Get subdirectories with linear chains collapsed.

@@ -63,21 +63,6 @@ class RubyLanguage(BaseLanguage):
     # Skip Logic (combined from scanner + analyzer)
     # ===========================================================================
 
-    @classmethod
-    def should_skip(cls, filename: str) -> bool:
-        """Skip compiled Ruby files or bundle cache."""
-        # Ruby doesn't have many compiled artifacts like Python
-        return False
-
-    def should_analyze(self, file_path: str) -> bool:
-        """Skip files that should not be analyzed.
-
-        Ruby doesn't have many common generated file patterns like other languages,
-        so we keep this minimal.
-        """
-        # No specific skip patterns for Ruby - analyze all .rb and .rake files
-        return True
-
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Ruby files for inventory listing.
 

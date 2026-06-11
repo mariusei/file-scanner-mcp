@@ -1091,22 +1091,7 @@ class SwiftLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def extract_definitions(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Extract type definitions from Swift file by reusing scan() output.
-
-        Returns struct, class, enum, protocol, actor, extension, and typealias definitions.
-        This enables building a type->file mapping for dependency resolution.
-        """
-        try:
-            structures = self.scan(content.encode("utf-8"))
-            if not structures:
-                return []
-            return self._structures_to_definitions_swift(file_path, structures)
-        except Exception:
-            # Fallback to regex-based extraction
-            return self._extract_definitions_regex(file_path, content)
-
-    def _structures_to_definitions_swift(
+    def _structures_to_definitions(
         self, file_path: str, structures: list[StructureNode], parent: str = None
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list for Swift.
@@ -1136,7 +1121,7 @@ class SwiftLanguage(BaseLanguage):
                 # For Swift, use the type name as parent for nested types
                 child_parent = node.name if node.type in {"class", "struct", "enum", "protocol", "actor", "extension"} else parent
                 definitions.extend(
-                    self._structures_to_definitions_swift(file_path, node.children, child_parent)
+                    self._structures_to_definitions(file_path, node.children, child_parent)
                 )
 
         return definitions

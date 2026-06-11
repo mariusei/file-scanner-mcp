@@ -177,10 +177,6 @@ class LanguageRegistry:
         """Get mapping of extensions to language names."""
         return {ext: cls.get_language_name() for ext, cls in self._languages.items()}
 
-    def get_analyzer_info(self) -> dict[str, str]:
-        """Get mapping of extensions to language names."""
-        return self.get_scanner_info()
-
 
 # Module-level convenience functions
 
