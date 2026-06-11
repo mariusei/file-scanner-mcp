@@ -1,0 +1,85 @@
+[
+  {
+    "id": "m2c-pytest-7373",
+    "dir": "/tmp/swb/pytest-dev__pytest-7373",
+    "q": "In pytest's skipif/xfail evaluation (cached_eval and MarkEvaluator._istrue): what exactly is used as the cache key in cached_eval, where is the cache stored, and which data that affects the evaluation result is NOT part of the key?",
+    "facts": [
+      "cache key is the expression string (expr) alone",
+      "cache stored in config._store under evalcache_key",
+      "the globals dict (from _getglobals / item.obj.__globals__) is not part of the key"
+    ]
+  },
+  {
+    "id": "m2c-pytest-5221",
+    "dir": "/tmp/swb/pytest-dev__pytest-5221",
+    "q": "In the implementation behind `pytest --fixtures` (_showfixtures_main): which fixtures are skipped at default verbosity, and what exactly is printed (and in which color) when a fixture has no docstring?",
+    "facts": [
+      "fixtures whose argname starts with underscore are skipped unless verbose > 0",
+      "'<location>: no docstring available' printed in red"
+    ]
+  },
+  {
+    "id": "m2c-requests-1963",
+    "dir": "/tmp/swb/psf__requests-1963",
+    "q": "In Session.resolve_redirects: which request object is copied at the top of each loop iteration, and which three (status code, method) combinations rewrite the HTTP method to GET?",
+    "facts": [
+      "req.copy() — the original request is copied every iteration, not the previous hop's request",
+      "303 see_other with method != HEAD → GET",
+      "302 found with method != HEAD → GET",
+      "301 moved with method == POST → GET"
+    ]
+  },
+  {
+    "id": "m2c-requests-2674",
+    "dir": "/tmp/swb/psf__requests-2674",
+    "q": "In HTTPAdapter.send: which low-level (urllib3/socket) exceptions are caught, and which requests exception is each re-raised as?",
+    "facts": [
+      "ProtocolError / socket.error → ConnectionError",
+      "MaxRetryError → ConnectTimeout (ConnectTimeoutError reason) or RetryError (ResponseError reason) or ConnectionError",
+      "_ProxyError → ProxyError",
+      "_SSLError → SSLError",
+      "ReadTimeoutError → ReadTimeout"
+    ]
+  },
+  {
+    "id": "m2c-flask-4045",
+    "dir": "/tmp/swb/pallets__flask-4045",
+    "q": "In Blueprint.add_url_rule (src/flask/blueprints.py): what exactly is asserted about the endpoint and the view function name, and through which call is the actual registration deferred?",
+    "facts": [
+      "assert '.' not in endpoint (Blueprint endpoints should not contain dots)",
+      "assert '.' not in view_func.__name__",
+      "registration deferred via self.record(lambda s: s.add_url_rule(...))"
+    ]
+  },
+  {
+    "id": "m2c-flask-5063",
+    "dir": "/tmp/swb/pallets__flask-5063",
+    "q": "In the `flask routes` command (routes_command in src/flask/cli.py): which columns are printed, which HTTP methods are hidden by default, and which values does --sort accept?",
+    "facts": [
+      "columns Endpoint, Methods, Rule",
+      "HEAD and OPTIONS hidden unless --all-methods",
+      "--sort accepts endpoint, rule, methods (match is the default order)"
+    ]
+  },
+  {
+    "id": "m2c-sg-ttl",
+    "dir": "/Users/mariusbergeeide/Projects/internal-backend/backend/app",
+    "q": "What TTL does get_tile_cache_ttl return for each tile type — grid, dataset, model, indicator, and the default case?",
+    "facts": [
+      "grid → None (never expires)",
+      "dataset → 2592000 seconds (30 days)",
+      "model → 2592000 seconds (30 days)",
+      "indicator → 1800 seconds (30 minutes)",
+      "default → 300 seconds (5 minutes)"
+    ]
+  },
+  {
+    "id": "m2c-sg-jwt",
+    "dir": "/Users/mariusbergeeide/Projects/internal-backend/backend/app",
+    "q": "In create_access_token: how is the expiry timestamp computed when expires_delta is NOT provided, and which claims are added to the token payload?",
+    "facts": [
+      "expiry = int(time.time()) + ACCESS_TOKEN_EXPIRE_MINUTES * 60 (integer unix timestamps)",
+      "claims exp and iat are added to the payload"
+    ]
+  }
+]
