@@ -1,0 +1,318 @@
+=== CALL: grep -r '_showfixtures_main' --include='*.py' ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: grep -r '_showfixtures_main' --include='*.py': command not found
+=== CALL: scantool search . _showfixtures_main ===
+2 hits in 2 structures for /_showfixtures_main/
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py
+- showfixtures (config) @1297-1300
+   1300 | return wrap_session(config, _showfixtures_main)
+- _showfixtures_main (config, session) @1303-1355
+   1303 | def _showfixtures_main(config, session):
+
+leads (called in hits, defined elsewhere): getlocation → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@92, wrap_session → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@198, perform_collect → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@495, create_terminal_writer → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/__init__.py@1079, getvalue → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@432
+=== CALL: scantool scanfile /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py 1500 ===
+python.py (1-1481)
+- file-info: 53.8KB modified: 2026-06-10 23:49 [ts:1781128187] churn: 1 commits/90d
+- import statements @6
+- pyobj_property (name) @52
+- pytest_addoption (parser) @64
+   group = parser.getgroup('general')
+   group.addoption('--fixtures', '--funcargs', action='store_t…
+   group.addoption('--fixtures-pe…', action='store_true', dest='show_fixtures…', default=False, help='show fixtures…')
+   parser.addini('usefixtures', type='args', default=[], help='list of defau…')
+   parser.addini('python_files', type='args', default=['test_*.py', '*_test.py'], help='glob-style fi…')
+   parser.addini('python_classes', type='args', default=['Test'], help='prefixes or g…')
+   parser.addini('python_functions', type='args', default=['test'], help='prefixes or g…')
+   parser.addini('disable_test_…', type='bool', default=False, help='disable strin…')
+   group.addoption('--import-mode', default='prepend', choices…
+- pytest_cmdline_main (config) @124
+- pytest_generate_tests (metafunc) @133
+   …
+   for mark_name in alt_spellings:
+    …
+   for marker in metafunc.definition.iter_markers(name='parametrize'):
+    …
+- pytest_configure (config) @145
+   config.addinivalue_line('markers', 'parametrize(a…')
+   config.addinivalue_line('markers', 'usefixtures(f…')
+- pytest_pyfunc_call (pyfuncitem) @166
+   @hookimpl(trylast=True)
+   …
+   iscoroutinefunction = getattr(inspect, 'iscoroutinefunction', None)
+   if iscoroutinefunction is not None and iscoroutinefunction(testfunction):
+    …
+   …
+   testargs = {arg: funcargs[arg] for arg in pyfuncitem._fixtureinfo.argnames}
+   testfunction(**testargs)
+   return True
+- pytest_collect_file (path, parent) @183
+- path_matches_patterns (path, patterns) @195 # Returns True if the given py.path.local matches one of the patterns in the list of globs given
+- pytest_pycollect_makemodule (path, parent) @200
+- pytest_pycollect_makeitem (collector, name, obj) @207
+   @hookimpl(hookwrapper=True)
+   …
+   res = outcome.get_result()
+   if res is not None:
+    …
+   if safe_isclass(obj):
+    …
+   elif collector.istestfunction(obj, name):
+    …
+- pytest_make_parametrize_id (config, val, argname=None) @243
+- PyobjContext (object) @247
+- PyobjMixin (PyobjContext) @253
+  - __init__ (self, *k, **kw) @256
+  - obj (self) @260 [property] # Underlying Python object.
+     @property
+  - obj (self, value) @272
+     @obj.setter
+  - _getobj (self) @275 # Gets the underlying Python object. May be overwritten by subclasses.
+     return getattr(self.parent.obj, self.name)
+  - getmodpath (self, stopatmodule=True, includemodule=False) @279 # return python path relative to the containing module.
+  - reportinfo (self) @299
+- PyCollector (PyobjMixin, nodes.Collector) @316
+  - funcnamefilter (self, name) @317
+  - isnosetest (self, obj) @320 # Look for the __test__ attribute, which is applied by the
+  - classnamefilter (self, name) @329
+  - istestfunction (self, obj, name) @332
+  - istestclass (self, obj, name) @344
+  - _matches_prefix_or_glob_option (self, option_name, name) @347 # checks if the given name matches the prefix or glob-pattern defined
+  - collect (self) @364
+     if not getattr(self.obj, '__test__', True):
+      …
+     dicts = [getattr(self.obj, '__dict__', {})]
+     for basecls in inspect.getmro(self.obj.__class__):
+      …
+     …
+     for dic in dicts:
+      …
+     values.sort(key=lambda item: item.reportinfo()[:2])
+     return values
+  - _makeitem (self, name, obj) @389
+  - _genfunctions (self, name, funcobj) @393
+     module = self.getparent(Module).obj
+     clscol = self.getparent(Class)
+     cls = clscol and clscol.obj or None
+     …
+     definition = FunctionDefinition(name=name, parent=self, callobj=funcobj)
+     fixtureinfo = fm.getfixtureinfo(definition, funcobj, cls)
+     metafunc = Metafunc(definition, fixtureinfo, self.config, cls=cls, module=module)
+     …
+     if hasattr(module, 'pytest_generate_tests'):
+      …
+     if hasattr(cls, 'pytest_generate_tests'):
+      …
+     if methods:
+      …
+     else:
+      …
+     if not metafunc._calls:
+      …
+     else:
+      …
+- Module (nodes.File, PyCollector) @441 # Collector for test classes and functions.
+  - _getobj (self) @444
+  - collect (self) @447
+  - _inject_setup_module_fixture (self) @453 # Injects a hidden autouse, module scoped fixture into the collected module object
+  - _inject_setup_function_fixture (self) @481 # Injects a hidden autouse, function scoped fixture into the collected module object
+  - _importtestmodule (self) @508
+     importmode = self.config.getoption('--import-mode')
+     try:
+      …
+     except SyntaxError:
+      …
+     except self.fspath.ImportMismatchError:
+      …
+     except ImportError:
+      …
+     except _pytest.runner.Skipped as e:
+      …
+     self.config.pluginmanager.consider_module(mod)
+     return mod
+- Package (Module) @559
+  - __init__ (self, fspath, parent=None, config=None, session=None, nodeid=None) @560
+  - setup (self) @570
+     setup_module = _get_non_fixture_func(self.obj, 'setUpModule')
+     if setup_module is None:
+      …
+     if setup_module is not None:
+      …
+     teardown_module = _get_non_fixture_func(self.obj, 'tearDownModule')
+     if teardown_module is None:
+      …
+     if teardown_module is not None:
+      …
+  - _recurse (self, dirpath) @586
+  - gethookproxy (self, fspath) @599
+     …
+     my_conftestmodules = pm._getconftestmodules(fspath)
+     remove_mods = pm._conftest_plugins.difference(my_conftestmodules)
+     if remove_mods:
+      …
+     else:
+      …
+     return proxy
+  - _collectfile (self, path, handle_dupes=True) @613
+  - isinitpath (self, path) @639
+  - collect (self) @642
+     this_path = self.fspath.dirpath()
+     init_module = this_path.join('__init__.py')
+     if init_module.check(file=1) and path_matches_patterns(init_module, self.config.getini(…)):
+      …
+     pkg_prefixes = set()
+     for path in this_path.visit(rec=self._recurse, bf=True, sort=True):
+      …
+- _get_xunit_setup_teardown (holder, attr_name, param_obj=None) @674 # Return a callable to perform xunit-style setup or teardown if
+   param_obj = param_obj if param_obj is not None else holder
+   result = _get_non_fixture_func(holder, attr_name)
+   if result is not None:
+    …
+- _call_with_optional_argument (func, arg) @695 # Call the given function with the given argument if func accepts one argument, otherwise
+   …
+   if inspect.ismethod(func):
+    …
+   if arg_count:
+    …
+   else:
+    …
+- _get_non_fixture_func (obj, name) @707 # Return the attribute from the given object to be used as a setup/teardown
+   meth = getattr(obj, name, None)
+   if fixtures.getfixturemarker(meth) is None:
+    …
+- Class (PyCollector) @717 # Collector for test methods.
+  - collect (self) @720
+  - _inject_setup_class_fixture (self) @745 # Injects a hidden autouse, class scoped fixture into the collected class object
+  - _inject_setup_method_fixture (self) @769 # Injects a hidden autouse, function scoped fixture into the collected class object
+- Instance (PyCollector) @795
+  - _getobj (self) @801
+  - collect (self) @804
+  - newinstance (self) @808
+- FunctionMixin (PyobjMixin) @813 # mixin for the code common to Function and Generator.
+  - setup (self) @817 # perform setup for this test function.
+  - _prunetraceback (self, excinfo) @823
+  - repr_failure (self, excinfo, outerr=None) @844
+- hasinit (obj) @852
+- hasnew (obj) @858
+- CallSpec2 (object) @864
+  - __init__ (self, metafunc) @865
+  - copy (self) @876
+  - _checkargnotcontained (self, arg) @888
+  - getparam (self, name) @892
+  - id (self) @901 [property]
+     @property
+  - setmulti2 (self, valtypes, argnames, valset, id, marks, scopenum, param_index) @904
+     for (arg, val) in zip(argnames, valset):
+      …
+     self._idlist.append(id)
+     self.marks.extend(normalize_mark_list(marks))
+  - setall (self, funcargs, id, param) @914
+- Metafunc (fixtures.FuncargnamesCompatAttr) @927 # Metafunc objects are passed to the :func:`pytest_generate_tests <_pytest.hookspec.pytest_generate_tests>` hook.
+  - __init__ (self, definition, fixtureinfo, config, cls=None, module=None) @935
+     assert isinstance(definition, FunctionDefinition) or type(definition).__name__ == 'DefinitionMock'
+     …
+     self._ids = set()
+     …
+  - parametrize (self, argnames, argvalues, indirect=False, ids=None, scope=None) @961 # Add new invocations to the underlying test function using the list
+     …
+     (argnames, parameters) = ParameterSet._for_parametrize(argnames, argvalues, self.function, self.config, function_definition=self.definition)
+     …
+     if scope is None:
+      …
+     self._validate_if_using_arg_names(argnames, indirect)
+     arg_values_types = self._resolve_arg_value_types(argnames, indirect)
+     ids = self._resolve_arg_ids(argnames, ids, parameters, item=self.definition)
+     scopenum = scope2index(scope, descr='parametrize()…'.format(…))
+     …
+     for callspec in self._calls or [CallSpec2(self)]:
+      …
+     …
+  - _resolve_arg_ids (self, argnames, ids, parameters, item) @1043 # Resolves the actual ids for the given argnames, based on the ``ids`` parameter given
+     …
+     if callable(ids):
+      …
+     if ids:
+      …
+     ids = idmaker(argnames, parameters, idfn, ids, self.config, item=item)
+     return ids
+  - _resolve_arg_value_types (self, argnames, indirect) @1075 # Resolves if each parametrized argument must be considered a parameter to a fixture or a "funcarg"
+  - _validate_if_using_arg_names (self, argnames, indirect) @1104 # Check if all argnames are being used, by default values, or directly/indirectly.
+- _find_parametrized_scope (argnames, arg2fixturedefs, indirect) @1134 # Find the most appropriate scope for a parametrized call based on its arguments.
+   …
+   if isinstance(indirect, (list, tuple)):
+    …
+   else:
+    …
+   if all_arguments_are_fixtures:
+    …
+   return 'function'
+- _ascii_escaped_by_config (val, config) @1167
+- _idval (val, argname, idx, idfn, item, config) @1177
+   if idfn:
+    …
+   elif config:
+    …
+   if isinstance(val, STRING_TYPES):
+    …
+   elif isinstance(val, (float, int, bool, NoneType)):
+    …
+   elif isinstance(val, REGEX_TYPE):
+    …
+   elif enum is not None and isinstance(val, enum.Enum):
+    …
+   elif (isclass(val) or isfunction(val)) and hasattr(val, '__name__'):
+    …
+   return str(argname) + str(idx)
+- _idvalset (idx, parameterset, argnames, idfn, ids, item, config) @1210
+- idmaker (argnames, parametersets, idfn=None, ids=None, config=None, item=None) @1223
+   ids = [_idvalset(valindex, parameterset, argnames, idfn, ids, con…
+   if len(set(ids)) != len(ids):
+    …
+   return ids
+- show_fixtures_per_test (config) @1239
+- _show_fixtures_per_test (config, session) @1245
+   …
+   session.perform_collect()
+   curdir = py.path.local()
+   tw = _pytest.config.create_terminal_writer(config)
+   verbose = config.getvalue('verbose')
+   def get_best_relpath(…):
+    …
+   def write_fixture(…):
+    …
+   def write_item(…):
+    …
+   for session_item in session.items:
+    …
+- showfixtures (config) @1297
+- _showfixtures_main (config, session) @1303
+- write_docstring (tw, doc, indent=" ") @1358
+- Function (FunctionMixin, nodes.Item, fixtures.FuncargnamesCompatAttr) @1373 # a Function Item is responsible for setting up and executing a
+  - __init__ ( self, name, parent, args=None, config=None, callspec=None, callobj=NOTSET, keywords=None, session=None, fixtureinfo=None, originalname=None, ) @1381
+     super(Function, self).__init__(name, parent, config=config, session=session)
+     …
+     if callobj is not NOTSET:
+      …
+     self.keywords.update(self.obj.__dict__)
+     self.own_markers.extend(get_unpacked_marks(self.obj))
+     if callspec:
+      …
+     if keywords:
+      …
+     self.keywords.update(dict.fromkeys(…))
+     if fixtureinfo is None:
+      …
+     …
+     self._initrequest()
+     …
+  - _initrequest (self) @1442
+  - function (self) @1447 [property] # underlying python 'function' object
+     @property
+  - _getobj (self) @1451
+  - _pyfuncitem (self) @1459 [property] # (compatonly) for code expecting pytest-2.2 style request objects
+     @property
+  - runtest (self) @1463 # execute the underlying test function.
+  - setup (self) @1467
+- FunctionDefinition (Function) @1472 # internal hack until we get actual definition nodes instead of the
+  - runtest (self) @1478
+=== CALL: sed -n '1303,1355p' /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: sed -n '1303,1355p' /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py: No such file or directory

@@ -1,0 +1,4 @@
+=== CALL: find /tmp/swb/pytest-dev__pytest-7373 -name '*.py' -type f | grep -E '(mark|eval|skip)' | head -20 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/pytest-dev__pytest-7373 -name '*.py' -type f | grep -E '(mark|eval|skip)' | head -20: No such file or directory
+=== CALL: searchname /tmp/swb/pytest-dev__pytest-7373 'cached_eval|MarkEvaluator' ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: searchname /tmp/swb/pytest-dev__pytest-7373 'cached_eval|MarkEvaluator': No such file or directory

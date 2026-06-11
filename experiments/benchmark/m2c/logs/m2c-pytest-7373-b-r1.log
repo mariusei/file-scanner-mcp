@@ -1,0 +1,193 @@
+=== CALL: find /tmp/swb/pytest-dev__pytest-7373 -name '*.py' | xargs grep -l 'cached_eval\|MarkEvaluator' | head -20 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/pytest-dev__pytest-7373 -name '*.py' | xargs grep -l 'cached_eval\|MarkEvaluator' | head -20: No such file or directory
+=== CALL: find /tmp/swb/pytest-dev__pytest-7373 -type f -name '*.py' -path '*/mark*' | head -20 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/pytest-dev__pytest-7373 -type f -name '*.py' -path '*/mark*' | head -20: No such file or directory
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-7373 cached_eval|MarkEvaluator ===
+18 hits in 16 structures for /cached_eval|MarkEvaluator/
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/skipping.py
+- (module level) @8-8  (2 hits)
+   8 | from _pytest.mark.evaluate import MarkEvaluator
+   20 | evalxfail_key = StoreKey[MarkEvaluator]()
+- pytest_runtest_setup (item: Item) -> None @84-102  (2 hits)
+   87 | eval_skipif = MarkEvaluator(item, "skipif")
+   101 | item._store[evalxfail_key] = MarkEvaluator(item, "xfail")
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21-31
+   21 | def cached_eval(config: Config, expr: str, d: Dict[str, object]) -> Any:
+- MarkEvaluator @34-135
+   34 | class MarkEvaluator:
+- MarkEvaluator > _istrue (self) -> bool @82-121
+   101 | result = cached_eval(self.item.config, expr, d)
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/announce/release-2.3.5.rst
+- (module level) @96-96
+   96 | - fix issue266 - accept unicode in MarkEvaluator expressions
+
+/private/tmp/swb/pytest-dev__pytest-7373/doc/en/changelog.rst
+- (module level) @6756-6756
+   6756 | - fix issue266 - accept unicode in MarkEvaluator expressions
+
+/private/tmp/swb/pytest-dev__pytest-7373/testing/test_skipping.py
+- (module level) @5-5
+   5 | from _pytest.skipping import MarkEvaluator
+- TestEvaluator > test_no_marker (self, testdir) @10-14
+   12 | evalskipif = MarkEvaluator(item, "skipif")
+- TestEvaluator > test_marked_no_args (self, testdir) @16-30
+   25 | ev = MarkEvaluator(item, "xyz")
+- TestEvaluator > test_marked_one_arg (self, testdir) @32-45
+   41 | ev = MarkEvaluator(item, "xyz")
+- TestEvaluator > test_marked_one_arg_with_reason (self, testdir) @47-61
+   56 | ev = MarkEvaluator(item, "xyz")
+- TestEvaluator > test_marked_one_arg_twice (self, testdir) @63-83
+   79 | ev = MarkEvaluator(item, "skipif")
+- TestEvaluator > test_marked_one_arg_twice2 (self, testdir) @85-99
+   95 | ev = MarkEvaluator(item, "skipif")
+- TestEvaluator > test_marked_skip_with_not_string (self, testdir) -> None @101-116
+   110 | ev = MarkEvaluator(item, "skipif")
+- TestEvaluator > test_skipif_class (self, testdir) @118-132
+   129 | ev = MarkEvaluator(item, "skipif")
+
+leads (called in hits, defined elsewhere): MarkEvaluator → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py@34, iter_markers → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/nodes.py@285, setdefault → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/store.py@107, append → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/junitxml.py@116
+=== CALL: scantool scanfile /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py 1500 ===
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+   …
+   evalcache = config._store.setdefault(evalcache_key, default)
+   try:
+    return evalcache[expr]
+   except KeyError:
+    …
+    exprcode = _pytest._code.compile(expr, mode='eval')
+    evalcache[expr], x = eval(exprcode, d)
+    return x
+- MarkEvaluator @34
+  - __init__ (self, item: Item, name: str) -> None @35
+  - __bool__ (self) -> bool @41
+     return bool(self._get_marks())
+  - wasvalid (self) -> bool @45
+     return not hasattr(self, 'exc')
+  - _get_marks (self) -> List[Mark] @48
+     return list(self.item.iter_markers(name=self._mark_name))
+  - invalidraise (self, exc) -> Optional[bool] @51
+     raises = self.get('raises')
+     if not raises:
+      return None
+     return not isinstance(exc, raises)
+  - istrue (self) -> bool @57
+     try:
+      return self._istrue()
+     except TEST_OUTCOME:
+      self.exc = sys.exc_info()
+      if isinstance(self.exc[1], SyntaxError):
+       assert self.exc[1].offset is not None
+       msg = [' ' * (self.exc[1].offset + 4) + '^']
+       msg.append('SyntaxError: invalid syntax')
+      else:
+       msg = traceback.format_exception_only(*self.exc[:2])
+      fail('Error evaluat…' % (self._mark_name, self.expr, '\n'.join(…)), pytrace=False)
+  - _getglobals (self) -> Dict[str, object] @76
+     …
+     if hasattr(self.item, 'obj'):
+      d.update(self.item.obj.__globals__)  # type: ignore[attr-defined] # noqa: F821
+     return d
+  - _istrue (self) -> bool @82
+     if hasattr(self, 'result'):
+      result = getattr(self, 'result')  # type: bool
+      return result
+     self._marks = self._get_marks()
+     if self._marks:
+      …
+      for mark in self._marks:
+       …
+     return False
+  - get (self, attr, default=None) @123
+     if self._mark is None:
+      return default
+     return self._mark.kwargs.get(attr, default)
+  - getexplanation (self) @128
+     expl = getattr(self, 'reason', None) or self.get('reason', None)
+     if not expl:
+      if not hasattr(self, 'expr'):
+       …
+      else:
+       …
+     return expl
+=== CALL: scantool focusread /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py cached_eval ===
+focus: cached_eval @21-31
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+   21 | def cached_eval(config: Config, expr: str, d: Dict[str, object]) -> Any:
+   22 |     default = {}  # type: Dict[str, object]
+   23 |     evalcache = config._store.setdefault(evalcache_key, default)
+   24 |     try:
+   25 |         return evalcache[expr]
+   26 |     except KeyError:
+   27 |         import _pytest._code
+   28 | 
+   29 |         exprcode = _pytest._code.compile(expr, mode="eval")
+   30 |         evalcache[expr] = x = eval(exprcode, d)
+   31 |         return x
+- MarkEvaluator @34
+=== CALL: scantool focusread /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py MarkEvaluator._istrue ===
+focus: MarkEvaluator._istrue @82-121
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+- MarkEvaluator @34
+  - __init__ (self, item: Item, name: str) -> None @35
+  - __bool__ (self) -> bool @41
+  - wasvalid (self) -> bool @45
+  - _get_marks (self) -> List[Mark] @48
+  - invalidraise (self, exc) -> Optional[bool] @51
+  - istrue (self) -> bool @57
+  - _getglobals (self) -> Dict[str, object] @76
+  - _istrue (self) -> bool @82
+     82 |     def _istrue(self) -> bool:
+     83 |         if hasattr(self, "result"):
+     84 |             result = getattr(self, "result")  # type: bool
+     85 |             return result
+     86 |         self._marks = self._get_marks()
+     87 | 
+     88 |         if self._marks:
+     89 |             self.result = False
+     90 |             for mark in self._marks:
+     91 |                 self._mark = mark
+     92 |                 if "condition" not in mark.kwargs:
+     93 |                     args = mark.args
+     94 |                 else:
+     95 |                     args = (mark.kwargs["condition"],)
+     96 | 
+     97 |                 for expr in args:
+     98 |                     self.expr = expr
+     99 |                     if isinstance(expr, str):
+     100 |                         d = self._getglobals()
+     101 |                         result = cached_eval(self.item.config, expr, d)
+     102 |                     else:
+     103 |                         if "reason" not in mark.kwargs:
+     104 |                             # XXX better be checked at collection time
+     105 |                             msg = (
+     106 |                                 "you need to specify reason=STRING "
+     107 |                                 "when using booleans as conditions."
+     108 |                             )
+     109 |                             fail(msg)
+     110 |                         result = bool(expr)
+     111 |                     if result:
+     112 |                         self.result = True
+     113 |                         self.reason = mark.kwargs.get("reason", None)
+     114 |                         self.expr = expr
+     115 |                         return self.result
+     116 | 
+     117 |                 if not args:
+     118 |                     self.result = True
+     119 |                     self.reason = mark.kwargs.get("reason", None)
+     120 |                     return self.result
+     121 |         return False
+  - get (self, attr, default=None) @123
+  - getexplanation (self) @128

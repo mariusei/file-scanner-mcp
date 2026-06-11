@@ -1,0 +1,102 @@
+=== CALL: search /tmp/swb/pytest-dev__pytest-5221 _showfixtures ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: search: command not found
+=== CALL: searchname /tmp/swb/pytest-dev__pytest-5221 _showfixtures ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: searchname: command not found
+=== CALL: preview /tmp/swb/pytest-dev__pytest-5221 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: preview: command not found
+=== CALL: grep -r _showfixtures_main /tmp/swb/pytest-dev__pytest-5221 ===
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:    return wrap_session(config, _showfixtures_main)
+/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py:def _showfixtures_main(config, session):
+=== CALL: sed -n 1600,1750p /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py ===
+=== CALL: grep -n _showfixtures_main\|no docstring\|verbosity\|skip /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py ===
+46:from _pytest.outcomes import skip
+170:        msg = "Coroutine functions are not natively supported and have been skipped.\n"
+176:        skip(msg="coroutine function and no async plugin installed (see warnings)")
+550:                "Using pytest.skip outside of a test is not allowed. "
+551:                "To decorate a test function, use the @pytest.mark.skip "
+552:                "or @pytest.mark.skipif decorators instead, and to skip a "
+553:                "module use `pytestmark = pytest.mark.{skip,skipif}."
+651:            # We will visit our own __init__.py file, in which case we skip it.
+1271:            tw.line("    no docstring available", red=True)
+1300:    return wrap_session(config, _showfixtures_main)
+1303:def _showfixtures_main(config, session):
+1355:            tw.line("    %s: no docstring available" % (loc,), red=True)
+=== CALL: sed -n 1303,1380p /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py ===
+def _showfixtures_main(config, session):
+    import _pytest.config
+
+    session.perform_collect()
+    curdir = py.path.local()
+    tw = _pytest.config.create_terminal_writer(config)
+    verbose = config.getvalue("verbose")
+
+    fm = session._fixturemanager
+
+    available = []
+    seen = set()
+
+    for argname, fixturedefs in fm._arg2fixturedefs.items():
+        assert fixturedefs is not None
+        if not fixturedefs:
+            continue
+        for fixturedef in fixturedefs:
+            loc = getlocation(fixturedef.func, curdir)
+            if (fixturedef.argname, loc) in seen:
+                continue
+            seen.add((fixturedef.argname, loc))
+            available.append(
+                (
+                    len(fixturedef.baseid),
+                    fixturedef.func.__module__,
+                    curdir.bestrelpath(loc),
+                    fixturedef.argname,
+                    fixturedef,
+                )
+            )
+
+    available.sort()
+    currentmodule = None
+    for baseid, module, bestrel, argname, fixturedef in available:
+        if currentmodule != module:
+            if not module.startswith("_pytest."):
+                tw.line()
+                tw.sep("-", "fixtures defined from %s" % (module,))
+                currentmodule = module
+        if verbose <= 0 and argname[0] == "_":
+            continue
+        if verbose > 0:
+            funcargspec = "%s -- %s" % (argname, bestrel)
+        else:
+            funcargspec = argname
+        tw.line(funcargspec, green=True)
+        loc = getlocation(fixturedef.func, curdir)
+        doc = fixturedef.func.__doc__ or ""
+        if doc:
+            write_docstring(tw, doc)
+        else:
+            tw.line("    %s: no docstring available" % (loc,), red=True)
+
+
+def write_docstring(tw, doc, indent="    "):
+    doc = doc.rstrip()
+    if "\n" in doc:
+        firstline, rest = doc.split("\n", 1)
+    else:
+        firstline, rest = doc, ""
+
+    if firstline.strip():
+        tw.line(indent + firstline.strip())
+
+    if rest:
+        for line in dedent(rest).split("\n"):
+            tw.write(indent + line + "\n")
+
+
+class Function(FunctionMixin, nodes.Item, fixtures.FuncargnamesCompatAttr):
+    """ a Function Item is responsible for setting up and executing a
+    Python test function.
+    """
+
+    # disable since functions handle it themselves
+    _ALLOW_MARKERS = False
+

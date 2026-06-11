@@ -1,0 +1,174 @@
+=== CALL: find /tmp/swb/pytest-dev__pytest-7373 -type f -name '*.py' | head -20 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/pytest-dev__pytest-7373 -type f -name '*.py' | head -20: No such file or directory
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-7373 cached_eval ===
+2 hits in 2 structures for /cached_eval/
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21-31
+   21 | def cached_eval(config: Config, expr: str, d: Dict[str, object]) -> Any:
+- MarkEvaluator > _istrue (self) -> bool @82-121
+   101 | result = cached_eval(self.item.config, expr, d)
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/store.py@107
+=== CALL: scantool scanfile /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py 1500 ===
+evaluate.py (1-135)
+- file-info: 4.5KB modified: 2026-06-10 23:49 [ts:1781128188] churn: 1 commits/90d
+- import statements @1
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21
+   …
+   evalcache = config._store.setdefault(evalcache_key, default)
+   try:
+    return evalcache[expr]
+   except KeyError:
+    …
+    exprcode = _pytest._code.compile(expr, mode='eval')
+    evalcache[expr], x = eval(exprcode, d)
+    return x
+- MarkEvaluator @34
+  - __init__ (self, item: Item, name: str) -> None @35
+  - __bool__ (self) -> bool @41
+     return bool(self._get_marks())
+  - wasvalid (self) -> bool @45
+     return not hasattr(self, 'exc')
+  - _get_marks (self) -> List[Mark] @48
+     return list(self.item.iter_markers(name=self._mark_name))
+  - invalidraise (self, exc) -> Optional[bool] @51
+     raises = self.get('raises')
+     if not raises:
+      return None
+     return not isinstance(exc, raises)
+  - istrue (self) -> bool @57
+     try:
+      return self._istrue()
+     except TEST_OUTCOME:
+      self.exc = sys.exc_info()
+      if isinstance(self.exc[1], SyntaxError):
+       assert self.exc[1].offset is not None
+       msg = [' ' * (self.exc[1].offset + 4) + '^']
+       msg.append('SyntaxError: invalid syntax')
+      else:
+       msg = traceback.format_exception_only(*self.exc[:2])
+      fail('Error evaluat…' % (self._mark_name, self.expr, '\n'.join(…)), pytrace=False)
+  - _getglobals (self) -> Dict[str, object] @76
+     …
+     if hasattr(self.item, 'obj'):
+      d.update(self.item.obj.__globals__)  # type: ignore[attr-defined] # noqa: F821
+     return d
+  - _istrue (self) -> bool @82
+     if hasattr(self, 'result'):
+      result = getattr(self, 'result')  # type: bool
+      return result
+     self._marks = self._get_marks()
+     if self._marks:
+      …
+      for mark in self._marks:
+       …
+     return False
+  - get (self, attr, default=None) @123
+     if self._mark is None:
+      return default
+     return self._mark.kwargs.get(attr, default)
+  - getexplanation (self) @128
+     expl = getattr(self, 'reason', None) or self.get('reason', None)
+     if not expl:
+      if not hasattr(self, 'expr'):
+       …
+      else:
+       …
+     return expl
+=== CALL: cat /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: cat /tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py: No such file or directory
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-7373 evalcache_key ===
+2 hits in 2 structures for /evalcache_key/
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py
+- (module level) @18-18
+   18 | evalcache_key = StoreKey[Dict[str, Any]]()
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21-31
+   23 | evalcache = config._store.setdefault(evalcache_key, default)
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/store.py@107
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-7373 _getglobals|config._store ===
+39 hits in 23 structures for /_getglobals|config._store/
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/junitxml.py
+- pytest_configure (config: Config) -> None @429-446  (2 hits)
+   437 | config._store[xml_key] = LogXML(
+   446 | config.pluginmanager.register(config._store[xml_key])
+- pytest_unconfigure (config: Config) -> None @449-453  (2 hits)
+   450 | xml = config._store.get(xml_key, None)
+   452 | del config._store[xml_key]
+- _warn_incompatibility_with_xunit2 ( request: FixtureRequest, fixture_name: str ) -> None @279-293
+   285 | xml = request.config._store.get(xml_key, None)
+- record_xml_attribute (request: FixtureRequest) @318-342
+   337 | xml = request.config._store.get(xml_key, None)
+- record_testsuite_property (request: FixtureRequest) @355-381
+   378 | xml = request.config._store.get(xml_key, None)
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/assertion/__init__.py
+- install_importhook (config: Config) -> rewrite.AssertionRewritingHook @91-104  (4 hits)
+   93 | config._store[assertstate_key] = AssertionState(config, "rewrite")
+   94 | config._store[assertstate_key].hook = hook = rewrite.AssertionRewritingHook(config)
+   96 | config._store[assertstate_key].trace("installed rewrite import hook")
+   99 | hook = config._store[assertstate_key].hook
+- pytest_collection (session: "Session") -> None @107-114
+   111 | assertstate = session.config._store.get(assertstate_key, None)
+- pytest_sessionfinish (session: "Session") -> None @172-176
+   173 | assertstate = session.config._store.get(assertstate_key, None)
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/faulthandler.py
+- FaultHandlerHooks > pytest_configure (self, config: Config) -> None @53-58  (2 hits)
+   57 | config._store[fault_handler_stderr_key] = open(stderr_fd_copy, "w")
+   58 | faulthandler.enable(file=config._store[fault_handler_stderr_key])
+- FaultHandlerHooks > pytest_unconfigure (self, config: Config) -> None @60-70  (2 hits)
+   68 | config._store[fault_handler_stderr_key].close()
+   69 | del config._store[fault_handler_stderr_key]
+- FaultHandlerHooks > pytest_runtest_protocol (self, item: Item) -> Generator[None, None, None] @87-99
+   89 | stderr = item.config._store[fault_handler_stderr_key]
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/pastebin.py
+- pytest_unconfigure (config: Config) -> None @52-66  (3 hits)
+   53 | if pastebinfile_key in config._store:
+   54 | pastebinfile = config._store[pastebinfile_key]
+   59 | del config._store[pastebinfile_key]
+- pytest_configure (config: Config) -> None @32-49  (2 hits)
+   40 | config._store[pastebinfile_key] = tempfile.TemporaryFile("w+b")
+   47 | config._store[pastebinfile_key].write(s)
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/resultlog.py
+- pytest_configure (config: Config) -> None @31-45  (2 hits)
+   39 | config._store[resultlog_key] = ResultLog(config, logfile)
+   40 | config.pluginmanager.register(config._store[resultlog_key])
+- pytest_unconfigure (config: Config) -> None @48-53  (2 hits)
+   49 | resultlog = config._store.get(resultlog_key, None)
+   52 | del config._store[resultlog_key]
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/evaluate.py
+- cached_eval (config: Config, expr: str, d: Dict[str, object]) -> Any @21-31
+   23 | evalcache = config._store.setdefault(evalcache_key, default)
+- MarkEvaluator > _getglobals (self) -> Dict[str, object] @76-80
+   76 | def _getglobals(self) -> Dict[str, object]:
+- MarkEvaluator > _istrue (self) -> bool @82-121
+   100 | d = self._getglobals()
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/assertion/rewrite.py
+- AssertionRewritingHook > find_spec ( self, name: str, path: Optional[Sequence[Union[str, bytes]]] = None, target: Optional[types.ModuleType] = None, ) -> Optional[importlib.machinery.ModuleSpec] @82-123
+   90 | state = self.config._store[assertstate_key]
+- AssertionRewritingHook > exec_module (self, module: types.ModuleType) -> None @130-170
+   134 | state = self.config._store[assertstate_key]
+
+/private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/mark/__init__.py
+- pytest_configure (config: Config) -> None @263-273
+   264 | config._store[old_mark_config_key] = MARK_GEN._config
+- pytest_unconfigure (config: Config) -> None @276-277
+   277 | MARK_GEN._config = config._store.get(old_mark_config_key, None)
+
+/private/tmp/swb/pytest-dev__pytest-7373/testing/test_resultlog.py
+- test_no_resultlog_on_workers (testdir) @180-193  (5 hits)
+   183 | assert resultlog_key not in config._store
+   185 | assert resultlog_key in config._store
+   187 | assert resultlog_key not in config._store
+   191 | assert resultlog_key not in config._store
+   +1 more in this structure
+
+leads (called in hits, defined elsewhere): getini → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/config/__init__.py@1165, set_session → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/assertion/rewrite.py@75, _issue_warning_captured → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/warnings.py@193, register → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/config/__init__.py@392, PytestWarning → /private/tmp/swb/pytest-dev__pytest-7373/src/_pytest/warning_types.py@13

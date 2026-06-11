@@ -1,0 +1,245 @@
+=== CALL: scantool search /tmp/swb/pallets__flask-4045 add_url_rule ===
+82 hits in 38 structures for /add_url_rule/
+
+/private/tmp/swb/pallets__flask-4045/docs/views.rst
+- (module level) @37-37  (12 hits)
+   37 | app.add_url_rule('/users/', view_func=ShowUsers.as_view('show_users'))
+   87 | app.add_url_rule('/about', view_func=RenderTemplateView.as_view(
+   95 | :meth:`~flask.Flask.add_url_rule`.  That however also means that you would
+   109 | app.add_url_rule('/myview', view_func=MyView.as_view('myview'))
+   +8 more in this structure
+
+/private/tmp/swb/pallets__flask-4045/docs/patterns/lazyloading.rst
+- (module level) @16-16  (7 hits)
+   16 | :meth:`~flask.Flask.add_url_rule` function.  Instead of using decorators,
+   50 | app.add_url_rule('/', view_func=views.index)
+   51 | app.add_url_rule('/user/<username>', view_func=views.user)
+   85 | app.add_url_rule('/',
+   +3 more in this structure
+
+/private/tmp/swb/pallets__flask-4045/src/flask/scaffold.py
+- Scaffold > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> t.Callable @439-504  (3 hits)
+   439 | def add_url_rule(
+   462 | app.add_url_rule("/", view_func=index)
+   482 | app.add_url_rule("/", endpoint="index")
+- Scaffold > route (self, rule: str, **options: t.Any) -> t.Callable @407-436  (2 hits)
+   409 | rule and options. Calls :meth:`add_url_rule`, which has more
+   433 | self.add_url_rule(rule, endpoint, f, **options)
+- Scaffold > endpoint (self, endpoint: str) -> t.Callable @506-527  (2 hits)
+   509 | :meth:`add_url_rule`.
+   513 | app.add_url_rule("/ex", endpoint="example")
+
+/private/tmp/swb/pallets__flask-4045/src/flask/blueprints.py
+- Blueprint > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @353-369  (3 hits)
+   353 | def add_url_rule(
+   360 | """Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+   369 | self.record(lambda s: s.add_url_rule(rule, endpoint, view_func, **options))
+- BlueprintSetupState > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @77-105  (2 hits)
+   77 | def add_url_rule(
+   99 | self.app.add_url_rule(
+- Blueprint > register (self, app: "Flask", options: dict) -> None @255-351
+   286 | state.add_url_rule(
+
+/private/tmp/swb/pallets__flask-4045/CHANGES.rst
+- (module level) @307-307  (5 hits)
+   307 | -   :meth:`~Flask.add_url_rule` accepts the
+   343 | :meth:`~Flask.add_url_rule`. :pr:`2316`
+   912 | ``add_url_rule`` function and can now also accept regular werkzeug
+   982 | -   The endpoint for the :meth:`flask.Module.add_url_rule` method is now
+   +1 more in this structure
+
+/private/tmp/swb/pallets__flask-4045/docs/api.rst
+- (module level) @602-602  (4 hits)
+   602 | 2.  You can use the :meth:`flask.Flask.add_url_rule` function.
+   677 | :meth:`~flask.Flask.add_url_rule` accept.  The only difference is that
+   713 | some defaults to :meth:`~flask.Flask.add_url_rule` or general behavior:
+   745 | app.add_url_rule('/', index)
+
+/private/tmp/swb/pallets__flask-4045/src/flask/app.py
+- Flask (Scaffold) @101-2076
+   356 | #: :meth:`add_url_rule`.  Defaults to :class:`werkzeug.routing.Rule`.
+- Flask > __init__ ( self, import_name: str, static_url_path: t.Optional[str] = None, static_folder: t.Optional[str] = "static", static_host: t.Optional[str] = None, host_matching: bool = False, subdomain_matching: bool = False, template_folder: t.Optional[str] = "templates", instance_path: t.Optional[str] = None, instance_relative_config: bool = False, root_path: t.Optional[str] = None, ) @386-522
+   513 | self.add_url_rule(
+- Flask > add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @1033-1089
+   1033 | def add_url_rule(
+
+/private/tmp/swb/pallets__flask-4045/src/flask/views.py
+- View @12-102  (2 hits)
+   16 | do not have to be passed to the :meth:`~flask.Flask.add_url_rule`
+   25 | app.add_url_rule('/hello/<name>', view_func=MyView.as_view('myview'))
+- MethodView (View) @132-157
+   145 | app.add_url_rule('/counter', view_func=CounterAPI.as_view('counter'))
+
+/private/tmp/swb/pallets__flask-4045/docs/tutorial/blog.rst
+- (module level) @46-46  (2 hits)
+   46 | app.add_url_rule('/', endpoint='index')
+   58 | ``index`` endpoint. :meth:`app.add_url_rule() <Flask.add_url_rule>`
+
+/private/tmp/swb/pallets__flask-4045/docs/patterns/favicon.rst
+- (module level) @27-27
+   27 | app.add_url_rule('/favicon.ico',
+
+/private/tmp/swb/pallets__flask-4045/docs/patterns/fileuploads.rst
+- (module level) @123-123
+   123 | app.add_url_rule(
+
+/private/tmp/swb/pallets__flask-4045/examples/tutorial/flaskr/__init__.py
+- create_app (test_config=None) @6-50
+   48 | app.add_url_rule("/", endpoint="index")
+
+/private/tmp/swb/pallets__flask-4045/tests/test_views.py
+- test_view_provide_automatic_options_attr () @101-138  (3 hits)
+   110 | app.add_url_rule("/", view_func=Index1.as_view("index"))
+   124 | app.add_url_rule("/", view_func=Index2.as_view("index"))
+   135 | app.add_url_rule("/", view_func=Index3.as_view("index"))
+- test_endpoint_override (app) @171-186  (2 hits)
+   180 | app.add_url_rule("/", view_func=Index.as_view("index"))
+   183 | app.add_url_rule("/", view_func=Index.as_view("index"))
+- test_basic_view (app) @17-25
+   24 | app.add_url_rule("/", view_func=Index.as_view("index"))
+- test_method_based_view (app) @28-38
+   36 | app.add_url_rule("/", view_func=Index.as_view("index"))
+- test_view_patching (app) @41-59
+   58 | app.add_url_rule("/", view_func=view)
+- test_view_inheritance (app, client) @62-77
+   74 | app.add_url_rule("/", view_func=BetterIndex.as_view("index"))
+- test_view_decorators (app, client) @80-98
+   95 | app.add_url_rule("/", view_func=Index.as_view("index"))
+- test_implicit_head (app, client) @141-152
+   146 | app.add_url_rule("/", view_func=Index.as_view("index"))
+- test_explicit_head (app, client) @155-168
+   163 | app.add_url_rule("/", view_func=Index.as_view("index"))
+- test_methods_var_inheritance (app, client) @189-204
+   200 | app.add_url_rule("/", view_func=ChildView.as_view("index"))
+- test_multiple_inheritance (app, client) @207-223
+   219 | app.add_url_rule("/", view_func=GetDeleteView.as_view("index"))
+- test_remove_method_from_parent (app, client) @226-242
+   238 | app.add_url_rule("/", view_func=View.as_view("index"))
+
+/private/tmp/swb/pallets__flask-4045/tests/test_basic.py
+- test_url_mapping (app, client) @158-191  (3 hits)
+   170 | app.add_url_rule("/", "index", index)
+   171 | app.add_url_rule("/more", "more", more, methods=["GET", "POST"])
+   175 | app.add_url_rule("/options", "options", options, methods=["options"])
+- test_provide_automatic_options_kwarg (app, client) @90-124  (2 hits)
+   97 | app.add_url_rule("/", view_func=index, provide_automatic_options=False)
+   98 | app.add_url_rule(
+- test_multi_route_class_views (app, client) @1921-1934  (2 hits)
+   1924 | app.add_url_rule("/", "index", self.index)
+   1925 | app.add_url_rule("/<test>/", "index", self.index)
+
+/private/tmp/swb/pallets__flask-4045/tests/test_blueprints.py
+- test_route_decorator_custom_endpoint_with_dots (app, client) @343-401  (3 hits)
+   377 | lambda: bp.add_url_rule("/bar/123", endpoint="bar.123", view_func=foo_foo_foo),
+   387 | AssertionError, lambda: bp.add_url_rule("/bar/123", view_func=foo_foo_foo)
+   390 | bp.add_url_rule(
+
+/private/tmp/swb/pallets__flask-4045/tests/test_helpers.py
+- TestUrlFor > test_url_with_method (self, app, req_ctx) @139-158  (3 hits)
+   152 | app.add_url_rule("/myview/", methods=["GET"], view_func=myview)
+   153 | app.add_url_rule("/myview/<int:id>", methods=["GET"], view_func=myview)
+   154 | app.add_url_rule("/myview/create", methods=["POST"], view_func=myview)
+
+/private/tmp/swb/pallets__flask-4045/tests/test_json.py
+- test_jsonify_basic_types (test_value, app, client) @69-74
+   71 | app.add_url_rule(url, url, lambda x=test_value: flask.jsonify(x))
+- test_jsonify_uuid_types (app, client) @175-187
+   180 | app.add_url_rule(url, url, lambda: flask.jsonify(x=test_uuid))
+
+leads (called in hits, defined elsewhere): endpoint → /private/tmp/swb/pallets__flask-4045/src/flask/wrappers.py@61, as_view → /private/tmp/swb/pallets__flask-4045/src/flask/views.py@69, setdefault → /private/tmp/swb/pallets__flask-4045/src/flask/sessions.py@85, _endpoint_from_view_func → /private/tmp/swb/pallets__flask-4045/src/flask/scaffold.py@738, update → /private/tmp/swb/pallets__flask-4045/examples/tutorial/flaskr/blog.py@88
+=== CALL: scantool focusread /tmp/swb/pallets__flask-4045/src/flask/blueprints.py Blueprint.add_url_rule ===
+focus: Blueprint.add_url_rule @353-369
+blueprints.py (1-542)
+- file-info: 20.7KB modified: 2026-06-10 23:49 [ts:1781128184] churn: 1 commits/90d
+- import statements @1
+- BlueprintSetupState @25 # Temporary holder object for registering a blueprint with the
+- Blueprint (Scaffold) @108 # Represents a blueprint, a collection of routes and other
+  - __init__ ( self, name: str, import_name: str, static_folder: t.Optional[str] = None, static_url_path: t.Optional[str] = None, template_folder: t.Optional[str] = None, url_prefix: t.Optional[str] = None, subdomain: t.Optional[str] = None, url_defaults: t.Optional[dict] = None, root_path: t.Optional[str] = None, cli_group: t.Optional[str] = _sentinel, # type: ignore ) @171
+  - _is_setup_finished (self) -> bool @203
+  - record (self, func: t.Callable) -> None @206 # Registers a function that is called when the blueprint is
+  - record_once (self, func: t.Callable) -> None @224 # Works like :meth:`record` but wraps the function in another
+  - make_setup_state ( self, app: "Flask", options: dict, first_registration: bool = False ) -> BlueprintSetupState @237 # Creates an instance of :meth:`~flask.blueprints.BlueprintSetupState`
+  - register_blueprint (self, blueprint: "Blueprint", **options: t.Any) -> None @246 # Register a :class:`~flask.Blueprint` on this blueprint. Keyword
+  - register (self, app: "Flask", options: dict) -> None @255 # Called by :meth:`Flask.register_blueprint` to register all
+  - add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @353 # Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+     353 |     def add_url_rule(
+     354 |         self,
+     355 |         rule: str,
+     356 |         endpoint: t.Optional[str] = None,
+     357 |         view_func: t.Optional[t.Callable] = None,
+     358 |         **options: t.Any,
+     359 |     ) -> None:
+     360 |         """Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+     361 |         the :func:`url_for` function is prefixed with the name of the blueprint.
+     362 |         """
+     363 |         if endpoint:
+     364 |             assert "." not in endpoint, "Blueprint endpoints should not contain dots"
+     365 |         if view_func and hasattr(view_func, "__name__"):
+     366 |             assert (
+     367 |                 "." not in view_func.__name__
+     368 |             ), "Blueprint view function name should not contain dots"
+     369 |         self.record(lambda s: s.add_url_rule(rule, endpoint, view_func, **options))
+  - app_template_filter (self, name: t.Optional[str] = None) -> t.Callable @371 # Register a custom template filter, available application wide.  Like
+  - add_app_template_filter ( self, f: TemplateFilterCallable, name: t.Optional[str] = None ) -> None @385 # Register a custom template filter, available application wide.  Like
+  - app_template_test (self, name: t.Optional[str] = None) -> t.Callable @401 # Register a custom template test, available application wide.  Like
+  - add_app_template_test ( self, f: TemplateTestCallable, name: t.Optional[str] = None ) -> None @417 # Register a custom template test, available application wide.  Like
+  - app_template_global (self, name: t.Optional[str] = None) -> t.Callable @435 # Register a custom template global, available application wide.  Like
+  - add_app_template_global ( self, f: TemplateGlobalCallable, name: t.Optional[str] = None ) -> None @451 # Register a custom template global, available application wide.  Like
+  - before_app_request (self, f: BeforeRequestCallable) -> BeforeRequestCallable @469 # Like :meth:`Flask.before_request`.  Such a function is executed
+  - before_app_first_request ( self, f: BeforeRequestCallable ) -> BeforeRequestCallable @478 # Like :meth:`Flask.before_first_request`.  Such a function is
+  - after_app_request (self, f: AfterRequestCallable) -> AfterRequestCallable @487 # Like :meth:`Flask.after_request` but for a blueprint.  Such a function
+  - teardown_app_request (self, f: TeardownCallable) -> TeardownCallable @496 # Like :meth:`Flask.teardown_request` but for a blueprint.  Such a
+  - app_context_processor ( self, f: TemplateContextProcessorCallable ) -> TemplateContextProcessorCallable @506 # Like :meth:`Flask.context_processor` but for a blueprint.  Such a
+  - app_errorhandler (self, code: t.Union[t.Type[Exception], int]) -> t.Callable @517 # Like :meth:`Flask.errorhandler` but for a blueprint.  This
+  - app_url_value_preprocessor ( self, f: URLValuePreprocessorCallable ) -> URLValuePreprocessorCallable @528 # Same as :meth:`url_value_preprocessor` but application wide.
+  - app_url_defaults (self, f: URLDefaultCallable) -> URLDefaultCallable @537 # Same as :meth:`url_defaults` but application wide.
+=== CALL: scantool focusread /tmp/swb/pallets__flask-4045/src/flask/blueprints.py Blueprint.record ===
+focus: Blueprint.record @206-222
+blueprints.py (1-542)
+- file-info: 20.7KB modified: 2026-06-10 23:49 [ts:1781128184] churn: 1 commits/90d
+- import statements @1
+- BlueprintSetupState @25 # Temporary holder object for registering a blueprint with the
+- Blueprint (Scaffold) @108 # Represents a blueprint, a collection of routes and other
+  - __init__ ( self, name: str, import_name: str, static_folder: t.Optional[str] = None, static_url_path: t.Optional[str] = None, template_folder: t.Optional[str] = None, url_prefix: t.Optional[str] = None, subdomain: t.Optional[str] = None, url_defaults: t.Optional[dict] = None, root_path: t.Optional[str] = None, cli_group: t.Optional[str] = _sentinel, # type: ignore ) @171
+  - _is_setup_finished (self) -> bool @203
+  - record (self, func: t.Callable) -> None @206 # Registers a function that is called when the blueprint is
+     206 |     def record(self, func: t.Callable) -> None:
+     207 |         """Registers a function that is called when the blueprint is
+     208 |         registered on the application.  This function is called with the
+     209 |         state as argument as returned by the :meth:`make_setup_state`
+     210 |         method.
+     211 |         """
+     212 |         if self._got_registered_once and self.warn_on_modifications:
+     213 |             from warnings import warn
+     214 | 
+     215 |             warn(
+     216 |                 Warning(
+     217 |                     "The blueprint was already registered once but is"
+     218 |                     " getting modified now. These changes will not show"
+     219 |                     " up."
+     220 |                 )
+     221 |             )
+     222 |         self.deferred_functions.append(func)
+  - record_once (self, func: t.Callable) -> None @224 # Works like :meth:`record` but wraps the function in another
+  - make_setup_state ( self, app: "Flask", options: dict, first_registration: bool = False ) -> BlueprintSetupState @237 # Creates an instance of :meth:`~flask.blueprints.BlueprintSetupState`
+  - register_blueprint (self, blueprint: "Blueprint", **options: t.Any) -> None @246 # Register a :class:`~flask.Blueprint` on this blueprint. Keyword
+  - register (self, app: "Flask", options: dict) -> None @255 # Called by :meth:`Flask.register_blueprint` to register all
+  - add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @353 # Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+  - app_template_filter (self, name: t.Optional[str] = None) -> t.Callable @371 # Register a custom template filter, available application wide.  Like
+  - add_app_template_filter ( self, f: TemplateFilterCallable, name: t.Optional[str] = None ) -> None @385 # Register a custom template filter, available application wide.  Like
+  - app_template_test (self, name: t.Optional[str] = None) -> t.Callable @401 # Register a custom template test, available application wide.  Like
+  - add_app_template_test ( self, f: TemplateTestCallable, name: t.Optional[str] = None ) -> None @417 # Register a custom template test, available application wide.  Like
+  - app_template_global (self, name: t.Optional[str] = None) -> t.Callable @435 # Register a custom template global, available application wide.  Like
+  - add_app_template_global ( self, f: TemplateGlobalCallable, name: t.Optional[str] = None ) -> None @451 # Register a custom template global, available application wide.  Like
+  - before_app_request (self, f: BeforeRequestCallable) -> BeforeRequestCallable @469 # Like :meth:`Flask.before_request`.  Such a function is executed
+  - before_app_first_request ( self, f: BeforeRequestCallable ) -> BeforeRequestCallable @478 # Like :meth:`Flask.before_first_request`.  Such a function is
+  - after_app_request (self, f: AfterRequestCallable) -> AfterRequestCallable @487 # Like :meth:`Flask.after_request` but for a blueprint.  Such a function
+  - teardown_app_request (self, f: TeardownCallable) -> TeardownCallable @496 # Like :meth:`Flask.teardown_request` but for a blueprint.  Such a
+  - app_context_processor ( self, f: TemplateContextProcessorCallable ) -> TemplateContextProcessorCallable @506 # Like :meth:`Flask.context_processor` but for a blueprint.  Such a
+  - app_errorhandler (self, code: t.Union[t.Type[Exception], int]) -> t.Callable @517 # Like :meth:`Flask.errorhandler` but for a blueprint.  This
+  - app_url_value_preprocessor ( self, f: URLValuePreprocessorCallable ) -> URLValuePreprocessorCallable @528 # Same as :meth:`url_value_preprocessor` but application wide.
+  - app_url_defaults (self, f: URLDefaultCallable) -> URLDefaultCallable @537 # Same as :meth:`url_defaults` but application wide.
+=== CALL: sed -n '353,369p' /tmp/swb/pallets__flask-4045/src/flask/blueprints.py ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: sed -n '353,369p' /tmp/swb/pallets__flask-4045/src/flask/blueprints.py: No such file or directory
+=== CALL: head -n 369 /tmp/swb/pallets__flask-4045/src/flask/blueprints.py | tail -n 17 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: head -n 369 /tmp/swb/pallets__flask-4045/src/flask/blueprints.py | tail -n 17: No such file or directory

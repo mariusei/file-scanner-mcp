@@ -1,0 +1,345 @@
+=== CALL: find /tmp/swb/psf__requests-2674 -name '*.py' | grep -i adapter ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/psf__requests-2674 -name '*.py' | grep -i adapter: No such file or directory
+=== CALL: scantool searchname /tmp/swb/psf__requests-2674 HTTPAdapter ===
+adapters.py (54-435)
+- HTTPAdapter (BaseAdapter) @54 # The built-in HTTP Adapter for urllib3.
+  - __init__ (self, pool_connections=DEFAULT_POOLSIZE, pool_maxsize=DEFAULT_POOLSIZE, max_retries=DEFAULT_RETRIES, pool_block=DEFAULT_POOLBLOCK) @83
+     if max_retries == DEFAULT_RETRIES:
+      self.max_retries = Retry(0, read=False)
+     else:
+      self.max_retries = Retry.from_int(max_retries)
+     …
+     super(HTTPAdapter, self).__init__()
+     …
+     self.init_poolmanager(pool_connections, pool_maxsize, block=pool_block)
+  - __getstate__ (self) @101
+     return dict(((attr, getattr(…)) for attr in self.__attrs__))
+  - __setstate__ (self, state) @105
+     …
+     for (attr, value) in state.items():
+      setattr(self, attr, value)
+     self.init_poolmanager(self._pool_connections, self._pool_maxsize, block=self._pool_block)
+  - init_poolmanager (self, connections, maxsize, block=DEFAULT_POOLBLOCK, **pool_kwargs) @117 # Initializes a urllib3 PoolManager.
+     …
+     self.poolmanager = PoolManager(num_pools=connections, maxsize=maxsize, block=block, strict=True, **pool_kwargs)
+  - proxy_manager_for (self, proxy, **proxy_kwargs) @137 # Return urllib3 ProxyManager for the given proxy.
+     if not proxy in self.proxy_manager:
+      proxy_headers = self.proxy_headers(proxy)
+      self.proxy_manager[proxy] = proxy_from_url(proxy, proxy_headers=proxy_headers, num_pool…
+     return self.proxy_manager[proxy]
+  - cert_verify (self, conn, url, verify, cert) @160 # Verify a SSL certificate. This method should not be called from user
+     if url.lower().startswith('https') and verify:
+      …
+      if verify is not True:
+       …
+      if not cert_loc:
+       …
+      if not cert_loc:
+       …
+      …
+     else:
+      …
+     if cert:
+      if not isinstance(cert, basestring):
+       …
+      else:
+       …
+  - build_response (self, req, resp) @197 # Builds a :class:`Response <requests.Response>` object from a urllib3
+     response = Response()
+     response.status_code = getattr(resp, 'status', None)
+     response.headers = CaseInsensitiveDict(getattr(resp, 'headers', {}))
+     response.encoding = get_encoding_from_headers(response.headers)
+     …
+     if isinstance(req.url, bytes):
+      response.url = req.url.decode('utf-8')
+     else:
+      …
+     extract_cookies_to_jar(response.cookies, req, resp)
+     …
+     return response
+  - get_connection (self, url, proxies=None) @233 # Returns a urllib3 connection for the given URL. This should not be
+     proxies = proxies or {}
+     proxy = proxies.get(urlparse(url.lower()).scheme)
+     if proxy:
+      proxy = prepend_scheme_if_needed(proxy, 'http')
+      proxy_manager = self.proxy_manager_for(proxy)
+      conn = proxy_manager.connection_from_url(url)
+     else:
+      parsed = urlparse(url)
+      url = parsed.geturl()
+      conn = self.poolmanager.connection_from_url(url)
+     return conn
+  - close (self) @256 # Disposes of any internal state.
+     self.poolmanager.clear()
+  - request_url (self, request, proxies) @264 # Obtain the url to use when making the final request.
+     proxies = proxies or {}
+     scheme = urlparse(request.url).scheme
+     proxy = proxies.get(scheme)
+     if proxy and scheme != 'https':
+      url = urldefragauth(request.url)
+     else:
+      …
+     return url
+  - add_headers (self, request, **kwargs) @288 # Add any headers needed by the connection. As of v2.0 this does
+  - proxy_headers (self, proxy) @302 # Returns a dictionary of the headers to add to any request sent
+     …
+     (username, password) = get_auth_from_url(proxy)
+     if username and password:
+      headers['Proxy-Authorization'] = _basic_auth_str(username, password)
+     return headers
+  - send (self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None) @324 # Sends PreparedRequest object. Returns Response object.
+     conn = self.get_connection(request.url, proxies)
+     self.cert_verify(conn, request.url, verify, cert)
+     url = self.request_url(request, proxies)
+     self.add_headers(request)
+     chunked = not (request.body is None or 'Content-Length' in request.headers)
+     if isinstance(timeout, tuple):
+      try:
+       …
+       timeout = TimeoutSauce(connect=connect, read=read)
+      except ValueError as e:
+       err = 'Invalid timeo…'.format(timeout)
+       raise ValueError(err)
+     else:
+      timeout = TimeoutSauce(connect=timeout, read=timeout)
+     try:
+      if not chunked:
+       resp = conn.urlopen(method=request.method, url=url, body=request.b…
+      else:
+       if hasattr(conn, 'proxy_pool'):
+        …
+       low_conn = conn._get_conn(timeout=DEFAULT_POOL_TIMEOUT)
+       try:
+        low_conn.putrequest(request.method, url, skip_accept_encoding=True)
+        for (header, value) in request.headers.items():
+         low_conn.putheader(header, value)
+        low_conn.endheaders()
+        for i in request.body:
+         low_conn.send(hex(len(i))[2:].encode('utf-8'))
+         low_conn.send(b'\r\n')
+         low_conn.send(i)
+         low_conn.send(b'\r\n')
+        low_conn.send(b'0\r\n\r\n')
+        r = low_conn.getresponse()
+        resp = HTTPResponse.from_httplib(r, pool=conn, connection=low_conn, preload_content=False, decode_content=False)
+       except:
+        low_conn.close()
+        raise
+     except (ProtocolError, socket.error) as err:
+      raise ConnectionError(err, request=request)
+     except MaxRetryError as e:
+      if isinstance(e.reason, ConnectTimeoutError):
+       raise ConnectTimeout(e, request=request)
+      if isinstance(e.reason, ResponseError):
+       raise RetryError(e, request=request)
+      raise ConnectionError(e, request=request)
+     except _ProxyError as e:
+      raise ProxyError(e)
+     except (_SSLError, _HTTPError) as e:
+      if isinstance(e, _SSLError):
+       raise SSLError(e, request=request)
+      elif isinstance(e, ReadTimeoutError):
+       raise ReadTimeout(e, request=request)
+      else:
+       raise
+     return self.build_response(request, resp)
+=== CALL: scantool focusread /tmp/swb/psf__requests-2674/requests/adapters.py HTTPAdapter.send ===
+focus: HTTPAdapter.send @324-435
+adapters.py (1-435)
+- file-info: 16.3KB modified: 2026-06-10 23:49 [ts:1781128186] churn: 1 commits/90d
+- import statements @11
+- BaseAdapter (object) @41 # The Base Transport Adapter
+- HTTPAdapter (BaseAdapter) @54 # The built-in HTTP Adapter for urllib3.
+  - __init__ (self, pool_connections=DEFAULT_POOLSIZE, pool_maxsize=DEFAULT_POOLSIZE, max_retries=DEFAULT_RETRIES, pool_block=DEFAULT_POOLBLOCK) @83
+  - __getstate__ (self) @101
+  - __setstate__ (self, state) @105
+  - init_poolmanager (self, connections, maxsize, block=DEFAULT_POOLBLOCK, **pool_kwargs) @117 # Initializes a urllib3 PoolManager.
+  - proxy_manager_for (self, proxy, **proxy_kwargs) @137 # Return urllib3 ProxyManager for the given proxy.
+  - cert_verify (self, conn, url, verify, cert) @160 # Verify a SSL certificate. This method should not be called from user
+  - build_response (self, req, resp) @197 # Builds a :class:`Response <requests.Response>` object from a urllib3
+  - get_connection (self, url, proxies=None) @233 # Returns a urllib3 connection for the given URL. This should not be
+  - close (self) @256 # Disposes of any internal state.
+  - request_url (self, request, proxies) @264 # Obtain the url to use when making the final request.
+  - add_headers (self, request, **kwargs) @288 # Add any headers needed by the connection. As of v2.0 this does
+  - proxy_headers (self, proxy) @302 # Returns a dictionary of the headers to add to any request sent
+  - send (self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None) @324 # Sends PreparedRequest object. Returns Response object.
+     324 |     def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
+     325 |         """Sends PreparedRequest object. Returns Response object.
+     326 | 
+     327 |         :param request: The :class:`PreparedRequest <PreparedRequest>` being sent.
+     328 |         :param stream: (optional) Whether to stream the request content.
+     329 |         :param timeout: (optional) How long to wait for the server to send
+     330 |             data before giving up, as a float, or a (`connect timeout, read
+     331 |             timeout <user/advanced.html#timeouts>`_) tuple.
+     332 |         :type timeout: float or tuple
+     333 |         :param verify: (optional) Whether to verify SSL certificates.
+     334 |         :param cert: (optional) Any user-provided SSL certificate to be trusted.
+     335 |         :param proxies: (optional) The proxies dictionary to apply to the request.
+     336 |         """
+     337 | 
+     338 |         conn = self.get_connection(request.url, proxies)
+     339 | 
+     340 |         self.cert_verify(conn, request.url, verify, cert)
+     341 |         url = self.request_url(request, proxies)
+     342 |         self.add_headers(request)
+     343 | 
+     344 |         chunked = not (request.body is None or 'Content-Length' in request.headers)
+     345 | 
+     346 |         if isinstance(timeout, tuple):
+     347 |             try:
+     348 |                 connect, read = timeout
+     349 |                 timeout = TimeoutSauce(connect=connect, read=read)
+     350 |             except ValueError as e:
+     351 |                 # this may raise a string formatting error.
+     352 |                 err = ("Invalid timeout {0}. Pass a (connect, read) "
+     353 |                        "timeout tuple, or a single float to set "
+     354 |                        "both timeouts to the same value".format(timeout))
+     355 |                 raise ValueError(err)
+     356 |         else:
+     357 |             timeout = TimeoutSauce(connect=timeout, read=timeout)
+     358 | 
+     359 |         try:
+     360 |             if not chunked:
+     361 |                 resp = conn.urlopen(
+     362 |                     method=request.method,
+     363 |                     url=url,
+     364 |                     body=request.body,
+     365 |                     headers=request.headers,
+     366 |                     redirect=False,
+     367 |                     assert_same_host=False,
+     368 |                     preload_content=False,
+     369 |                     decode_content=False,
+     370 |                     retries=self.max_retries,
+     371 |                     timeout=timeout
+     372 |                 )
+     373 | 
+     374 |             # Send the request.
+     375 |             else:
+     376 |                 if hasattr(conn, 'proxy_pool'):
+     377 |                     conn = conn.proxy_pool
+     378 | 
+     379 |                 low_conn = conn._get_conn(timeout=DEFAULT_POOL_TIMEOUT)
+     380 | 
+     381 |                 try:
+     382 |                     low_conn.putrequest(request.method,
+     383 |                                         url,
+     384 |                                         skip_accept_encoding=True)
+     385 | 
+     386 |                     for header, value in request.headers.items():
+     387 |                         low_conn.putheader(header, value)
+     388 | 
+     389 |                     low_conn.endheaders()
+     390 | 
+     391 |                     for i in request.body:
+     392 |                         low_conn.send(hex(len(i))[2:].encode('utf-8'))
+     393 |                         low_conn.send(b'\r\n')
+     394 |                         low_conn.send(i)
+     395 |                         low_conn.send(b'\r\n')
+     396 |                     low_conn.send(b'0\r\n\r\n')
+     397 | 
+     398 |                     r = low_conn.getresponse()
+     399 |                     resp = HTTPResponse.from_httplib(
+     400 |                         r,
+     401 |                         pool=conn,
+     402 |                         connection=low_conn,
+     403 |                         preload_content=False,
+     404 |                         decode_content=False
+     405 |                     )
+     406 |                 except:
+     407 |                     # If we hit any problems here, clean up the connection.
+     408 |                     # Then, reraise so that we can handle the actual exception.
+     409 |                     low_conn.close()
+     410 |                     raise
+     411 | 
+     412 |         except (ProtocolError, socket.error) as err:
+     413 |             raise ConnectionError(err, request=request)
+     414 | 
+     415 |         except MaxRetryError as e:
+     416 |             if isinstance(e.reason, ConnectTimeoutError):
+     417 |                 raise ConnectTimeout(e, request=request)
+     418 | 
+     419 |             if isinstance(e.reason, ResponseError):
+     420 |                 raise RetryError(e, request=request)
+     421 | 
+     422 |             raise ConnectionError(e, request=request)
+     423 | 
+     424 |         except _ProxyError as e:
+     425 |             raise ProxyError(e)
+     426 | 
+     427 |         except (_SSLError, _HTTPError) as e:
+     428 |             if isinstance(e, _SSLError):
+     429 |                 raise SSLError(e, request=request)
+     430 |             elif isinstance(e, ReadTimeoutError):
+     431 |                 raise ReadTimeout(e, request=request)
+     432 |             else:
+     433 |                 raise
+     434 | 
+     435 |         return self.build_response(request, resp)
+=== CALL: scantool scanfile /tmp/swb/psf__requests-2674/requests/adapters.py 300 ===
+adapters.py (1-435)
+- file-info: 16.3KB modified: 2026-06-10 23:49 [ts:1781128186] churn: 1 commits/90d
+- import statements @11
+- BaseAdapter (object) @41 # The Base Transport Adapter
+  - __init__ (self) @44
+  - send (self) @47
+  - close (self) @50
+- HTTPAdapter (BaseAdapter) @54 # The built-in HTTP Adapter for urllib3.
+  - __init__ (self, pool_connections=DEFAULT_POOLSIZE, pool_maxsize=DEFAULT_POOLSIZE, max_retries=DEFAULT_RETRIES, pool_block=DEFAULT_POOLBLOCK) @83
+     if max_retries == DEFAULT_RETRIES:
+      …
+     else:
+      …
+     …
+     super(HTTPAdapter, self).__init__()
+     …
+     self.init_poolmanager(pool_connections, pool_maxsize, block=pool_block)
+  - __getstate__ (self) @101
+  - __setstate__ (self, state) @105
+  - init_poolmanager (self, connections, maxsize, block=DEFAULT_POOLBLOCK, **pool_kwargs) @117 # Initializes a urllib3 PoolManager.
+     …
+     self.poolmanager = PoolManager(num_pools=connections, maxsize=maxsize, block=block, strict=True, **pool_kwargs)
+  - proxy_manager_for (self, proxy, **proxy_kwargs) @137 # Return urllib3 ProxyManager for the given proxy.
+  - cert_verify (self, conn, url, verify, cert) @160 # Verify a SSL certificate. This method should not be called from user
+  - build_response (self, req, resp) @197 # Builds a :class:`Response <requests.Response>` object from a urllib3
+  - get_connection (self, url, proxies=None) @233 # Returns a urllib3 connection for the given URL. This should not be
+  - close (self) @256 # Disposes of any internal state.
+  - request_url (self, request, proxies) @264 # Obtain the url to use when making the final request.
+  - add_headers (self, request, **kwargs) @288 # Add any headers needed by the connection. As of v2.0 this does
+  - proxy_headers (self, proxy) @302 # Returns a dictionary of the headers to add to any request sent
+  - send (self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None) @324 # Sends PreparedRequest object. Returns Response object.
+     conn = self.get_connection(request.url, proxies)
+     self.cert_verify(conn, request.url, verify, cert)
+     url = self.request_url(request, proxies)
+     self.add_headers(request)
+     chunked = not (request.body is None or 'Content-Length' in request.headers)
+     if isinstance(timeout, tuple):
+      …
+     else:
+      …
+     try:
+      …
+     except (ProtocolError, socket.error) as err:
+      …
+     except MaxRetryError as e:
+      …
+     except _ProxyError as e:
+      …
+     except (_SSLError, _HTTPError) as e:
+      …
+     return self.build_response(request, resp)
+=== CALL: head -30 /tmp/swb/psf__requests-2674/requests/adapters.py ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: head -30 /tmp/swb/psf__requests-2674/requests/adapters.py: No such file or directory
+=== CALL: scantool search /tmp/swb/psf__requests-2674/requests import.*ProtocolError|import.*MaxRetryError|import.*_SSLError|import.*_HTTPError|import.*_ProxyError|from.*ProtocolError|from.*MaxRetryError|from.*_SSLError|from.*_HTTPError|from.*_ProxyError ===
+6 hits in 2 structures for /import.*ProtocolError|import.*MaxRetryError|import.*_SSLError|import.*_HTTPError|import.*_ProxyError|from.*ProtocolError|from.*MaxRetryError|from.*_SSLError|from.*_HTTPError|from.*_ProxyError/
+
+/private/tmp/swb/psf__requests-2674/requests/adapters.py
+- (module level) @23-23  (5 hits)
+   23 | from .packages.urllib3.exceptions import HTTPError as _HTTPError
+   24 | from .packages.urllib3.exceptions import MaxRetryError
+   25 | from .packages.urllib3.exceptions import ProxyError as _ProxyError
+   26 | from .packages.urllib3.exceptions import ProtocolError
+   +1 more in this structure
+
+/private/tmp/swb/psf__requests-2674/requests/packages/urllib3/poolmanager.py
+- (module level) @11-11
+   11 | from .exceptions import LocationValueError, MaxRetryError
