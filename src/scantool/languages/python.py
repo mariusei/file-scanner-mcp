@@ -103,25 +103,6 @@ class PythonLanguage(BaseLanguage):
     # Structure Scanning (from PythonScanner)
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
-        """Scan Python source code and extract structure with metadata."""
-        try:
-            tree = self.parser.parse(source_code)
-
-            # Check if we should use fallback due to too many errors
-            if self._should_use_fallback(tree.root_node):
-                return self._fallback_extract(source_code)
-
-            return self._extract_structure(tree.root_node, source_code)
-
-        except Exception as e:
-            return [StructureNode(
-                type="error",
-                name=f"Failed to parse: {str(e)}",
-                start_line=1,
-                end_line=1
-            )]
-
     def condense_excerpt(self, excerpt_lines: list[str]) -> Optional[list[str]]:
         """Condense excerpt to a method skeleton via Python AST.
 

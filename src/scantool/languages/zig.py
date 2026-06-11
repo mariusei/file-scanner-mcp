@@ -101,26 +101,6 @@ class ZigLanguage(BaseLanguage):
     # Structure Scanning (from ZigScanner)
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
-        """Scan Zig source code and extract structure with metadata."""
-        try:
-            tree = self.parser.parse(source_code)
-
-            # Check for excessive errors
-            if self._should_use_fallback(tree.root_node):
-                if self.fallback_on_errors:
-                    return self._fallback_extract(source_code)
-                return None
-
-            return self._extract_structure(tree.root_node, source_code)
-
-        except Exception as e:
-            if self.show_errors:
-                print(f"Zig parsing error: {e}")
-            if self.fallback_on_errors:
-                return self._fallback_extract(source_code)
-            return None
-
     def _extract_structure(
         self, root: Node, source_code: bytes
     ) -> list[StructureNode]:
