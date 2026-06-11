@@ -693,83 +693,29 @@ class CSharpLanguage(BaseLanguage):
             # Extend the end line of the existing import group
             parent_structures[-1].end_line = node.end_point[0] + 1
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find namespace declaration
-        namespace_match = re.search(r'^\s*namespace\s+([\w.]+)', text, re.MULTILINE)
-        if namespace_match:
-            line_num = text[:namespace_match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="namespace",
-                name=namespace_match.group(1),
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find class definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?(?:abstract\s+)?(?:sealed\s+)?class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find interface definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?interface\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="interface",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find struct definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?struct\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="struct",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find enum definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?enum\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="enum",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find method definitions
-        for match in re.finditer(r'^\s*(?:public|private|protected|internal)\s+(?:static\s+)?(?:async\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="method",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find property definitions
-        for match in re.finditer(r'^\s*(?:public|private|protected|internal)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\{', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="property",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {
+            "pattern": r"^\s*namespace\s+([\w.]+)",
+            "type": "namespace",
+            "first_only": True,
+            "suffix": "",
+        },
+        {
+            "pattern": r"^\s*(?:public\s+)?(?:abstract\s+)?(?:sealed\s+)?class\s+(\w+)",
+            "type": "class",
+        },
+        {"pattern": r"^\s*(?:public\s+)?interface\s+(\w+)", "type": "interface"},
+        {"pattern": r"^\s*(?:public\s+)?struct\s+(\w+)", "type": "struct"},
+        {"pattern": r"^\s*(?:public\s+)?enum\s+(\w+)", "type": "enum"},
+        {
+            "pattern": r"^\s*(?:public|private|protected|internal)\s+(?:static\s+)?(?:async\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(",
+            "type": "method",
+        },
+        {
+            "pattern": r"^\s*(?:public|private|protected|internal)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\{",
+            "type": "property",
+        },
+    ]
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from CSharpAnalyzer)
@@ -985,56 +931,14 @@ class CSharpLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        for match in re.finditer(r"^\s*(?:public\s+)?class\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(r"^\s*(?:public\s+)?interface\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="interface",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(
-            r"^\s*(?:public|private|protected|internal)\s+(?:static\s+)?(?:\w+)\s+(\w+)\s*\(",
-            content,
-            re.MULTILINE
-        ):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="method",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"^\s*(?:public\s+)?class\s+(\w+)", "type": "class"},
+        {"pattern": r"^\s*(?:public\s+)?interface\s+(\w+)", "type": "interface"},
+        {
+            "pattern": r"^\s*(?:public|private|protected|internal)\s+(?:static\s+)?(?:\w+)\s+(\w+)\s*\(",
+            "type": "method",
+        },
+    ]
 
     def _extract_calls_tree_sitter(
         self, file_path: str, root, source_bytes: bytes, definitions: list[DefinitionInfo]
@@ -1112,42 +1016,12 @@ class CSharpLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex."""
-        calls = []
-
-        # Simple pattern to find method calls
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords and common constructs
-            if callee_name in [
-                "if", "for", "while", "foreach", "switch", "catch",
-                "using", "lock", "return", "new", "typeof", "nameof",
-                "class", "struct", "interface", "enum", "void", "int",
-                "string", "bool", "double", "float", "decimal", "byte",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "for", "while", "foreach", "switch", "catch",
+        "using", "lock", "return", "new", "typeof", "nameof",
+        "class", "struct", "interface", "enum", "void", "int",
+        "string", "bool", "double", "float", "decimal", "byte",
+    })
 
     # ===========================================================================
     # Classification (enhanced for C#)

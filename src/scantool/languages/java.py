@@ -486,63 +486,24 @@ class JavaLanguage(BaseLanguage):
             )
             parent_structures.append(package_node)
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find package declaration
-        package_match = re.search(r'^\s*package\s+([\w.]+)\s*;', text, re.MULTILINE)
-        if package_match:
-            line_num = text[:package_match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="package",
-                name=package_match.group(1),
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find class definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?(?:abstract\s+)?(?:final\s+)?class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find interface definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?interface\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="interface",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find enum definitions
-        for match in re.finditer(r'^\s*(?:public\s+)?enum\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="enum",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find method definitions
-        for match in re.finditer(r'^\s*(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="method",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {
+            "pattern": r"^\s*package\s+([\w.]+)\s*;",
+            "type": "package",
+            "first_only": True,
+            "suffix": "",
+        },
+        {
+            "pattern": r"^\s*(?:public\s+)?(?:abstract\s+)?(?:final\s+)?class\s+(\w+)",
+            "type": "class",
+        },
+        {"pattern": r"^\s*(?:public\s+)?interface\s+(\w+)", "type": "interface"},
+        {"pattern": r"^\s*(?:public\s+)?enum\s+(\w+)", "type": "enum"},
+        {
+            "pattern": r"^\s*(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(",
+            "type": "method",
+        },
+    ]
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from JavaAnalyzer)
@@ -733,52 +694,17 @@ class JavaLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        for match in re.finditer(r"^\s*(?:public\s+)?(?:abstract\s+)?(?:final\s+)?class\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(r"^\s*(?:public\s+)?interface\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="interface",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(r"^\s*(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="method",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {
+            "pattern": r"^\s*(?:public\s+)?(?:abstract\s+)?(?:final\s+)?class\s+(\w+)",
+            "type": "class",
+        },
+        {"pattern": r"^\s*(?:public\s+)?interface\s+(\w+)", "type": "interface"},
+        {
+            "pattern": r"^\s*(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(",
+            "type": "method",
+        },
+    ]
 
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
@@ -861,38 +787,13 @@ class JavaLanguage(BaseLanguage):
         traverse(root)
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (no caller context)."""
-        calls = []
-        call_pattern = r"\b(\w+)\s*\("
-
-        for match in re.finditer(call_pattern, content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in (
-                "if", "for", "while", "switch", "catch", "synchronized",
-                "return", "new", "class", "interface", "enum", "void",
-                "int", "long", "double", "float", "boolean", "char",
-                "byte", "short", "String", "Integer", "Long", "Double",
-                "Float", "Boolean", "Object", "List", "Map", "Set",
-            ):
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "for", "while", "switch", "catch", "synchronized",
+        "return", "new", "class", "interface", "enum", "void",
+        "int", "long", "double", "float", "boolean", "char",
+        "byte", "short", "String", "Integer", "Long", "Double",
+        "Float", "Boolean", "Object", "List", "Map", "Set",
+    })
 
     # ===========================================================================
     # Classification (enhanced for Java)

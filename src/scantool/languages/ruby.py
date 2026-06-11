@@ -335,53 +335,13 @@ class RubyLanguage(BaseLanguage):
             # Extend the end line of the existing require group
             parent_structures[-1].end_line = node.end_point[0] + 1
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find module definitions
-        for match in re.finditer(r'^module\s+(\w+(?:::\w+)*)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="module",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find class definitions
-        for match in re.finditer(r'^class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find method definitions
-        for match in re.finditer(r'^def\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="method",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find singleton method definitions
-        for match in re.finditer(r'^def\s+(self\.\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="method",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["class"]
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {"pattern": r"^module\s+(\w+(?:::\w+)*)", "type": "module"},
+        {"pattern": r"^class\s+(\w+)", "type": "class"},
+        {"pattern": r"^def\s+(\w+)", "type": "method"},
+        # Singleton methods
+        {"pattern": r"^def\s+(self\.\w+)", "type": "method", "modifiers": ["class"]},
+    ]
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from RubyAnalyzer)
@@ -603,52 +563,11 @@ class RubyLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        for match in re.finditer(r"^module\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="module",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(r"^class\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(r"^def\s+(\w+)\s*\(", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="method",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"^module\s+(\w+)", "type": "module"},
+        {"pattern": r"^class\s+(\w+)", "type": "class"},
+        {"pattern": r"^def\s+(\w+)\s*\(", "type": "method"},
+    ]
 
     def _extract_calls_tree_sitter(
         self,
@@ -718,45 +637,17 @@ class RubyLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (without caller context)."""
-        calls = []
-
-        # Match method calls: identifier followed by optional arguments
-        for match in re.finditer(r"\b(\w+)(?:\s*\(|\s+\w)", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in [
-                "if", "else", "elsif", "unless", "case", "when",
-                "while", "until", "for", "do", "end", "begin", "rescue",
-                "ensure", "raise", "return", "yield", "super", "self",
-                "true", "false", "nil", "and", "or", "not", "in",
-                "def", "class", "module", "attr_reader", "attr_writer",
-                "attr_accessor", "private", "protected", "public",
-                "require", "require_relative", "include", "extend",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    # Match method calls: identifier followed by optional arguments
+    REGEX_CALL_PATTERN = r"\b(\w+)(?:\s*\(|\s+\w)"
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "else", "elsif", "unless", "case", "when",
+        "while", "until", "for", "do", "end", "begin", "rescue",
+        "ensure", "raise", "return", "yield", "super", "self",
+        "true", "false", "nil", "and", "or", "not", "in",
+        "def", "class", "module", "attr_reader", "attr_writer",
+        "attr_accessor", "private", "protected", "public",
+        "require", "require_relative", "include", "extend",
+    })
 
     # ===========================================================================
     # Classification (enhanced for Ruby)

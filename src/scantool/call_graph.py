@@ -105,4 +105,3 @@ def find_hot_functions(
     return sorted_nodes[:top_n]
 
 
-

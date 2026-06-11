@@ -729,72 +729,29 @@ class SwiftLanguage(BaseLanguage):
         signature = "".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find class declarations
-        for match in re.finditer(r'^(?:public\s+|private\s+|internal\s+|open\s+|final\s+)*class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find struct declarations
-        for match in re.finditer(r'^(?:public\s+|private\s+|internal\s+)*struct\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="struct",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find protocol declarations
-        for match in re.finditer(r'^(?:public\s+|private\s+|internal\s+)*protocol\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="protocol",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find enum declarations
-        for match in re.finditer(r'^(?:public\s+|private\s+|internal\s+)*enum\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="enum",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find extension declarations
-        for match in re.finditer(r'^extension\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="extension",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find function declarations
-        for match in re.finditer(r'^(?:public\s+|private\s+|internal\s+|static\s+|class\s+)*func\s+(\w+)\s*[<(]', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="function",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {
+            "pattern": r"^(?:public\s+|private\s+|internal\s+|open\s+|final\s+)*class\s+(\w+)",
+            "type": "class",
+        },
+        {
+            "pattern": r"^(?:public\s+|private\s+|internal\s+)*struct\s+(\w+)",
+            "type": "struct",
+        },
+        {
+            "pattern": r"^(?:public\s+|private\s+|internal\s+)*protocol\s+(\w+)",
+            "type": "protocol",
+        },
+        {
+            "pattern": r"^(?:public\s+|private\s+|internal\s+)*enum\s+(\w+)",
+            "type": "enum",
+        },
+        {"pattern": r"^extension\s+(\w+)", "type": "extension"},
+        {
+            "pattern": r"^(?:public\s+|private\s+|internal\s+|static\s+|class\s+)*func\s+(\w+)\s*[<(]",
+            "type": "function",
+        },
+    ]
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from SwiftAnalyzer)
@@ -1106,12 +1063,10 @@ class SwiftLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(self, file_path: str, content: str) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Pattern for type declarations
-        type_pattern = r'''
+    REGEX_DEFINITION_PATTERNS = [
+        # Type declarations — kind comes from the match itself
+        {
+            "pattern": r"""
             (?:^|\n)\s*
             (?:@\w+\s+)*                                    # Optional attributes
             (?:open\s+|public\s+|internal\s+|private\s+|fileprivate\s+)*
@@ -1121,42 +1076,16 @@ class SwiftLanguage(BaseLanguage):
             (?:<[^>]+>)?
             (?:\s*:\s*[^{]+)?
             \s*\{
-        '''
-
-        for match in re.finditer(type_pattern, content, re.VERBOSE | re.MULTILINE):
-            type_kind = match.group(1)
-            type_name = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
-
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type=type_kind,
-                    name=type_name,
-                    line=line_num,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Also extract typealiases
-        typealias_pattern = r'(?:^|\n)\s*(?:public\s+|internal\s+|private\s+|fileprivate\s+)?typealias\s+(\w+)\s*='
-        for match in re.finditer(typealias_pattern, content, re.MULTILINE):
-            type_name = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
-
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="typealias",
-                    name=type_name,
-                    line=line_num,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+            """,
+            "type_group": 1,
+            "name_group": 2,
+            "flags": re.VERBOSE | re.MULTILINE,
+        },
+        {
+            "pattern": r"(?:^|\n)\s*(?:public\s+|internal\s+|private\s+|fileprivate\s+)?typealias\s+(\w+)\s*=",
+            "type": "typealias",
+        },
+    ]
 
     def _extract_calls_tree_sitter(
         self,
@@ -1255,43 +1184,14 @@ class SwiftLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (without caller context)."""
-        calls = []
-
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in [
-                "if", "else", "guard", "switch", "case", "for", "while",
-                "repeat", "do", "try", "catch", "throw", "return", "break",
-                "continue", "func", "class", "struct", "enum", "protocol",
-                "extension", "init", "deinit", "subscript", "typealias",
-                "import", "let", "var", "where", "as", "is", "self", "Self",
-                "super", "nil", "true", "false", "Any", "AnyObject",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "else", "guard", "switch", "case", "for", "while",
+        "repeat", "do", "try", "catch", "throw", "return", "break",
+        "continue", "func", "class", "struct", "enum", "protocol",
+        "extension", "init", "deinit", "subscript", "typealias",
+        "import", "let", "var", "where", "as", "is", "self", "Self",
+        "super", "nil", "true", "false", "Any", "AnyObject",
+    })
 
     # ===========================================================================
     # Classification (enhanced for Swift)
