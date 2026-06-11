@@ -1,0 +1,133 @@
+=== CALL: find /tmp/swb/pytest-dev__pytest-5221 -name '*.py' | head -20 ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/pytest-dev__pytest-5221 -name '*.py' | head -20: No such file or directory
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-5221 _showfixtures_main ===
+2 hits in 2 structures for /_showfixtures_main/
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py
+- showfixtures (config) @1297-1300
+   1300 | return wrap_session(config, _showfixtures_main)
+- _showfixtures_main (config, session) @1303-1355
+   1303 | def _showfixtures_main(config, session):
+
+leads (called in hits, defined elsewhere): getlocation → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@92, wrap_session → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@198, perform_collect → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@495, create_terminal_writer → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/__init__.py@1079, getvalue → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@432
+=== CALL: scantool focusread /tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py _showfixtures_main ===
+focus: _showfixtures_main @1303-1355
+python.py (1-1481)
+- file-info: 53.8KB modified: 2026-06-10 23:49 [ts:1781128187] churn: 1 commits/90d
+- import statements @6
+- pyobj_property (name) @52
+- pytest_addoption (parser) @64
+- pytest_cmdline_main (config) @124
+- pytest_generate_tests (metafunc) @133
+- pytest_configure (config) @145
+- pytest_pyfunc_call (pyfuncitem) @166
+   @hookimpl(trylast=True)
+- pytest_collect_file (path, parent) @183
+- path_matches_patterns (path, patterns) @195 # Returns True if the given py.path.local matches one of the patterns in the list of globs given
+- pytest_pycollect_makemodule (path, parent) @200
+- pytest_pycollect_makeitem (collector, name, obj) @207
+   @hookimpl(hookwrapper=True)
+- pytest_make_parametrize_id (config, val, argname=None) @243
+- PyobjContext (object) @247
+- PyobjMixin (PyobjContext) @253
+- PyCollector (PyobjMixin, nodes.Collector) @316
+- Module (nodes.File, PyCollector) @441 # Collector for test classes and functions.
+- Package (Module) @559
+- _get_xunit_setup_teardown (holder, attr_name, param_obj=None) @674 # Return a callable to perform xunit-style setup or teardown if
+- _call_with_optional_argument (func, arg) @695 # Call the given function with the given argument if func accepts one argument, otherwise
+- _get_non_fixture_func (obj, name) @707 # Return the attribute from the given object to be used as a setup/teardown
+- Class (PyCollector) @717 # Collector for test methods.
+- Instance (PyCollector) @795
+- FunctionMixin (PyobjMixin) @813 # mixin for the code common to Function and Generator.
+- hasinit (obj) @852
+- hasnew (obj) @858
+- CallSpec2 (object) @864
+- Metafunc (fixtures.FuncargnamesCompatAttr) @927 # Metafunc objects are passed to the :func:`pytest_generate_tests <_pytest.hookspec.pytest_generate_tests>` hook.
+- _find_parametrized_scope (argnames, arg2fixturedefs, indirect) @1134 # Find the most appropriate scope for a parametrized call based on its arguments.
+- _ascii_escaped_by_config (val, config) @1167
+- _idval (val, argname, idx, idfn, item, config) @1177
+- _idvalset (idx, parameterset, argnames, idfn, ids, item, config) @1210
+- idmaker (argnames, parametersets, idfn=None, ids=None, config=None, item=None) @1223
+- show_fixtures_per_test (config) @1239
+- _show_fixtures_per_test (config, session) @1245
+- showfixtures (config) @1297
+- _showfixtures_main (config, session) @1303
+   1303 | def _showfixtures_main(config, session):
+   1304 |     import _pytest.config
+   1305 | 
+   1306 |     session.perform_collect()
+   1307 |     curdir = py.path.local()
+   1308 |     tw = _pytest.config.create_terminal_writer(config)
+   1309 |     verbose = config.getvalue("verbose")
+   1310 | 
+   1311 |     fm = session._fixturemanager
+   1312 | 
+   1313 |     available = []
+   1314 |     seen = set()
+   1315 | 
+   1316 |     for argname, fixturedefs in fm._arg2fixturedefs.items():
+   1317 |         assert fixturedefs is not None
+   1318 |         if not fixturedefs:
+   1319 |             continue
+   1320 |         for fixturedef in fixturedefs:
+   1321 |             loc = getlocation(fixturedef.func, curdir)
+   1322 |             if (fixturedef.argname, loc) in seen:
+   1323 |                 continue
+   1324 |             seen.add((fixturedef.argname, loc))
+   1325 |             available.append(
+   1326 |                 (
+   1327 |                     len(fixturedef.baseid),
+   1328 |                     fixturedef.func.__module__,
+   1329 |                     curdir.bestrelpath(loc),
+   1330 |                     fixturedef.argname,
+   1331 |                     fixturedef,
+   1332 |                 )
+   1333 |             )
+   1334 | 
+   1335 |     available.sort()
+   1336 |     currentmodule = None
+   1337 |     for baseid, module, bestrel, argname, fixturedef in available:
+   1338 |         if currentmodule != module:
+   1339 |             if not module.startswith("_pytest."):
+   1340 |                 tw.line()
+   1341 |                 tw.sep("-", "fixtures defined from %s" % (module,))
+   1342 |                 currentmodule = module
+   1343 |         if verbose <= 0 and argname[0] == "_":
+   1344 |             continue
+   1345 |         if verbose > 0:
+   1346 |             funcargspec = "%s -- %s" % (argname, bestrel)
+   1347 |         else:
+   1348 |             funcargspec = argname
+   1349 |         tw.line(funcargspec, green=True)
+   1350 |         loc = getlocation(fixturedef.func, curdir)
+   1351 |         doc = fixturedef.func.__doc__ or ""
+   1352 |         if doc:
+   1353 |             write_docstring(tw, doc)
+   1354 |         else:
+   1355 |             tw.line("    %s: no docstring available" % (loc,), red=True)
+- write_docstring (tw, doc, indent=" ") @1358
+- Function (FunctionMixin, nodes.Item, fixtures.FuncargnamesCompatAttr) @1373 # a Function Item is responsible for setting up and executing a
+- FunctionDefinition (Function) @1472 # internal hack until we get actual definition nodes instead of the
+=== CALL: scantool search /tmp/swb/pytest-dev__pytest-5221 getlocation ===
+7 hits in 6 structures for /getlocation/
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/python.py
+- _showfixtures_main (config, session) @1303-1355  (2 hits)
+   1321 | loc = getlocation(fixturedef.func, curdir)
+   1350 | loc = getlocation(fixturedef.func, curdir)
+- (module level) @29-29
+   29 | from _pytest.compat import getlocation
+- _show_fixtures_per_test (config, session) @1245-1294
+   1254 | loc = getlocation(func, curdir)
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/fixtures.py
+- (module level) @31-31
+   31 | from _pytest.compat import getlocation
+- FixtureRequest > _compute_fixture_value (self, fixturedef) @516-588
+   562 | getlocation(fixturedef.func, funcitem.config.rootdir),
+
+/private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py
+- getlocation (function, curdir) @92-98
+   92 | def getlocation(function, curdir):
+
+leads (called in hits, defined elsewhere): format → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/logging.py@65, perform_collect → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/main.py@495, create_terminal_writer → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/config/__init__.py@1079, getvalue → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/compat.py@432, append → /private/tmp/swb/pytest-dev__pytest-5221/src/_pytest/junitxml.py@103

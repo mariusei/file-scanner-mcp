@@ -1,0 +1,6 @@
+=== CALL: cat /tmp/swb/pytest-dev__pytest-7373 ===
+cat: /tmp/swb/pytest-dev__pytest-7373: Is a directory
+=== CALL: search /tmp/swb/pytest-dev__pytest-7373 def cached_eval ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: search: command not found
+=== CALL: searchname /tmp/swb/pytest-dev__pytest-7373 cached_eval ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: searchname: command not found

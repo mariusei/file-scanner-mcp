@@ -1,0 +1,143 @@
+=== CALL: find /tmp/swb/pallets__flask-5063 -name 'cli.py' -type f ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: find /tmp/swb/pallets__flask-5063 -name 'cli.py' -type f: No such file or directory
+=== CALL: scantool search /tmp/swb/pallets__flask-5063 routes_command ===
+2 hits in 2 structures for /routes_command/
+
+/private/tmp/swb/pallets__flask-5063/src/flask/cli.py
+- FlaskGroup > __init__ ( self, add_default_commands: bool = True, create_app: t.Callable[..., Flask] | None = None, add_version_option: bool = True, load_dotenv: bool = True, set_debug_flag: bool = True, **extra: t.Any, ) -> None @510-545
+   543 | self.add_command(routes_command)
+- routes_command (sort: str, all_methods: bool) -> None @1001-1034
+   1001 | def routes_command(sort: str, all_methods: bool) -> None:
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/pallets__flask-5063/src/flask/sessions.py@84
+=== CALL: scantool focusread /private/tmp/swb/pallets__flask-5063/src/flask/cli.py routes_command ===
+focus: routes_command @1001-1034
+cli.py (1-1050)
+- file-info: 32.7KB modified: 2026-06-10 23:49 [ts:1781128185] churn: 1 commits/90d
+- import statements @3
+- NoAppException (click.UsageError) @28 # Raised if an application cannot be found or loaded.
+- find_best_app (module) @32 # Given a module instance this tries to find the best possible
+- _called_with_wrong_args (f) @85 # Check whether calling a function raised a ``TypeError`` because
+- find_app_by_string (module, app_name) @111 # Check if the given string is a variable name or a function. Call
+- prepare_import (path) @187 # Given a filename this will try to calculate the python path, add it
+- locate_app (module_name, app_name, raise_if_not_found=True) @216
+- get_version (ctx, param, value) @240
+- ScriptInfo @266 # Helper object to deal with Flask applications.  This is usually not
+- with_appcontext (f) @337 # Wraps a callback so that it's guaranteed to be executed with the
+- AppGroup (click.Group) @362 # This works similar to a regular click :class:`~click.Group` but it
+- _set_app (ctx: click.Context, param: click.Option, value: str | None) -> str | None @393
+- _set_debug (ctx: click.Context, param: click.Option, value: bool) -> bool | None @421
+- _env_file_callback ( ctx: click.Context, param: click.Option, value: str | None ) -> str | None @446
+- FlaskGroup (AppGroup) @481 # Special subclass of the :class:`AppGroup` group that supports
+- _path_is_ancestor (path, other) @647 # Take ``other`` and remove the length of ``path`` from it. Then join it
+- load_dotenv (path: str | os.PathLike | None = None) -> bool @654 # Load "dotenv" files in order of precedence to set environment variables.
+- show_server_banner (debug, app_import_path) @715 # Show extra startup messages the first time the server is run,
+- CertParamType (click.ParamType) @729 # Click option type for the ``--cert`` option. Allows either an
+- _validate_key (ctx, param, value) @775 # The ``--key`` option must be specified when ``--cert`` is a file.
+- SeparatedPathType (click.Path) @812 # Click option type that accepts a list of values separated by the
+- run_command ( info, host, port, reload, debugger, with_threads, cert, extra_files, exclude_patterns, ) @877 # Run a local development server.
+   @click.command("run", short_help="Run a development server.")
+   @click.option("--host", "-h", default="127.0.0.1", help="The interface to bind to.")
+   @click.option("--port", "-p", default=5000, help="The port to bind to.")
+   @click.option(
+    "--cert",
+    type=CertParamType(),
+    help="Specify a certificate file to use HTTPS.",
+    is_eager=True,
+)
+   @click.option(
+    "--key",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    callback=_validate_key,
+    expose_value=False,
+    help="The key file to use when specifying a certificate.",
+)
+   @click.option(
+    "--reload/--no-reload",
+    default=None,
+    help="Enable or disable the reloader. By default the reloader "
+    "is active if debug is enabled.",
+)
+   @click.option(
+    "--debugger/--no-debugger",
+    default=None,
+    help="Enable or disable the debugger. By default the debugger "
+    "is active if debug is enabled.",
+)
+   @click.option(
+    "--with-threads/--without-threads",
+    default=True,
+    help="Enable or disable multithreading.",
+)
+   @click.option(
+    "--extra-files",
+    default=None,
+    type=SeparatedPathType(),
+    help=(
+        "Extra files that trigger a reload on change. Multiple paths"
+        f" are separated by {os.path.pathsep!r}."
+    ),
+)
+   @click.option(
+    "--exclude-patterns",
+    default=None,
+    type=SeparatedPathType(),
+    help=(
+        "Files matching these fnmatch patterns will not trigger a reload"
+        " on change. Multiple patterns are separated by"
+        f" {os.path.pathsep!r}."
+    ),
+)
+   @pass_script_info
+- shell_command () -> None @941 # Run an interactive Python shell in the context of a given
+   @click.command("shell", short_help="Run a shell in the app context.")
+   @with_appcontext
+- routes_command (sort: str, all_methods: bool) -> None @1001 # Show all registered routes with endpoints and methods.
+   @click.command("routes", short_help="Show the routes for the app.")
+   @click.option(
+    "--sort",
+    "-s",
+    type=click.Choice(("endpoint", "methods", "rule", "match")),
+    default="endpoint",
+    help=(
+        'Method to sort routes by. "match" is the order that Flask will match '
+        "routes when dispatching a request."
+    ),
+)
+   @click.option("--all-methods", is_flag=True, help="Show HEAD and OPTIONS methods.")
+   @with_appcontext
+   1001 | def routes_command(sort: str, all_methods: bool) -> None:
+   1002 |     """Show all registered routes with endpoints and methods."""
+   1003 | 
+   1004 |     rules = list(current_app.url_map.iter_rules())
+   1005 |     if not rules:
+   1006 |         click.echo("No routes were registered.")
+   1007 |         return
+   1008 | 
+   1009 |     ignored_methods = set(() if all_methods else ("HEAD", "OPTIONS"))
+   1010 | 
+   1011 |     if sort in ("endpoint", "rule"):
+   1012 |         rules = sorted(rules, key=attrgetter(sort))
+   1013 |     elif sort == "methods":
+   1014 |         rules = sorted(rules, key=lambda rule: sorted(rule.methods))  # type: ignore
+   1015 | 
+   1016 |     rule_methods = [
+   1017 |         ", ".join(sorted(rule.methods - ignored_methods))  # type: ignore
+   1018 |         for rule in rules
+   1019 |     ]
+   1020 | 
+   1021 |     headers = ("Endpoint", "Methods", "Rule")
+   1022 |     widths = (
+   1023 |         max(len(rule.endpoint) for rule in rules),
+   1024 |         max(len(methods) for methods in rule_methods),
+   1025 |         max(len(rule.rule) for rule in rules),
+   1026 |     )
+   1027 |     widths = [max(len(h), w) for h, w in zip(headers, widths)]
+   1028 |     row = "{{0:<{0}}}  {{1:<{1}}}  {{2:<{2}}}".format(*widths)
+   1029 | 
+   1030 |     click.echo(row.format(*headers).strip())
+   1031 |     click.echo(row.format(*("-" * width for width in widths)))
+   1032 | 
+   1033 |     for rule, methods in zip(rules, rule_methods):
+   1034 |         click.echo(row.format(rule.endpoint, methods, rule.rule).rstrip())
+- main () -> None @1049

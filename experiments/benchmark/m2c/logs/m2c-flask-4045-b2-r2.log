@@ -1,0 +1,107 @@
+=== CALL: head -50 /tmp/swb/pallets__flask-4045/src/flask/blueprints.py | grep -n 'add_url_rule' ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: head -50 /tmp/swb/pallets__flask-4045/src/flask/blueprints.py | grep -n 'add_url_rule': No such file or directory
+=== CALL: scantool searchname /tmp/swb/pallets__flask-4045 add_url_rule ===
+app.py (1033-1089)
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> None @1033
+   @setupmethod
+   if endpoint is None:
+    endpoint = _endpoint_from_view_func(view_func)  # type: ignore
+   …
+   methods = options.pop('methods', None)
+   if methods is None:
+    methods = getattr(view_func, 'methods', None) or ('GET',)
+   if isinstance(methods, str):
+    raise TypeError('Allowed metho…')
+   methods = {item.upper() for item in methods}
+   required_methods = set(getattr(view_func, 'required_methods', ()))
+   if provide_automatic_options is None:
+    provide_automatic_options = getattr(view_func, 'provide_automatic_options', None)
+   if provide_automatic_options is None:
+    if 'OPTIONS' not in methods:
+     …
+     required_methods.add('OPTIONS')
+    else:
+     …
+   methods |= required_methods
+   rule = self.url_rule_class(rule, methods=methods, **options)
+   …
+   self.url_map.add(rule)
+   if view_func is not None:
+    old_func = self.view_functions.get(endpoint)
+    if old_func is not None and old_func != view_func:
+     raise AssertionError(f'View function…{endpoint}')
+    …
+
+blueprints.py (77-369)
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @77 # A helper method to register a rule (and optionally a view function)
+   if self.url_prefix is not None:
+    if rule:
+     …
+    else:
+     …
+   options.setdefault('subdomain', self.subdomain)
+   if endpoint is None:
+    endpoint = _endpoint_from_view_func(view_func)  # type: ignore
+   …
+   if 'defaults' in options:
+    defaults = dict(defaults, **options.pop('defaults'))
+   self.app.add_url_rule(rule, f'{self.name_prefix}{self.bluep…
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @353 # Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+   if endpoint:
+    assert '.' not in endpoint
+   if view_func and hasattr(view_func, '__name__'):
+    assert '.' not in view_func.__name__
+   self.record(λ)
+
+scaffold.py (439-504)
+- add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, provide_automatic_options: t.Optional[bool] = None, **options: t.Any, ) -> t.Callable @439 # Register a rule for routing incoming requests and building
+   @setupmethod
+   raise NotImplementedError
+=== CALL: scantool focusread /tmp/swb/pallets__flask-4045/src/flask/blueprints.py Blueprint.add_url_rule ===
+focus: Blueprint.add_url_rule @353-369
+blueprints.py (1-542)
+- file-info: 20.7KB modified: 2026-06-10 23:49 [ts:1781128184] churn: 1 commits/90d
+- import statements @1
+- BlueprintSetupState @25 # Temporary holder object for registering a blueprint with the
+- Blueprint (Scaffold) @108 # Represents a blueprint, a collection of routes and other
+  - __init__ ( self, name: str, import_name: str, static_folder: t.Optional[str] = None, static_url_path: t.Optional[str] = None, template_folder: t.Optional[str] = None, url_prefix: t.Optional[str] = None, subdomain: t.Optional[str] = None, url_defaults: t.Optional[dict] = None, root_path: t.Optional[str] = None, cli_group: t.Optional[str] = _sentinel, # type: ignore ) @171
+  - _is_setup_finished (self) -> bool @203
+  - record (self, func: t.Callable) -> None @206 # Registers a function that is called when the blueprint is
+  - record_once (self, func: t.Callable) -> None @224 # Works like :meth:`record` but wraps the function in another
+  - make_setup_state ( self, app: "Flask", options: dict, first_registration: bool = False ) -> BlueprintSetupState @237 # Creates an instance of :meth:`~flask.blueprints.BlueprintSetupState`
+  - register_blueprint (self, blueprint: "Blueprint", **options: t.Any) -> None @246 # Register a :class:`~flask.Blueprint` on this blueprint. Keyword
+  - register (self, app: "Flask", options: dict) -> None @255 # Called by :meth:`Flask.register_blueprint` to register all
+  - add_url_rule ( self, rule: str, endpoint: t.Optional[str] = None, view_func: t.Optional[t.Callable] = None, **options: t.Any, ) -> None @353 # Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+     353 |     def add_url_rule(
+     354 |         self,
+     355 |         rule: str,
+     356 |         endpoint: t.Optional[str] = None,
+     357 |         view_func: t.Optional[t.Callable] = None,
+     358 |         **options: t.Any,
+     359 |     ) -> None:
+     360 |         """Like :meth:`Flask.add_url_rule` but for a blueprint.  The endpoint for
+     361 |         the :func:`url_for` function is prefixed with the name of the blueprint.
+     362 |         """
+     363 |         if endpoint:
+     364 |             assert "." not in endpoint, "Blueprint endpoints should not contain dots"
+     365 |         if view_func and hasattr(view_func, "__name__"):
+     366 |             assert (
+     367 |                 "." not in view_func.__name__
+     368 |             ), "Blueprint view function name should not contain dots"
+     369 |         self.record(lambda s: s.add_url_rule(rule, endpoint, view_func, **options))
+  - app_template_filter (self, name: t.Optional[str] = None) -> t.Callable @371 # Register a custom template filter, available application wide.  Like
+  - add_app_template_filter ( self, f: TemplateFilterCallable, name: t.Optional[str] = None ) -> None @385 # Register a custom template filter, available application wide.  Like
+  - app_template_test (self, name: t.Optional[str] = None) -> t.Callable @401 # Register a custom template test, available application wide.  Like
+  - add_app_template_test ( self, f: TemplateTestCallable, name: t.Optional[str] = None ) -> None @417 # Register a custom template test, available application wide.  Like
+  - app_template_global (self, name: t.Optional[str] = None) -> t.Callable @435 # Register a custom template global, available application wide.  Like
+  - add_app_template_global ( self, f: TemplateGlobalCallable, name: t.Optional[str] = None ) -> None @451 # Register a custom template global, available application wide.  Like
+  - before_app_request (self, f: BeforeRequestCallable) -> BeforeRequestCallable @469 # Like :meth:`Flask.before_request`.  Such a function is executed
+  - before_app_first_request ( self, f: BeforeRequestCallable ) -> BeforeRequestCallable @478 # Like :meth:`Flask.before_first_request`.  Such a function is
+  - after_app_request (self, f: AfterRequestCallable) -> AfterRequestCallable @487 # Like :meth:`Flask.after_request` but for a blueprint.  Such a function
+  - teardown_app_request (self, f: TeardownCallable) -> TeardownCallable @496 # Like :meth:`Flask.teardown_request` but for a blueprint.  Such a
+  - app_context_processor ( self, f: TemplateContextProcessorCallable ) -> TemplateContextProcessorCallable @506 # Like :meth:`Flask.context_processor` but for a blueprint.  Such a
+  - app_errorhandler (self, code: t.Union[t.Type[Exception], int]) -> t.Callable @517 # Like :meth:`Flask.errorhandler` but for a blueprint.  This
+  - app_url_value_preprocessor ( self, f: URLValuePreprocessorCallable ) -> URLValuePreprocessorCallable @528 # Same as :meth:`url_value_preprocessor` but application wide.
+  - app_url_defaults (self, f: URLDefaultCallable) -> URLDefaultCallable @537 # Same as :meth:`url_defaults` but application wide.
+=== CALL: sed -n '363,369p' /tmp/swb/pallets__flask-4045/src/flask/blueprints.py ===
+/Users/mariusbergeeide/Projects/scantool/experiments/benchmark/m2c/tool.sh: line 5: sed -n '363,369p' /tmp/swb/pallets__flask-4045/src/flask/blueprints.py: No such file or directory

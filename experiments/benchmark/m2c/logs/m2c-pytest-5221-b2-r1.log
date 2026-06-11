@@ -1,0 +1,15 @@
+=== CALL: find . -name *fixture* -type f ===
+./.venv/lib/python3.13/site-packages/setuptools/tests/fixtures.py
+./.venv/lib/python3.13/site-packages/_pytest/__pycache__/fixtures.cpython-313.pyc
+./.venv/lib/python3.13/site-packages/_pytest/fixtures.py
+=== CALL: grep -r _showfixtures_main . --include=*.py ===
+./.venv/lib/python3.13/site-packages/_pytest/fixtures.py:    return wrap_session(config, _showfixtures_main)
+./.venv/lib/python3.13/site-packages/_pytest/fixtures.py:def _showfixtures_main(config: Config, session: Session) -> None:
+=== CALL: grep -n _showfixtures_main\|def show src/_pytest/fixtures.py ===
+grep: src/_pytest/fixtures.py: No such file or directory
+=== CALL: find . -path ./.venv -prune -o -name fixtures.py -type f -print ===
+=== CALL: find . -name fixtures.py -type f ===
+./.venv/lib/python3.13/site-packages/setuptools/tests/fixtures.py
+./.venv/lib/python3.13/site-packages/_pytest/fixtures.py
+=== CALL: sed -n 1,500p src/_pytest/fixtures.py ===
+sed: src/_pytest/fixtures.py: No such file or directory

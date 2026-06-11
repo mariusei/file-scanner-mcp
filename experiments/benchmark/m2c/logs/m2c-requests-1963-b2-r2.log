@@ -1,0 +1,127 @@
+=== CALL: scantool search /tmp/swb/psf__requests-1963 resolve_redirects ===
+4 hits in 3 structures for /resolve_redirects/
+
+/private/tmp/swb/psf__requests-1963/requests/sessions.py
+- Session > send (self, request, **kwargs) @466-532  (2 hits)
+   480 | # Set up variables needed for resolve_redirects and dispatching of hooks
+   514 | gen = self.resolve_redirects(r, request,
+- SessionRedirectMixin > resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None) @84-184
+   84 | def resolve_redirects(self, resp, req, stream=False, timeout=None,
+
+/private/tmp/swb/psf__requests-1963/requests/models.py
+- Response > is_redirect (self) @604-608
+   606 | been processed automatically (by :meth:`Session.resolve_redirects`).
+
+leads (called in hits, defined elsewhere): setdefault → /private/tmp/swb/psf__requests-1963/requests/packages/urllib3/packages/ordered_dict.py@191, extract_cookies_to_jar → /private/tmp/swb/psf__requests-1963/requests/cookies.py@114, requote_uri → /private/tmp/swb/psf__requests-1963/requests/utils.py@407, dispatch_hook → /private/tmp/swb/psf__requests-1963/requests/hooks.py@29, TooManyRedirects → /private/tmp/swb/psf__requests-1963/requests/exceptions.py@54
+=== CALL: scantool focusread /tmp/swb/psf__requests-1963/requests/sessions.py SessionRedirectMixin.resolve_redirects ===
+focus: SessionRedirectMixin.resolve_redirects @84-184
+sessions.py (1-571)
+- file-info: 19.5KB modified: 2026-06-10 23:49 [ts:1781128185] churn: 1 commits/90d
+- import statements @11
+- merge_setting (request_setting, session_setting, dict_class=OrderedDict) @34 # Determines appropriate setting for a given request, taking into account the
+- merge_hooks (request_hooks, session_hooks, dict_class=OrderedDict) @67 # Properly merges both requests and session hooks.
+- SessionRedirectMixin (object) @83
+  - resolve_redirects (self, resp, req, stream=False, timeout=None, verify=True, cert=None, proxies=None) @84 # Receives a Response. Returns a generator of Responses.
+     84 |     def resolve_redirects(self, resp, req, stream=False, timeout=None,
+     85 |                           verify=True, cert=None, proxies=None):
+     86 |         """Receives a Response. Returns a generator of Responses."""
+     87 | 
+     88 |         i = 0
+     89 | 
+     90 |         while resp.is_redirect:
+     91 |             prepared_request = req.copy()
+     92 | 
+     93 |             resp.content  # Consume socket so it can be released
+     94 | 
+     95 |             if i >= self.max_redirects:
+     96 |                 raise TooManyRedirects('Exceeded %s redirects.' % self.max_redirects)
+     97 | 
+     98 |             # Release the connection back into the pool.
+     99 |             resp.close()
+     100 | 
+     101 |             url = resp.headers['location']
+     102 |             method = req.method
+     103 | 
+     104 |             # Handle redirection without scheme (see: RFC 1808 Section 4)
+     105 |             if url.startswith('//'):
+     106 |                 parsed_rurl = urlparse(resp.url)
+     107 |                 url = '%s:%s' % (parsed_rurl.scheme, url)
+     108 | 
+     109 |             # The scheme should be lower case...
+     110 |             parsed = urlparse(url)
+     111 |             url = parsed.geturl()
+     112 | 
+     113 |             # Facilitate non-RFC2616-compliant 'location' headers
+     114 |             # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')
+     115 |             # Compliant with RFC3986, we percent encode the url.
+     116 |             if not urlparse(url).netloc:
+     117 |                 url = urljoin(resp.url, requote_uri(url))
+     118 |             else:
+     119 |                 url = requote_uri(url)
+     120 | 
+     121 |             prepared_request.url = to_native_string(url)
+     122 | 
+     123 |             # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.4
+     124 |             if (resp.status_code == codes.see_other and
+     125 |                     method != 'HEAD'):
+     126 |                 method = 'GET'
+     127 | 
+     128 |             # Do what the browsers do, despite standards...
+     129 |             # First, turn 302s into GETs.
+     130 |             if resp.status_code == codes.found and method != 'HEAD':
+     131 |                 method = 'GET'
+     132 | 
+     133 |             # Second, if a POST is responded to with a 301, turn it into a GET.
+     134 |             # This bizarre behaviour is explained in Issue 1704.
+     135 |             if resp.status_code == codes.moved and method == 'POST':
+     136 |                 method = 'GET'
+     137 | 
+     138 |             prepared_request.method = method
+     139 | 
+     140 |             # https://github.com/kennethreitz/requests/issues/1084
+     141 |             if resp.status_code not in (codes.temporary, codes.resume):
+     142 |                 if 'Content-Length' in prepared_request.headers:
+     143 |                     del prepared_request.headers['Content-Length']
+     144 | 
+     145 |                 prepared_request.body = None
+     146 | 
+     147 |             headers = prepared_request.headers
+     148 |             try:
+     149 |                 del headers['Cookie']
+     150 |             except KeyError:
+     151 |                 pass
+     152 | 
+     153 |             extract_cookies_to_jar(prepared_request._cookies, prepared_request, resp.raw)
+     154 |             prepared_request._cookies.update(self.cookies)
+     155 |             prepared_request.prepare_cookies(prepared_request._cookies)
+     156 | 
+     157 |             if 'Authorization' in headers:
+     158 |                 # If we get redirected to a new host, we should strip out any
+     159 |                 # authentication headers.
+     160 |                 original_parsed = urlparse(resp.request.url)
+     161 |                 redirect_parsed = urlparse(url)
+     162 | 
+     163 |                 if (original_parsed.hostname != redirect_parsed.hostname):
+     164 |                     del headers['Authorization']
+     165 | 
+     166 |             # .netrc might have more auth for us.
+     167 |             new_auth = get_netrc_auth(url) if self.trust_env else None
+     168 |             if new_auth is not None:
+     169 |                 prepared_request.prepare_auth(new_auth)
+     170 | 
+     171 |             resp = self.send(
+     172 |                 prepared_request,
+     173 |                 stream=stream,
+     174 |                 timeout=timeout,
+     175 |                 verify=verify,
+     176 |                 cert=cert,
+     177 |                 proxies=proxies,
+     178 |                 allow_redirects=False,
+     179 |             )
+     180 | 
+     181 |             extract_cookies_to_jar(self.cookies, prepared_request, resp.raw)
+     182 | 
+     183 |             i += 1
+     184 |             yield resp
+- Session (SessionRedirectMixin) @187 # A Requests session.
+- session () @568 # Returns a :class:`Session` for context-management.
