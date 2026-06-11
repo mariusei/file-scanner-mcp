@@ -136,6 +136,25 @@ def rank(self, partitions):
                      "compression_ratio", "structural_uniqueness"):
             assert name in text
 
+    def test_trailing_comment_survives_on_kept_line(self, lang):
+        excerpt = '''\
+def get_ttl(tile_type):
+    # full-line comments are dropped
+    if tile_type == 'grid':
+        return None  # Never expires
+    return 300  # 5 minutes default'''.split("\n")
+
+        skeleton = lang.condense_excerpt(excerpt)
+
+        assert skeleton is not None
+        text = "\n".join(skeleton)
+        # trailing comments annotate the kept statement (sg-T4:
+        # TTL=None is ambiguous without "Never expires")
+        assert "return None  # Never expires" in text
+        assert "return 300  # 5 minutes default" in text
+        # full-line comments stay dropped
+        assert "full-line comments" not in text
+
     def test_base_language_default_is_none(self):
         from scantool.languages.generic import GenericLanguage
 

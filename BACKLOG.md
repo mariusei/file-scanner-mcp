@@ -54,11 +54,22 @@ token-paritet eller bedre under budsjettpress. Bevis: harness 6/6 vs 5/6
    innfridd via kontrakten: golden-testene forble grønne (default-output
    uendret), 895/895 totalt.
 
-5. **Småplukk**: størrelsesgate for flere språk enn markdown (mønsteret
-   finnes i markdown.py); generisk skjelett-støylinjer for Swift
-   flerlinje-signaturer (notert i experiments/entropy_metrics/README.md);
-   sg-T4-tvetydigheten (TTL=None) er et eksempel på at glimt kan trenge
-   omkringliggende kommentar-linje.
+5. ~~**Småplukk**~~ **LEVERT 2026-06-11** (tre delpunkter, hver med måling):
+   - *Størrelsesgate for flere språk*: **FALSIFISERT** — tree-sitter er
+     raskere enn regex-fallbacken på 2 MB for java/ts/swift/sql (0,1–0,3x);
+     Pythons 144x-avvik var kvadratisk `_get_ancestors` (DFS fra rot per
+     node), omskrevet til parent-kjede: 284 s → 0,4 s på 2 MB (660x).
+     Markdown-gaten bekreftet (2,8x) og beholdt. Se experiments/size_gate/.
+   - *Swift-skjelettstøy*: `init_declaration` m.fl. gjenkjennes nå i
+     `_SIGNIFICANT_NODE` (constructor/destructor/init/deinit/subscript);
+     flerlinje-init-headere beholdes hele i stedet for `…` + `) {`.
+   - *sg-T4/glimt-kommentar*: trailing-kommentarer gjenfestes på beholdte
+     linjer i Python-skjeletter (tokenize-basert; generisk skjelett hadde
+     egenskapen fra før). Målt +0,42 %/+0,93 % tokens på scantool/internal-backend,
+     sg-T4-linjen («return None  # Never expires») dekkes. Foranstående
+     kommentarlinjer bevisst utenfor. Se experiments/trailing_comments/.
+   Golden-testene forble grønne gjennom alle tre — defaultflatens
+   eneste endringer er skjelettforbedringene selv. Suite: 897.
 
 ## Åpne forskningsspor (post-1.0)
 
