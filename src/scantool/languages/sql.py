@@ -542,72 +542,14 @@ class SQLLanguage(BaseLanguage):
         # We don't need to show standalone comments as structures
         pass
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find CREATE TABLE
-        for match in re.finditer(r'CREATE\s+TABLE\s+(\w+)', text, re.IGNORECASE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="table",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find CREATE VIEW
-        for match in re.finditer(r'CREATE\s+VIEW\s+(\w+)', text, re.IGNORECASE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="view",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find CREATE FUNCTION
-        for match in re.finditer(r'CREATE\s+FUNCTION\s+(\w+)', text, re.IGNORECASE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="function",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find CREATE PROCEDURE
-        for match in re.finditer(r'CREATE\s+PROCEDURE\s+(\w+)', text, re.IGNORECASE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="procedure",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find CREATE INDEX
-        for match in re.finditer(r'CREATE\s+INDEX\s+(\w+)', text, re.IGNORECASE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="index",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find CREATE TRIGGER
-        for match in re.finditer(r'CREATE\s+TRIGGER\s+(\w+)', text, re.IGNORECASE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="trigger",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {"pattern": r"CREATE\s+TABLE\s+(\w+)", "type": "table", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+VIEW\s+(\w+)", "type": "view", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+FUNCTION\s+(\w+)", "type": "function", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+PROCEDURE\s+(\w+)", "type": "procedure", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+INDEX\s+(\w+)", "type": "index", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+TRIGGER\s+(\w+)", "type": "trigger", "flags": re.IGNORECASE},
+    ]
 
     # ===========================================================================
     # PostgreSQL-specific scanning (from SQLScanner)
@@ -1112,55 +1054,11 @@ class SQLLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # CREATE TABLE
-        for match in re.finditer(r"CREATE\s+TABLE\s+(\w+)", content, re.IGNORECASE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="table",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # CREATE VIEW
-        for match in re.finditer(r"CREATE\s+VIEW\s+(\w+)", content, re.IGNORECASE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="view",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # CREATE FUNCTION
-        for match in re.finditer(r"CREATE\s+FUNCTION\s+(\w+)", content, re.IGNORECASE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"CREATE\s+TABLE\s+(\w+)", "type": "table", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+VIEW\s+(\w+)", "type": "view", "flags": re.IGNORECASE},
+        {"pattern": r"CREATE\s+FUNCTION\s+(\w+)", "type": "function", "flags": re.IGNORECASE},
+    ]
 
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]

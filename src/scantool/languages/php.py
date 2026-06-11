@@ -499,83 +499,26 @@ class PHPLanguage(BaseLanguage):
         ancestors = self._get_ancestors(root, target)
         return any(ancestor.type in ("class_declaration", "trait_declaration") for ancestor in ancestors)
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find namespace declaration
-        namespace_match = re.search(r'^\s*namespace\s+([\w\\]+)\s*;', text, re.MULTILINE)
-        if namespace_match:
-            line_num = text[:namespace_match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="namespace",
-                name=namespace_match.group(1),
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find class definitions
-        for match in re.finditer(r'^\s*(?:abstract\s+)?(?:final\s+)?class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find interface definitions
-        for match in re.finditer(r'^\s*interface\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="interface",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find trait definitions
-        for match in re.finditer(r'^\s*trait\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="trait",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find enum definitions
-        for match in re.finditer(r'^\s*enum\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="enum",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find method definitions
-        for match in re.finditer(r'^\s*(?:public|private|protected)\s+(?:static\s+)?function\s+(\w+)\s*\(', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="method",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find standalone function definitions
-        for match in re.finditer(r'^\s*function\s+(\w+)\s*\(', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="function",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {
+            "pattern": r"^\s*namespace\s+([\w\\]+)\s*;",
+            "type": "namespace",
+            "first_only": True,
+            "suffix": "",
+        },
+        {
+            "pattern": r"^\s*(?:abstract\s+)?(?:final\s+)?class\s+(\w+)",
+            "type": "class",
+        },
+        {"pattern": r"^\s*interface\s+(\w+)", "type": "interface"},
+        {"pattern": r"^\s*trait\s+(\w+)", "type": "trait"},
+        {"pattern": r"^\s*enum\s+(\w+)", "type": "enum"},
+        {
+            "pattern": r"^\s*(?:public|private|protected)\s+(?:static\s+)?function\s+(\w+)\s*\(",
+            "type": "method",
+        },
+        {"pattern": r"^\s*function\s+(\w+)\s*\(", "type": "function"},
+    ]
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from PHPAnalyzer)
@@ -807,69 +750,12 @@ class PHPLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Classes
-        for match in re.finditer(r"^\s*(?:abstract\s+)?(?:final\s+)?class\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Interfaces
-        for match in re.finditer(r"^\s*interface\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="interface",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Traits
-        for match in re.finditer(r"^\s*trait\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="trait",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Functions
-        for match in re.finditer(r"^\s*function\s+(\w+)\s*\(", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"^\s*(?:abstract\s+)?(?:final\s+)?class\s+(\w+)", "type": "class"},
+        {"pattern": r"^\s*interface\s+(\w+)", "type": "interface"},
+        {"pattern": r"^\s*trait\s+(\w+)", "type": "trait"},
+        {"pattern": r"^\s*function\s+(\w+)\s*\(", "type": "function"},
+    ]
 
     def _extract_calls_tree_sitter(
         self,
@@ -964,42 +850,13 @@ class PHPLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (without caller context)."""
-        calls = []
-
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in [
-                "if", "else", "elseif", "while", "for", "foreach", "switch",
-                "case", "function", "class", "interface", "trait", "enum",
-                "return", "echo", "print", "array", "list", "isset", "unset",
-                "empty", "eval", "exit", "die", "include", "require",
-                "include_once", "require_once", "new", "clone", "throw",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "else", "elseif", "while", "for", "foreach", "switch",
+        "case", "function", "class", "interface", "trait", "enum",
+        "return", "echo", "print", "array", "list", "isset", "unset",
+        "empty", "eval", "exit", "die", "include", "require",
+        "include_once", "require_once", "new", "clone", "throw",
+    })
 
     # ===========================================================================
     # Classification (enhanced for PHP)

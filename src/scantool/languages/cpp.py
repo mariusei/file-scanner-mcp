@@ -633,63 +633,19 @@ class CCppLanguage(BaseLanguage):
             # Extend the end line of the existing include group
             parent_structures[-1].end_line = node.end_point[0] + 1
 
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        # Find struct definitions
-        for match in re.finditer(r'\bstruct\s+(\w+)\s*\{', text):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="struct",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find class definitions
-        for match in re.finditer(r'\bclass\s+(\w+)', text):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find enum definitions
-        for match in re.finditer(r'\benum\s+(?:class\s+)?(\w+)', text):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="enum",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find namespace definitions
-        for match in re.finditer(r'\bnamespace\s+(\w+)', text):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="namespace",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        # Find function definitions (basic pattern)
-        for match in re.finditer(r'\b(\w+)\s+(\w+)\s*\([^)]*\)\s*\{', text):
-            line_num = text[:match.start()].count('\n') + 1
-            func_name = match.group(2)
-            structures.append(StructureNode(
-                type="function",
-                name=func_name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
-
-        return structures
+    REGEX_FALLBACK_PATTERNS = [
+        {"pattern": r"\bstruct\s+(\w+)\s*\{", "type": "struct", "flags": 0},
+        {"pattern": r"\bclass\s+(\w+)", "type": "class", "flags": 0},
+        {"pattern": r"\benum\s+(?:class\s+)?(\w+)", "type": "enum", "flags": 0},
+        {"pattern": r"\bnamespace\s+(\w+)", "type": "namespace", "flags": 0},
+        # Functions (basic pattern)
+        {
+            "pattern": r"\b(\w+)\s+(\w+)\s*\([^)]*\)\s*\{",
+            "type": "function",
+            "name_group": 2,
+            "flags": 0,
+        },
+    ]
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from CppAnalyzer)
@@ -845,55 +801,17 @@ class CCppLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Classes
-        for match in re.finditer(r'\bclass\s+(\w+)', content):
-            line = content[:match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Structs
-        for match in re.finditer(r'\bstruct\s+(\w+)\s*\{', content):
-            line = content[:match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="struct",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"\bclass\s+(\w+)", "type": "class", "flags": 0},
+        {"pattern": r"\bstruct\s+(\w+)\s*\{", "type": "struct", "flags": 0},
         # Functions (basic pattern)
-        for match in re.finditer(r'\b(\w+)\s+(\w+)\s*\([^)]*\)\s*\{', content):
-            line = content[:match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(2),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+        {
+            "pattern": r"\b(\w+)\s+(\w+)\s*\([^)]*\)\s*\{",
+            "type": "function",
+            "name_group": 2,
+            "flags": 0,
+        },
+    ]
 
     def _extract_calls_tree_sitter(
         self,
@@ -972,46 +890,17 @@ class CCppLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (without caller context)."""
-        calls = []
-
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in [
-                "if", "else", "for", "while", "do", "switch", "case",
-                "return", "break", "continue", "goto", "sizeof", "alignof",
-                "typeof", "decltype", "static_cast", "dynamic_cast",
-                "const_cast", "reinterpret_cast", "new", "delete",
-                "throw", "catch", "try", "class", "struct", "union",
-                "enum", "namespace", "template", "typename", "typedef",
-                "using", "virtual", "override", "final", "inline",
-                "constexpr", "noexcept", "explicit", "static", "extern",
-                "register", "volatile", "mutable", "thread_local",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "else", "for", "while", "do", "switch", "case",
+        "return", "break", "continue", "goto", "sizeof", "alignof",
+        "typeof", "decltype", "static_cast", "dynamic_cast",
+        "const_cast", "reinterpret_cast", "new", "delete",
+        "throw", "catch", "try", "class", "struct", "union",
+        "enum", "namespace", "template", "typename", "typedef",
+        "using", "virtual", "override", "final", "inline",
+        "constexpr", "noexcept", "explicit", "static", "extern",
+        "register", "volatile", "mutable", "thread_local",
+    })
 
     # ===========================================================================
     # Classification (enhanced for C/C++)

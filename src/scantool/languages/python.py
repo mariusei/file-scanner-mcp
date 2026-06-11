@@ -498,39 +498,10 @@ class PythonLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        for match in re.finditer(r"^class\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        for match in re.finditer(r"^def\s+(\w+)\s*\(", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"^class\s+(\w+)", "type": "class"},
+        {"pattern": r"^def\s+(\w+)\s*\(", "type": "function"},
+    ]
 
     def _extract_calls_tree_sitter(
         self, file_path: str, root, source_bytes: bytes, definitions: list[DefinitionInfo]
@@ -604,37 +575,9 @@ class PythonLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex."""
-        calls = []
-
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            if callee_name in [
-                "if", "for", "while", "def", "class", "return", "print",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "for", "while", "def", "class", "return", "print",
+    })
 
     # ===========================================================================
     # Classification (enhanced for Python)

@@ -566,60 +566,17 @@ class GoLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Find type declarations
-        for match in re.finditer(r'^type\s+(\w+)\s+(struct|interface)', content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            type_kind = match.group(2)
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type=type_kind,
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Find functions
-        for match in re.finditer(r'^func\s+(\w+)\s*\(', content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Find methods (with receivers)
-        for match in re.finditer(
-            r'^func\s+\(\w+\s+\*?(\w+)\)\s+(\w+)\s*\(', content, re.MULTILINE
-        ):
-            line = content[: match.start()].count("\n") + 1
-            receiver_type = match.group(1)
-            method_name = match.group(2)
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="method",
-                    name=method_name,
-                    line=line,
-                    signature=None,
-                    parent=receiver_type,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"^type\s+(\w+)\s+(struct|interface)", "type_group": 2},
+        {"pattern": r"^func\s+(\w+)\s*\(", "type": "function"},
+        # Methods with receivers — parent is the receiver type
+        {
+            "pattern": r"^func\s+\(\w+\s+\*?(\w+)\)\s+(\w+)\s*\(",
+            "type": "method",
+            "name_group": 2,
+            "parent_group": 1,
+        },
+    ]
 
     def _extract_calls_tree_sitter(
         self,
@@ -683,41 +640,12 @@ class GoLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (without caller context)."""
-        calls = []
-
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in [
-                "if", "for", "switch", "select", "go", "defer", "return",
-                "func", "type", "struct", "interface", "map", "chan",
-                "make", "new", "len", "cap", "append", "copy", "delete",
-                "close", "panic", "recover", "print", "println",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "for", "switch", "select", "go", "defer", "return",
+        "func", "type", "struct", "interface", "map", "chan",
+        "make", "new", "len", "cap", "append", "copy", "delete",
+        "close", "panic", "recover", "print", "println",
+    })
 
     # ===========================================================================
     # Classification (enhanced for Go)

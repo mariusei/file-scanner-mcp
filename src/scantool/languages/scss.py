@@ -728,41 +728,10 @@ class SCSSLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Find @mixin definitions
-        for match in re.finditer(r"@mixin\s+([\w-]+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="mixin",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Find @function definitions
-        for match in re.finditer(r"@function\s+([\w-]+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"@mixin\s+([\w-]+)", "type": "mixin"},
+        {"pattern": r"@function\s+([\w-]+)", "type": "function"},
+    ]
 
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]

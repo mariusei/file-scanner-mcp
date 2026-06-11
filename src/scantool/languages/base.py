@@ -244,13 +244,42 @@ class BaseLanguage(ABC):
             "or override scan()"
         )
 
+    #: Regex fallback for severely malformed files: list of pattern specs.
+    #:   pattern (required) — regex with the structure name in group 1
+    #:   type (required) — StructureNode type
+    #:   flags (default re.MULTILINE), name_group (default 1)
+    #:   suffix (default " (fallback)") — appended to the name
+    #:   first_only — stop after the first match (e.g. namespace/package)
+    #:   modifiers — static modifier list for matched nodes
+    #: Empty list → no regex fallback available.
+    REGEX_FALLBACK_PATTERNS: list[dict] = []
+
     def _fallback_extract(self, source_code: bytes) -> Optional[list[StructureNode]]:
         """Regex-based extraction for severely malformed files.
 
         Used by the default scan() when the parse tree is dominated by
-        errors. Default: no fallback available.
+        errors. Driven by REGEX_FALLBACK_PATTERNS; languages with custom
+        fallback logic override this.
         """
-        return None
+        if not self.REGEX_FALLBACK_PATTERNS:
+            return None
+        text = source_code.decode("utf-8", errors="replace")
+        structures = []
+        for spec in self.REGEX_FALLBACK_PATTERNS:
+            flags = spec.get("flags", re.MULTILINE)
+            suffix = spec.get("suffix", " (fallback)")
+            for match in re.finditer(spec["pattern"], text, flags):
+                line_num = text[: match.start()].count("\n") + 1
+                structures.append(StructureNode(
+                    type=spec["type"],
+                    name=match.group(spec.get("name_group", 1)) + suffix,
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=list(spec.get("modifiers", [])),
+                ))
+                if spec.get("first_only"):
+                    break
+        return structures
 
     #: Condensation strategy for salient excerpts:
     #: - None: no condensation, verbatim display (prose, config — every line
@@ -453,11 +482,36 @@ class BaseLanguage(ABC):
             # Fallback to regex-based extraction
             return self._extract_definitions_regex(file_path, content)
 
+    #: Regex definition fallback: list of pattern specs. Each spec is a dict:
+    #:   pattern (required) — regex with the definition name in group 1
+    #:   type (required unless type_group) — DefinitionInfo type
+    #:   type_group / name_group / parent_group — match-group overrides
+    #:   flags — re flags (default re.MULTILINE)
+    #: Empty list → no regex fallback.
+    REGEX_DEFINITION_PATTERNS: list[dict] = []
+
     def _extract_definitions_regex(
         self, file_path: str, content: str
     ) -> list[DefinitionInfo]:
-        """Regex fallback when scan() fails. Default: no fallback."""
-        return []
+        """Regex fallback when scan() fails, driven by REGEX_DEFINITION_PATTERNS."""
+        definitions = []
+        for spec in self.REGEX_DEFINITION_PATTERNS:
+            flags = spec.get("flags", re.MULTILINE)
+            type_group = spec.get("type_group")
+            parent_group = spec.get("parent_group")
+            for match in re.finditer(spec["pattern"], content, flags):
+                line = content[: match.start()].count("\n") + 1
+                definitions.append(
+                    DefinitionInfo(
+                        file=file_path,
+                        type=match.group(type_group) if type_group else spec["type"],
+                        name=match.group(spec.get("name_group", 1)),
+                        line=line,
+                        signature=None,
+                        parent=match.group(parent_group) if parent_group else None,
+                    )
+                )
+        return definitions
 
     def extract_calls(
         self, file_path: str, content: str, definitions: list[DefinitionInfo]
@@ -486,8 +540,48 @@ class BaseLanguage(ABC):
             tree = parser.parse(source_bytes)
             return ts_hook(file_path, tree.root_node, source_bytes, definitions)
         except Exception:
-            regex_hook = getattr(self, "_extract_calls_regex", None)
-            return regex_hook(file_path, content, definitions) if regex_hook else []
+            return self._extract_calls_regex(file_path, content, definitions)
+
+    #: Regex call fallback: language keywords/builtins that look like calls
+    #: and must be skipped. None → no regex fallback for this language.
+    REGEX_CALL_KEYWORDS: Optional[frozenset[str]] = None
+
+    #: Regex call fallback: pattern whose group 1 is the callee name
+    REGEX_CALL_PATTERN: str = r"\b(\w+)\s*\("
+
+    def _extract_calls_regex(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Fallback: extract calls using regex (without caller context).
+
+        Driven by REGEX_CALL_KEYWORDS and REGEX_CALL_PATTERN.
+        """
+        if self.REGEX_CALL_KEYWORDS is None:
+            return []
+
+        calls = []
+        for match in re.finditer(self.REGEX_CALL_PATTERN, content):
+            callee_name = match.group(1)
+            if callee_name in self.REGEX_CALL_KEYWORDS:
+                continue
+            line = content[: match.start()].count("\n") + 1
+            calls.append(
+                CallInfo(
+                    caller_file=file_path,
+                    caller_name=None,
+                    callee_name=callee_name,
+                    line=line,
+                    is_cross_file=False,
+                )
+            )
+
+        # Mark cross-file calls
+        local_defs = {d.name for d in definitions}
+        for call in calls:
+            if call.callee_name not in local_defs:
+                call.is_cross_file = True
+
+        return calls
 
     def _structures_to_definitions(
         self, file_path: str, structures: list[StructureNode], parent: str = None

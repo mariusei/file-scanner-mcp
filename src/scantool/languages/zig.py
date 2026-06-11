@@ -593,47 +593,18 @@ class ZigLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Find struct definitions
-        for match in re.finditer(
-            r"^\s*(pub\s+)?const\s+(\w+)\s*=\s*struct\s*\{", content, re.MULTILINE
-        ):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="struct",
-                    name=match.group(2),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Find function definitions
-        for match in re.finditer(
-            r"^\s*(pub\s+)?(inline\s+)?(export\s+)?(extern\s+)?fn\s+(\w+)",
-            content,
-            re.MULTILINE,
-        ):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(5),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+    REGEX_DEFINITION_PATTERNS = [
+        {
+            "pattern": r"^\s*(pub\s+)?const\s+(\w+)\s*=\s*struct\s*\{",
+            "type": "struct",
+            "name_group": 2,
+        },
+        {
+            "pattern": r"^\s*(pub\s+)?(inline\s+)?(export\s+)?(extern\s+)?fn\s+(\w+)",
+            "type": "function",
+            "name_group": 5,
+        },
+    ]
 
     def _extract_calls_tree_sitter(
         self,
@@ -706,41 +677,11 @@ class ZigLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex (without caller context)."""
-        calls = []
-
-        call_pattern = r'\b(\w+)\s*\('
-        for match in re.finditer(call_pattern, content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords and common constructs
-            if callee_name in [
-                "if", "while", "for", "switch", "fn", "pub", "const",
-                "var", "return", "break", "continue", "defer", "errdefer",
-                "catch", "try", "struct", "enum", "union", "error",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "while", "for", "switch", "fn", "pub", "const",
+        "var", "return", "break", "continue", "defer", "errdefer",
+        "catch", "try", "struct", "enum", "union", "error",
+    })
 
     # ===========================================================================
     # Classification (enhanced for Zig)

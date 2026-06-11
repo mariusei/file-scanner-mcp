@@ -753,69 +753,19 @@ class TypeScriptLanguage(BaseLanguage):
 
         return definitions
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
-        """Fallback: Extract definitions using regex."""
-        definitions = []
-
-        # Classes
-        for match in re.finditer(r"^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="class",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Interfaces
-        for match in re.finditer(r"^\s*(?:export\s+)?interface\s+(\w+)", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="interface",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        # Functions
-        for match in re.finditer(r"^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
+    REGEX_DEFINITION_PATTERNS = [
+        {"pattern": r"^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)", "type": "class"},
+        {"pattern": r"^\s*(?:export\s+)?interface\s+(\w+)", "type": "interface"},
+        {
+            "pattern": r"^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(",
+            "type": "function",
+        },
         # Arrow functions
-        for match in re.finditer(r"^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(", content, re.MULTILINE):
-            line = content[: match.start()].count("\n") + 1
-            definitions.append(
-                DefinitionInfo(
-                    file=file_path,
-                    type="function",
-                    name=match.group(1),
-                    line=line,
-                    signature=None,
-                    parent=None,
-                )
-            )
-
-        return definitions
+        {
+            "pattern": r"^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(",
+            "type": "function",
+        },
+    ]
 
     def _extract_calls_tree_sitter(
         self, file_path: str, root, source_bytes: bytes, definitions: list[DefinitionInfo]
@@ -891,39 +841,10 @@ class TypeScriptLanguage(BaseLanguage):
 
         return calls
 
-    def _extract_calls_regex(
-        self, file_path: str, content: str, definitions: list[DefinitionInfo]
-    ) -> list[CallInfo]:
-        """Fallback: Extract calls using regex."""
-        calls = []
-
-        for match in re.finditer(r"\b(\w+)\s*\(", content):
-            callee_name = match.group(1)
-            line = content[: match.start()].count("\n") + 1
-
-            # Skip keywords
-            if callee_name in [
-                "if", "for", "while", "function", "class", "return", "console",
-                "switch", "catch", "new", "typeof", "import", "export",
-            ]:
-                continue
-
-            calls.append(
-                CallInfo(
-                    caller_file=file_path,
-                    caller_name=None,
-                    callee_name=callee_name,
-                    line=line,
-                    is_cross_file=False,
-                )
-            )
-
-        local_defs = {d.name for d in definitions}
-        for call in calls:
-            if call.callee_name not in local_defs:
-                call.is_cross_file = True
-
-        return calls
+    REGEX_CALL_KEYWORDS = frozenset({
+        "if", "for", "while", "function", "class", "return", "console",
+        "switch", "catch", "new", "typeof", "import", "export",
+    })
 
     # ===========================================================================
     # Classification (enhanced for TypeScript/JavaScript)
