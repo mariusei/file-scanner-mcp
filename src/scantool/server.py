@@ -41,7 +41,11 @@ enclosing function/class/section context (replaces grep)
 - cheap overview of a directory -> scan_directory: file tree with one-line \
 gists, code health and churn labels (replaces ls/glob)
 - one file -> scan_file with budget=1500 (300 for a quick look) BEFORE \
-reading it; then read only the line range the scan pointed to
+reading it
+- read ONE function/class/section from the scan -> scan_file with \
+focus="name" (or "ClassA.method"): the node verbatim plus parent context. \
+Never cat a whole file or guess a sed/Read line range for this — measured \
+75% fewer read tokens at equal answer quality (M2c)
 - "what changed" / review -> scan_diff against HEAD/main/any ref: \
 new/changed/removed functions (replaces git diff)
 - first-time orientation in an UNKNOWN codebase -> preview_directory: entry \
@@ -51,8 +55,9 @@ questions)
 scan_file_content
 
 TRIGGER: about to run ls, find, grep or cat to explore? STOP — one of the \
-tools above answers it cheaper. Default first call in a directory you have \
-not scanned yet: scan_directory.
+tools above answers it cheaper. About to cat/sed/Read a file to see one \
+function or section? STOP — scan_file(focus=...) reads exactly that node. \
+Default first call in a directory you have not scanned yet: scan_directory.
 
 After a full recursive scan_directory(pattern="**/*"), do not re-search with \
 glob/grep — the output already lists every file.
