@@ -2,6 +2,7 @@
 
 import os
 import sys
+from importlib.metadata import PackageNotFoundError, version
 
 # === Windows/stdio buffering fix ===
 # Prevents deadlocks when Claude Code sends parallel MCP requests over stdio.
@@ -14,7 +15,12 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(write_through=True)  # type: ignore[union-attr]
 
-__version__ = "0.14.0"
+# Versjonen eies av pyproject.toml; metadata-oppslag hindrer at de driver
+# fra hverandre (0.14 vs 0.15 skjedde med to håndsynkroniserte felt)
+try:
+    __version__ = version("scantool")
+except PackageNotFoundError:
+    __version__ = "0.0.0+uninstalled"
 
 from .server import main
 
