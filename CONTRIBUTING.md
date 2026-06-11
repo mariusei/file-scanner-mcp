@@ -60,9 +60,11 @@ class YourLanguage(BaseLanguage):
         return 10  # Higher = preferred when multiple languages match
 
     # === Structure Scanning (REQUIRED) ===
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
-        """Extract classes, functions, methods from source code."""
-        # Use tree-sitter or regex to parse
+    # Tree-sitter languages: set up self.parser in __init__ and implement
+    # _extract_structure(). The base scan() handles parsing, error detection
+    # and regex fallback. Languages without tree-sitter override scan().
+    def _extract_structure(self, root, source_code: bytes) -> list[StructureNode]:
+        """Traverse the tree-sitter AST and build StructureNode list."""
         pass
 
     # === Semantic Analysis (REQUIRED) ===
@@ -83,6 +85,12 @@ class YourLanguage(BaseLanguage):
     # is_low_value_for_inventory() - Identifies small/boilerplate files
     # resolve_import_to_file() - Enables import graph building
     # format_entry_point() - Custom display formatting
+
+    # === Optional Pattern Tables (drive base-class regex fallbacks) ===
+    # REGEX_FALLBACK_PATTERNS - structures for severely malformed files
+    # REGEX_DEFINITION_PATTERNS - definitions when scan() fails
+    # REGEX_CALL_KEYWORDS (+ REGEX_CALL_PATTERN) - call extraction fallback
+    # IMPORT_GROUP_LABEL - label for grouped imports (e.g. "use statements")
 ```
 
 ### Step 3: Test It
@@ -164,53 +172,19 @@ class RubyLanguage(BaseLanguage):
     def get_priority(cls) -> int:
         return 10
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
-        """Scan Ruby source code."""
-        if not self.parser:
-            return self._fallback_extract(source_code)
+    # Base scan() parses with self.parser, switches to the regex fallback on
+    # heavy errors, and calls _extract_structure() — no override needed.
 
-        try:
-            tree = self.parser.parse(source_code)
-            if self._has_too_many_errors(tree.root_node):
-                return self._fallback_extract(source_code)
-            return self._extract_structure(tree.root_node, source_code)
-        except Exception as e:
-            return [StructureNode(
-                type="error",
-                name=f"Parse error: {e}",
-                start_line=1,
-                end_line=1
-            )]
+    # Regex fallback for broken files: declarative pattern table
+    REGEX_FALLBACK_PATTERNS = [
+        {"pattern": r"^class\s+(\w+)", "type": "class"},
+        {"pattern": r"^  def\s+(\w+)", "type": "method"},
+    ]
 
     def _extract_structure(self, root, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
         structures = []
         # ... traverse AST and build StructureNode list
-        return structures
-
-    def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex fallback for broken files."""
-        text = source_code.decode('utf-8', errors='replace')
-        structures = []
-
-        for match in re.finditer(r'^class\s+(\w+)', text, re.MULTILINE):
-            line = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1),
-                start_line=line,
-                end_line=line
-            ))
-
-        for match in re.finditer(r'^  def\s+(\w+)', text, re.MULTILINE):
-            line = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="method",
-                name=match.group(1),
-                start_line=line,
-                end_line=line
-            ))
-
         return structures
 
     def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
@@ -393,7 +367,8 @@ def should_analyze(self, file_path: str) -> bool:
 |--------|---------|---------|
 | `get_extensions()` | File extensions to handle | **Required** |
 | `get_language_name()` | Human-readable name | **Required** |
-| `scan()` | Extract structure from bytes | **Required** |
+| `_extract_structure()` | Tree-sitter AST traversal | **Required** (or override `scan()`) |
+| `scan()` | Extract structure from bytes | Tree-sitter pipeline w/ regex fallback |
 | `extract_imports()` | Find import statements | **Required** |
 | `find_entry_points()` | Find main/app instances | **Required** |
 | `extract_definitions()` | Get functions/classes | Reuses `scan()` |
