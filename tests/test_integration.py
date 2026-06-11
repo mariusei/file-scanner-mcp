@@ -116,3 +116,21 @@ def test_unix_timestamp_in_output():
             if "modified:" in line:
                 assert "[ts:" in line, "File metadata should include unix timestamp"
                 break
+
+
+def test_scan_directory_propagates_mode(monkeypatch):
+    """scan_directory must pass its saliency mode through to every scan_file."""
+    scanner = FileScanner()
+    seen_modes = []
+    original = scanner.scan_file
+
+    def spy(path, **kwargs):
+        seen_modes.append(kwargs.get("mode"))
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(scanner, "scan_file", spy)
+    fixture_dir = Path(__file__).parent / "golden" / "fixture_dir"
+    results = scanner.scan_directory(str(fixture_dir), mode="active")
+
+    assert results
+    assert seen_modes and all(m == "active" for m in seen_modes)

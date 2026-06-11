@@ -99,12 +99,14 @@ def preview_directory(
     - Instant architecture AND critical function overview
     - Function-level insights ("get_pool() called by 41 functions")
 
-    Args:
-        directory: Root directory to analyze
-        depth: Analysis depth - "quick", "normal", or "deep" [default]
-        max_files: Maximum files to analyze (safety limit, default: 10000)
-        max_entries: Maximum entries to show per section (default: 20)
-        respect_gitignore: Respect .gitignore patterns (default: True)
+    Args (tiered — most calls need only Common):
+        Common:
+            directory: Root directory to analyze
+            depth: Analysis depth - "quick", "normal", or "deep" [default]
+        Cost & slicing:
+            max_files: Maximum files to analyze (safety limit, default: 10000)
+            max_entries: Maximum entries to show per section (default: 20)
+            respect_gitignore: Respect .gitignore patterns (default: True)
 
     Returns:
         Structured code analysis with entry points, architecture, hot functions, and call graph
@@ -216,10 +218,12 @@ def list_directories(
     Displays hierarchical folder structure as a tree, perfect for understanding
     project organization without file clutter.
 
-    Args:
-        directory: Root directory to list
-        max_depth: Maximum depth to traverse (default: 3)
-        respect_gitignore: Respect .gitignore patterns (default: True)
+    Args (tiered — most calls need only Common):
+        Common:
+            directory: Root directory to list
+        Cost & slicing:
+            max_depth: Maximum depth to traverse (default: 3)
+            respect_gitignore: Respect .gitignore patterns (default: True)
 
     Returns:
         Tree structure showing only directories
@@ -323,14 +327,16 @@ def scan_file_content(
     Supports: Python, JavaScript, TypeScript, Rust, Go, Java, C/C++, C#, PHP,
     Ruby, SQL, Markdown, Plain Text, and image formats.
 
-    Args:
-        content: The file content as a string
-        filename: Filename (with extension) to determine parser type
-        show_signatures: Include function signatures with types (default: True)
-        show_decorators: Include decorators like @property, @staticmethod (default: True)
-        show_docstrings: Include first line of docstrings (default: True)
-        show_complexity: Show complexity metrics for long/complex functions (default: False)
-        output_format: Output format - "tree" or "json" (default: "tree")
+    Args (tiered — most calls need only Common):
+        Common:
+            content: The file content as a string
+            filename: Filename (with extension) to determine parser type
+        Semantics & display:
+            show_signatures: Include function signatures with types (default: True)
+            show_decorators: Include decorators like @property, @staticmethod (default: True)
+            show_docstrings: Include first line of docstrings (default: True)
+            show_complexity: Show complexity metrics for long/complex functions (default: False)
+            output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
         Formatted structure output (tree or JSON)
@@ -416,30 +422,35 @@ def scan_file(
     current lines, so no hunk drift) when — and only when — the counts
     differ between nodes; a uniform value repeats file churn and is omitted.
 
-    Args:
-        file_path: Absolute or relative path to the file to scan
-        show_signatures: Include function signatures with types (default: True)
-        show_decorators: Include decorators like @property, @staticmethod (default: True)
-        show_docstrings: Include first line of docstrings (default: True)
-        show_complexity: Show complexity metrics for long/complex functions (default: False)
-        condense: Show code as condensed method skeletons (pseudocode without
-            line numbers) — every function gets a shallow depth-2 outline, the
-            most salient get full depth (default: True; set False for verbatim
-            excerpts with line numbers, top-tier nodes only)
-        budget: Approximate token cap for skeleton content. The least salient
-            functions degrade first (full depth → outline → header only), so
-            output size becomes predictable for huge files while the most
-            important code keeps its depth (default: None = no cap).
-            Presets for the exploration funnel — use instead of grep:
-            budget=300 ≈ file preview (top functions only), budget=1500 ≈
-            compact overview, None = full two-tier detail
-        delta: Re-scans show only what changed since YOUR previous scan of
-            the same file in this session: unchanged file → one line;
-            modified file → full structure but code detail only for new or
-            changed functions ([ny]/[endret] labels, removed ones listed).
-            First scan is always full. Pass delta=False for full output
-            (default: True)
-        output_format: Output format - "tree" or "json" (default: "tree")
+    Args (tiered — most calls need only Common):
+        Common:
+            file_path: Absolute or relative path to the file to scan
+        Cost & slicing:
+            budget: Approximate token cap for skeleton content. The least salient
+                functions degrade first (full depth → outline → header only), so
+                output size becomes predictable for huge files while the most
+                important code keeps its depth (default: None = no cap).
+                Presets for the exploration funnel — use instead of grep:
+                budget=300 ≈ file preview (top functions only), budget=1500 ≈
+                compact overview, None = full two-tier detail
+            delta: Re-scans show only what changed since YOUR previous scan of
+                the same file in this session: unchanged file → one line;
+                modified file → full structure but code detail only for new or
+                changed functions ([ny]/[endret] labels, removed ones listed).
+                First scan is always full. Pass delta=False for full output
+                (default: True)
+        Semantics & display:
+            mode: Saliency weight profile — "balanced" (default) or "active"
+                (weights actively-edited code higher in skeleton selection)
+            condense: Show code as condensed method skeletons (pseudocode without
+                line numbers) — every function gets a shallow depth-2 outline, the
+                most salient get full depth (default: True; set False for verbatim
+                excerpts with line numbers, top-tier nodes only)
+            show_signatures: Include function signatures with types (default: True)
+            show_decorators: Include decorators like @property, @staticmethod (default: True)
+            show_docstrings: Include first line of docstrings (default: True)
+            show_complexity: Show complexity metrics for long/complex functions (default: False)
+            output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
         Formatted structure output (tree or JSON)
@@ -534,6 +545,7 @@ def scan_directory(
     respect_gitignore: bool = True,
     exclude_patterns: Optional[list[str]] = None,
     delta: bool = True,
+    mode: str = "balanced",
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -578,17 +590,23 @@ def scan_directory(
 
     Respects .gitignore by default (excludes node_modules, .venv, etc.)
 
-    Args:
-        directory: Directory path to scan
-        pattern: Glob pattern (default: "**/*" = recursive all files)
-        max_files: Maximum files to process (default: None = unlimited)
-        respect_gitignore: Respect .gitignore exclusions (default: True)
-        exclude_patterns: Additional patterns to exclude (gitignore syntax)
-        delta: Re-scans aggregate files unchanged since YOUR previous scan
-            in this session to a single line — full detail only for changed
-            or new files. The CODE HEALTH section always covers everything.
-            Pass delta=False for full output (default: True)
-        output_format: "tree" or "json" (default: "tree")
+    Args (tiered — most calls need only Common):
+        Common:
+            directory: Directory path to scan
+            pattern: Glob pattern (default: "**/*" = recursive all files)
+        Cost & slicing:
+            max_files: Maximum files to process (default: None = unlimited)
+            respect_gitignore: Respect .gitignore exclusions (default: True)
+            exclude_patterns: Additional patterns to exclude (gitignore syntax)
+            delta: Re-scans aggregate files unchanged since YOUR previous scan
+                in this session to a single line — full detail only for changed
+                or new files. The CODE HEALTH section always covers everything.
+                Pass delta=False for full output (default: True)
+        Semantics & display:
+            mode: Saliency weight profile for the per-file glimpse lines —
+                "balanced" (default) or "active" (weights actively-edited
+                code higher)
+            output_format: "tree" or "json" (default: "tree")
 
     Returns:
         Hierarchical tree with compact inline structures
@@ -608,7 +626,8 @@ def scan_directory(
             directory=directory,
             pattern=pattern,
             respect_gitignore=respect_gitignore,
-            exclude_patterns=exclude_patterns
+            exclude_patterns=exclude_patterns,
+            mode=mode
         )
 
         if not results:
@@ -702,10 +721,12 @@ def scan_diff(
     comments) are reported as exactly that. Works for any file type —
     markdown diffs show changed sections.
 
-    Args:
-        directory: Directory inside the git repository to diff
-        ref: Git ref to compare the working tree against (default: HEAD)
-        budget: Approximate token cap per file's skeletons (default: 1500)
+    Args (tiered — most calls need only Common):
+        Common:
+            directory: Directory inside the git repository to diff
+            ref: Git ref to compare the working tree against (default: HEAD)
+        Cost & slicing:
+            budget: Approximate token cap per file's skeletons (default: 1500)
 
     Returns:
         Structural diff with per-node change labels
@@ -746,16 +767,18 @@ def search_structures(
     content_pattern works for ANY file type: a hit in markdown returns its
     section, in SQL its table, in code its enclosing function.
 
-    Args:
-        directory: Directory to search in
-        type_filter: Filter by type (e.g., "function", "class", "method")
-        name_pattern: Regex pattern to match names (e.g., "^test_", ".*Manager$")
-        has_decorator: Filter by decorator (e.g., "@property", "@staticmethod")
-        min_complexity: Minimum complexity (lines) to include
-        content_pattern: Regex searched in raw file content (case-insensitive);
-            hits are grouped by their containing structure. Combine with
-            type_filter/name_pattern to restrict which structures count.
-        output_format: Output format - "tree" or "json" (default: "tree")
+    Args (tiered — most calls need only Common):
+        Common:
+            directory: Directory to search in
+            content_pattern: Regex searched in raw file content (case-insensitive);
+                hits are grouped by their containing structure. Combine with
+                type_filter/name_pattern to restrict which structures count.
+            name_pattern: Regex pattern to match names (e.g., "^test_", ".*Manager$")
+            type_filter: Filter by type (e.g., "function", "class", "method")
+        Semantics & display:
+            has_decorator: Filter by decorator (e.g., "@property", "@staticmethod")
+            min_complexity: Minimum complexity (lines) to include
+            output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
         Matching structures with line numbers and metadata

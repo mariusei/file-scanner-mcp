@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .languages import BaseLanguage, StructureNode, get_registry
+from .languages import StructureNode, get_registry
 from .gitignore import load_gitignore, GitignoreParser
 from .glob_expander import expand_braces
 
@@ -336,7 +336,8 @@ class FileScanner:
         directory: str,
         pattern: str = "**/*",
         respect_gitignore: bool = True,
-        exclude_patterns: Optional[list[str]] = None
+        exclude_patterns: Optional[list[str]] = None,
+        mode: str = "balanced"
     ) -> dict[str, Optional[list[StructureNode]]]:
         """
         Scan all supported files in a directory.
@@ -346,6 +347,7 @@ class FileScanner:
             pattern: Glob pattern for files (use "**/*" for recursive, "*" for current dir only)
             respect_gitignore: Respect .gitignore exclusions (default: True)
             exclude_patterns: Additional patterns to exclude (gitignore syntax)
+            mode: Saliency weight profile per file — "balanced" or "active"
 
         Returns:
             Dictionary mapping file paths to their structures
@@ -438,7 +440,7 @@ class FileScanner:
                         continue
 
                     try:
-                        results[file_str] = self.scan_file(file_str)
+                        results[file_str] = self.scan_file(file_str, mode=mode)
                     except Exception as e:
                         # Continue scanning even if one file fails
                         results[file_str] = [StructureNode(

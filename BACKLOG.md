@@ -45,9 +45,14 @@ token-paritet eller bedre under budsjettpress. Bevis: harness 6/6 vs 5/6
    punkt 4 går gjennom kontraktens egen mekanisme (bevisst endring →
    bevisst snapshot-oppdatering).
 
-4. **Docstring-tiering + parameterkonsistens**: scan_file har 10 params
-   uten vanlig/skive/semantikk-gruppering; mode finnes på scan_file men
-   ikke scan_directory. Aksept: alle verktøy følger samme tier-mal.
+4. ~~**Docstring-tiering + parameterkonsistens**~~ **LEVERT 2026-06-11**:
+   alle 7 verktøy i server.py følger samme tier-mal i Args
+   (Common → Cost & slicing → Semantics & display; tomme tier utelates).
+   mode lagt til scan_directory (server + FileScanner.scan_directory,
+   default "balanced") med regresjonstest for propagering; scan_file
+   sin udokumenterte mode-param fikk Args-linje. Akseptkriteriet
+   innfridd via kontrakten: golden-testene forble grønne (default-output
+   uendret), 895/895 totalt.
 
 5. **Småplukk**: størrelsesgate for flere språk enn markdown (mønsteret
    finnes i markdown.py); generisk skjelett-støylinjer for Swift
