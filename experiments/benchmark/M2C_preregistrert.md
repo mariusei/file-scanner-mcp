@@ -66,3 +66,33 @@ At arm B bruker focusread flittig OG får lavere dekning enn arm A — det
 ville falsifisere selve premisset om at presis lesing er flaskehalsen,
 og peke på at *utvelgelsen* (hvilken node å lese) er den egentlige
 flaskehalsen.
+
+---
+
+# M2c-v2 forhåndsregistrert (2026-06-11, skrevet FØR v2-episodene)
+
+Tester STYRINGSEFFEKTEN av den nye lesesteg-styringen (commit 5a0300e)
+isolert: arm B re-kjøres med én tilføyd styringslinje i episodeprompten
+som speiler produksjons-instructions («les én funksjon → focusread,
+aldri helfils-cat/sed-gjetting»). Alt annet identisk med arm B v1.
+Kanal-forbehold: prompten er proxy for MCP server instructions —
+eksperimentet måler tekstens effekt, ikke injeksjonskanalen.
+
+16 episoder (8 oppgaver × 2 reps). Baseline (arm B v1): focusread i
+9/16 episoder, 13 523 lese-tokens, 53/53 fakta.
+
+**V1 — forventet:** focusread-andel ≥ 12/16 (75 %), lese-tokens ≤ v1-
+nivå, dekning holder (≥ 95 %).
+
+**V2 — null (redundans i styring):** andel innenfor 9/16 ± 2 — én
+linje ekstra styring endrer ikke adferd når kommandolisten alt nevner
+verktøyet; da er discoverability-flaskehalsen et kapabilitets-/
+oppgavetrekk, ikke et tekstproblem.
+
+**V3 — paradoks (overstyring):** focusread brukes også der search
+allerede viste kroppen → flere kall og HØYERE totaltokens enn v1
+(> +20 %). Styring som ikke er oppgavebetinget koster (sg-T5-lærdommen
+fra M2b-v2).
+
+**Støygulv:** n=16; bare skift på ≥ 3 episoder i andel er skillbart
+fra støy. Dekning graderes med samme konvensjon som M2c.
