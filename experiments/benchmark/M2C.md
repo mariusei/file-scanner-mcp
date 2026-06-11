@@ -1,132 +1,135 @@
-# M2c: focus= mot kroppsnivå-spørsmål — resultater (2026-06-11)
+# M2c: focus= against body-level questions — results (2026-06-11)
 
-32 episoder: 8 oppgaver × 2 armer × 2 reps, én fersk haiku-subagent per
-episode, maks 6 verktøykall, all wrapper-output logget ved konstruksjon.
-Forventninger preregistrert og committet FØR implementasjon og episoder
-(`M2C_preregistrert.md`, commit 51ebaa5). Armene var identiske bortsett
-fra `focusread PATH NODE` i arm B. Rålogger: `m2c/logs/`, sluttmeldinger:
-`m2c/answers-*.md`, analyse: `m2c/analyze_logs.py`.
+32 episodes: 8 tasks × 2 arms × 2 reps, one fresh haiku subagent per
+episode, max 6 tool calls, all wrapper output logged at construction.
+Expectations preregistered and committed BEFORE implementation and episodes
+(`M2C_preregistered.md`, commit 51ebaa5). The arms were identical except
+for `focusread PATH NODE` in arm B. Raw logs: `m2c/logs/`, final messages:
+`m2c/answers-*.md`, analysis: `m2c/analyze_logs.py`.
 
-## Observasjoner (rå tall, ingen tolkning)
+## Observations (raw numbers, no interpretation)
 
-| | Arm A (uten focus) | Arm B (med focus) |
+| | Arm A (without focus) | Arm B (with focus) |
 |---|---|---|
-| Fakta-dekning | 56/56 (100 %) | 53/53 (100 %)* |
-| Wrapper-kall totalt | 65 | 73 |
-| Lese-tokens (cat/sed/focusread-output) | 54 337 | 13 523 |
-| Navigasjons-tokens | 34 679 | 31 165 |
-| Sum verktøy-tokens | 89 016 | 44 688 |
-| Episoder med focusread-bruk | — | 9/16 (56 %) |
-| Feilankre (feil fil/funksjon i svar) | 0 | 0 |
+| Fact coverage | 56/56 (100%) | 53/53 (100%)* |
+| Wrapper calls total | 65 | 73 |
+| Read tokens (cat/sed/focusread output) | 54,337 | 13,523 |
+| Navigation tokens | 34,679 | 31,165 |
+| Total tool tokens | 89,016 | 44,688 |
+| Episodes using focusread | — | 9/16 (56%) |
+| Wrong anchors (wrong file/function in answer) | 0 | 0 |
 
-*Én arm B-episode (pytest-7373-b-r2) er ekskludert: 9 rapporterte
-verktøykall mot 2 loggede — 7 kall skjedde utenfor wrapperne, og svaret
-(3/3 fakta) kan ikke attribueres til logget verktøyoutput. Inkludert
-ville arm B vært 56/56.
+*One arm B episode (pytest-7373-b-r2) is excluded: 9 reported tool calls
+vs 2 logged — 7 calls happened outside the wrappers, and the answer
+(3/3 facts) cannot be attributed to logged tool output. Included,
+arm B would have been 56/56.
 
-Største enkelt-lesinger: arm A inneholdt tre helfils-cat på 9 248,
-11 382 og 15 210 tokens; arm Bs største lesing var 2 598 tokens.
+Largest single reads: arm A contained three whole-file cats of 9,248,
+11,382 and 15,210 tokens; arm B's largest read was 2,598 tokens.
 
-## De preregistrerte utfallene mot data
+## The preregistered outcomes against the data
 
-**P1 (korrekthet, ≥10 pp differanse): IKKE innfridd — takeffekt.**
-Begge armer traff 100 %. Differansen er 0, under null-grensen på 5 pp.
-Oppgavene var for lette for haiku med begge verktøysett til å skille
-armene på korrekthet.
+**P1 (correctness, ≥10 pp difference): NOT met — ceiling effect.**
+Both arms hit 100%. The difference is 0, below the null threshold of 5 pp.
+The tasks were too easy for haiku with either toolset to separate the
+arms on correctness.
 
-**P2 (lese-tokens ≥20 % lavere i arm B): INNFRIDD med stor margin.**
-−75 % (13 523 mot 54 337). Mekanismen er synlig i råloggene: uten focus
-faller agenter tilbake til helfils-cat eller brede sed-ranges; med focus
-leses noden presist. Merk at P2 var preregistrert som sekundær.
+**P2 (read tokens ≥20% lower in arm B): MET by a wide margin.**
+−75% (13,523 vs 54,337). The mechanism is visible in the raw logs: without
+focus, agents fall back to whole-file cat or wide sed ranges; with focus,
+the node is read precisely. Note that P2 was preregistered as secondary.
 
-**P3 (discoverability, focusread i ≥50 % av episodene): INNFRIDD, så
-vidt.** 9/16 (56 %). Ingen re-kjøring med justert beskrivelse nødvendig,
-men marginen er tynn — 7 episoder løste oppgaven uten focusread, oftest
-fordi search/searchname allerede viste kroppen.
+**P3 (discoverability, focusread in ≥50% of the episodes): MET, just
+barely.** 9/16 (56%). No re-run with an adjusted description needed,
+but the margin is thin — 7 episodes solved the task without focusread,
+most often because search/searchname already showed the body.
 
-**P4 (null-redundans, arm A ≥85 %): INNFRIDD — og dette er hovedfunnet
-sammen med P2.** Skjelett+search+sed-flyten var TILSTREKKELIG for
-korrekthet på alle kroppsnivå-spørsmålene. Preregistreringen sa at P4
-alene tilsier skrinlegging «uavhengig av P1» — men den formuleringen
-antok at dekning var eneste margin og foregrep ikke kombinasjonen
-P4+P2 begge sanne. Spenningen rapporteres som den er, se konklusjon.
+**P4 (null/redundancy, arm A ≥85%): MET — and this is the main finding
+together with P2.** The skeleton+search+sed flow was SUFFICIENT for
+correctness on all the body-level questions. The preregistration said that
+P4 alone implies shelving "regardless of P1" — but that wording
+assumed coverage was the only margin and did not anticipate the combination
+of P4+P2 both being true. The tension is reported as it is, see conclusion.
 
-**P5 (paradoks/tunnelsyn): IKKE observert.** Null feilankre i begge
-armer; focus-lesing førte ikke til at skjelettkonteksten ble hoppet over.
+**P5 (paradox/tunnel vision): NOT observed.** Zero wrong anchors in both
+arms; focus reading did not cause the skeleton context to be skipped.
 
-## Konklusjoner [TOLKNING — eksplisitt merket]
+## Conclusions [INTERPRETATION — explicitly marked]
 
-1. **Korrekthetsmarginen fra M2b reproduserte IKKE på kroppsnivå-
-   oppgaver — fordi begge armer traff taket.** Scantools eksisterende
-   outputs (search med strukturell kontekst, salient skjelett med full
-   dybde) leverer allerede kroppsnivå-fakta oftere enn antatt. Det er
-   et redundans-funn, ikke et focus-funn.
-2. **Marginen som overlevde er lesesteg-økonomi, ikke korrekthet:**
-   samme dekning til 75 % lavere lesekostnad og halvert total
-   verktøykostnad. M2b-lærdommen («ubegrensede agenter konsumerer det
-   de serveres») gjentok seg speilvendt: uten presis lesevei konsumerer
-   agenter hele filer for å være sikre.
-3. **Beslutning iht. preregistreringen:** P4-regelen («skrinlegg») ble
-   utløst, men gjaldt eksplisitt premisset om dekning som margin; P2
-   (sekundær, preregistrert) ble innfridd kraftig. Ærlig lesning:
-   focus= er IKKE begrunnet som korrekthetstiltak på dette
-   oppgavesettet, men er begrunnet som kostnadstiltak. Beholdes med
-   den begrunnelsen — og bør re-testes på oppgaver der taket ikke nås
-   (større filer, svakere modell, eller spørsmål som krever flere
-   noder per fil) før korrekthetsgevinst påstås.
+1. **The correctness margin from M2b did NOT reproduce on body-level
+   tasks — because both arms hit the ceiling.** Scantool's existing
+   outputs (search with structural context, salient skeleton with full
+   depth) already deliver body-level facts more often than assumed. That is
+   a redundancy finding, not a focus finding.
+2. **The margin that survived is read-step economy, not correctness:**
+   the same coverage at 75% lower read cost and half the total
+   tool cost. The M2b lesson ("unconstrained agents consume what
+   they are served") repeated itself mirrored: without a precise read path,
+   agents consume whole files to be sure.
+3. **Decision per the preregistration:** the P4 rule ("shelve") was
+   triggered, but explicitly concerned the premise of coverage as the
+   margin; P2 (secondary, preregistered) was met strongly. Honest reading:
+   focus= is NOT justified as a correctness measure on this
+   task set, but is justified as a cost measure. It is kept with
+   that justification — and should be re-tested on tasks where the ceiling
+   is not hit (larger files, a weaker model, or questions requiring multiple
+   nodes per file) before a correctness gain is claimed.
 
-## Addendum: M2c-v2 — styringseffekten av lesesteg-teksten (2026-06-11)
+## Addendum: M2c-v2 — the steering effect of the read-step text (2026-06-11)
 
-Arm B re-kjørt med én tilføyd styringslinje i prompten som speiler de nye
-produksjons-instructions (commit 5a0300e): «To READ one function/class/
+Arm B re-run with one added steering line in the prompt mirroring the new
+production instructions (commit 5a0300e): "To READ one function/class/
 section located by a scan or search: use focusread … Never cat a whole
-file or sed a guessed line range.» Alt annet identisk. Preregistrert i
-M2C_preregistrert.md (commit d166e16, FØR episodene). 16 episoder.
+file or sed a guessed line range." Everything else identical. Preregistered
+in M2C_preregistered.md (commit d166e16, BEFORE the episodes). 16 episodes.
 
-| | Arm B v1 | Arm B2 (ny styring) |
+| | Arm B v1 | Arm B2 (new steering) |
 |---|---|---|
-| Episoder med focusread | 9/16 (56 %) | **13/16 (81 %)** |
-| Wrapper-kall | 73 | 59 |
-| Lese-tokens | 13 523 | 15 944 |
-| Navigasjons-tokens | 31 165 | 18 269 |
-| Sum verktøy-tokens | 44 688 | **34 213 (−23 %)** |
-| Fakta-dekning | 53/53 (100 %) | 54/56 (96 %) |
+| Episodes with focusread | 9/16 (56%) | **13/16 (81%)** |
+| Wrapper calls | 73 | 59 |
+| Read tokens | 13,523 | 15,944 |
+| Navigation tokens | 31,165 | 18,269 |
+| Total tool tokens | 44,688 | **34,213 (−23%)** |
+| Fact coverage | 53/53 (100%) | 54/56 (96%) |
 
-Mot de preregistrerte v2-utfallene:
+Against the preregistered v2 outcomes:
 
-- **V1 (forventet): i hovedsak innfridd.** Andel 81 % ≥ 75 %-terskelen,
-  skiftet (+4 episoder) er over støygulvet (≥3); dekning 96 % ≥ 95 %.
-  Forbehold: lese-tokens ble IKKE ≤ v1 (+18 %) — flere episoder leste
-  noden i stedet for å svare rett fra skjelettet. Det kjøpte til
-  gjengjeld 41 % færre navigasjons-tokens (færre leterunder), så
-  totalen falt 23 %.
-- **V2 (null/redundans): forkastet** — teksten flyttet adferd.
-- **V3 (paradoks/overstyring): ikke utløst** — færre kall (59 mot 73)
-  og lavere total; ingen tvangsmessig focusread der search alt svarte
-  (3 episoder hoppet fortsatt over lesing, korrekt).
+- **V1 (expected): essentially met.** The 81% share ≥ the 75% threshold,
+  the shift (+4 episodes) is above the noise floor (≥3); coverage 96% ≥ 95%.
+  Caveat: read tokens were NOT ≤ v1 (+18%) — more episodes read the
+  node instead of answering straight from the skeleton. In return that
+  bought 41% fewer navigation tokens (fewer search rounds), so the
+  total fell 23%.
+- **V2 (null/redundancy): rejected** — the text moved behavior.
+- **V3 (paradox/over-steering): not triggered** — fewer calls (59 vs 73)
+  and a lower total; no compulsive focusread where search had already
+  answered (3 episodes still skipped reading, correctly).
 
-[TOLKNING] Styringslinjen gjør det den skal: focusread-andelen opp
-56 → 81 %, totalkostnad ned ytterligere 23 % (mot arm A: −62 %). M2b-
-lærdommen bekreftes en tredje gang: beskrivelsesteksten er spaken.
-Kanal-forbehold står: prompt-styring er proxy for MCP-instructions —
-injeksjonskanalen i produksjon er ikke direkte testet.
+[INTERPRETATION] The steering line does what it should: focusread share up
+56 → 81%, total cost down a further 23% (vs arm A: −62%). The M2b
+lesson is confirmed a third time: the description text is the lever.
+The channel caveat stands: prompt steering is a proxy for MCP instructions —
+the injection channel in production is not directly tested.
 
-Ærlig svakhet: én v2-episode (pytest-5221-b2-r1) FEILET helt (0/2) —
-agenten fant aldri funksjonen (gjettet feil fil), brukte opp kallene og
-svarte vagt fra forkunnskap. Første dekningssvikt i hele M2c. Styring
-av lesesteget kompenserer ikke for lokaliseringssvikt; med n=16 kan det
-være støy, men det viser at 100 %-taket ikke er garantert.
+Honest weakness: one v2 episode (pytest-5221-b2-r1) FAILED completely (0/2) —
+the agent never found the function (guessed the wrong file), used up its
+calls and answered vaguely from prior knowledge. The first coverage failure
+in all of M2c. Steering the read step does not compensate for localization
+failure; with n=16 it may be noise, but it shows the 100% ceiling is not
+guaranteed.
 
-## Avvik og svakheter
+## Deviations and weaknesses
 
-- pytest-7373-b-r2 kontaminert (7 uloggede kall) — ekskludert; trolig
-  delvis besvart fra modellens forkunnskap om den kjente pytest-bugen
-- sg-jwt-b-r1 brukte find/grep via wrapperen i strid med kommandolisten
-  (alt logget, så målingene er intakte); 3 episoder brukte 7–8 kall mot
-  regelen om 6; ±1–2 kall-avvik i flere episoder skyldes trolig
-  CLI-krasj før logging (arg-feil logges ikke)
-- Takeffekten betyr at oppgavesettet ikke kan skille armene på
-  korrekthet — P1 er ubesvart, ikke falsifisert
-- Én gradering (ingen inter-rater), 2 reps, semantisk gradering av
-  deskriptive fakta (mer skjønn enn M2bs token-fakta)
-- Grader (samme modellfamilie som agentene) kjente hypotesen
+- pytest-7373-b-r2 contaminated (7 unlogged calls) — excluded; probably
+  partially answered from the model's prior knowledge of the well-known
+  pytest bug
+- sg-jwt-b-r1 used find/grep via the wrapper in violation of the command
+  list (everything logged, so the measurements are intact); 3 episodes used
+  7–8 calls against the rule of 6; ±1–2 call deviations in several episodes
+  are probably due to CLI crashes before logging (argument errors are not
+  logged)
+- The ceiling effect means the task set cannot separate the arms on
+  correctness — P1 is unanswered, not falsified
+- One grader (no inter-rater), 2 reps, semantic grading of descriptive
+  facts (more judgment than M2b's token facts)
+- The grader (same model family as the agents) knew the hypothesis

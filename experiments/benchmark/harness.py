@@ -1,28 +1,29 @@
 """
-M2-BENCHMARK: Informasjonsleverings-effektivitet, scantool vs grep-baseline
+M2-BENCHMARK: Information-delivery efficiency, scantool vs grep baseline
 
-HVA SOM MÅLES (og ikke):
-  Tokens og verktøykall til ALLE fasit-fakta for en oppgave er synlige i
-  akkumulert verktøyoutput, under kanoniske strategier definert under.
-  Dette er nødvendig-men-ikke-tilstrekkelig for "agenten løser oppgaven
-  bedre" — ekte agent-episoder er M2b. Deterministisk og reproduserbart.
+WHAT IS MEASURED (and not):
+  Tokens and tool calls until ALL ground-truth facts for a task are
+  visible in accumulated tool output, under canonical strategies defined
+  below. This is necessary-but-not-sufficient for "the agent solves the
+  task better" — real agent episodes are M2b. Deterministic and
+  reproducible.
 
-FALSIFISERBARHET:
-  - Fakta er "det agenten må vite for å handle": omsluttende funksjoner,
-    filer, kollaboratører — ikke bare treff-linjer
-  - Baseline er GENERØS: smart grep med kontekstvinduer rundt treff-
-    klynger, ikke naiv cat av hele filer
-  - T4 er designet for at grep skal kunne vinne (literal oppslag) —
-    vinner scantool alt, er harnessen mistenkelig
+FALSIFIABILITY:
+  - Facts are "what the agent must know to act": enclosing functions,
+    files, collaborators — not just hit lines
+  - The baseline is GENEROUS: smart grep with context windows around hit
+    clusters, not a naive cat of whole files
+  - T4 is designed so grep can win (literal lookup) — if scantool wins
+    everything, the harness is suspect
 
-KANONISKE STRATEGIER:
-  scantool konsept:  search_structures(content_pattern) → scan_file(topp-
-                     treff-fil, budget=2000) → scan_directory(dir)
-  scantool struktur: search_structures(name_pattern) → scan_file(...)
-  scantool oversikt: preview_directory(deep) → scan_directory(dir)
-  grep konsept:      grep -rn → ±40-linjers vinduer rundt treffklynger i
-                     fil med flest treff → neste fil → full cat av toppfil
-  grep oversikt:     find *.py → cat README → cat main.py
+CANONICAL STRATEGIES:
+  scantool concept:   search_structures(content_pattern) → scan_file(top-
+                      hit file, budget=2000) → scan_directory(dir)
+  scantool structure: search_structures(name_pattern) → scan_file(...)
+  scantool overview:  preview_directory(deep) → scan_directory(dir)
+  grep concept:       grep -rn → ±40-line windows around hit clusters in
+                      the file with most hits → next file → full cat of top file
+  grep overview:      find *.py → cat README → cat main.py
 """
 
 import re
@@ -42,32 +43,32 @@ DIR = f"{REPO}/backend/app"
 class Task:
     name: str
     kind: str                 # "concept" | "structure" | "overview"
-    query: str                # søkebegrep for begge verktøysett
-    facts: list[str]          # distinkte substrings som MÅ være synlige
+    query: str                # search term for both toolsets
+    facts: list[str]          # distinct substrings that MUST be visible
     description: str = ""
     directory: str = DIR
 
 
 TASKS = [
-    Task("T1 cache-invalidering", "concept", "invalidate",
+    Task("T1 cache invalidation", "concept", "invalidate",
          ["invalidate_cache", "run_model_calculation", "delete_model",
           "tile_cache.py", "models.py"],
-         "Hvor invalideres tile-cachen, og hvilke operasjoner trigger det?"),
-    Task("T2 token-utløp", "concept", "expire",
+         "Where is the tile cache invalidated, and which operations trigger it?"),
+    Task("T2 token expiry", "concept", "expire",
          ["create_access_token", "expires_delta", "ACCESS_TOKEN_EXPIRE_MINUTES",
           "auth.py"],
-         "Hvor settes JWT-utløp, og hva er defaulten?"),
-    Task("T3 indikator-regler", "structure", r".*Rule$",
+         "Where is JWT expiry set, and what is the default?"),
+    Task("T3 indicator rules", "structure", r".*Rule$",
          ["NumericRule", "BooleanRule", "CategoryRule", "TextRule",
           "indicators.py"],
-         "Hvilke regeltyper finnes for indikatorer?"),
-    Task("T4 grid-TTL (literal — grep bør vinne)", "concept", "tile_cache_ttl",
+         "Which rule types exist for indicators?"),
+    Task("T4 grid TTL (literal — grep should win)", "concept", "tile_cache_ttl",
          ["get_tile_cache_ttl", "tile_type == 'grid'"],
-         "Hva er cache-TTL for grid-tiles?"),
-    Task("T5 backend-arkitektur", "overview", "",
+         "What is the cache TTL for grid tiles?"),
+    Task("T5 backend architecture", "overview", "",
          ["main.py", "database.py", "startup_validation", "get_pool",
           "health_check"],
-         "Hva er hovedarkitekturen — sentrale filer og entry points?"),
+         "What is the main architecture — central files and entry points?"),
 ]
 
 
@@ -75,7 +76,7 @@ def coverage(accumulated: str, facts: list[str]) -> float:
     return sum(1 for f in facts if f in accumulated) / len(facts)
 
 
-# ── scantool-strategi ────────────────────────────────────────────────────
+# ── scantool strategy ────────────────────────────────────────────────────
 
 def scantool_steps(task: Task):
     from scantool.server import (search_structures, scan_file,
@@ -97,10 +98,10 @@ def scantool_steps(task: Task):
         yield f"scan_file({Path(top_file).name}, budget=2000)", \
             scan_file.fn(top_file, budget=2000)[0].text
 
-    # følg første spor (leads-foten) — det strukturelle hoppet til nabofilen
+    # follow the first lead (the leads footer) — the structural jump to the neighboring file
     lead_file = _first_lead(out)
     if lead_file and lead_file != top_file:
-        yield f"scan_file(spor: {Path(lead_file).name})", \
+        yield f"scan_file(lead: {Path(lead_file).name})", \
             scan_file.fn(lead_file, budget=2000)[0].text
 
     yield "scan_directory", scan_directory.fn(task.directory)[0].text
@@ -119,7 +120,7 @@ def _first_path(output: str):
     return None
 
 
-# ── grep-baseline (generøs: smarte kontekstvinduer) ─────────────────────
+# ── grep baseline (generous: smart context windows) ─────────────────────
 
 def grep_steps(task: Task):
     if task.kind == "overview":
@@ -138,7 +139,7 @@ def grep_steps(task: Task):
                         capture_output=True, text=True).stdout
     yield f"grep -rni {pattern!r}", rg
 
-    # fil med flest treff → ±40-linjers vinduer rundt treffklynger
+    # file with most hits → ±40-line windows around hit clusters
     by_file: dict[str, list[int]] = {}
     for line in rg.split("\n"):
         m = re.match(r"(/[^:]+):(\d+):", line)
@@ -156,19 +157,20 @@ def grep_steps(task: Task):
                 lo = covered_to
             windows.extend(lines[lo:hi])
             covered_to = hi
-        yield f"vinduer ±40 i {Path(path).name}", "\n".join(windows)
+        yield f"windows ±40 in {Path(path).name}", "\n".join(windows)
 
     if ranked_files:
         yield f"cat {Path(ranked_files[0]).name}", \
             Path(ranked_files[0]).read_text(errors="replace")
 
 
-# ── kjøring ──────────────────────────────────────────────────────────────
+# ── execution ────────────────────────────────────────────────────────────
 
 def load_swebench_tasks() -> list[Task]:
-    """Eksternt forankrede oppgaver: fakta = filer og funksjoner som
-    SWE-bench-instansens gullpatch faktisk endret (mekanisk ekstrahert),
-    katalog = repoet sjekket ut på instansens base_commit."""
+    """Externally anchored tasks: facts = files and functions that the
+    SWE-bench instance's gold patch actually changed (mechanically
+    extracted), directory = the repo checked out at the instance's
+    base_commit."""
     import json
 
     tasks = []
@@ -191,8 +193,8 @@ def run():
     except ImportError:
         count = lambda t: max(1, len(t) // 4)
 
-    print(f"{'oppgave':42s} {'verktøysett':10s} {'kall':>4s} "
-          f"{'tokens@full':>12s} {'dekning':>8s}")
+    print(f"{'task':42s} {'toolset':10s} {'calls':>5s} "
+          f"{'tokens@full':>12s} {'coverage':>8s}")
     print("-" * 82)
 
     tasks = load_swebench_tasks() if "--swebench" in sys.argv else TASKS
@@ -208,14 +210,14 @@ def run():
                 accumulated += "\n" + output
                 if tokens_at_full is None and coverage(accumulated, task.facts) >= 1.0:
                     tokens_at_full = tokens
-                    break  # agenten stopper når den har det den trenger
+                    break  # the agent stops once it has what it needs
             cov = coverage(accumulated, task.facts)
             full = str(tokens_at_full) if tokens_at_full else f"({tokens})"
-            print(f"{task.name:42s} {label:10s} {calls:4d} {full:>12s} "
+            print(f"{task.name:42s} {label:10s} {calls:5d} {full:>12s} "
                   f"{100*cov:7.0f}%")
             if cov < 1.0:
                 missing = [f for f in task.facts if f not in accumulated]
-                print(f"{'':42s} {'':10s}      mangler: {missing}")
+                print(f"{'':42s} {'':10s}      missing: {missing}")
         print()
 
 

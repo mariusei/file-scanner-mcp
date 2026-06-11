@@ -57,13 +57,13 @@ def repo(tmp_path):
     _git(tmp_path, "init", "-q")
     (tmp_path / "mod.py").write_text(V1)
     (tmp_path / "gone.py").write_text("def vanishing():\n    return 1\n")
-    (tmp_path / "notes.md").write_text("# Plan\n\nGammel tekst.\n")
+    (tmp_path / "notes.md").write_text("# Plan\n\nOld text.\n")
     _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "v1")
-    # arbeidstre-endringer (ucommittet — review-flyten)
+    # working-tree changes (uncommitted — the review flow)
     (tmp_path / "mod.py").write_text(V2)
     (tmp_path / "gone.py").unlink()
     (tmp_path / "added.py").write_text("def newcomer():\n    return shiny_call()\n")
-    (tmp_path / "notes.md").write_text("# Plan\n\nNy tekst her.\n")
+    (tmp_path / "notes.md").write_text("# Plan\n\nNew text here.\n")
     return tmp_path
 
 
@@ -72,27 +72,27 @@ class TestRefDiff:
     def test_changed_nodes_labelled_with_detail(self, repo):
         out = diff_against_ref(str(repo))
 
-        assert "[endret]" in out
-        assert "i.weight" in out                 # endret kropp synlig
-        assert "mode=\"alpha\"" not in out       # uendret kropp undertrykt
+        assert "[changed]" in out
+        assert "i.weight" in out                 # changed body visible
+        assert "mode=\"alpha\"" not in out       # unchanged body suppressed
 
     def test_new_and_removed_nodes(self, repo):
         out = diff_against_ref(str(repo))
 
-        assert "fresh" in out and "[ny]" in out
-        assert "fjernet: doomed" in out
+        assert "fresh" in out and "[new]" in out
+        assert "removed: doomed" in out
 
     def test_new_and_deleted_files(self, repo):
         out = diff_against_ref(str(repo))
 
-        assert "added.py [ny fil]" in out
+        assert "added.py [new file]" in out
         assert "newcomer" in out
-        assert "slettet: gone.py" in out
+        assert "deleted: gone.py" in out
 
     def test_markdown_sections_diff_structurally(self, repo):
         out = diff_against_ref(str(repo))
 
-        # md-endringen bor i Plan-seksjonen → strukturelt endret
+        # the md change lives in the Plan section → structurally changed
         assert "notes.md" in out
 
     def test_whitespace_only_change_reported_as_non_structural(self, repo):
@@ -104,17 +104,17 @@ class TestRefDiff:
 
         out = diff_against_ref(str(repo))
 
-        assert "uten strukturell endring" in out or "Ingen endringer" in out
+        assert "without structural change" in out or "No changes" in out
 
     def test_unknown_ref(self, repo):
-        assert "Ukjent ref" in diff_against_ref(str(repo), ref="finnes-ikke")
+        assert "Unknown ref" in diff_against_ref(str(repo), ref="does-not-exist")
 
     def test_no_changes(self, repo):
         _git(repo, "add", "."), _git(repo, "commit", "-qm", "v2")
 
-        assert "Ingen endringer" in diff_against_ref(str(repo))
+        assert "No changes" in diff_against_ref(str(repo))
 
     def test_non_git_directory(self, tmp_path):
         (tmp_path / "f.py").write_text("x = 1\n")
 
-        assert "ikke i et git-repo" in diff_against_ref(str(tmp_path))
+        assert "not in a git repo" in diff_against_ref(str(tmp_path))

@@ -1,34 +1,34 @@
 """
-EKSPERIMENT: Skjelett-dybde som funksjon av saliency
+EXPERIMENT: Skeleton depth as a function of saliency
 
 PROBLEM:
-  Node-direkte seleksjon viser hele noder: en lang funksjon vises helt
-  (fullt skjelett) eller ikke i det hele tatt. Spørsmål: gir gradert dybde
-  (mer salient = dypere skjelett) flere synlige metode-fakta per token,
-  ved at spart budsjett brukes på å vise FLERE noder grunnere?
+  Node-direct selection shows whole nodes: a long function is shown in full
+  (full skeleton) or not at all. Question: does graded depth
+  (more salient = deeper skeleton) yield more visible method facts per token,
+  by spending the saved budget on showing MORE nodes more shallowly?
 
-FALSIFISERBARE PREDIKSJONER (før kjøring):
-  - Null-utfall: hvis ~80 % av skjelettlinjene ligger på dybde <= 1, sparer
-    dybdekutt nesten ingenting -> ideen forkastes (måles FØRST)
-  - Paradoks: dybde-1 mister betingelser/kall som bærer metoden ->
-    fakta-dekningen kollapser for grunne tier
-  - Forventet: gradert (S2) > dagens (S1) på fakta per token ved
-    sammenlignbar总 tokenkost
+FALSIFIABLE PREDICTIONS (before running):
+  - Null outcome: if ~80 % of the skeleton lines lie at depth <= 1, depth
+    cutting saves almost nothing -> the idea is rejected (measured FIRST)
+  - Paradox: depth 1 loses the conditions/calls that carry the method ->
+    fact coverage collapses for shallow tiers
+  - Expected: graded (S2) > current (S1) on facts per token at
+    comparable total token cost
 
-STRATEGIER (andeler av saliency-rangerte kandidater):
-  S1 dagens:    topp 20 % fullt skjelett
-  S2 gradert:   0-20 % full, 20-35 % dybde 2, 35-50 % dybde 1
-  S3 bred-full: topp 35 % fullt skjelett
-  S4 bred-grunn: topp 50 % dybde 1
+STRATEGIES (shares of saliency-ranked candidates):
+  S1 current:      top 20 % full skeleton
+  S2 graded:       0-20 % full, 20-35 % depth 2, 35-50 % depth 1
+  S3 broad-full:   top 35 % full skeleton
+  S4 broad-shallow: top 50 % depth 1
 
-MÅLE-ENHETER:
-  tokens = tiktoken cl100k på skjelettlinjene (headere er like for alle)
-  fakta  = unike kalte funksjonsnavn synlige i vist tekst, mot alle kall
-           i samtlige kandidatnoder i filen
+UNITS OF MEASUREMENT:
+  tokens = tiktoken cl100k on the skeleton lines (headers are equal for all)
+  facts  = unique called function names visible in shown text, against all calls
+           in every candidate node in the file
 
-Kun Python-filer: AST-skjelettet bruker 1 space per dybdenivå, så
-dybdekutt kan gjøres på linje-innrykk. (Generisk skjelett beholder original
-innrykk og må normaliseres før samme grep.)
+Python files only: the AST skeleton uses 1 space per depth level, so
+depth cutting can be done on line indentation. (The generic skeleton keeps original
+indentation and must be normalized before the same trick.)
 """
 
 import re
@@ -58,12 +58,12 @@ CALL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 KEYWORDS = {"if", "elif", "while", "for", "return", "with", "assert", "raise",
             "def", "class", "except", "in", "not", "and", "or", "lambda", "print"}
 
-# (navn, [(andel-fra, andel-til, dybde)]) — dybde None = fullt skjelett
+# (name, [(share-from, share-to, depth)]) — depth None = full skeleton
 STRATEGIES = [
-    ("S1 dagens (20% full)", [(0.00, 0.20, None)]),
-    ("S2 gradert (50%)", [(0.00, 0.20, None), (0.20, 0.35, 2), (0.35, 0.50, 1)]),
-    ("S3 bred-full (35%)", [(0.00, 0.35, None)]),
-    ("S4 bred-grunn (50% d1)", [(0.00, 0.50, 1)]),
+    ("S1 current (20% full)", [(0.00, 0.20, None)]),
+    ("S2 graded (50%)", [(0.00, 0.20, None), (0.20, 0.35, 2), (0.35, 0.50, 1)]),
+    ("S3 broad-full (35%)", [(0.00, 0.35, None)]),
+    ("S4 broad-shallow (50% d1)", [(0.00, 0.50, 1)]),
 ]
 
 
@@ -95,7 +95,7 @@ def main():
         count = lambda t: max(1, len(t) // 4)
         note = "fallback len//4"
 
-    # Per fil: rangerte kandidater med (skjelett, fakta i nodens kilde)
+    # Per file: ranked candidates with (skeleton, facts in the node's source)
     ranked_per_file = []
     depth_line_counts: dict[int, int] = {}
     lang = get_language(".py")
@@ -112,7 +112,7 @@ def main():
             excerpt = source_lines[node.start_line - 1:node.end_line]
             skeleton = lang.condense_excerpt(excerpt)
             if skeleton is None:
-                skeleton = [line.strip() for line in excerpt]  # verbatim-fallback
+                skeleton = [line.strip() for line in excerpt]  # verbatim fallback
             for line in skeleton:
                 d = len(line) - len(line.lstrip())
                 depth_line_counts[d] = depth_line_counts.get(d, 0) + 1
@@ -124,21 +124,21 @@ def main():
         ranked_per_file.append((rel, nodes))
 
     print("=" * 78)
-    print(f"OBSERVASJONER (tokenizer: {note})")
+    print(f"OBSERVATIONS (tokenizer: {note})")
     print("=" * 78)
 
     total_lines = sum(depth_line_counts.values())
-    print("\nFORHÅNDSSJEKK (null-hypotesen): skjelettlinjer per dybdenivå")
+    print("\nPRE-CHECK (the null hypothesis): skeleton lines per depth level")
     cum = 0
     for d in sorted(depth_line_counts):
         cum += depth_line_counts[d]
-        print(f"  dybde {d}: {depth_line_counts[d]:5d} linjer "
+        print(f"  depth {d}: {depth_line_counts[d]:5d} lines "
               f"({100 * depth_line_counts[d] / total_lines:.0f}%, "
-              f"kumulativt {100 * cum / total_lines:.0f}%)")
+              f"cumulative {100 * cum / total_lines:.0f}%)")
 
-    print("\nSTRATEGI-SAMMENLIGNING (sum over alle filer):")
-    print(f"  {'strategi':26s} {'noder':>6s} {'tokens':>8s} "
-          f"{'fakta-dekning':>14s} {'fakta/1k tok':>13s}")
+    print("\nSTRATEGY COMPARISON (sum over all files):")
+    print(f"  {'strategy':26s} {'nodes':>6s} {'tokens':>8s} "
+          f"{'fact coverage':>14s} {'facts/1k tok':>13s}")
 
     for name, tiers in STRATEGIES:
         tot_tokens = 0
@@ -163,7 +163,7 @@ def main():
         print(f"  {name:26s} {tot_nodes:6d} {tot_tokens:8d} "
               f"{visible_facts:5d}/{all_facts} ({coverage:4.1f}%) {per_1k:13.1f}")
 
-    print("\nFORK: tolkning gjøres etter observasjon — se analysen utenfor scriptet.")
+    print("\nFORK: interpretation is done after observation — see the analysis outside the script.")
 
 
 if __name__ == "__main__":

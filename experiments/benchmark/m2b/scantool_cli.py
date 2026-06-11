@@ -1,11 +1,11 @@
-"""M2b-CLI for scantool-verktøyene. All output logges per episode.
+"""M2b CLI for the scantool tools. All output is logged per episode.
 
-Bruk:
-  uv run python /tmp/m2b/scantool_cli.py LOGG preview DIR
-  uv run python /tmp/m2b/scantool_cli.py LOGG scandir DIR [GLOB]
-  uv run python /tmp/m2b/scantool_cli.py LOGG scanfile STI [BUDSJETT]
-  uv run python /tmp/m2b/scantool_cli.py LOGG search DIR REGEX     (innholdssøk)
-  uv run python /tmp/m2b/scantool_cli.py LOGG searchname DIR REGEX (navnesøk)
+Usage:
+  uv run python /tmp/m2b/scantool_cli.py LOG preview DIR
+  uv run python /tmp/m2b/scantool_cli.py LOG scandir DIR [GLOB]
+  uv run python /tmp/m2b/scantool_cli.py LOG scanfile PATH [BUDGET]
+  uv run python /tmp/m2b/scantool_cli.py LOG search DIR REGEX     (content search)
+  uv run python /tmp/m2b/scantool_cli.py LOG searchname DIR REGEX (name search)
 """
 import sys
 sys.path.insert(0, "/Users/mariusbergeeide/Projects/scantool/src")
@@ -25,7 +25,7 @@ elif command == "search":
 elif command == "searchname":
     out = server.search_structures.fn(args[0], name_pattern=args[1])[0].text
 else:
-    out = f"ukjent kommando: {command} — se docstring"
+    out = f"unknown command: {command} — see docstring"
 with open(log_path, "a") as f:
     f.write(f"=== CALL: scantool {command} {' '.join(args)} ===\n{out}\n")
 print(out)

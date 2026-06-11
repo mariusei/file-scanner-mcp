@@ -1,56 +1,56 @@
-# Størrelsesgate for flere språk enn markdown (målt 2026-06-11 — FALSIFISERT)
+# Size gate for more languages than markdown (measured 2026-06-11 — FALSIFIED)
 
-Hypotese (BACKLOG M1 punkt 5): markdowns tree-sitter-gate ved 1 MB
-(`MarkdownLanguage._TREE_SITTER_BYTE_LIMIT`, regex-fallback over) burde
-løftes til flere språk.
+Hypothesis (BACKLOG M1 item 5): markdown's tree-sitter gate at 1 MB
+(`MarkdownLanguage._TREE_SITTER_BYTE_LIMIT`, regex fallback above) should be
+lifted to more languages.
 
-## Måling 1: parse+extract vs regex-fallback på ~2 MB syntetiske filer
+## Measurement 1: parse+extract vs regex fallback on ~2 MB synthetic files
 
-Syntetiske filer: `tests/<lang>/samples/basic.*` repetert til ~2 MB.
-Målt per språk: tree-sitter-stien (`parser.parse` + `_extract_structure`)
-mot `_fallback_extract` på samme bytes.
+Synthetic files: `tests/<lang>/samples/basic.*` repeated to ~2 MB.
+Measured per language: the tree-sitter path (`parser.parse` + `_extract_structure`)
+against `_fallback_extract` on the same bytes.
 
 | ext | tree-sitter | fallback | ratio |
 |---|---|---|---|
 | .py | 283 939 ms | 1 968 ms | 144x |
-| .java | 375 ms | 2 845 ms | 0,1x |
-| .ts | 411 ms | 1 566 ms | 0,3x |
-| .swift | 538 ms | 2 114 ms | 0,3x |
-| .md | 300 ms | 106 ms | 2,8x |
-| .sql | 291 ms | 4 211 ms | 0,1x |
+| .java | 375 ms | 2 845 ms | 0.1x |
+| .ts | 411 ms | 1 566 ms | 0.3x |
+| .swift | 538 ms | 2 114 ms | 0.3x |
+| .md | 300 ms | 106 ms | 2.8x |
+| .sql | 291 ms | 4 211 ms | 0.1x |
 
-**For java/ts/swift/sql er tree-sitter RASKERE enn regex-fallbacken** —
-en gate ville gitt både tregere og strukturelt dårligere output
-(flat fallback). Markdown-gaten er bekreftet (2,8x; i tråd med den
-opprinnelige begrunnelsen i markdown.py). Python-tallet var ikke et
-gate-argument men en bug:
+**For java/ts/swift/sql, tree-sitter is FASTER than the regex fallback** —
+a gate would have given both slower and structurally worse output
+(flat fallback). The markdown gate is confirmed (2.8x; consistent with the
+original rationale in markdown.py). The Python number was not a
+gate argument but a bug:
 
-## Måling 2: Python-patologien var kvadratisk `_get_ancestors`
+## Measurement 2: the Python pathology was a quadratic `_get_ancestors`
 
-cProfile på 250 kB: 57,7 mill. kall til `find_path` for 1 760 funksjoner —
-`BaseLanguage._get_ancestors` gjorde full DFS fra roten per funksjonsnode
-(O(n) per kall → O(n²) totalt; målt 4x tid per dobling av filstørrelse).
+cProfile on 250 kB: 57.7 million calls to `find_path` for 1 760 functions —
+`BaseLanguage._get_ancestors` did a full DFS from the root per function node
+(O(n) per call → O(n²) total; measured 4x time per doubling of file size).
 
-Omskrevet til `parent`-kjede-vandring (O(dybde) per kall):
+Rewritten to `parent`-chain walking (O(depth) per call):
 
-| bytes | før | etter |
+| bytes | before | after |
 |---|---|---|
 | 125 k | 1 139 ms | 21 ms |
 | 250 k | 4 449 ms | 59 ms |
 | 500 k | 17 733 ms | 80 ms |
 | 2 M | ~284 000 ms | 431 ms |
 
-## Konklusjon
+## Conclusion
 
-- **Ingen generell størrelsesgate.** Behovet fantes bare for Python, og
-  der var årsaken en kvadratisk algoritme — nå fikset i
+- **No general size gate.** The need existed only for Python, and
+  there the cause was a quadratic algorithm — now fixed in
   `BaseLanguage._get_ancestors`.
-- Markdown beholder sin gate (egen måling, generert innhold dominerer
-  over 1 MB).
-- Falsifisert idé som ikke skal gjenopptas ukritisk: byte-gate i
-  basens `scan()`-pipeline.
+- Markdown keeps its gate (separate measurement, generated content dominates
+  above 1 MB).
+- Falsified idea that should not be revived uncritically: a byte gate in
+  the base's `scan()` pipeline.
 
-Reproduksjon: kjør målingene i dette dokumentet med snutten under.
+Reproduction: run the measurements in this document with the snippet below.
 
 ```python
 import time

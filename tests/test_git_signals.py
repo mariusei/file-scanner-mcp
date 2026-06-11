@@ -54,7 +54,7 @@ class TestGracefulAbsence:
         assert file_churn(str(tmp_path / "f.py")) is None
 
     def test_missing_directory_returns_none(self, tmp_path):
-        assert collect_git_signals(str(tmp_path / "finnes-ikke")) is None
+        assert collect_git_signals(str(tmp_path / "does-not-exist")) is None
 
 
 @requires_git
@@ -110,11 +110,11 @@ class TestActivityAnchoredWindow:
     @pytest.fixture
     def old_repo(self, tmp_path):
         _git(tmp_path, "init", "-q")
-        # a.py: bare én gammel commit, >90d før siste aktivitet
+        # a.py: only one old commit, >90d before the latest activity
         (tmp_path / "a.py").write_text("x = 1\n")
         _git(tmp_path, "add", ".")
         _git(tmp_path, "commit", "-qm", "ancient", date="2019-06-01T12:00:00")
-        # b.py: to commits innenfor de siste 90 aktive dagene
+        # b.py: two commits within the last 90 active days
         (tmp_path / "b.py").write_text("y = 2\n")
         _git(tmp_path, "add", ".")
         _git(tmp_path, "commit", "-qm", "first", date="2020-01-01T12:00:00")
@@ -128,7 +128,7 @@ class TestActivityAnchoredWindow:
 
         assert signals is not None
         assert signals.churn.get("b.py") == 2
-        # a.py sist endret >90d før siste aktivitet — utenfor vinduet
+        # a.py last changed >90d before the latest activity — outside the window
         assert "a.py" not in signals.churn
 
     def test_file_churn_anchored(self, old_repo):
@@ -151,7 +151,7 @@ class TestPerNodeChurn:
         (tmp_path / "mod.py").write_text(
             "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
-        # endre kun beta — alpha-linjene beholder commit 1, beta får commit 2
+        # change only beta — the alpha lines keep commit 1, beta gets commit 2
         (tmp_path / "mod.py").write_text(
             "def alpha():\n    return 1\n\n\ndef beta():\n    return 2 + 2\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
@@ -159,7 +159,7 @@ class TestPerNodeChurn:
         line_map = recent_line_edits(str(tmp_path / "mod.py"))
 
         assert line_map is not None
-        # linje 6 (beta-kroppen) har en annen commit enn linje 2 (alpha-kroppen)
+        # line 6 (the beta body) has a different commit than line 2 (the alpha body)
         assert line_map[6] != line_map[2]
 
     def test_node_labels_differentiate_edited_function(self, tmp_path):
@@ -178,12 +178,12 @@ class TestPerNodeChurn:
         structures = FileScanner().scan_file(str(path), line_edits=recent_line_edits(str(path)))
 
         by_name = {n.name: n.recent_edits for n in structures if n.name in ("alpha", "beta")}
-        assert by_name["beta"] == 2      # def-linje fra c1, kropp fra c2
+        assert by_name["beta"] == 2      # def line from c1, body from c2
         assert by_name["alpha"] == 1
 
     def test_uniform_counts_suppressed(self, tmp_path):
-        """Nyopprettet fil: alle noder har samme count — labels uten
-        differensiering gjentar fil-churn og undertrykkes."""
+        """Newly created file: all nodes share the same count — labels without
+        differentiation repeat the file churn and are suppressed."""
         from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
 
@@ -198,7 +198,7 @@ class TestPerNodeChurn:
         assert all(n.recent_edits is None for n in structures)
 
     def test_language_agnostic_markdown(self, tmp_path):
-        """Blame er linjebasert — markdown-seksjoner får samme behandling."""
+        """Blame is line-based — markdown sections get the same treatment."""
         from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
 
@@ -212,7 +212,7 @@ class TestPerNodeChurn:
         line_map = recent_line_edits(str(path))
 
         assert line_map is not None
-        FileScanner().scan_file(str(path), line_edits=line_map)  # skal ikke feile på prosa
+        FileScanner().scan_file(str(path), line_edits=line_map)  # must not fail on prose
 
     def test_no_git_returns_none(self, tmp_path):
         from scantool.git_signals import recent_line_edits

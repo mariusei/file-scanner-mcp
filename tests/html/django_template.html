@@ -1,60 +1,60 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Bilagsdetalj{% endblock %}
+{% block title %}Voucher detail{% endblock %}
 
 {% block content %}
-<section id="bilag-header">
-  <h1>{{ bilag.tittel }}</h1>
-  <p>Opprettet: {{ bilag.dato }}</p>
+<section id="voucher-header">
+  <h1>{{ voucher.title }}</h1>
+  <p>Created: {{ voucher.date }}</p>
 </section>
 
-{% if bilag.godkjent %}
-<div class="godkjent-banner">
-  <span>Godkjent av {{ bilag.godkjenner }}</span>
+{% if voucher.approved %}
+<div class="approved-banner">
+  <span>Approved by {{ voucher.approver }}</span>
 </div>
-{% elif bilag.avvist %}
-<div class="avvist-banner">
-  <span>Avvist</span>
+{% elif voucher.rejected %}
+<div class="rejected-banner">
+  <span>Rejected</span>
 </div>
 {% else %}
-<div class="ventende-banner">
-  <span>Venter på godkjenning</span>
+<div class="pending-banner">
+  <span>Awaiting approval</span>
 </div>
 {% endif %}
 
-<table id="bilag-linjer">
+<table id="voucher-lines">
   <thead>
     <tr>
-      <th>Beskrivelse</th>
-      <th>Beløp</th>
-      {% if show_mva %}<th>MVA</th>{% endif %}
+      <th>Description</th>
+      <th>Amount</th>
+      {% if show_vat %}<th>VAT</th>{% endif %}
     </tr>
   </thead>
   <tbody>
-    {% for linje in bilag.linjer %}
+    {% for line in voucher.lines %}
     <tr>
-      <td>{{ linje.beskrivelse }}</td>
-      <td>{{ linje.belop|floatformat:2 }}</td>
-      {% if show_mva %}
-      <td>{{ linje.mva|floatformat:2 }}</td>
+      <td>{{ line.description }}</td>
+      <td>{{ line.amount|floatformat:2 }}</td>
+      {% if show_vat %}
+      <td>{{ line.vat|floatformat:2 }}</td>
       {% endif %}
     </tr>
     {% empty %}
-    <tr><td colspan="3">Ingen linjer</td></tr>
+    <tr><td colspan="3">No lines</td></tr>
     {% endfor %}
   </tbody>
 </table>
 
 {% if user.can_approve %}
-<form id="godkjenn-form" method="POST" action="{% url 'godkjenn' bilag.pk %}">
+<form id="approve-form" method="POST" action="{% url 'approve' voucher.pk %}">
   {% csrf_token %}
-  {% include "bilag/_kommentar_felt.html" %}
-  <button type="submit">Godkjenn</button>
+  {% include "voucher/_comment_field.html" %}
+  <button type="submit">Approve</button>
 </form>
 {% endif %}
 
 {% block extra_js %}
-<script src="{% static 'js/bilag.js' %}"></script>
+<script src="{% static 'js/voucher.js' %}"></script>
 {% endblock %}
 {% endblock %}

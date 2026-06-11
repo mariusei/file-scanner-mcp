@@ -1,27 +1,27 @@
 """
-EKSPERIMENT: Kryssfil-dedup av skjeletter på katalognivå
+EXPERIMENT: Cross-file dedup of skeletons at directory level
 
-HYPOTESE:
-  Kodebaser har strukturelt rim (SwiftUI-views, lifecycle-metoder,
-  språkplugin-mønstre). Å vise et mønster én gang + referanser sparer
-  tokens i en katalogvid skjelettvisning.
+HYPOTHESIS:
+  Codebases have structural rhyme (SwiftUI views, lifecycle methods,
+  language-plugin patterns). Showing a pattern once + references saves
+  tokens in a directory-wide skeleton view.
 
-KRITISK SKILLE (falsifiserbart per nivå):
-  Nivå A — EKSAKTE duplikater (identisk skjeleltekst): tapsfri dedup.
-  Nivå B — FORM-duplikater (identifikatorer normalisert til x, tall til 0):
-    tapsfull — medlemmenes interne kall-navn er forskjellige, og det er
-    nettopp fakta-innholdet. Rapporteres som potensial med eksplisitt tap.
+CRITICAL DISTINCTION (falsifiable per level):
+  Level A — EXACT duplicates (identical skeleton text): lossless dedup.
+  Level B — SHAPE duplicates (identifiers normalized to x, numbers to 0):
+    lossy — the members' internal call names differ, and that is
+    precisely the factual content. Reported as potential with explicit loss.
 
-UTFALL HOLDES ÅPNE:
-  - scantool (20 språkfiler) er kunstig gunstig; isowords (ekte iOS-app,
-    388 Swift-filer) er testen som teller
-  - Null-utfall: rim finnes på navnenivå (samme metodenavn) men ikke på
-    skjelettnivå (ulik form) -> dedup gir < 5 %
-  - Eksakt-nivået kan være tomt utenfor genererte filer
+OUTCOMES KEPT OPEN:
+  - scantool (20 language files) is artificially favorable; isowords (real iOS app,
+    388 Swift files) is the test that counts
+  - Null outcome: rhyme exists at the name level (same method names) but not at the
+    skeleton level (different shape) -> dedup yields < 5 %
+  - The exact level may be empty outside generated files
 
-SPAREMODELL:
-  dedup-kost = mønster vist én gang + ~3 tokens referanse per medlem
-  besparelse = sum(medlems-skjeletter) - dedup-kost
+SAVINGS MODEL:
+  dedup cost = pattern shown once + ~3 tokens of reference per member
+  savings = sum(member skeletons) - dedup cost
 """
 
 import re
@@ -37,7 +37,7 @@ from scantool.languages import get_language  # noqa: E402
 
 IDENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 NUM_RE = re.compile(r"\b\d+(\.\d+)?\b")
-REF_COST = 3  # ~tokens for en mønster-referanse på medlemmets header-linje
+REF_COST = 3  # ~tokens for a pattern reference on the member's header line
 
 
 def shape_of(skeleton: list[str]) -> str:
@@ -48,7 +48,7 @@ def shape_of(skeleton: list[str]) -> str:
 
 def collect(repo: Path, glob: str, ext: str, max_files: int = 500):
     lang = get_language(ext)
-    nodes = []  # (fil, navn, skjelett-tekst, form)
+    nodes = []  # (file, name, skeleton text, shape)
     files = sorted(repo.rglob(glob))[:max_files]
     for path in files:
         try:
@@ -71,10 +71,10 @@ def collect(repo: Path, glob: str, ext: str, max_files: int = 500):
 
 def analyze(label: str, n_files: int, nodes, count):
     total_tokens = sum(count(t) for _, _, t, _ in nodes)
-    print(f"\n{'=' * 78}\n{label}: {n_files} filer, {len(nodes)} noder med "
-          f"skjelett ≥2 linjer, {total_tokens} skjelett-tokens\n{'=' * 78}")
+    print(f"\n{'=' * 78}\n{label}: {n_files} files, {len(nodes)} nodes with "
+          f"skeleton ≥2 lines, {total_tokens} skeleton tokens\n{'=' * 78}")
 
-    for level, key_idx in (("A eksakt (tapsfri)", 2), ("B form (tapsfull)", 3)):
+    for level, key_idx in (("A exact (lossless)", 2), ("B shape (lossy)", 3)):
         groups = defaultdict(list)
         for entry in nodes:
             groups[entry[key_idx]].append(entry)
@@ -85,10 +85,10 @@ def analyze(label: str, n_files: int, nodes, count):
             for v in patterns.values()
         )
         saved = max(0, saved)
-        print(f"\n  Nivå {level}: {len(patterns)} mønstre (≥3 medlemmer), "
-              f"{in_patterns}/{len(nodes)} noder dekket")
-        print(f"    besparelse: {saved} tokens "
-              f"({100 * saved / total_tokens if total_tokens else 0:.1f}% av skjelett-tokens)")
+        print(f"\n  Level {level}: {len(patterns)} patterns (≥3 members), "
+              f"{in_patterns}/{len(nodes)} nodes covered")
+        print(f"    savings: {saved} tokens "
+              f"({100 * saved / total_tokens if total_tokens else 0:.1f}% of skeleton tokens)")
         top = sorted(patterns.values(), key=len, reverse=True)[:4]
         for members in top:
             sample = ", ".join(f"{f.split('/')[-1]}:{n}" for f, n, _, _ in members[:3])
@@ -108,14 +108,14 @@ def main():
         count = lambda t: max(1, len(t) // 4)
 
     n, nodes = collect(PROJECT_ROOT / "src", "**/*.py", ".py")
-    analyze("scantool/src (gunstig: 20 like språkfiler)", n, nodes, count)
+    analyze("scantool/src (favorable: 20 similar language files)", n, nodes, count)
 
     isowords = Path("/tmp/isowords")
     if isowords.exists():
         n, nodes = collect(isowords, "**/*.swift", ".swift")
-        analyze("isowords (ekte iOS/SwiftUI-app)", n, nodes, count)
+        analyze("isowords (real iOS/SwiftUI app)", n, nodes, count)
     else:
-        print("\n(isowords ikke tilgjengelig — kjør git clone først)")
+        print("\n(isowords not available — run git clone first)")
 
 
 if __name__ == "__main__":

@@ -1,33 +1,33 @@
 """
-EKSPERIMENT: Abstraktiv kondensering av salient kode
+EXPERIMENT: Abstractive condensation of salient code
 
 PROBLEM:
-  Dagens entropi-pipeline er ekstraktiv: den velger hvilke linjer som vises,
-  men reprinter dem ordrett (formatter.py code_excerpt). Spørsmål: kan en
-  abstraktiv skjelett-representasjon (kontrollflyt + kall + aritmetikk +
-  return/raise, trivielle setninger foldet) formidle intent/metode med
-  færre tokens?
+  Today's entropy pipeline is extractive: it selects which lines are shown,
+  but reprints them verbatim (formatter.py code_excerpt). Question: can an
+  abstractive skeleton representation (control flow + calls + arithmetic +
+  return/raise, trivial statements folded) convey intent/method with
+  fewer tokens?
 
-HYPOTESE (falsifiserbar):
-  Skjelett-representasjon av saliente funksjoner bruker færre tokens enn
-  verbatim excerpts, målt med tiktoken cl100k_base som proxy.
-  Falsifiseres hvis: token-ratio (skjelett/verbatim) >= 1.0, eller hvis
-  bevaring av kall-navn < 80% (da er metoden ikke lenger synlig).
+HYPOTHESIS (falsifiable):
+  A skeleton representation of salient functions uses fewer tokens than
+  verbatim excerpts, measured with tiktoken cl100k_base as a proxy.
+  Falsified if: token ratio (skeleton/verbatim) >= 1.0, or if
+  retention of call names < 80% (then the method is no longer visible).
 
-UTFALL HOLDES ÅPNE:
-  forventet / null-resultat / paradoks (kortere funksjoner -> overhead) /
-  trade-off (tokens spart men konstanter tapt) / metrikk-malplassering.
+OUTCOMES KEPT OPEN:
+  expected / null result / paradox (shorter functions -> overhead) /
+  trade-off (tokens saved but constants lost) / metric misplacement.
 
 DESIGN:
-  A  = full kildekode (referanse)
-  B  = offisiell scan_file-output (struktur + verbatim excerpts)
-  B' = minimal renderer + verbatim excerpts   <- kontroll
-  C  = minimal renderer + skjelett            <- eksperiment
-  B' vs C isolerer variabelen (excerpt-representasjon); B/A gir kontekst.
+  A  = full source code (reference)
+  B  = official scan_file output (structure + verbatim excerpts)
+  B' = minimal renderer + verbatim excerpts   <- control
+  C  = minimal renderer + skeleton            <- experiment
+  B' vs C isolates the variable (excerpt representation); B/A gives context.
 
-  Bevaringsmetrikker (proxy for informasjonstap, ikke "forståelse"):
-  - kall-navn: andel kalte funksjonsnavn fra verbatim som finnes i skjelett
-  - tall-konstanter: andel numeriske literaler bevart
+  Retention metrics (proxy for information loss, not "understanding"):
+  - call names: share of called function names from verbatim present in skeleton
+  - numeric constants: share of numeric literals retained
 """
 
 import ast
@@ -42,12 +42,12 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from scantool.scanner import FileScanner  # noqa: E402
 from scantool.formatter import TreeFormatter  # noqa: E402
 
-MAX_EXPR_LEN = 60  # trunkering av unparse-uttrykk
-SMART_TRUNC = "--smart-trunc" in sys.argv  # v2: elider args i stedet for hale-kutt
+MAX_EXPR_LEN = 60  # truncation of unparsed expressions
+SMART_TRUNC = "--smart-trunc" in sys.argv  # v2: elide args instead of tail-cutting
 
 
 class _ShortenLiterals(ast.NodeTransformer):
-    """Korter ned lambda-kropper og lange streng-literaler — bevarer kall-navn."""
+    """Shortens lambda bodies and long string literals — preserves call names."""
 
     def visit_Lambda(self, node):
         return ast.Name(id="λ")
@@ -59,7 +59,7 @@ class _ShortenLiterals(ast.NodeTransformer):
 
 
 class _ElideNestedArgs(ast.NodeTransformer):
-    """Erstatter argumenter i nøstede kall med … — kall-navnet overlever."""
+    """Replaces arguments in nested calls with … — the call name survives."""
 
     def __init__(self):
         self.depth = 0
@@ -78,7 +78,7 @@ class _ElideNestedArgs(ast.NodeTransformer):
 
 
 # ═══════════════════════════════════════════════════════════
-# SKJELETT-GENERERING (deterministisk, AST-basert)
+# SKELETON GENERATION (deterministic, AST-based)
 # ═══════════════════════════════════════════════════════════
 
 def _trunc(expr: ast.AST) -> str:
@@ -87,14 +87,14 @@ def _trunc(expr: ast.AST) -> str:
         if len(text) <= MAX_EXPR_LEN:
             return text
         if SMART_TRUNC:
-            # gradvis elisjon som bevarer kall-navn og konstanter
+            # gradual elision that preserves call names and constants
             short = _ShortenLiterals().visit(copy.deepcopy(expr))
             text = " ".join(ast.unparse(short).split())
             if len(text) <= MAX_EXPR_LEN:
                 return text
             short = _ElideNestedArgs().visit(short)
             text = " ".join(ast.unparse(short).split())
-            if len(text) <= MAX_EXPR_LEN * 2:  # romsligere grense etter elisjon
+            if len(text) <= MAX_EXPR_LEN * 2:  # more generous limit after elision
                 return text
         return text[: MAX_EXPR_LEN - 1] + "…"
     except Exception:
@@ -102,8 +102,8 @@ def _trunc(expr: ast.AST) -> str:
 
 
 def _has_substance(value: ast.AST) -> bool:
-    """Setning beholdes hvis RHS bærer metode-informasjon: kall, aritmetikk,
-    sammenligning, betinget uttrykk eller comprehension."""
+    """A statement is kept if the RHS carries method information: calls, arithmetic,
+    comparison, conditional expression or comprehension."""
     for sub in ast.walk(value):
         if isinstance(sub, (ast.Call, ast.BinOp, ast.BoolOp, ast.Compare,
                             ast.IfExp, ast.ListComp, ast.SetComp,
@@ -187,7 +187,7 @@ def _skeleton_stmts(stmts: list[ast.stmt], depth: int) -> list[str]:
             if isinstance(stmt.value, ast.Call):
                 emit(_trunc(stmt.value))
             else:
-                fold()  # docstring-uttrykk, konstanter
+                fold()  # docstring expressions, constants
         else:
             fold()  # import, pass, global, delete, ...
 
@@ -195,13 +195,13 @@ def _skeleton_stmts(stmts: list[ast.stmt], depth: int) -> list[str]:
 
 
 def build_skeleton_index(source: str) -> dict[tuple[str, int], list[str]]:
-    """Map (funksjonsnavn, def-linje) -> skjelettlinjer for hele filen."""
+    """Map (function name, def line) -> skeleton lines for the whole file."""
     tree = ast.parse(source)
     index = {}
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             body = node.body
-            # hopp over docstring-setningen (vises allerede i strukturtreet)
+            # skip the docstring statement (already shown in the structure tree)
             if body and isinstance(body[0], ast.Expr) and isinstance(
                     body[0].value, ast.Constant):
                 body = body[1:]
@@ -210,12 +210,12 @@ def build_skeleton_index(source: str) -> dict[tuple[str, int], list[str]]:
 
 
 # ═══════════════════════════════════════════════════════════
-# RENDERERE: B' (verbatim) og C (skjelett) over samme struktur
+# RENDERERS: B' (verbatim) and C (skeleton) over the same structure
 # ═══════════════════════════════════════════════════════════
 
 def render_minimal(structures, skeleton_index=None, indent=0) -> list[str]:
-    """Felles minimal renderer. skeleton_index=None -> verbatim excerpts (B'),
-    ellers byttes excerpts mot skjelett (C). Alt annet identisk."""
+    """Shared minimal renderer. skeleton_index=None -> verbatim excerpts (B'),
+    otherwise excerpts are swapped for skeletons (C). Everything else identical."""
     lines = []
     ind = " " * indent
     for node in structures:
@@ -253,13 +253,13 @@ def _lookup_skeleton(index, node):
 
 
 # ═══════════════════════════════════════════════════════════
-# MÅLING
+# MEASUREMENT
 # ═══════════════════════════════════════════════════════════
 
 def count_tokens(text: str, encoder) -> int:
     if encoder is not None:
         return len(encoder.encode(text))
-    return max(1, len(text) // 4)  # grov fallback-proxy
+    return max(1, len(text) // 4)  # rough fallback proxy
 
 
 CALL_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
@@ -297,7 +297,7 @@ def main():
         token_note = "tiktoken cl100k_base"
     except ImportError:
         encoder = None
-        token_note = "fallback: len(text)//4 (grov proxy)"
+        token_note = "fallback: len(text)//4 (rough proxy)"
 
     test_files = [
         "src/scantool/scanner.py",
@@ -311,9 +311,9 @@ def main():
     formatter = TreeFormatter()
 
     print("=" * 78)
-    print("OBSERVASJONER")
-    print(f"(tokenizer: {token_note}; semantikk: færre tokens = billigere "
-          f"kontekst, retning på 'bedre' avhenger av informasjonstap)")
+    print("OBSERVATIONS")
+    print(f"(tokenizer: {token_note}; semantics: fewer tokens = cheaper "
+          f"context, the direction of 'better' depends on information loss)")
     print("=" * 78)
 
     totals = {"A": 0, "B": 0, "Bp": 0, "C": 0}
@@ -325,7 +325,7 @@ def main():
         source = path.read_text()
         structures = scanner.scan_file(str(path))
         if structures is None:
-            print(f"\n{rel}: scan_file returnerte None — hoppet over")
+            print(f"\n{rel}: scan_file returned None — skipped")
             continue
 
         skeleton_index = build_skeleton_index(source)
@@ -344,7 +344,7 @@ def main():
         totals["Bp"] += tbp
         totals["C"] += tc
 
-        # per-node-sammenligning av excerpt-representasjonene
+        # per-node comparison of the excerpt representations
         nodes = collect_excerpt_nodes(structures)
         n_with_skel = 0
         for node in nodes:
@@ -366,46 +366,46 @@ def main():
             per_node_rows.append((rel, node.name, tv, ts))
 
         print(f"\n{rel}")
-        print(f"  A  full kilde:            {ta:6d} tokens")
-        print(f"  B  offisiell scan_file:   {tb:6d} tokens")
+        print(f"  A  full source:           {ta:6d} tokens")
+        print(f"  B  official scan_file:    {tb:6d} tokens")
         print(f"  B' minimal + verbatim:    {tbp:6d} tokens")
-        print(f"  C  minimal + skjelett:    {tc:6d} tokens")
-        print(f"  excerpt-noder: {len(nodes)}, med skjelett-match: "
+        print(f"  C  minimal + skeleton:    {tc:6d} tokens")
+        print(f"  excerpt nodes: {len(nodes)}, with skeleton match: "
               f"{n_with_skel}")
 
     print("\n" + "=" * 78)
-    print("PER-NODE: verbatim vs skjelett (kun excerpt-delene)")
+    print("PER NODE: verbatim vs skeleton (excerpt parts only)")
     print("=" * 78)
     tv_sum = sum(r[2] for r in per_node_rows)
     ts_sum = sum(r[3] for r in per_node_rows)
     for rel, name, tv, ts in per_node_rows:
-        print(f"  {name:38s} verbatim {tv:5d}  skjelett {ts:5d}  "
+        print(f"  {name:38s} verbatim {tv:5d}  skeleton {ts:5d}  "
               f"ratio {ts / tv if tv else 0:.2f}")
-    print(f"\n  SUM verbatim: {tv_sum}, SUM skjelett: {ts_sum}, "
+    print(f"\n  SUM verbatim: {tv_sum}, SUM skeleton: {ts_sum}, "
           f"ratio: {ts_sum / tv_sum if tv_sum else 0:.3f}")
 
     print("\n" + "=" * 78)
-    print("BEVARING (proxy-metrikker, ikke 'forståelse')")
+    print("RETENTION (proxy metrics, not 'understanding')")
     print("=" * 78)
-    print(f"  kall-navn bevart:      {call_kept}/{call_ref} "
+    print(f"  call names retained:        {call_kept}/{call_ref} "
           f"({100 * call_kept / call_ref if call_ref else 0:.1f}%)")
-    print(f"  tall-konstanter bevart: {num_kept}/{num_ref} "
+    print(f"  numeric constants retained: {num_kept}/{num_ref} "
           f"({100 * num_kept / num_ref if num_ref else 0:.1f}%)")
 
     print("\n" + "=" * 78)
-    print("TOTALER (alle testfiler)")
+    print("TOTALS (all test files)")
     print("=" * 78)
-    for key, label in [("A", "full kilde"), ("B", "offisiell scan_file"),
+    for key, label in [("A", "full source"), ("B", "official scan_file"),
                        ("Bp", "minimal + verbatim"),
-                       ("C", "minimal + skjelett")]:
+                       ("C", "minimal + skeleton")]:
         print(f"  {label:24s} {totals[key]:7d} tokens "
               f"({100 * totals[key] / totals['A'] if totals['A'] else 0:.1f}% "
-              f"av full kilde)")
+              f"of full source)")
 
     print("\n" + "=" * 78)
-    print("EKSEMPEL-OUTPUT (første node med både verbatim og skjelett)")
+    print("EXAMPLE OUTPUT (first node with both verbatim and skeleton)")
     print("=" * 78)
-    # vis ett konkret eksempel slik at representasjonen kan inspiseres
+    # show one concrete example so the representation can be inspected
     shown = False
     for rel in test_files:
         if shown:
@@ -425,14 +425,14 @@ def main():
             for i, line in enumerate(node.code_excerpt,
                                      start=node.start_line):
                 print(f"  {i} | {line}")
-            print("SKJELETT:")
+            print("SKELETON:")
             for line in skel:
                 print(f"  ⟨{line}⟩")
             shown = True
             break
 
-    print("\nFORK: tolkning gjøres ETTER observasjon — se analysen utenfor "
-          "scriptet.")
+    print("\nFORK: interpretation is done AFTER observation — see the analysis outside "
+          "the script.")
 
 
 if __name__ == "__main__":

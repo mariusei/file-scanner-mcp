@@ -1,53 +1,53 @@
-# Trailing-kommentarer i Python-skjeletter (sg-T4-nyansen)
+# Trailing comments in Python skeletons (the sg-T4 nuance)
 
-## Bakgrunn
+## Background
 
-M2b sg-T4: skjelettet viste `if tile_type == 'grid': return None` og
-agentene måtte gjette hva TTL=None betyr («cacher evig» vs «cacher
-ikke»). Kilden bar svaret tre steder: foranstående kommentarlinje
-(`# Grid structure never changes`), trailing kommentar på den beholdte
-linjen (`return None  # Never expires`), og docstring-linje 2.
+M2b sg-T4: the skeleton showed `if tile_type == 'grid': return None` and
+the agents had to guess what TTL=None means ("caches forever" vs "does not
+cache"). The source carried the answer in three places: the preceding comment line
+(`# Grid structure never changes`), the trailing comment on the kept
+line (`return None  # Never expires`), and docstring line 2.
 
-Generisk skjelett (`_skeleton_lines`) beholder rå linjer og dermed
-trailing-kommentarer allerede. Pythons AST-baserte kondensering
-(`_skeleton_stmts`) mister dem — ast.unparse har ingen kommentarer.
+The generic skeleton (`_skeleton_lines`) keeps raw lines and therefore
+trailing comments already. Python's AST-based condensation
+(`_skeleton_stmts`) loses them — ast.unparse has no comments.
 
-## Hypotese
+## Hypothesis
 
-Å gjenfeste trailing-kommentarer på beholdte skjelettlinjer (via
-tokenize, kun kommentarer med kode foran på samme linje) disambiguerer
-verdi-bærende linjer til lav tokenkostnad.
+Reattaching trailing comments to kept skeleton lines (via
+tokenize, only comments with code before them on the same line) disambiguates
+value-bearing lines at low token cost.
 
-## Preregistrerte beslutningsregler (skrevet FØR målingen)
+## Preregistered decision rules (written BEFORE the measurement)
 
-Målt på alle .py-filer i scantool/src og internal-backend/backend/app
-(ekte, utunet kode — sg-T4-kilden):
+Measured on all .py files in scantool/src and internal-backend/backend/app
+(real, untuned code — the sg-T4 source):
 
-1. **Integrér** hvis total skjelett-tokenøkning < 3 % på repo-nivå OG
-   dekningen er reell (> 0 berørte linjer i begge repo) OG
-   sg-T4-linjen (`return None  # Never expires`) faktisk fanges.
-2. **Vurder manuelt** ved økning 3–5 % (se på hva kommentarene faktisk
-   sier — stalehet/støy teller mot).
-3. **Ikke integrér** ved økning > 5 %, eller hvis dekningen er ~0
-   (null-funn er et gyldig utfall: da var sg-T4 et enkelttilfelle).
+1. **Integrate** if the total skeleton token increase is < 3 % at repo level AND
+   the coverage is real (> 0 affected lines in both repos) AND
+   the sg-T4 line (`return None  # Never expires`) is actually captured.
+2. **Assess manually** at an increase of 3–5 % (look at what the comments actually
+   say — staleness/noise counts against).
+3. **Do not integrate** at an increase > 5 %, or if the coverage is ~0
+   (a null finding is a valid outcome: then sg-T4 was an isolated case).
 
-Foranstående kommentarlinjer (full-linje) holdes UTENFOR — de er målt
-bort tidligere i kondenseringsdesignet (test_keeps_control_flow_and_calls
-asserterer at de droppes) og har høyere støyrisiko. Kun trailing.
+Preceding comment lines (full-line) are kept OUT of scope — they were measured
+away earlier in the condensation design (test_keeps_control_flow_and_calls
+asserts that they are dropped) and carry higher noise risk. Trailing only.
 
-## Måling (2026-06-11)
+## Measurement (2026-06-11)
 
-A/B per funksjon/metode: `_skeleton_stmts(body, 0, None)` vs
+A/B per function/method: `_skeleton_stmts(body, 0, None)` vs
 `_skeleton_stmts(body, 0, _trailing_comments(source))`, tokens via
 `scanner._estimate_tokens`.
 
-| Repo | funksjoner | berørte funksjoner | berørte linjer | skjelett-tokens |
+| Repo | functions | affected functions | affected lines | skeleton tokens |
 |---|---|---|---|---|
-| scantool/src | 724 | 38 | 62 | 92 165 → 92 555 (**+0,42 %**) |
-| internal-backend/backend/app | 156 | 31 | 41 | 28 881 → 29 149 (**+0,93 %**) |
+| scantool/src | 724 | 38 | 62 | 92 165 → 92 555 (**+0.42 %**) |
+| internal-backend/backend/app | 156 | 31 | 41 | 28 881 → 29 149 (**+0.93 %**) |
 
-sg-T4-linjen fanges eksakt — alle grener i `get_tile_cache_ttl`
-disambigueres:
+The sg-T4 line is captured exactly — all branches in `get_tile_cache_ttl`
+are disambiguated:
 
 ```
 if tile_type == 'grid':
@@ -59,19 +59,19 @@ else:
  return 300  # 5 minutes default
 ```
 
-Eksempler på fanget innhold (begge repo): verdi-forklaringer av typen
-`# seconds to days`, `# 10GB in bytes`, `# Top 25% newest` — nettopp
-disambiguering, ikke prosa-støy.
+Examples of captured content (both repos): value explanations of the kind
+`# seconds to days`, `# 10GB in bytes`, `# Top 25% newest` — precisely
+disambiguation, not prose noise.
 
-## Beslutning
+## Decision
 
-Regel 1 innfridd (< 3 % på begge repo, reell dekning, sg-T4 dekket):
-**INTEGRERT** i `PythonLanguage`-kondenseringen
-(`_trailing_comments` + `emit(text, row)` i `_skeleton_stmts`).
-Generisk skjelett (`_skeleton_lines` i basen) beholder rå linjer og
-hadde egenskapen fra før. Golden-testene forble grønne — basic.py har
-ingen trailing-kommentarer på beholdte linjer, så default-overflaten
-driftet ikke.
+Rule 1 satisfied (< 3 % on both repos, real coverage, sg-T4 covered):
+**INTEGRATED** in the `PythonLanguage` condensation
+(`_trailing_comments` + `emit(text, row)` in `_skeleton_stmts`).
+The generic skeleton (`_skeleton_lines` in the base) keeps raw lines and
+had the property already. The golden tests remained green — basic.py has
+no trailing comments on kept lines, so the default surface
+did not drift.
 
-Foranstående kommentarlinjer forblir utenfor (preregistrert avgrensning);
-docstring-linje-2-sporet (sg-T4s tredje bærer) er ikke vurdert her.
+Preceding comment lines remain out of scope (preregistered delimitation);
+the docstring-line-2 track (sg-T4's third carrier) is not assessed here.

@@ -1,10 +1,10 @@
-"""Forbered SWE-bench-suiten: hent instanser, generer oppgaver, klon repoer.
+"""Prepare the SWE-bench suite: fetch instances, generate tasks, clone repos.
 
-Eksternt forankrede oppgaver: fakta = filer og funksjonsnavn gullpatchen
-faktisk berørte, mekanisk ekstrahert fra patch-konteksten. Navn patchen
-LEGGER TIL ('+'-linjer) ekskluderes — de finnes ikke ved base_commit og er
-ufinnbare for ethvert verktøy. Queries er håndplukket fra problemtittelen
-(dokumentert her, kritiserbart).
+Externally anchored tasks: facts = files and function names the gold patch
+actually touched, mechanically extracted from the patch context. Names the
+patch ADDS ('+' lines) are excluded — they do not exist at base_commit and
+are unfindable for any tool. Queries are hand-picked from the problem title
+(documented here, open to critique).
 
     uv run python experiments/benchmark/prepare_swebench.py
     uv run --with tiktoken python experiments/benchmark/harness.py --swebench
@@ -20,7 +20,7 @@ ROWS_URL = ("https://datasets-server.huggingface.co/rows"
             "?dataset=princeton-nlp%2FSWE-bench_Lite&config=default"
             "&split=test&offset={offset}&length=100")
 
-# instans -> kanonisk søkebegrep (fra problemtittelen)
+# instance -> canonical search term (from the problem title)
 CHOSEN = {
     "pallets__flask-4045": "blueprint",
     "pallets__flask-5063": "routes",
@@ -85,8 +85,8 @@ def main():
     json.dump(tasks, open(TASKS_PATH, "w"), indent=2)
     for task in tasks:
         clone(task)
-        print(f"{task['instance_id']}: klar (query={task['query']!r}, "
-              f"{len(task['facts'])} fakta)")
+        print(f"{task['instance_id']}: ready (query={task['query']!r}, "
+              f"{len(task['facts'])} facts)")
 
 
 if __name__ == "__main__":

@@ -1,29 +1,29 @@
 """
-FIL: code_health.py
+FILE: code_health.py
 
 PROBLEM:
-  Død og duplisert kode er støy for forståelse og handlingsrettet info for
-  utvikleren — men feilflagging er verre enn ingen flagging, fordi labels
-  styrer en LLMs oppfattede viktighet.
+  Dead and duplicated code is noise for comprehension and actionable info
+  for the developer — but false flagging is worse than no flagging, because
+  labels steer an LLM's perceived importance.
 
-LØSNING:
-  Språkagnostisk per konstruksjon:
-  - "Unreferenced" = definisjonsnavnet forekommer ikke som ord noe annet
-    sted i de scannede filenes innhold. Ren teksttelling — trenger ingen
-    per-språk kallekstraksjon, og enhver omtale (kall, streng, kommentar,
-    config) undertrykker flagget. Konservativt: falske negativer er ok.
-  - "Duplicate" = whitespace-normalisert kildeblokk er eksakt lik på tvers
-    av filer (≥2 forekomster, ≥4 linjer). Tekstlikhet, ikke skjelett-likhet
-    — skjeletter folder detaljer og kan ikke bære duplikat-påstanden.
+SOLUTION:
+  Language-agnostic by construction:
+  - "Unreferenced" = the definition name does not occur as a word anywhere
+    else in the scanned files' content. Pure text counting — needs no
+    per-language call extraction, and any mention (call, string, comment,
+    config) suppresses the flag. Conservative: false negatives are ok.
+  - "Duplicate" = whitespace-normalized source block is exactly equal across
+    files (≥2 occurrences, ≥4 lines). Text equality, not skeleton equality
+    — skeletons fold details and cannot carry the duplicate claim.
 
-  Røtter som aldri flagges: dekorerte noder (@mcp.tool, @app.route, ...),
-  override-modifiserte, entry points (per språk der det finnes), dundere,
-  test-funksjoner, korte navn (< 4 tegn).
+  Roots that are never flagged: decorated nodes (@mcp.tool, @app.route, ...),
+  override-modified, entry points (per language where available), dunders,
+  test functions, short names (< 4 chars).
 
 SCOPE:
-  ✓ Katalognivå (referanser telles innenfor scannet sett — sagt eksplisitt)
-  ✗ Ikke enkeltfil (for trangt referanse-scope til å påstå noe)
-  ✗ Ikke duplikater med ulikt navn men lik kropp (krever fuzzy — bevisst)
+  ✓ Directory level (references counted within the scanned set — stated explicitly)
+  ✗ Not single-file (reference scope too narrow to claim anything)
+  ✗ Not duplicates with different names but equal bodies (requires fuzzy — deliberate)
 """
 
 import re

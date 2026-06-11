@@ -1,27 +1,27 @@
 """
-EKSPERIMENT: Generisk tree-sitter-basert kondensering for alle språk
+EXPERIMENT: Generic tree-sitter-based condensation for all languages
 
 PROBLEM:
-  condense_excerpt() er Python-only (stdlib ast). Entropi-evaluatoren er
-  språkagnostisk; kondenseringen bør dekke det samme.
+  condense_excerpt() is Python-only (stdlib ast). The entropy evaluator is
+  language-agnostic; the condensation should cover the same.
 
-IDÉ:
-  Linjemarkering via tree-sitter: behold linjer der "signifikante" noder
-  starter (kontrollflyt, kall, tilordninger, definisjoner — matchet på
-  node-typenavn på tvers av grammatikker). Blanke/punktum-linjer droppes
-  stille, øvrige foldes til "…".
+IDEA:
+  Line marking via tree-sitter: keep lines where "significant" nodes
+  start (control flow, calls, assignments, definitions — matched on
+  node type names across grammars). Blank/punctuation-only lines are dropped
+  silently, the rest are folded to "…".
 
-UTFALL HOLDES ÅPNE:
-  1. Virker bredt (ratio < 0.8, struktur bevart)
-  2. Fragment-parsing feiler for noen språk (alt ERROR → ingen signifikante
-     noder → None → verbatim-fallback; målbart som "None-rate")
-  3. Markup/deklarative språk: ingenting å folde → ratio ≈ 1.0 → None er
-     korrekt utfall, ikke feil
-  4. Node-typenavn for ulikt → mønsteret bommer per språk (sjekk manuelt)
+OUTCOMES KEPT OPEN:
+  1. Works broadly (ratio < 0.8, structure preserved)
+  2. Fragment parsing fails for some languages (all ERROR → no significant
+     nodes → None → verbatim fallback; measurable as the "None rate")
+  3. Markup/declarative languages: nothing to fold → ratio ≈ 1.0 → None is
+     the correct outcome, not an error
+  4. Node type names too dissimilar → the pattern misses per language (check manually)
 
-MÅLING:
-  Per språk: antall noder testet, None-rate, gjennomsnittlig token-ratio
-  for noder som kondenseres, og eksempel-output for manuell inspeksjon.
+MEASUREMENT:
+  Per language: number of nodes tested, None rate, average token ratio
+  for nodes that are condensed, and example output for manual inspection.
 """
 
 import re
@@ -34,8 +34,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from scantool.languages import get_registry  # noqa: E402
 
-# Node-typer som bærer intent/metode — matchet mot tree-sitter-typenavn.
-# Ordene er valgt fra konvensjoner på tvers av grammatikker
+# Node types that carry intent/method — matched against tree-sitter type names.
+# The words are chosen from conventions across grammars
 # (if_statement, call_expression, method_invocation, let_declaration, ...)
 SIGNIFICANT = re.compile(
     r"\b(if|else|elif|for|foreach|while|do|switch|case|match|when|guard|loop"
@@ -48,12 +48,12 @@ SIGNIFICANT = re.compile(
     re.IGNORECASE,
 )
 
-# Linjer med kun lukkende syntaks/punktum — droppes stille (struktur vises
-# via innrykk, som i Python)
+# Lines with only closing syntax/punctuation — dropped silently (structure is shown
+# via indentation, as in Python)
 PUNCT_ONLY = re.compile(r"^[\s)\]}>;,]*$")
 
-# Felt-navn som peker på "kroppen" til en node — linjene fra nodens start
-# til kroppens start er header (flerlinje-betingelser etc.) og beholdes
+# Field names that point to the "body" of a node — the lines from the node's start
+# to the body's start are the header (multi-line conditions etc.) and are kept
 BODY_FIELDS = ("body", "consequence", "block")
 
 
@@ -85,7 +85,7 @@ def condense_generic(language, excerpt_lines: list[str]) -> list[str] | None:
     tree = parser.parse(source.encode("utf-8", errors="replace"))
     rows = significant_rows(tree, len(lines) - 1)
     if not rows:
-        return None  # fragmentet ga ingen gjenkjennbar struktur
+        return None  # the fragment yielded no recognizable structure
 
     out: list[str] = []
     folded_something = False
@@ -102,7 +102,7 @@ def condense_generic(language, excerpt_lines: list[str]) -> list[str] | None:
                 out.append(" " * indent + "…")
 
     if not folded_something:
-        return None  # ingenting spart — verbatim med linjenumre er bedre
+        return None  # nothing saved — verbatim with line numbers is better
     return out
 
 
@@ -137,7 +137,7 @@ def main():
 
     registry = get_registry()
     print("=" * 78)
-    print(f"OBSERVASJONER (tokenizer: {token_note})")
+    print(f"OBSERVATIONS (tokenizer: {token_note})")
     print("=" * 78)
 
     per_lang: dict[str, list] = {}
@@ -167,26 +167,26 @@ def main():
                 if key not in examples and len(excerpt) >= 8:
                     examples[key] = (sample.name, node.name, excerpt, skeleton)
 
-    print(f"\n{'Språk':14s} {'noder':>6s} {'None-rate':>10s} {'snitt-ratio':>12s}")
+    print(f"\n{'Language':14s} {'nodes':>6s} {'None rate':>10s} {'avg ratio':>12s}")
     for name in sorted(per_lang):
         stats = per_lang[name]
         ratios = [s for s in stats if s is not None]
         none_rate = (len(stats) - len(ratios)) / len(stats)
         avg = sum(ratios) / len(ratios) if ratios else float("nan")
         print(f"{name:14s} {len(stats):6d} {none_rate:9.0%} "
-              f"{avg if ratios else 0:12.2f}{'  (ingen kondensert)' if not ratios else ''}")
+              f"{avg if ratios else 0:12.2f}{'  (none condensed)' if not ratios else ''}")
 
     print("\n" + "=" * 78)
-    print("EKSEMPLER (manuell inspeksjon av struktur-bevaring)")
+    print("EXAMPLES (manual inspection of structure preservation)")
     print("=" * 78)
     for name, (fname, node_name, excerpt, skeleton) in sorted(examples.items()):
         print(f"\n--- {name}: {fname} :: {node_name} ---")
-        print("FØR (verbatim):")
+        print("BEFORE (verbatim):")
         for line in excerpt[:14]:
             print(f"  |{line}")
         if len(excerpt) > 14:
-            print(f"  |... +{len(excerpt) - 14} linjer")
-        print("ETTER (generisk skjelett):")
+            print(f"  |... +{len(excerpt) - 14} lines")
+        print("AFTER (generic skeleton):")
         for line in skeleton:
             print(f"  ⟨{line}⟩")
 

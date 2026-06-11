@@ -1,23 +1,23 @@
 """
-EKSPERIMENT: Node-direkte saliency vs partisjonsbasert pipeline
+EXPERIMENT: Node-direct saliency vs the partition-based pipeline
 
-HYPOTESE:
-  Å score strukturnodene direkte (samme metrikker: shannon + betinget
-  kompresjon + centrality på nodens byte-range) gir bedre utvalg enn
-  partisjonering + coverage-mapping, fordi tapspunktet (≥50 %-terskelen
-  mellom to urelaterte segmenteringer) forsvinner.
+HYPOTHESIS:
+  Scoring the structure nodes directly (same metrics: shannon + conditional
+  compression + centrality on the node's byte range) gives a better selection than
+  partitioning + coverage mapping, because the loss point (the ≥50 % threshold
+  between two unrelated segmentations) disappears.
 
-FALSIFISERBART:
-  - Hvis scanner.py fortsatt velger trivielle gettere → arkitekturen var
-    ikke problemet
-  - Hvis lange kjernefunksjoner IKKE kommer inn → hel-node-scoring utvanner
-    saliente kjerner (paradoks-utfall)
-  - Likt utvalg → null-resultat (da er gevinsten kun enklere kode)
+FALSIFIABLE:
+  - If scanner.py still picks trivial getters → the architecture was
+    not the problem
+  - If long core functions do NOT come in → whole-node scoring dilutes
+    salient cores (paradox outcome)
+  - Identical selection → null result (then the gain is only simpler code)
 
 DESIGN:
-  Kandidat-noder = løvnoder i strukturtreet (noder uten egne kandidat-barn),
-  utenom skip-typer. Score per node på nodens bytes. Topp 20 % velges.
-  Sammenlignes mot dagens utvalg (selection_after.json).
+  Candidate nodes = leaf nodes in the structure tree (nodes without candidate
+  children of their own), excluding skip types. Score per node on the node's bytes.
+  Top 20 % are selected. Compared against the current selection (selection_after.json).
 """
 
 import json
@@ -113,7 +113,7 @@ def main():
     scanner = FileScanner()
 
     print("=" * 78)
-    print("UTVALG: dagens partisjonsbaserte (etter metrikkbytte) vs node-direkte")
+    print("SELECTION: current partition-based (after metric switch) vs node-direct")
     print("=" * 78)
     t_total = 0.0
     for rel, current in after.items():
@@ -128,11 +128,11 @@ def main():
         cur_names = [n["name"] for n in current]
         new_names = [n.name for n, _ in selected]
         n_cand = len(candidate_nodes(structures))
-        print(f"\n{rel}  (kandidater: {n_cand})")
-        print(f"  dagens ({len(cur_names)}): {', '.join(cur_names) or '(ingen)'}")
-        print(f"  node-direkte ({len(new_names)}): {', '.join(new_names) or '(ingen)'}")
+        print(f"\n{rel}  (candidates: {n_cand})")
+        print(f"  current ({len(cur_names)}): {', '.join(cur_names) or '(none)'}")
+        print(f"  node-direct ({len(new_names)}): {', '.join(new_names) or '(none)'}")
 
-    print(f"\nTid node-direkte scoring, alle filer: {t_total * 1000:.1f}ms")
+    print(f"\nTime for node-direct scoring, all files: {t_total * 1000:.1f}ms")
 
 
 if __name__ == "__main__":

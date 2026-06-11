@@ -1,4 +1,5 @@
-# Golden-testene (tests/test_golden.py) fryser output som en funksjon av
-# filbytes; CRLF-checkout på Windows ville endret input-bytene og dermed
-# outputen. LF i arbeidstreet på alle plattformer holder bytene identiske.
+# The golden tests (tests/test_golden.py) freeze output as a function of
+# file bytes; a CRLF checkout on Windows would change the input bytes and
+# thus the output. LF in the working tree on all platforms keeps the bytes
+# identical.
 * text=auto eol=lf

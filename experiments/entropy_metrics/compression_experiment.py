@@ -1,33 +1,33 @@
 """
-EKSPERIMENT: Kompresjonsmetrikk som kompleksitets-proxy i saliency-ranking
+EXPERIMENT: Compression metric as a complexity proxy in saliency ranking
 
-PROBLEM (målt 2026-06-10):
-  Dagens _compression_ratio korrelerer r=-0.80 med log(partisjonsstørrelse).
-  zlib-overhead dominerer små partisjoner (ratio ~1.09) — metrikken måler
-  i praksis størrelse, ikke kompleksitet, med 20-25 % vekt i saliency.
+PROBLEM (measured 2026-06-10):
+  The current _compression_ratio correlates r=-0.80 with log(partition size).
+  zlib overhead dominates small partitions (ratio ~1.09) — the metric in
+  practice measures size, not complexity, with 20-25 % weight in saliency.
 
-KANDIDATER:
-  A (dagens):   len(zlib(p)) / len(p)
-  B (korrigert): (len(zlib(p)) - len(zlib(b""))) / len(p)  — fjerner overhead
-  C (betinget):  len(zlib(p | zdict=resten av filen)) / len(p)
-                 — måler NY informasjon gitt konteksten (kompleksitet OG
-                 unikhet i én metrikk)
+CANDIDATES:
+  A (current):   len(zlib(p)) / len(p)
+  B (corrected): (len(zlib(p)) - len(zlib(b""))) / len(p)  — removes overhead
+  C (conditional): len(zlib(p | zdict=rest of the file)) / len(p)
+                 — measures NEW information given the context (complexity AND
+                 uniqueness in one metric)
 
-FALSIFISERBARE PREDIKSJONER (før kjøring):
-  - Hvis |korr(log size, metrikk)| forblir > 0.6 for B: overhead var ikke
-    hovedårsaken → hypotesen om zlib-header svekkes
-  - Hvis C ikke rangerer en unik funksjon over nær-identiske kopier:
-    betinget kompresjon fanger ikke unikhet → forkast C
-  - Null-utfall mulig: A kan diskriminere greit til tross for
-    størrelseskorrelasjonen (korrelasjon ≠ ubrukelighet)
-  - Paradoks mulig: C kan være tregere enn hele dagens analyse → upraktisk
+FALSIFIABLE PREDICTIONS (before running):
+  - If |corr(log size, metric)| remains > 0.6 for B: overhead was not
+    the main cause → the zlib-header hypothesis weakens
+  - If C does not rank a unique function above near-identical copies:
+    conditional compression does not capture uniqueness → reject C
+  - Null outcome possible: A may discriminate fine despite the
+    size correlation (correlation ≠ uselessness)
+  - Paradox possible: C may be slower than the entire current analysis → impractical
 
-MÅLINGER:
-  1. Størrelses-konfundering: korr(log size, metrikk) på ekte filer
-  2. Diskriminering: syntetisk fil med kjent fasit
-     (a) unik logikk + 6 nær-identiske boilerplate-funksjoner
-     (b) repetert høyentropi-blob vs unik lavnivå-logikk
-  3. Kostnad: tid per fil
+MEASUREMENTS:
+  1. Size confounding: corr(log size, metric) on real files
+  2. Discrimination: synthetic file with known ground truth
+     (a) unique logic + 6 near-identical boilerplate functions
+     (b) repeated high-entropy blob vs unique low-level logic
+  3. Cost: time per file
 """
 
 import sys
@@ -63,7 +63,7 @@ def metric_c(p: bytes, before: bytes, after: bytes) -> float:
     return max(0, len(out) - EMPTY_OVERHEAD) / len(p)
 
 
-CANDIDATES = [("A dagens", metric_a), ("B korrigert", metric_b), ("C betinget", metric_c)]
+CANDIDATES = [("A current", metric_a), ("B corrected", metric_b), ("C conditional", metric_c)]
 
 
 def real_file_partitions(path: Path) -> list[tuple[bytes, bytes, bytes]]:
@@ -77,11 +77,11 @@ def real_file_partitions(path: Path) -> list[tuple[bytes, bytes, bytes]]:
 
 def main():
     print("=" * 78)
-    print("MÅLING 1: Størrelses-konfundering — korr(log size, metrikk)")
+    print("MEASUREMENT 1: Size confounding — corr(log size, metric)")
     print("=" * 78)
     files = ["src/scantool/preview.py", "src/scantool/languages/python.py",
              "src/scantool/code_map.py", "tests/go/samples/edge_cases.go"]
-    print(f"{'fil':44s}" + "".join(f"{name:>14s}" for name, _ in CANDIDATES))
+    print(f"{'file':44s}" + "".join(f"{name:>14s}" for name, _ in CANDIDATES))
     for f in files:
         triples = real_file_partitions(PROJECT_ROOT / f)
         sizes = np.log([len(p) for p, _, _ in triples])
@@ -94,7 +94,7 @@ def main():
 
     print()
     print("=" * 78)
-    print("MÅLING 2a: Diskriminering — unik logikk blant 6 boilerplate-kopier")
+    print("MEASUREMENT 2a: Discrimination — unique logic among 6 boilerplate copies")
     print("=" * 78)
     unique = b"""def reconcile(ledger, txns, fx_rates):
     drift = sum(t.amount * fx_rates[t.ccy] for t in txns) - ledger.total
@@ -114,7 +114,7 @@ def main():
         for i in range(6)
     ]
     blocks = boiler[:3] + [unique] + boiler[3:]
-    labels = ["boiler"] * 3 + ["UNIK"] + ["boiler"] * 3
+    labels = ["boiler"] * 3 + ["UNIQUE"] + ["boiler"] * 3
     file_data = b"\n".join(blocks)
 
     for name, fn in CANDIDATES:
@@ -125,19 +125,19 @@ def main():
             after = file_data[offset + len(block):]
             scores.append(fn(block, before, after))
             offset += len(block) + 1
-        order = np.argsort(scores)[::-1]  # høyest først
+        order = np.argsort(scores)[::-1]  # highest first
         rank_of_unique = int(np.where(order == 3)[0][0]) + 1
-        print(f"  {name:12s} unik logikk rangert #{rank_of_unique}/7   "
+        print(f"  {name:12s} unique logic ranked #{rank_of_unique}/7   "
               f"scores: " + " ".join(
                   f"{'*' if i == 3 else ''}{s:.3f}" for i, s in enumerate(scores)))
 
     print()
     print("=" * 78)
-    print("MÅLING 2b: Repetert høyentropi-blob vs unik logikk")
+    print("MEASUREMENT 2b: Repeated high-entropy blob vs unique logic")
     print("=" * 78)
     rng_blob = bytes(np.random.RandomState(42).randint(33, 127, 300, dtype=np.uint8))
     blocks = [rng_blob, unique, rng_blob, rng_blob]
-    labels = ["blob", "UNIK-logikk", "blob-kopi", "blob-kopi"]
+    labels = ["blob", "UNIQUE-logic", "blob-copy", "blob-copy"]
     file_data = b"\n".join(blocks)
     for name, fn in CANDIDATES:
         scores = []
@@ -148,17 +148,17 @@ def main():
             scores.append(fn(block, before, after))
             offset += len(block) + 1
         ranked = [labels[i] for i in np.argsort(scores)[::-1]]
-        print(f"  {name:12s} rangering (høyest først): {ranked}")
+        print(f"  {name:12s} ranking (highest first): {ranked}")
         print(f"  {'':12s} scores: " + " ".join(
             f"{l}={s:.3f}" for l, s in zip(labels, scores)))
 
     print()
     print("=" * 78)
-    print("MÅLING 3: Kostnad per fil (alle partisjoner)")
+    print("MEASUREMENT 3: Cost per file (all partitions)")
     print("=" * 78)
     for f in ["src/scantool/preview.py", "src/scantool/languages/python.py"]:
         triples = real_file_partitions(PROJECT_ROOT / f)
-        row = f"  {f} ({len(triples)} partisjoner): "
+        row = f"  {f} ({len(triples)} partitions): "
         for name, fn in CANDIDATES:
             t0 = time.perf_counter()
             for _ in range(5):

@@ -41,7 +41,7 @@ class StructureNode:
     code_skeleton: Optional[list[str]] = None  # Condensed method skeleton (preferred display)
     saliency: Optional[float] = None  # Normalized saliency score for selected nodes
     recent_edits: Optional[int] = None  # Distinct commits behind this node's lines (90d window)
-    delta_status: Optional[str] = None  # "ny"/"endret" vs previous scan (delta mode)
+    delta_status: Optional[str] = None  # "new"/"changed" vs previous scan (delta mode)
 
     def __repr__(self):
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"

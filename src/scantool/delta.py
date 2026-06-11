@@ -1,27 +1,27 @@
 """
-FIL: delta.py
+FILE: delta.py
 
 PROBLEM:
-  En agent som jobber iterativt re-scanner fra null og betaler full pris
-  for informasjon den allerede har fått. grep og AST-verktøy er
-  tilstandsløse per definisjon — tilstand er strukturelt umatchbart.
+  An agent working iteratively re-scans from scratch and pays full price
+  for information it has already received. grep and AST tools are
+  stateless by definition — state is structurally unmatchable.
 
-LØSNING:
-  Server-prosessen husker forrige scan per fil (fil-fingeravtrykk =
-  mtime+størrelse, node-fingeravtrykk = kildehash). Re-scan leverer kun
-  endringer: uendrede filer som én linje, uendrede noder uten skjelett.
-  Token-allokeringsprinsippet i sin reneste form: uendret koster ~null,
-  endringer får all oppmerksomheten.
+SOLUTION:
+  The server process remembers the previous scan per file (file fingerprint
+  = mtime+size, node fingerprint = source hash). A re-scan delivers only
+  changes: unchanged files as one line, unchanged nodes without skeletons.
+  The token-allocation principle in its purest form: unchanged costs ~zero,
+  changes get all the attention.
 
-KONTRAKT:
-  - Delta refererer KUN til hva som er likt forrige output — aldri en
-    gjetning. Output sier alltid hvordan man får alt (delta=False),
-    fordi konsumentens kontekst kan være komprimert bort.
-  - Første scan av en fil er alltid full.
-  - Minnet er ALDERSBEGRENSET: en langlivet serverprosess (HTTP, gjenbrukt
-    stdio) krysser samtaler, og delta må aldri referere output en ny
-    samtale aldri har sett. Oppføringer eldre enn TTL behandles som
-    første scan, og uendret-meldinger oppgir alderen.
+CONTRACT:
+  - Delta refers ONLY to what equals the previous output — never a guess.
+    Output always says how to get everything (delta=False), because the
+    consumer's context may have been compacted away.
+  - The first scan of a file is always full.
+  - The memory is AGE-LIMITED: a long-lived server process (HTTP, reused
+    stdio) crosses conversations, and delta must never refer to output a
+    new conversation has never seen. Entries older than the TTL are treated
+    as a first scan, and unchanged messages state the age.
 """
 
 import hashlib
@@ -30,13 +30,13 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-# Innen-økt-iterasjon bevares; kryss-samtale-spøkelser dør
+# Within-session iteration is preserved; cross-conversation ghosts die
 _MEMORY_TTL_SECONDS = 30 * 60
 
 
 def format_age(seconds: float) -> str:
     if seconds < 60:
-        return f"{int(seconds)} sek"
+        return f"{int(seconds)} sec"
     return f"{int(seconds / 60)} min"
 
 
@@ -138,7 +138,7 @@ class ScanMemory:
         self._files[path] = (fingerprint, current, time.time())
 
         if previous is None or time.time() - previous[2] > _MEMORY_TTL_SECONDS:
-            return None  # utløpt minne = første scan, aldri spøkelses-diff
+            return None  # expired memory = first scan, never a ghost diff
         return diff_nodes(previous[1], current)
 
 
@@ -158,10 +158,10 @@ def apply_node_delta(structures, diff: NodeDiff) -> tuple[int, int]:
             if node.type != "file-info" and node.name:
                 key = node_key(node, chain)
                 if key in diff.new:
-                    node.delta_status = "ny"
+                    node.delta_status = "new"
                     changed += 1
                 elif key in diff.changed:
-                    node.delta_status = "endret"
+                    node.delta_status = "changed"
                     changed += 1
                 elif key in diff.unchanged:
                     node.code_skeleton = None

@@ -1,9 +1,9 @@
-"""M2c logganalyse: kall-kategorier og tokens per episode.
+"""M2c log analysis: call categories and tokens per episode.
 
-MÅLINGER (kun faktiske data, ingen tolkning). Kategorier:
-  read  = cat/head/tail/sed via tool.sh + focusread (lesesteget, P2)
-  nav   = preview/scandir/scanfile/search/searchname (navigasjon)
-Utfall ukjent — skriptet rapporterer rå tall for alle armer likt.
+MEASUREMENTS (actual data only, no interpretation). Categories:
+  read  = cat/head/tail/sed via tool.sh + focusread (the read step, P2)
+  nav   = preview/scandir/scanfile/search/searchname (navigation)
+Outcome unknown — the script reports raw numbers identically for all arms.
 """
 import re
 from pathlib import Path
@@ -40,17 +40,17 @@ def main():
             tokens[cat] += len(ENC.encode(output))
         rows.append((log.stem, calls, focusreads, tokens["read"], tokens["nav"]))
 
-    print(f"{'episode':34s} {'kall':>4s} {'focusread':>9s} {'read-tok':>8s} {'nav-tok':>8s} {'sum':>8s}")
+    print(f"{'episode':34s} {'calls':>5s} {'focusread':>9s} {'read-tok':>8s} {'nav-tok':>8s} {'sum':>8s}")
     for name, calls, fr, rt, nt in rows:
-        print(f"{name:34s} {calls:4d} {fr:9d} {rt:8d} {nt:8d} {rt + nt:8d}")
+        print(f"{name:34s} {calls:5d} {fr:9d} {rt:8d} {nt:8d} {rt + nt:8d}")
 
     print()
     for arm in ("a", "b", "b2"):
         sub = [r for r in rows if f"-{arm}-" in r[0]]
         n = len(sub)
-        print(f"ARM {arm.upper()}: episoder={n} kall={sum(r[1] for r in sub)} "
-              f"focusread-kall={sum(r[2] for r in sub)} "
-              f"episoder-med-focusread={sum(1 for r in sub if r[2])} "
+        print(f"ARM {arm.upper()}: episodes={n} calls={sum(r[1] for r in sub)} "
+              f"focusread-calls={sum(r[2] for r in sub)} "
+              f"episodes-with-focusread={sum(1 for r in sub if r[2])} "
               f"read-tok={sum(r[3] for r in sub)} nav-tok={sum(r[4] for r in sub)} "
               f"sum-tok={sum(r[3] + r[4] for r in sub)}")
 

@@ -1,12 +1,12 @@
-"""M2c-CLI for scantool-verktøyene. All output logges per episode.
+"""M2c CLI for the scantool tools. All output is logged per episode.
 
-Bruk:
-  uv run python .../m2c/scantool_cli.py LOGG preview DIR
-  uv run python .../m2c/scantool_cli.py LOGG scandir DIR [GLOB]
-  uv run python .../m2c/scantool_cli.py LOGG scanfile STI [BUDSJETT]
-  uv run python .../m2c/scantool_cli.py LOGG search DIR REGEX     (innholdssøk)
-  uv run python .../m2c/scantool_cli.py LOGG searchname DIR REGEX (navnesøk)
-  uv run python .../m2c/scantool_cli.py LOGG focusread STI NODE   (én node verbatim)
+Usage:
+  uv run python .../m2c/scantool_cli.py LOG preview DIR
+  uv run python .../m2c/scantool_cli.py LOG scandir DIR [GLOB]
+  uv run python .../m2c/scantool_cli.py LOG scanfile PATH [BUDGET]
+  uv run python .../m2c/scantool_cli.py LOG search DIR REGEX     (content search)
+  uv run python .../m2c/scantool_cli.py LOG searchname DIR REGEX (name search)
+  uv run python .../m2c/scantool_cli.py LOG focusread PATH NODE  (one node verbatim)
 """
 import sys
 sys.path.insert(0, "/Users/mariusbergeeide/Projects/scantool/src")
@@ -28,7 +28,7 @@ elif command == "searchname":
 elif command == "focusread":
     out = server.scan_file.fn(args[0], focus=" ".join(args[1:]))[0].text
 else:
-    out = f"ukjent kommando: {command} — se docstring"
+    out = f"unknown command: {command} — see docstring"
 with open(log_path, "a") as f:
     f.write(f"=== CALL: scantool {command} {' '.join(args)} ===\n{out}\n")
 print(out)

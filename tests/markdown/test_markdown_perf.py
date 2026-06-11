@@ -8,12 +8,12 @@ from scantool.languages.markdown import MarkdownLanguage
 
 
 def _giant_report() -> bytes:
-    table_row = "| " + " | ".join(f"verdi_{i}" for i in range(12)) + " |\n"
+    table_row = "| " + " | ".join(f"value_{i}" for i in range(12)) + " |\n"
     return (
-        "# Resultater\n\n"
-        "## Modellkjøring\n\n"
+        "# Results\n\n"
+        "## Model run\n\n"
         + table_row * 90_000
-        + "\n## Konklusjon\n\nTekst.\n"
+        + "\n## Conclusion\n\nText.\n"
     ).encode()
 
 
@@ -36,9 +36,9 @@ class TestOversizedMarkdown:
 
         names = _heading_names(MarkdownLanguage().scan(source))
 
-        # regex-fallbacken markerer navn med " (fallback)"
-        assert any(n.startswith("Resultater") for n in names)
-        assert any(n.startswith("Konklusjon") for n in names)
+        # the regex fallback marks names with " (fallback)"
+        assert any(n.startswith("Results") for n in names)
+        assert any(n.startswith("Conclusion") for n in names)
 
     def test_fallback_is_fast(self):
         source = _giant_report()
@@ -46,17 +46,17 @@ class TestOversizedMarkdown:
         t0 = time.perf_counter()
         MarkdownLanguage().scan(source)
 
-        # Skiller fallback (~0.1-0.5s avhengig av maskin) fra tre-sitter-
-        # regresjonen (flere sekunder på 1.3M noder). 0.5s-grensen flaket
-        # på treg CI-runner (målt 0.511s); 2.0s beholder regresjonssignalet
-        # uten å være følsom for runner-hastighet. Selve veivalget testes
-        # behavioralt i test_fallback_keeps_headings.
+        # Separates the fallback (~0.1-0.5s depending on machine) from the
+        # tree-sitter regression (several seconds on 1.3M nodes). The 0.5s
+        # limit was flaky on a slow CI runner (measured 0.511s); 2.0s keeps
+        # the regression signal without being sensitive to runner speed. The
+        # path choice itself is tested behaviorally in test_fallback_keeps_headings.
         assert time.perf_counter() - t0 < 2.0
 
     def test_small_files_still_use_tree_sitter(self):
-        structures = MarkdownLanguage().scan(b"# Tittel\n\n```python\nx = 1\n```\n")
+        structures = MarkdownLanguage().scan(b"# Title\n\n```python\nx = 1\n```\n")
 
         all_types = {n.type for n in structures} | {
             c.type for n in structures for c in (n.children or [])}
-        # kodeblokk-noder finnes kun i tree-sitter-veien
+        # code-block nodes exist only on the tree-sitter path
         assert "code-block" in all_types

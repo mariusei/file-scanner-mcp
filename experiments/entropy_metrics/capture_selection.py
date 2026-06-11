@@ -1,8 +1,8 @@
-"""Fang excerpt-utvalget (hvilke noder entropi-rankingen velger) for et sett
-representative filer. Kjøres før og etter metrikkbytte for sammenligning:
+"""Capture the excerpt selection (which nodes the entropy ranking picks) for a set
+of representative files. Run before and after a metric switch for comparison:
 
     uv run python -u experiments/entropy_metrics/capture_selection.py selection_before.json
-    # ... bytt metrikk ...
+    # ... switch metric ...
     uv run python -u experiments/entropy_metrics/capture_selection.py selection_after.json
 """
 
@@ -53,17 +53,17 @@ def main():
     for rel in FILES:
         path = PROJECT_ROOT / rel
         if not path.exists():
-            print(f"  (hopper over {rel} — finnes ikke)")
+            print(f"  (skipping {rel} — does not exist)")
             continue
         nodes = []
         collect(scanner.scan_file(str(path)), nodes)
         result[rel] = nodes
-        names = ", ".join(n["name"] for n in nodes) or "(ingen)"
+        names = ", ".join(n["name"] for n in nodes) or "(none)"
         print(f"{rel}: {len(nodes)} excerpts → {names}")
 
     out_path = Path(__file__).parent / out_name
     out_path.write_text(json.dumps(result, indent=2))
-    print(f"\nLagret: {out_path}")
+    print(f"\nSaved: {out_path}")
 
 
 if __name__ == "__main__":

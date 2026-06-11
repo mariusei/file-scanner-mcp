@@ -19,12 +19,12 @@
 </div>
 {# MERK: mangler endif for user.is_admin #}
 
-{# Fristående lukketags uten åpning #}
+{# Free-standing closing tags without an opening #}
 {% endif %}
 {% endfor %}
 {% endblock %}
 
-{# Stray endblock uten åpning #}
+{# Stray endblock without an opening #}
 {% endblock %}
 
 {# Tom blokk #}
@@ -47,7 +47,7 @@
 {# Bare value-tags, ingen blokker #}
 <p>{{ foo }} og {{ bar.baz|default:"nada" }}</p>
 
-{# Tom for-løkke #}
+{# Empty for loop #}
 {% for x in empty_list %}{% endfor %}
 
 {# Multiline tag (uvanlig men gyldig i noen engines) #}
@@ -69,5 +69,5 @@
 {# Kommentar som ser ut som en tag #}
 {# {% if false %}dette er ikke en ekte tag{% endif %} #}
 
-{# Blade-lignende syntax i en Jinja-fil (feil, men kan oppstå) #}
+{# Blade-like syntax in a Jinja file (wrong, but can occur) #}
 <p>Not blade: @if(wrong)</p>
