@@ -46,8 +46,12 @@ class TestOversizedMarkdown:
         t0 = time.perf_counter()
         MarkdownLanguage().scan(source)
 
-        # regex-fallback skal være langt under tre-sitter-kostnaden (~0.5s+)
-        assert time.perf_counter() - t0 < 0.5
+        # Skiller fallback (~0.1-0.5s avhengig av maskin) fra tre-sitter-
+        # regresjonen (flere sekunder på 1.3M noder). 0.5s-grensen flaket
+        # på treg CI-runner (målt 0.511s); 2.0s beholder regresjonssignalet
+        # uten å være følsom for runner-hastighet. Selve veivalget testes
+        # behavioralt i test_fallback_keeps_headings.
+        assert time.perf_counter() - t0 < 2.0
 
     def test_small_files_still_use_tree_sitter(self):
         structures = MarkdownLanguage().scan(b"# Tittel\n\n```python\nx = 1\n```\n")
