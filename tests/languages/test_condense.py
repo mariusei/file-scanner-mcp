@@ -340,7 +340,7 @@ class TestFormatterRendering:
 
         output = TreeFormatter().format("x.py", [node])
 
-        # skjelett vises som ren pseudokode uten linjenumre
+        # the skeleton is rendered as plain pseudocode without line numbers
         assert "return bar()" in output
         assert "10 | def foo():" not in output
 

@@ -1,22 +1,22 @@
 """
-FIL: ref_diff.py
+FILE: ref_diff.py
 
 PROBLEM:
-  "Hva er endret siden main/HEAD~5/forrige release?" besvares i dag med
-  linjediff — presist på tegn, blindt for struktur. En reviewer trenger
-  HVILKE funksjoner som er nye/endrede/fjernet, med metoden synlig.
+  "What changed since main/HEAD~5/the last release?" is answered today with
+  a line diff — precise on characters, blind to structure. A reviewer needs
+  WHICH functions are new/changed/removed, with the method visible.
 
-LØSNING:
-  Strukturell diff mellom arbeidstreet og en git-ref: filer fra
-  `git diff --name-status <ref>`, gammel tilstand via `git show ref:path`,
-  begge sider scannes og node-diffes med samme primitiv som sesjons-delta
-  (delta.node_hashes/diff_nodes). Endrede/nye noder vises med skjelett,
-  uendrede kun som tall, whitespace-endringer rapporteres som
-  "ingen strukturell endring".
+SOLUTION:
+  Structural diff between the working tree and a git ref: files from
+  `git diff --name-status <ref>`, old state via `git show ref:path`,
+  both sides scanned and node-diffed with the same primitive as session
+  delta (delta.node_hashes/diff_nodes). Changed/new nodes are shown with
+  skeletons, unchanged ones only as counts, whitespace changes reported as
+  "no structural change".
 
 SCOPE:
-  ✓ Arbeidstre vs ref (inkluderer ucommittede endringer — review-flyt)
-  ✗ Ikke ref-vs-ref (sjekk ut først), ikke linjediff (bruk git diff)
+  ✓ Working tree vs ref (includes uncommitted changes — review flow)
+  ✗ Not ref-vs-ref (check out first), not line diff (use git diff)
 """
 
 import os
@@ -41,36 +41,36 @@ def diff_against_ref(
     """
     toplevel = _run_git(directory, "rev-parse", "--show-toplevel")
     if toplevel is None:
-        return f"{directory}: ikke i et git-repo — strukturell ref-diff krever git"
+        return f"{directory}: not in a git repo — structural ref diff requires git"
     toplevel = toplevel.strip()
 
     if _run_git(directory, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}") is None:
-        return f"Ukjent ref: {ref!r}"
+        return f"Unknown ref: {ref!r}"
 
     name_status = _run_git(directory, "diff", "--name-status", "-M", ref, "--", ".")
     if name_status is None:
-        return f"git diff mot {ref!r} feilet"
+        return f"git diff against {ref!r} failed"
 
-    # untracked nye filer er en del av arbeidstreet — review må se dem
+    # untracked new files are part of the working tree — review must see them
     untracked = _run_git(directory, "ls-files", "--others", "--exclude-standard") or ""
     for rel_path in untracked.strip().split("\n"):
         if rel_path:
             name_status += f"\nA\t{rel_path}"
 
     if not name_status.strip():
-        return f"Ingen endringer mot {ref}"
+        return f"No changes against {ref}"
 
     scanner = FileScanner()
     formatter = TreeFormatter()
     sections: list[str] = []
-    unstructured: list[str] = []   # endret, men ingen strukturell endring
+    unstructured: list[str] = []   # changed, but no structural change
     deleted: list[str] = []
     n_changed_files = 0
 
     for line in name_status.strip().split("\n"):
         parts = line.split("\t")
         status = parts[0]
-        rel_path = parts[-1]  # ved rename (R...) er siste felt ny sti
+        rel_path = parts[-1]  # on rename (R...) the last field is the new path
         abs_path = os.path.join(toplevel, rel_path)
 
         if status.startswith("D"):
@@ -81,19 +81,19 @@ def diff_against_ref(
 
         structures = _scan_quietly(scanner, abs_path, budget)
         if structures is None:
-            unstructured.append(f"{rel_path} (ikke strukturert filtype)")
+            unstructured.append(f"{rel_path} (unstructured file type)")
             continue
         n_changed_files += 1
 
         if status.startswith("A"):
-            sections.append(f"\n{rel_path} [ny fil]\n"
+            sections.append(f"\n{rel_path} [new file]\n"
                             + formatter.format(abs_path, structures))
             continue
 
-        renamed = f" [omdøpt fra {parts[1]}]" if status.startswith("R") else ""
+        renamed = f" [renamed from {parts[1]}]" if status.startswith("R") else ""
         old_content = _run_git(directory, "show", f"{ref}:{parts[1] if status.startswith('R') else rel_path}")
         if old_content is None:
-            sections.append(f"\n{rel_path} [endret{renamed}]\n"
+            sections.append(f"\n{rel_path} [changed{renamed}]\n"
                             + formatter.format(abs_path, structures))
             continue
 
@@ -107,19 +107,19 @@ def diff_against_ref(
         changed, unchanged = apply_node_delta(structures, diff)
 
         if changed == 0 and not diff.removed:
-            unstructured.append(f"{rel_path} (endret uten strukturell endring)")
+            unstructured.append(f"{rel_path} (changed without structural change)")
             continue
 
-        removed = f"\n  fjernet: {', '.join(diff.removed)}" if diff.removed else ""
-        header = (f"\n{rel_path} [endret{renamed}: {changed} ny/endret, "
-                  f"{unchanged} uendret]{removed}")
+        removed = f"\n  removed: {', '.join(diff.removed)}" if diff.removed else ""
+        header = (f"\n{rel_path} [changed{renamed}: {changed} new/changed, "
+                  f"{unchanged} unchanged]{removed}")
         sections.append(header + "\n" + formatter.format(abs_path, structures))
 
-    summary = [f"Strukturell diff mot {ref}: {n_changed_files} filer med endringer"]
+    summary = [f"Structural diff against {ref}: {n_changed_files} files with changes"]
     if deleted:
-        summary.append(f"slettet: {', '.join(deleted)}")
+        summary.append(f"deleted: {', '.join(deleted)}")
     if unstructured:
-        summary.append("uten strukturell endring: " + ", ".join(unstructured))
+        summary.append("without structural change: " + ", ".join(unstructured))
     return "\n".join(summary) + "\n" + "\n".join(sections)
 
 

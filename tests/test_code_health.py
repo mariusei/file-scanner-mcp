@@ -214,7 +214,7 @@ def scale_values(values):
             "a.py": block + "\n" + block + "\nX = scale_values([1])\n",
         })
 
-        # to identiske definisjoner i samme fil — fortsatt et duplikat-faktum
+        # two identical definitions in the same file — still a duplicate fact
         section = analyze_health(results)
 
         assert "DUPLICATE (2x identical" in section

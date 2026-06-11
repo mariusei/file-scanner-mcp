@@ -149,7 +149,7 @@ def processor_{i}(items, threshold):
         return [n.name for n, _ in ranked].index(name)
 
     def test_edits_improve_rank(self):
-        # finn den lavest rangerte uten churn, gi den redigeringshistorikk
+        # find the lowest-ranked node without churn, give it edit history
         data = self.TWINS.encode()
         ranked = select_salient_nodes(data, scan(self.TWINS), top_percent=1.0)
         last_node = ranked[-1][0]
@@ -186,8 +186,8 @@ class TestModes:
     An "architecture" profile was probed and falsified (within-file
     centrality favors local helpers) — only two modes exist."""
 
-    # stor basespredning: kompleks logikk øverst, triviell helper nederst —
-    # 0.15-boost (balanced) flytter ikke helperen, 0.45 (active) skal
+    # wide base spread: complex logic at the top, trivial helper at the bottom —
+    # the 0.15 boost (balanced) does not move the helper, 0.45 (active) should
     SOURCE = UNIQUE_LOGIC + '''
 
 def transform_pipeline(rows, schema):
@@ -330,11 +330,11 @@ def transform_{i}(items, threshold):
         with_skeleton = [n for n in structures if n.code_skeleton]
         without = [n for n in structures
                    if n.code_skeleton is None and n.type == "function"]
-        assert with_skeleton, "noe må overleve et lite budsjett"
-        assert without, "noe må degraderes bort"
-        # de som beholder skjelett er mer saliente enn de som mistet det
+        assert with_skeleton, "something must survive a small budget"
+        assert without, "something must be degraded away"
+        # those that keep a skeleton are more salient than those that lost it
         min_kept = min(n.saliency for n in with_skeleton)
-        # degraderte noder har ingen saliency satt — de er utenfor display
+        # degraded nodes have no saliency set — they are outside the display
         assert min_kept > 0
 
     def test_huge_budget_equals_no_budget(self, tmp_path):
@@ -379,12 +379,12 @@ def transform_{i}(items, threshold):
         # 10 kandidater → topp 20 % = 2 i full tier, resten i bred tier
         assert len(full_tier) == 2
         assert len(broad_tier) == 8
-        # bred tier er dybdekuttet: ingen linjer dypere enn nivå 2
+        # the broad tier is depth-cut: no lines deeper than level 2
         for node in broad_tier:
             for line in node.code_skeleton:
                 indent = len(line) - len(line.lstrip())
-                assert indent <= 2, f"{node.name}: '{line}' er dypere enn nivå 2"
-        # full tier beholder full dybde (kildene har dybde-3-logikk)
+                assert indent <= 2, f"{node.name}: '{line}' is deeper than level 2"
+        # the full tier keeps full depth (the sources have depth-3 logic)
         assert any(
             len(line) - len(line.lstrip()) >= 3
             for node in full_tier for line in node.code_skeleton

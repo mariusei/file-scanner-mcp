@@ -1,16 +1,16 @@
 """
-Golden-output-tester: fryser default-outputformatet.
+Golden-output tests: freeze the default output format.
 
-Outputformatet ER API-et for LLM-konsumenter (M2b: agenter konsumerer det
-direkte og ukritisk — formatdrift er atferdsdrift hos konsumenten).
-Snapshotene fryser scanner+formatter-laget med default-innstillinger, som
-speiler MCP-verktøyene, men uten de miljøavhengige delene:
+The output format IS the API for LLM consumers (M2b: agents consume it
+directly and uncritically — format drift is behavior drift in the consumer).
+The snapshots freeze the scanner+formatter layer with default settings,
+mirroring the MCP tools, but without the environment-dependent parts:
 
-- file-info (mtime/størrelse følger checkout) utelates
-- git-signaler (churn, line_edits) og delta-minne ligger i server-laget
-  og er dermed utenfor
+- file-info (mtime/size follows the checkout) is omitted
+- git signals (churn, line_edits) and delta memory live in the server
+  layer and are therefore out of scope
 
-Bevisst formatendring krever bevisst snapshot-oppdatering:
+A deliberate format change requires a deliberate snapshot update:
 
     UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py
 """
@@ -28,7 +28,7 @@ from scantool.scanner import FileScanner
 TESTS_DIR = Path(__file__).parent
 GOLDEN_DIR = TESTS_DIR / "golden"
 
-# Én representativ sample-fil per språk.
+# One representative sample file per language.
 SAMPLES = {
     "c": "c_cpp/samples/basic.c",
     "cpp": "c_cpp/samples/basic.cpp",
@@ -51,8 +51,8 @@ SAMPLES = {
 }
 
 UPDATE_HINT = (
-    "Default-output er kontrakten mot LLM-konsumenter. Er formatendringen "
-    "bevisst? Oppdater snapshotene med: "
+    "The default output is the contract with LLM consumers. Is the format "
+    "change deliberate? Update the snapshots with: "
     "UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py"
 )
 

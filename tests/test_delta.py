@@ -44,7 +44,7 @@ class TestScanFileDelta:
         first = _scan(path)
 
         assert "alpha" in first and "beta" in first
-        assert "uendret siden" not in first
+        assert "unchanged since" not in first
 
     def test_unchanged_file_collapses_to_one_line(self, tmp_path):
         path = tmp_path / "mod.py"
@@ -53,10 +53,10 @@ class TestScanFileDelta:
         _scan(path)
         second = _scan(path)
 
-        assert "uendret siden forrige scan" in second
+        assert "unchanged since last scan" in second
         assert "delta=False" in second
-        assert second.count("\n") == 0          # bokstavelig én linje
-        assert "alpha" not in second            # ingen struktur gjentas
+        assert second.count("\n") == 0          # literally one line
+        assert "alpha" not in second            # no structure is repeated
 
     def test_modified_node_detailed_others_suppressed(self, tmp_path):
         path = tmp_path / "mod.py"
@@ -66,23 +66,23 @@ class TestScanFileDelta:
 
         out = _scan(path)
 
-        assert "[endret]" in out
-        assert "1 endret/ny, 1 uendret" in out
-        # endret node viser kropp, uendret node kun header
+        assert "[changed]" in out
+        assert "1 changed/new, 1 unchanged" in out
+        # changed node shows its body, unchanged node only its header
         assert "i.weight" in out
-        assert "alpha" in out                      # header overlever
+        assert "alpha" in out                      # header survives
         assert "mode=\"alpha\"" not in out.replace("mode='alpha'", 'mode="alpha"') \
-            or "summarize" not in out              # alpha-kroppen er undertrykt
+            or "summarize" not in out              # the alpha body is suppressed
 
     def test_removed_node_listed(self, tmp_path):
         path = tmp_path / "mod.py"
         path.write_text(SOURCE_V1)
         _scan(path)
-        path.write_text(SOURCE_V1.split("\n\n\n")[0] + "\n")  # fjern beta
+        path.write_text(SOURCE_V1.split("\n\n\n")[0] + "\n")  # remove beta
 
         out = _scan(path)
 
-        assert "fjernet: beta" in out
+        assert "removed: beta" in out
 
     def test_delta_false_gives_full_output(self, tmp_path):
         path = tmp_path / "mod.py"
@@ -91,13 +91,13 @@ class TestScanFileDelta:
 
         full = _scan(path, delta=False)
 
-        assert "uendret siden" not in full
+        assert "unchanged since" not in full
         assert "alpha" in full and "beta" in full
 
 
 class TestMemoryTTL:
-    """En langlivet server krysser samtaler — delta må aldri referere
-    output en ny samtale ikke har sett. Minne eldre enn TTL = første scan."""
+    """A long-lived server crosses conversations — delta must never refer to
+    output a new conversation has not seen. Memory older than TTL = first scan."""
 
     @staticmethod
     def _age_memory(seconds: float):
@@ -114,12 +114,12 @@ class TestMemoryTTL:
 
         second = _scan(path)
 
-        assert "uendret siden" not in second
+        assert "unchanged since" not in second
         assert "alpha" in second and "beta" in second  # full output
 
     def test_expired_memory_never_ghost_diffs(self, tmp_path):
-        """Endret fil + utløpt minne: full scan, ikke node-diff mot en
-        tilstand konsumenten aldri så."""
+        """Changed file + expired memory: full scan, not a node diff against a
+        state the consumer never saw."""
         from scantool.delta import _MEMORY_TTL_SECONDS
 
         path = tmp_path / "mod.py"
@@ -130,8 +130,8 @@ class TestMemoryTTL:
 
         out = _scan(path)
 
-        assert "[endret]" not in out
-        assert "delta siden forrige scan" not in out
+        assert "[changed]" not in out
+        assert "delta since last scan" not in out
 
     def test_unchanged_message_includes_age(self, tmp_path):
         path = tmp_path / "mod.py"
@@ -140,7 +140,7 @@ class TestMemoryTTL:
 
         second = _scan(path)
 
-        assert "sek siden" in second or "min siden" in second
+        assert "sec ago" in second or "min ago" in second
 
 
 class TestScanDirectoryDelta:
@@ -151,7 +151,7 @@ class TestScanDirectoryDelta:
         scan_directory.fn(str(tmp_path), pattern="**/*.py")
         second = scan_directory.fn(str(tmp_path), pattern="**/*.py")[0].text
 
-        assert "alle 2 filer uendret" in second
+        assert "all 2 files unchanged" in second
         assert "delta=False" in second
 
     def test_partial_change_shows_only_changed_file(self, tmp_path):
@@ -163,8 +163,8 @@ class TestScanDirectoryDelta:
 
         out = scan_directory.fn(str(tmp_path), pattern="**/*.py")[0].text
 
-        assert "a.py" in out.split("uendret siden")[0]   # endret fil vises fullt
-        assert "uendret siden forrige scan (1 filer): b.py" in out
+        assert "a.py" in out.split("unchanged since")[0]   # changed file shown in full
+        assert "unchanged since last scan (1 files): b.py" in out
 
     def test_delta_false_full(self, tmp_path):
         (tmp_path / "a.py").write_text(SOURCE_V1)
@@ -172,5 +172,5 @@ class TestScanDirectoryDelta:
 
         out = scan_directory.fn(str(tmp_path), pattern="**/*.py", delta=False)[0].text
 
-        assert "uendret siden" not in out
+        assert "unchanged since" not in out
         assert "alpha" in out

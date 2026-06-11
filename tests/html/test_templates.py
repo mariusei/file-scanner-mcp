@@ -473,4 +473,4 @@ class TestHTMLLanguageScanWithTemplates:
         imports = html_language.extract_imports("test.html", django_html.decode())
         includes = [i for i in imports if i.import_type == "template_include"]
         assert len(includes) >= 1
-        assert "bilag/_kommentar_felt.html" in [i.target_module for i in includes]
+        assert "voucher/_comment_field.html" in [i.target_module for i in includes]

@@ -1,21 +1,22 @@
 """
-FIL: content_search.py
+FILE: content_search.py
 
 PROBLEM:
-  Spisset utforskning ender i grep: treffet (fil:linje) blir anker, og all
-  strukturell forståelse — hvilken funksjon treffet bor i, hvor den sitter
-  i arkitekturen — forkastes i øyeblikket den trengs mest.
+  Targeted exploration ends up in grep: the hit (file:line) becomes the
+  anchor, and all structural understanding — which function the hit lives
+  in, where it sits in the architecture — is discarded the moment it is
+  needed most.
 
-LØSNING:
-  Innholdssøk med grep-paritet på plassering (linjenumre beholdes), men
-  hvert treff innfelles i sin strukturelle kontekst: nodekjeden det bor i
-  (`CodeMap > analyze @656-727`) med signatur. Linjebasert mapping mot
-  strukturtreet — språkagnostisk: et treff i markdown returnerer
-  seksjonen, i SQL tabellen, i kode funksjonen.
+SOLUTION:
+  Content search with grep parity on location (line numbers kept), but
+  every hit is embedded in its structural context: the node chain it lives
+  in (`CodeMap > analyze @656-727`) with signature. Line-based mapping onto
+  the structure tree — language-agnostic: a hit in markdown returns the
+  section, in SQL the table, in code the function.
 
 SCOPE:
-  ✓ Regex-søk i råinnhold, gruppert per containende node
-  ✗ Ikke semantisk/embedding-søk
+  ✓ Regex search in raw content, grouped per containing node
+  ✗ Not semantic/embedding search
 """
 
 import re
@@ -115,11 +116,11 @@ def _is_test_path(file_path: str) -> bool:
             or name.startswith("test_") or name.endswith("_test.py"))
 
 
-# ── spor: ett strukturelt hopp fra treff til definisjon ────────────────────
+# ── leads: one structural hop from hit to definition ───────────────────────
 
 _CALL_IN_HIT = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]{4,})\s*\(")
 _LEAD_MAX = 5
-_LEAD_MAX_DEFINITIONS = 2  # navn definert i flere filer er for tvetydige
+_LEAD_MAX_DEFINITIONS = 2  # names defined in several files are too ambiguous
 
 
 def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, str, int]]:
@@ -140,10 +141,10 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, str, int
                 walk(node.children)
         walk(structures)
 
-    # kall hentes fra hele den containende noden, ikke bare trefflinjene —
-    # hoppet til nabofilen står ofte på linjen ved siden av treffet.
-    # Kun fra de øverste viste IMPLEMENTASJONS-strukturene: spor skal følge
-    # av det agenten ser, og testfilers hjelperkall er støy
+    # calls are taken from the whole containing node, not just the hit lines —
+    # the hop to the neighboring file often sits on the line next to the hit.
+    # Only from the top displayed IMPLEMENTATION structures: leads must follow
+    # from what the agent sees, and test files' helper calls are noise
     sources = [n for n in found if not _is_test_path(n.file)][:10]
     call_counts: dict[str, int] = {}
     hit_files: dict[str, set[str]] = {}
@@ -166,7 +167,7 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, str, int
         defined_in = definitions.get(name, [])
         if not 1 <= len(defined_in) <= _LEAD_MAX_DEFINITIONS:
             continue
-        # kun hopp UT av treff-filene — definisjon i samme fil er allerede synlig
+        # only hops OUT of the hit files — a definition in the same file is already visible
         external = [(f, line) for f, line in defined_in if f not in hit_files[name]]
         if not external:
             continue
@@ -226,7 +227,7 @@ def format_hits(found: list[NodeHits], pattern: str,
     if len(found) > _MAX_NODES:
         lines.append(f"\n+{len(found) - _MAX_NODES} more structures — narrow the pattern")
     if leads:
-        # full sti — agenten skal kunne følge sporet med ett scan_file-kall
+        # full path — the agent should be able to follow the lead with one scan_file call
         lines.append("\nleads (called in hits, defined elsewhere): " + ", ".join(
             f"{name} → {file}@{line}" for name, file, line in leads))
     return "\n".join(lines)

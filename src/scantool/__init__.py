@@ -15,8 +15,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(write_through=True)  # type: ignore[union-attr]
 
-# Versjonen eies av pyproject.toml; metadata-oppslag hindrer at de driver
-# fra hverandre (0.14 vs 0.15 skjedde med to håndsynkroniserte felt)
+# The version is owned by pyproject.toml; the metadata lookup keeps them from
+# drifting apart (0.14 vs 0.15 happened with two hand-synced fields)
 try:
     __version__ = version("scantool")
 except PackageNotFoundError:

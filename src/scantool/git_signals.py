@@ -1,20 +1,21 @@
 """
-FIL: git_signals.py
+FILE: git_signals.py
 
 PROBLEM:
-  Git-historikk bærer signaler et menneske bruker for å forstå et prosjekt
-  (hva jobbes det med, hva endres sammen), men scantool brukte dem ikke.
+  Git history carries signals a human uses to understand a project
+  (what is being worked on, what changes together), but scantool did not
+  use them.
 
-LØSNING:
-  Fil-nivå og språkagnostisk — virker like godt for dokumentasjons- og
-  config-repoer som for kode. Alt er valgfritt: uten git, uten repo, eller
-  ved timeout returneres None/tomt, og output skal være identisk med
-  output før denne modulen fantes. Fravær av signal = fravær av label.
+SOLUTION:
+  File-level and language-agnostic — works as well for documentation and
+  config repos as for code. Everything is optional: without git, without a
+  repo, or on timeout, None/empty is returned, and output must be identical
+  to output before this module existed. Absence of signal = absence of label.
 
 SCOPE:
-  ✓ churn (commits per fil i vindu), co-change (filer endret sammen)
-  ✗ Ikke per-funksjon-churn (krever hunk→node-mapping)
-  ✗ Ikke blame/forfatter-analyse
+  ✓ churn (commits per file in window), co-change (files changed together)
+  ✗ Not per-function churn (requires hunk→node mapping)
+  ✗ Not blame/author analysis
 """
 
 import os

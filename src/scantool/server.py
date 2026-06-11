@@ -488,7 +488,7 @@ def scan_file(
             delta: Re-scans show only what changed since YOUR previous scan of
                 the same file in this session: unchanged file → one line;
                 modified file → full structure but code detail only for new or
-                changed functions ([ny]/[endret] labels, removed ones listed).
+                changed functions ([new]/[changed] labels, removed ones listed).
                 First scan is always full. Pass delta=False for full output
                 (default: True)
         Semantics & display:
@@ -531,9 +531,9 @@ def scan_file(
             age = scan_memory.file_unchanged(file_path)
             if age is not None:
                 return [TextContent(type="text", text=(
-                    f"{file_path}: uendret siden forrige scan "
-                    f"(for {format_age(age)} siden) — strukturen er identisk "
-                    f"med forrige svar (delta=False for full output)"))]
+                    f"{file_path}: unchanged since last scan "
+                    f"({format_age(age)} ago) — structure is identical "
+                    f"to the previous response (delta=False for full output)"))]
 
         # Git activity first — recent line edits feed saliency selection
         # (weight 0.15 toward actively-worked nodes) and "[N edits/90d]"
@@ -566,11 +566,11 @@ def scan_file(
             diff = scan_memory.diff_and_record(file_path, structures, source_lines)
             if diff is not None:
                 changed, unchanged = apply_node_delta(structures, diff)
-                removed = f"; fjernet: {', '.join(diff.removed)}" if diff.removed else ""
+                removed = f"; removed: {', '.join(diff.removed)}" if diff.removed else ""
                 delta_note = (
-                    f"(delta siden forrige scan: {changed} endret/ny, "
-                    f"{unchanged} uendret — kodedetalj kun for endrede"
-                    f"{removed}; delta=False for alt)\n")
+                    f"(delta since last scan: {changed} changed/new, "
+                    f"{unchanged} unchanged — code detail only for changed"
+                    f"{removed}; delta=False for everything)\n")
 
         # Format output
         if output_format == "json":
@@ -732,8 +732,8 @@ def scan_directory(
             if delta and not display_results:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
                 return [TextContent(type="text", text=(
-                    f"{directory}: alle {len(unchanged_paths)} filer uendret "
-                    f"siden forrige scan i denne økten ({names}) — "
+                    f"{directory}: all {len(unchanged_paths)} files unchanged "
+                    f"since last scan in this session ({names}) — "
                     f"delta=False for full output"))]
 
             # ALWAYS use compact inline format for directory scans
@@ -744,8 +744,8 @@ def scan_directory(
             result = warning + custom_formatter.format(directory, display_results)
             if unchanged_paths:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
-                result += (f"\nuendret siden forrige scan ({len(unchanged_paths)} "
-                           f"filer): {names} (delta=False for alt)")
+                result += (f"\nunchanged since last scan ({len(unchanged_paths)} "
+                           f"files): {names} (delta=False for everything)")
             result += analyze_health(results)
             return [TextContent(type="text", text=result)]
 
@@ -774,7 +774,7 @@ def scan_diff(
     - ref="HEAD" (default) shows uncommitted work; ref="main" shows the
       whole branch; ref="HEAD~5" the last five commits
 
-    Per changed file: new/changed nodes carry [ny]/[endret] labels and show
+    Per changed file: new/changed nodes carry [new]/[changed] labels and show
     code detail; unchanged nodes keep headers only; removed nodes are
     listed by name. Files changed without structural impact (whitespace,
     comments) are reported as exactly that. Works for any file type —

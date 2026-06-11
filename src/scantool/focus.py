@@ -1,20 +1,20 @@
 """
-FIL: focus.py
+FILE: focus.py
 
 PROBLEM:
-  Lesesteget etter scan: agenter vil lese «denne funksjonen», ikke gjette
-  linje-ranges med Read/sed. Linjenumre er flyktige; nodenavn er stabile.
+  The read step after a scan: agents want to read "this function", not guess
+  line ranges with Read/sed. Line numbers are ephemeral; node names are stable.
 
-LØSNING:
-  Slå opp en node via navn eller kvalifisert sti (ClassA.method, heading-
-  tekst), render fil-skjelettet på dybde 1 med stien til noden utvidet
-  (parent-kontekst), og selve noden verbatim med linjenumre. Gjenbruker
-  TreeFormatter: verbatim-visningen ER formatterens code_excerpt-mekanisme.
+SOLUTION:
+  Look up a node by name or qualified path (ClassA.method, heading text),
+  render the file skeleton at depth 1 with the path to the node expanded
+  (parent context), and the node itself verbatim with line numbers. Reuses
+  TreeFormatter: the verbatim view IS the formatter's code_excerpt mechanism.
 
 SCOPE:
-  ✓ Eksakt navn, kvalifisert sti, substring-fallback (markdown-headings)
-  ✓ Tvetydighet → feilmelding med kvalifiserte kandidater
-  ✗ Ingen delta/git-integrasjon — en fokusert lesing er ikke et scan
+  ✓ Exact name, qualified path, substring fallback (markdown headings)
+  ✓ Ambiguity → error message with qualified candidates
+  ✗ No delta/git integration — a focused read is not a scan
 """
 
 from dataclasses import replace
@@ -64,7 +64,7 @@ def _resolve(structures: list[StructureNode],
                 continue
             names = [a.name for a in ancestors]
             it = iter(names)
-            if all(seg in it for seg in parents):  # subsekvens, i rekkefølge
+            if all(seg in it for seg in parents):  # subsequence, in order
                 qualified.append((node, ancestors))
         if qualified:
             return qualified
@@ -79,11 +79,11 @@ def _resolution_error(structures: list[StructureNode], focus: str,
         listed = "\n".join(
             f"  {'.'.join(node.name for node in (*anc, n))} @{n.start_line}"
             for n, anc in matches[:10])
-        return (f"focus '{focus}' er tvetydig ({len(matches)} treff) — "
-                f"bruk kvalifisert sti:\n{listed}")
+        return (f"focus '{focus}' is ambiguous ({len(matches)} matches) — "
+                f"use a qualified path:\n{listed}")
     available = ", ".join(n.name for n, a in _walk(structures) if not a)
-    return (f"focus '{focus}' matcher ingen node. "
-            f"Toppnivå-noder: {available}")
+    return (f"focus '{focus}' matches no node. "
+            f"Top-level nodes: {available}")
 
 
 def _prune(structures: list[StructureNode], target: StructureNode,

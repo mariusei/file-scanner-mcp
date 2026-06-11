@@ -1,87 +1,87 @@
-# Backlog mot v1.0.0
+# Backlog toward v1.0.0
 
-Status per 2026-06-11. Frontier-arbeidet er levert (kondensering,
-node-direkte saliency, git-signaler, helse, budsjett, delta, scan_diff,
-innholdssøk med spor, moduser, benchmark M2/M2c/M2b). Dette dokumentet
-gjør gjenstående arbeid actionable: hva, hvorfor (bevis), akseptkriterium.
+Status as of 2026-06-11. The frontier work has been delivered (condensation,
+node-direct saliency, git signals, health, budget, delta, scan_diff,
+content search with traces, modes, benchmark M2/M2c/M2b). This document
+makes the remaining work actionable: what, why (evidence), acceptance criterion.
 
-## v1.0-porten (definisjonen)
+## The v1.0 gate (the definition)
 
-v1.0.0 settes når: (1) output-kontrakten er frosset med golden-tester,
-(2) benchmark-marginen holder på repoer vi ikke har tunet mot —
-**omformulert etter M2b**: marginen som skal holde er SVARKVALITET
-(fakta-dekning i ekte agent-episoder, målt 88 % vs 73 %), med
-token-paritet eller bedre under budsjettpress. Bevis: harness 6/6 vs 5/6
+v1.0.0 is set when: (1) the output contract is frozen with golden tests,
+(2) the benchmark margin holds on repos we have not tuned against —
+**reformulated after M2b**: the margin that must hold is ANSWER QUALITY
+(fact coverage in real agent episodes, measured 88 % vs 73 %), with
+token parity or better under budget pressure. Evidence: harness 6/6 vs 5/6
 (experiments/benchmark/README.md), M2b (experiments/benchmark/M2B.md).
 
-## M1-kø (vedlikehold, prioritert)
+## M1 queue (maintenance, prioritized)
 
-1. ~~**Konsum-styring for agenter**~~ **LEVERT 2026-06-11**:
-   kostnadstransparente verktøybeskrivelser i server.py; akseptkriteriet
-   innfridd — token-gap 2,8× → 1,2× med kvalitet 86 % vs grep 67 %
-   (M2B.md addendum). Restnyanse: åpne arkitekturspørsmål taper litt på
-   økonomisering (sg-T5) — vurder oppgavebetinget styring senere.
+1. ~~**Consumption steering for agents**~~ **DELIVERED 2026-06-11**:
+   cost-transparent tool descriptions in server.py; acceptance criterion
+   met — token gap 2.8× → 1.2× with quality 86 % vs grep 67 %
+   (M2B.md addendum). Remaining nuance: open architecture questions lose
+   slightly from economizing (sg-T5) — consider task-conditioned steering later.
 
-2. ~~**Dogfooding-refaktor**~~ **LEVERT 2026-06-11**: 36 metodekopier
-   fjernet i 16 språkplugins (−548/+56 linjer); BaseLanguage fikk
-   defaults med kroker (_extract_definitions_regex,
+2. ~~**Dogfooding refactor**~~ **DELIVERED 2026-06-11**: 36 method copies
+   removed across 16 language plugins (−548/+56 lines); BaseLanguage got
+   defaults with hooks (_extract_definitions_regex,
    _extract_calls_tree_sitter/_regex, _handle_import, _get_ancestors).
-   Akseptkriteriet innfridd: CODE HEALTH på src/scantool viser null
-   duplikat-grupper — inkludert _extract_keyframes (css/scss) som lå
-   skjult bak visningstaket på 5 grupper; 877/877 tester grønne.
-   Reelle overstyringer bevart: swift (_structures_to_definitions_swift),
-   java (is_cross_file-merking), rust («use statements»),
-   sql/scss/generic/config (egen logikk).
+   Acceptance criterion met: CODE HEALTH on src/scantool shows zero
+   duplicate groups — including _extract_keyframes (css/scss) which was
+   hidden behind the display cap of 5 groups; 877/877 tests green.
+   Genuine overrides preserved: swift (_structures_to_definitions_swift),
+   java (is_cross_file marking), rust ("use statements"),
+   sql/scss/generic/config (own logic).
 
-3. ~~**Golden-output-tester / formatkontrakt**~~ **LEVERT 2026-06-11**:
-   19 snapshots (18 språk via scan_file + dedikert fixture-katalog for
-   scan_directory) i tests/golden/, håndhevet av tests/test_golden.py;
-   oppdatering kun via `UPDATE_GOLDEN=1`. Frosset lag:
-   scanner+formatter med defaults — file-info utelatt (mtime følger
-   checkout), git-signaler/delta ligger i server-laget og er utenfor.
-   Determinisme målt: 19/19 byte-identiske ved gjentatt kjøring, 19/19
-   grønne i kopi uten .git med ferske mtimes. Kontrakten dokumentert i
-   README («Output Contract»). **Sekvensvalg mot punkt 4**: frosset nå;
-   punkt 4 går gjennom kontraktens egen mekanisme (bevisst endring →
-   bevisst snapshot-oppdatering).
+3. ~~**Golden output tests / format contract**~~ **DELIVERED 2026-06-11**:
+   19 snapshots (18 languages via scan_file + a dedicated fixture directory
+   for scan_directory) in tests/golden/, enforced by tests/test_golden.py;
+   updates only via `UPDATE_GOLDEN=1`. Frozen layer:
+   scanner+formatter with defaults — file-info omitted (mtime follows
+   the checkout), git signals/delta live in the server layer and are out of
+   scope. Determinism measured: 19/19 byte-identical on repeated runs, 19/19
+   green in a copy without .git with fresh mtimes. The contract is documented
+   in README ("Output Contract"). **Sequencing decision vs item 4**: frozen
+   now; item 4 goes through the contract's own mechanism (deliberate change →
+   deliberate snapshot update).
 
-4. ~~**Docstring-tiering + parameterkonsistens**~~ **LEVERT 2026-06-11**:
-   alle 7 verktøy i server.py følger samme tier-mal i Args
-   (Common → Cost & slicing → Semantics & display; tomme tier utelates).
-   mode lagt til scan_directory (server + FileScanner.scan_directory,
-   default "balanced") med regresjonstest for propagering; scan_file
-   sin udokumenterte mode-param fikk Args-linje. Akseptkriteriet
-   innfridd via kontrakten: golden-testene forble grønne (default-output
-   uendret), 895/895 totalt.
+4. ~~**Docstring tiering + parameter consistency**~~ **DELIVERED 2026-06-11**:
+   all 7 tools in server.py follow the same tier template in Args
+   (Common → Cost & slicing → Semantics & display; empty tiers are omitted).
+   mode added to scan_directory (server + FileScanner.scan_directory,
+   default "balanced") with a regression test for propagation; scan_file's
+   undocumented mode param got an Args line. Acceptance criterion
+   met via the contract: the golden tests stayed green (default output
+   unchanged), 895/895 total.
 
-5. ~~**Småplukk**~~ **LEVERT 2026-06-11** (tre delpunkter, hver med måling):
-   - *Størrelsesgate for flere språk*: **FALSIFISERT** — tree-sitter er
-     raskere enn regex-fallbacken på 2 MB for java/ts/swift/sql (0,1–0,3x);
-     Pythons 144x-avvik var kvadratisk `_get_ancestors` (DFS fra rot per
-     node), omskrevet til parent-kjede: 284 s → 0,4 s på 2 MB (660x).
-     Markdown-gaten bekreftet (2,8x) og beholdt. Se experiments/size_gate/.
-   - *Swift-skjelettstøy*: `init_declaration` m.fl. gjenkjennes nå i
-     `_SIGNIFICANT_NODE` (constructor/destructor/init/deinit/subscript);
-     flerlinje-init-headere beholdes hele i stedet for `…` + `) {`.
-   - *sg-T4/glimt-kommentar*: trailing-kommentarer gjenfestes på beholdte
-     linjer i Python-skjeletter (tokenize-basert; generisk skjelett hadde
-     egenskapen fra før). Målt +0,42 %/+0,93 % tokens på scantool/internal-backend,
-     sg-T4-linjen («return None  # Never expires») dekkes. Foranstående
-     kommentarlinjer bevisst utenfor. Se experiments/trailing_comments/.
-   Golden-testene forble grønne gjennom alle tre — defaultflatens
-   eneste endringer er skjelettforbedringene selv. Suite: 897.
+5. ~~**Small items**~~ **DELIVERED 2026-06-11** (three sub-items, each with a measurement):
+   - *Size gate for more languages*: **FALSIFIED** — tree-sitter is
+     faster than the regex fallback at 2 MB for java/ts/swift/sql (0.1–0.3x);
+     Python's 144x deviation was a quadratic `_get_ancestors` (DFS from root per
+     node), rewritten to a parent chain: 284 s → 0.4 s at 2 MB (660x).
+     The markdown gate confirmed (2.8x) and kept. See experiments/size_gate/.
+   - *Swift skeleton noise*: `init_declaration` and friends are now recognized
+     in `_SIGNIFICANT_NODE` (constructor/destructor/init/deinit/subscript);
+     multi-line init headers are kept whole instead of `…` + `) {`.
+   - *sg-T4/glimpse comment*: trailing comments are reattached to kept
+     lines in Python skeletons (tokenize-based; the generic skeleton already
+     had this property). Measured +0.42 %/+0.93 % tokens on scantool/internal-backend,
+     the sg-T4 line ("return None  # Never expires") is covered. Preceding
+     comment lines deliberately out of scope. See experiments/trailing_comments/.
+   The golden tests stayed green through all three — the default surface's
+   only changes are the skeleton improvements themselves. Suite: 897.
 
-## Åpne forskningsspor (post-1.0)
+## Open research tracks (post-1.0)
 
-- M2c: flere SWE-bench-instanser (django/sympy for skala), flere kjøringer
-  per celle, inter-rater-gradering
-- Per-node churn inn i directory-vekting (krever billigere blame-strategi)
-- Delta-modus på tvers av prosesser (persistert minne med samtykke)
+- M2c: more SWE-bench instances (django/sympy for scale), more runs
+  per cell, inter-rater grading
+- Per-node churn into directory weighting (requires a cheaper blame strategy)
+- Delta mode across processes (persisted memory with consent)
 
-## Bevisarkivet
+## The evidence archive
 
-- experiments/condensation/ — skjelett-/kondenseringsmålingene
-- experiments/entropy_metrics/ — metrikk-, arkitektur-, dybde-, dedup- og
-  glimt-eksperimentene med alle null-funn
-- experiments/benchmark/ — harness, SWE-bench-suite, M2b med rålogger
-- Commit-historikken b703458..HEAD — hver endring bærer sin måling
+- experiments/condensation/ — the skeleton/condensation measurements
+- experiments/entropy_metrics/ — the metric, architecture, depth, dedup and
+  glimpse experiments with all the null results
+- experiments/benchmark/ — harness, SWE-bench suite, M2b with raw logs
+- The commit history b703458..HEAD — every change carries its measurement

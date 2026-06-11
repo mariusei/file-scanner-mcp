@@ -38,7 +38,7 @@ class TestContentSearch:
 
         assert len(found) == 1
         assert found[0].chain == "Compressor > conditional"
-        assert found[0].hits[0][0] == 6  # linjenummer beholdes — grep-paritet
+        assert found[0].hits[0][0] == 6  # line numbers kept — grep parity
 
     def test_hits_grouped_per_node(self, tmp_path):
         results = scan(tmp_path, {"comp.py": PY_FILE})
@@ -48,7 +48,7 @@ class TestContentSearch:
         chains = {h.chain: len(h.hits) for h in found}
         assert chains["Compressor > conditional"] == 1
         assert chains["Compressor > plain"] == 1
-        assert chains["(module level)"] == 1  # import-linjen
+        assert chains["(module level)"] == 1  # the import line
 
     def test_markdown_hit_returns_section(self, tmp_path):
         results = scan(tmp_path, {"doc.md": (
@@ -95,7 +95,7 @@ class TestContentSearch:
 
         found = search_content(results, "target_term")
 
-        assert "zzz_dense.py" in found[0].file  # tettest først, tross filnavn
+        assert "zzz_dense.py" in found[0].file  # densest first, despite filename
 
     def test_leads_point_to_definitions_in_other_files(self, tmp_path):
         from scantool.content_search import find_leads
@@ -145,7 +145,7 @@ def local_helper(items):
 
         found = search_content(results, "skipif")
 
-        # definert i 3 filer — for tvetydig til å være et spor
+        # defined in 3 files — too ambiguous to be a lead
         assert find_leads(found, results) == []
 
     def test_leads_rendered_in_output(self, tmp_path):
