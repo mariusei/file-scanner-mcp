@@ -45,7 +45,7 @@ def main():
         print(f"{name:34s} {calls:4d} {fr:9d} {rt:8d} {nt:8d} {rt + nt:8d}")
 
     print()
-    for arm in ("a", "b"):
+    for arm in ("a", "b", "b2"):
         sub = [r for r in rows if f"-{arm}-" in r[0]]
         n = len(sub)
         print(f"ARM {arm.upper()}: episoder={n} kall={sum(r[1] for r in sub)} "

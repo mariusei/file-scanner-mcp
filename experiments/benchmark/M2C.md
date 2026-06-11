@@ -75,6 +75,48 @@ armer; focus-lesing førte ikke til at skjelettkonteksten ble hoppet over.
    (større filer, svakere modell, eller spørsmål som krever flere
    noder per fil) før korrekthetsgevinst påstås.
 
+## Addendum: M2c-v2 — styringseffekten av lesesteg-teksten (2026-06-11)
+
+Arm B re-kjørt med én tilføyd styringslinje i prompten som speiler de nye
+produksjons-instructions (commit 5a0300e): «To READ one function/class/
+section located by a scan or search: use focusread … Never cat a whole
+file or sed a guessed line range.» Alt annet identisk. Preregistrert i
+M2C_preregistrert.md (commit d166e16, FØR episodene). 16 episoder.
+
+| | Arm B v1 | Arm B2 (ny styring) |
+|---|---|---|
+| Episoder med focusread | 9/16 (56 %) | **13/16 (81 %)** |
+| Wrapper-kall | 73 | 59 |
+| Lese-tokens | 13 523 | 15 944 |
+| Navigasjons-tokens | 31 165 | 18 269 |
+| Sum verktøy-tokens | 44 688 | **34 213 (−23 %)** |
+| Fakta-dekning | 53/53 (100 %) | 54/56 (96 %) |
+
+Mot de preregistrerte v2-utfallene:
+
+- **V1 (forventet): i hovedsak innfridd.** Andel 81 % ≥ 75 %-terskelen,
+  skiftet (+4 episoder) er over støygulvet (≥3); dekning 96 % ≥ 95 %.
+  Forbehold: lese-tokens ble IKKE ≤ v1 (+18 %) — flere episoder leste
+  noden i stedet for å svare rett fra skjelettet. Det kjøpte til
+  gjengjeld 41 % færre navigasjons-tokens (færre leterunder), så
+  totalen falt 23 %.
+- **V2 (null/redundans): forkastet** — teksten flyttet adferd.
+- **V3 (paradoks/overstyring): ikke utløst** — færre kall (59 mot 73)
+  og lavere total; ingen tvangsmessig focusread der search alt svarte
+  (3 episoder hoppet fortsatt over lesing, korrekt).
+
+[TOLKNING] Styringslinjen gjør det den skal: focusread-andelen opp
+56 → 81 %, totalkostnad ned ytterligere 23 % (mot arm A: −62 %). M2b-
+lærdommen bekreftes en tredje gang: beskrivelsesteksten er spaken.
+Kanal-forbehold står: prompt-styring er proxy for MCP-instructions —
+injeksjonskanalen i produksjon er ikke direkte testet.
+
+Ærlig svakhet: én v2-episode (pytest-5221-b2-r1) FEILET helt (0/2) —
+agenten fant aldri funksjonen (gjettet feil fil), brukte opp kallene og
+svarte vagt fra forkunnskap. Første dekningssvikt i hele M2c. Styring
+av lesesteget kompenserer ikke for lokaliseringssvikt; med n=16 kan det
+være støy, men det viser at 100 %-taket ikke er garantert.
+
 ## Avvik og svakheter
 
 - pytest-7373-b-r2 kontaminert (7 uloggede kall) — ekskludert; trolig
