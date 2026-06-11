@@ -20,8 +20,4 @@ ANSWER: Blueprint.add_url_rule asserts that (1) if endpoint is provided, it must
 ## m2c-flask-5063-a-r2 (29114 tokens, 5 kall)
 ANSWER: The `flask routes` command prints three columns: "Endpoint", "Methods", and "Rule". By default, it hides the "HEAD" and "OPTIONS" HTTP methods (shown only with --all-methods flag). The --sort option accepts four values: "endpoint" (default), "methods", "rule", and "match".
 
-## m2c-sg-ttl-a-r2 (25637 tokens, 3 kall)
-ANSWER: get_tile_cache_ttl returns: grid → None (never expires), dataset → 2592000 (30 days), model → 2592000 (30 days), indicator → 1800 (30 minutes), default → 300 (5 minutes).
-
-## m2c-sg-jwt-a-r2 (25732 tokens, 5 kall)
-ANSWER: When `expires_delta` is NOT provided, the expiry timestamp is computed as: `current_time_in_seconds + (ACCESS_TOKEN_EXPIRE_MINUTES * 60)`, where `ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24` (24 hours). The token payload includes two claims: `"exp"` and `"iat"` (both Unix timestamps), plus all claims from the `data` dictionary.
+*(The two sg episodes are redacted: the sg repo is a private production backend; their final messages are held privately together with the raw sg logs. See ../M2C.md.)*

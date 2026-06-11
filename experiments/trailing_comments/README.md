@@ -2,11 +2,12 @@
 
 ## Background
 
-M2b sg-T4: the skeleton showed `if tile_type == 'grid': return None` and
-the agents had to guess what TTL=None means ("caches forever" vs "does not
-cache"). The source carried the answer in three places: the preceding comment line
-(`# Grid structure never changes`), the trailing comment on the kept
-line (`return None  # Never expires`), and docstring line 2.
+M2b sg-T4: the skeleton showed a kept `return None` line and the agents
+had to guess what TTL=None means ("caches forever" vs "does not cache").
+The source carried the answer in three places: the preceding full-line
+comment, the trailing comment on the kept line, and docstring line 2.
+(The sg repo is a private production backend; its excerpts are redacted
+in this document.)
 
 The generic skeleton (`_skeleton_lines`) keeps raw lines and therefore
 trailing comments already. Python's AST-based condensation
@@ -20,12 +21,12 @@ value-bearing lines at low token cost.
 
 ## Preregistered decision rules (written BEFORE the measurement)
 
-Measured on all .py files in scantool/src and internal-backend/backend/app
+Measured on all .py files in scantool/src and the internal backend (sg)
 (real, untuned code — the sg-T4 source):
 
 1. **Integrate** if the total skeleton token increase is < 3 % at repo level AND
    the coverage is real (> 0 affected lines in both repos) AND
-   the sg-T4 line (`return None  # Never expires`) is actually captured.
+   the sg-T4 trailing-comment line is actually captured.
 2. **Assess manually** at an increase of 3–5 % (look at what the comments actually
    say — staleness/noise counts against).
 3. **Do not integrate** at an increase > 5 %, or if the coverage is ~0
@@ -44,23 +45,14 @@ A/B per function/method: `_skeleton_stmts(body, 0, None)` vs
 | Repo | functions | affected functions | affected lines | skeleton tokens |
 |---|---|---|---|---|
 | scantool/src | 724 | 38 | 62 | 92 165 → 92 555 (**+0.42 %**) |
-| internal-backend/backend/app | 156 | 31 | 41 | 28 881 → 29 149 (**+0.93 %**) |
+| internal backend (sg) | 156 | 31 | 41 | 28 881 → 29 149 (**+0.93 %**) |
 
-The sg-T4 line is captured exactly — all branches in `get_tile_cache_ttl`
-are disambiguated:
+The sg-T4 line is captured exactly — every branch in the TTL function is
+disambiguated by its trailing comment. (The verbatim excerpt is redacted;
+the sg source is private.)
 
-```
-if tile_type == 'grid':
- return None  # Never expires
-elif tile_type == 'dataset':
- return 2592000  # 30 days (was 1 day) - data doesn't change
-...
-else:
- return 300  # 5 minutes default
-```
-
-Examples of captured content (both repos): value explanations of the kind
-`# seconds to days`, `# 10GB in bytes`, `# Top 25% newest` — precisely
+Examples of captured content (both repos): value explanations — unit
+conversions, size constants, selection thresholds — precisely
 disambiguation, not prose noise.
 
 ## Decision

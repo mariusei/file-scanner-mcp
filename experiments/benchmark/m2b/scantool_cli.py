@@ -8,7 +8,8 @@ Usage:
   uv run python /tmp/m2b/scantool_cli.py LOG searchname DIR REGEX (name search)
 """
 import sys
-sys.path.insert(0, "/Users/mariusbergeeide/Projects/scantool/src")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 from scantool import server
 
 log_path, command, *args = sys.argv[1:]

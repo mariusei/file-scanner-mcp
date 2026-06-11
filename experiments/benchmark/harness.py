@@ -26,6 +26,8 @@ CANONICAL STRATEGIES:
   grep overview:      find *.py → cat README → cat main.py
 """
 
+import json
+import os
 import re
 import subprocess
 import sys
@@ -35,9 +37,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-REPO = "/Users/mariusbergeeide/Projects/internal-backend"
-DIR = f"{REPO}/backend/app"
-
 
 @dataclass
 class Task:
@@ -46,30 +45,19 @@ class Task:
     query: str                # search term for both toolsets
     facts: list[str]          # distinct substrings that MUST be visible
     description: str = ""
-    directory: str = DIR
+    directory: str = ""
 
 
-TASKS = [
-    Task("T1 cache invalidation", "concept", "invalidate",
-         ["invalidate_cache", "run_model_calculation", "delete_model",
-          "tile_cache.py", "models.py"],
-         "Where is the tile cache invalidated, and which operations trigger it?"),
-    Task("T2 token expiry", "concept", "expire",
-         ["create_access_token", "expires_delta", "ACCESS_TOKEN_EXPIRE_MINUTES",
-          "auth.py"],
-         "Where is JWT expiry set, and what is the default?"),
-    Task("T3 indicator rules", "structure", r".*Rule$",
-         ["NumericRule", "BooleanRule", "CategoryRule", "TextRule",
-          "indicators.py"],
-         "Which rule types exist for indicators?"),
-    Task("T4 grid TTL (literal — grep should win)", "concept", "tile_cache_ttl",
-         ["get_tile_cache_ttl", "tile_type == 'grid'"],
-         "What is the cache TTL for grid tiles?"),
-    Task("T5 backend architecture", "overview", "",
-         ["main.py", "database.py", "startup_validation", "get_pool",
-          "health_check"],
-         "What is the main architecture — central files and entry points?"),
-]
+def load_sg_tasks() -> list[Task]:
+    """The original T1–T5 task set targets a private production backend
+    ("sg"); its repo path and ground-truth facts are held outside this
+    repo. Point SG_TASKS at the private task JSON to reproduce.
+    --swebench needs no private config."""
+    path = os.environ.get("SG_TASKS")
+    if not path:
+        sys.exit("SG_TASKS is not set — the sg task definitions are held "
+                 "privately. Run with --swebench for the public task set.")
+    return [Task(**row) for row in json.load(open(path))]
 
 
 def coverage(accumulated: str, facts: list[str]) -> float:
@@ -171,8 +159,6 @@ def load_swebench_tasks() -> list[Task]:
     SWE-bench instance's gold patch actually changed (mechanically
     extracted), directory = the repo checked out at the instance's
     base_commit."""
-    import json
-
     tasks = []
     for row in json.load(open("/tmp/swebench_tasks.json")):
         directory = f"/tmp/swb/{row['instance_id']}"
@@ -197,7 +183,7 @@ def run():
           f"{'tokens@full':>12s} {'coverage':>8s}")
     print("-" * 82)
 
-    tasks = load_swebench_tasks() if "--swebench" in sys.argv else TASKS
+    tasks = load_swebench_tasks() if "--swebench" in sys.argv else load_sg_tasks()
     for task in tasks:
         for label, steps in (("scantool", scantool_steps), ("grep", grep_steps)):
             accumulated = ""

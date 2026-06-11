@@ -7,6 +7,11 @@ Expectations preregistered and committed BEFORE implementation and episodes
 for `focusread PATH NODE` in arm B. Raw logs: `m2c/logs/`, final messages:
 `m2c/answers-*.md`, analysis: `m2c/analyze_logs.py`.
 
+The two sg tasks target a private production backend; their definitions,
+raw logs and answer sections are held privately. The published task file,
+logs and answers cover flask, pytest and requests. Numbers and conclusions
+are unchanged.
+
 ## Observations (raw numbers, no interpretation)
 
 | | Arm A (without focus) | Arm B (with focus) |
