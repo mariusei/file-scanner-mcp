@@ -195,12 +195,14 @@ class BaseLanguage(ABC):
     # Structure Scanning (REQUIRED - from BaseScanner)
     # ===========================================================================
 
-    @abstractmethod
     def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
         """Scan source code and extract structure.
 
-        This is the primary scanning method that extracts classes, functions,
-        methods, and other structural elements from source code.
+        Default tree-sitter pipeline: parse, switch to regex fallback when
+        the tree is dominated by errors, otherwise traverse via
+        _extract_structure(). Tree-sitter languages only implement
+        _extract_structure() (and optionally _fallback_extract());
+        languages with a custom pipeline override scan() itself.
 
         Args:
             source_code: Raw file content as bytes
@@ -209,7 +211,46 @@ class BaseLanguage(ABC):
             List of StructureNode objects representing the file structure,
             or None if the file couldn't be parsed
         """
-        pass
+        parser = getattr(self, "parser", None)
+        if parser is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} has no tree-sitter parser; override scan()"
+            )
+        try:
+            tree = parser.parse(source_code)
+
+            # Check if we should use fallback due to too many errors
+            if self._should_use_fallback(tree.root_node):
+                return self._fallback_extract(source_code)
+
+            return self._extract_structure(tree.root_node, source_code)
+
+        except Exception as e:
+            # Return error node instead of crashing
+            return [StructureNode(
+                type="error",
+                name=f"Failed to parse: {str(e)}",
+                start_line=1,
+                end_line=1
+            )]
+
+    def _extract_structure(self, root, source_code: bytes) -> list[StructureNode]:
+        """Tree-sitter traversal used by the default scan().
+
+        Required for languages that rely on the default scan() pipeline.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement _extract_structure() "
+            "or override scan()"
+        )
+
+    def _fallback_extract(self, source_code: bytes) -> Optional[list[StructureNode]]:
+        """Regex-based extraction for severely malformed files.
+
+        Used by the default scan() when the parse tree is dominated by
+        errors. Default: no fallback available.
+        """
+        return None
 
     #: Condensation strategy for salient excerpts:
     #: - None: no condensation, verbatim display (prose, config — every line

@@ -125,26 +125,6 @@ class CSharpLanguage(BaseLanguage):
     # Structure Scanning (from CSharpScanner)
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
-        """Scan C# source code and extract structure with metadata."""
-        try:
-            tree = self.parser.parse(source_code)
-
-            # Check if we should use fallback due to too many errors
-            if self._should_use_fallback(tree.root_node):
-                return self._fallback_extract(source_code)
-
-            return self._extract_structure(tree.root_node, source_code)
-
-        except Exception as e:
-            # Return error node instead of crashing
-            return [StructureNode(
-                type="error",
-                name=f"Failed to parse: {str(e)}",
-                start_line=1,
-                end_line=1
-            )]
-
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
         structures = []
