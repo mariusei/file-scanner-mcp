@@ -180,7 +180,7 @@ def preview_directory(
     Performance:
         - Filters noise: .git/, node_modules/, __pycache__, dist/, build/
         - Language-aware: Skips .min.js, .d.ts, .pyc, bundle.js
-        - Scales: 486 files analyzed in 4.79s (internal-backend example)
+        - Scales: 486 files analyzed in 4.79s (production FastAPI backend)
     """
     try:
         # Map depth to analysis mode

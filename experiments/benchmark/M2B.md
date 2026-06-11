@@ -5,6 +5,10 @@ max 6 tool calls, all tool output logged through a wrapper (measured at
 construction). Preregistered expectations in `/tmp/m2b/PREREGISTRERT.md`,
 written before the first episode.
 
+The five sg tasks target a private production backend; their definitions
+and raw logs are held privately. The published task file and logs cover
+flask, pytest and requests. Numbers and conclusions are unchanged.
+
 ## Headline numbers
 
 | | grep agents | scantool agents |
@@ -33,11 +37,10 @@ The scantool agents gave measurably better answers (88% vs 73% fact
 coverage):
 
 - **sg-T1**: scantool named both trigger functions with line numbers
-  (run_model_calculation@381, delete_model@878) + a precise negative
-  observation (datasets/indicators use TTL, not invalidation); the
-  grep agent gave only the file and prose
-- **sg-T5 (architecture)**: scantool 5/5 facts (startup_validation, get_pool,
-  health_check named); grep 2/5
+  + a precise negative observation about which entity types are TTL-driven
+  rather than invalidation-driven; the grep agent gave only the file and prose
+- **sg-T5 (architecture)**: scantool 5/5 facts (all three architecture
+  functions named); grep 2/5
 - **requests-2674**: scantool answered adapters.py (= the gold patch);
   grep anchored in models.py — wrong file
 - **Honest loss, flask-5063**: the scantool agent followed the structure of

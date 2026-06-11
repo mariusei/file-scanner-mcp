@@ -19,8 +19,4 @@ ANSWER: Two assertions check that neither the endpoint nor the view_func.__name_
 ## m2c-flask-5063-b2-r2 (26155 tokens, 3 kall)
 ANSWER: The `flask routes` command prints three columns: Endpoint, Methods, and Rule. By default, HEAD and OPTIONS HTTP methods are hidden (shown only with `--all-methods` flag). The `--sort` option accepts four values: endpoint (default), methods, rule, and match.
 
-## m2c-sg-ttl-b2-r2 (24912 tokens, 2 kall)
-ANSWER: get_tile_cache_ttl returns: grid → None (never expires), dataset → 2592000 (30 days), model → 2592000 (30 days), indicator → 1800 (30 minutes), default → 300 (5 minutes).
-
-## m2c-sg-jwt-b2-r2 (25285 tokens, 4 kall)
-ANSWER: When `expires_delta` is NOT provided, the expiry timestamp is computed as: `now_timestamp + (ACCESS_TOKEN_EXPIRE_MINUTES * 60)`, where `now_timestamp = int(time.time())` and `ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 = 1440`. The claims added are: "exp" and "iat" (Unix epoch seconds), plus claims from the original `data` dictionary.
+*(The two sg episodes are redacted: the sg repo is a private production backend; their final messages are held privately together with the raw sg logs. See ../M2C.md.)*

@@ -4,7 +4,9 @@
 
 - `tool.sh` — wrapper for shell reading (cat/head/tail/sed), logs per episode
 - `scantool_cli.py` — CLI with all the M2b commands + `focusread PATH NODE`
-- `logs/` — raw logs, named `{task}-{arm}-r{rep}.log` (arm: a/b)
+- `logs/` — raw logs, named `{task}-{arm}-r{rep}.log` (arm: a/b). The sg
+  episode logs (and the sg sections of `answers-*.md`) are held privately —
+  the sg repo is a private production backend
 - Tasks with ground truth: `../m2c_tasks.json`, expectations:
   `../M2C_preregistered.md` (committed BEFORE implementation and episodes)
 
@@ -18,7 +20,8 @@ Identical except for focusread in the command list:
 
 Cost steering (the M2b-v2 lesson) is identical in both arms' prompts.
 
-## Episode prompt template (used verbatim, only {q}/{dir}/{log} substituted)
+## Episode prompt template (used verbatim, only {q}/{dir}/{log} substituted;
+   the absolute scantool-repo path is shown as `$SCANTOOL_REPO` here)
 
 ```
 You are a code exploration agent in a measured experiment. Follow the rules EXACTLY.
@@ -29,13 +32,13 @@ CODEBASE DIRECTORY: {dir}
 EXPLORATION RULES:
 - You may explore ONLY with these two wrappers via your Bash tool:
   1. scantool:
-     uv run --project /Users/dev/Projects/scantool python /Users/dev/Projects/scantool/experiments/benchmark/m2c/scantool_cli.py {log} <cmd>
+     uv run --project $SCANTOOL_REPO python $SCANTOOL_REPO/experiments/benchmark/m2c/scantool_cli.py {log} <cmd>
      Available <cmd> forms:
        preview DIR / scandir DIR [GLOB] / scanfile PATH [BUDGET] /
        search DIR REGEX / searchname DIR REGEX
        [ARM B ONLY:] / focusread PATH NODE   (read one function/class/section verbatim with parent context; NODE may be qualified like ClassA.method)
   2. shell read:
-     bash /Users/dev/Projects/scantool/experiments/benchmark/m2c/tool.sh {log} <command>
+     bash $SCANTOOL_REPO/experiments/benchmark/m2c/tool.sh {log} <command>
      where <command> may use only: cat, head, tail, sed
 - NEVER use your built-in Read, Grep, Glob or any other file tools directly, and never run commands outside the two wrappers.
 - Maximum 6 wrapper invocations total. Then you MUST answer.

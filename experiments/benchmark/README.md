@@ -6,7 +6,12 @@ visible in accumulated tool output, under canonical (documented, criticizable)
 strategies per toolset. Run: `uv run --with tiktoken python
 experiments/benchmark/harness.py`
 
-## Results (internal-backend backend, 2026-06-10)
+## Results (internal production backend "sg", 2026-06-10)
+
+The sg repo is a private production FastAPI backend. Its task definitions,
+ground-truth facts and raw logs are held privately (the harness reads them
+via `SG_TASKS`); the published task files and logs cover flask, pytest and
+requests. Numbers and conclusions below are unchanged.
 
 | Task | scantool | grep baseline | Margin |
 |---|---|---|---|
@@ -68,7 +73,7 @@ do not exist at base). Prepare: `prepare_swebench.py`, run: `harness.py
 the content search ("called in the hits, defined in another file") solved
 pytest-7373: the leads pointed straight at `mark/evaluate.py`
 (`MarkEvaluator@34`, `istrue@57`), and the canonical strategy follows the
-first lead. Side effect on internal-backend: T4 (the literal task designed for a grep
+first lead. Side effect on sg: T4 (the literal task designed for a grep
 win) now tips to scantool (2,892 vs 3,068) because the lead points directly
 at the definition — the mechanism is explainable, and T5 stands as the honest
 loss.

@@ -65,8 +65,8 @@ token parity or better under budget pressure. Evidence: harness 6/6 vs 5/6
      multi-line init headers are kept whole instead of `…` + `) {`.
    - *sg-T4/glimpse comment*: trailing comments are reattached to kept
      lines in Python skeletons (tokenize-based; the generic skeleton already
-     had this property). Measured +0.42 %/+0.93 % tokens on scantool/internal-backend,
-     the sg-T4 line ("return None  # Never expires") is covered. Preceding
+     had this property). Measured +0.42 %/+0.93 % tokens on scantool and the
+     internal backend (sg), the sg-T4 trailing-comment line is covered. Preceding
      comment lines deliberately out of scope. See experiments/trailing_comments/.
    The golden tests stayed green through all three — the default surface's
    only changes are the skeleton improvements themselves. Suite: 897.
