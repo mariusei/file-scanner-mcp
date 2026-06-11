@@ -33,10 +33,17 @@ token-paritet eller bedre under budsjettpress. Bevis: harness 6/6 vs 5/6
    java (is_cross_file-merking), rust («use statements»),
    sql/scss/generic/config (egen logikk).
 
-3. **Golden-output-tester / formatkontrakt**: output ER API-et for
-   LLM-konsumenter. Snapshot-tester per språk + dokumentert kontrakt
-   («defaults er det målte optimumet — parametre er nødutganger»).
-   Aksept: bevisst formatendring krever bevisst snapshot-oppdatering.
+3. ~~**Golden-output-tester / formatkontrakt**~~ **LEVERT 2026-06-11**:
+   19 snapshots (18 språk via scan_file + dedikert fixture-katalog for
+   scan_directory) i tests/golden/, håndhevet av tests/test_golden.py;
+   oppdatering kun via `UPDATE_GOLDEN=1`. Frosset lag:
+   scanner+formatter med defaults — file-info utelatt (mtime følger
+   checkout), git-signaler/delta ligger i server-laget og er utenfor.
+   Determinisme målt: 19/19 byte-identiske ved gjentatt kjøring, 19/19
+   grønne i kopi uten .git med ferske mtimes. Kontrakten dokumentert i
+   README («Output Contract»). **Sekvensvalg mot punkt 4**: frosset nå;
+   punkt 4 går gjennom kontraktens egen mekanisme (bevisst endring →
+   bevisst snapshot-oppdatering).
 
 4. **Docstring-tiering + parameterkonsistens**: scan_file har 10 params
    uten vanlig/skive/semantikk-gruppering; mode finnes på scan_file men

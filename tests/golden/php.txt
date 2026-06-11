@@ -1,0 +1,53 @@
+basic.php (6-132)
+- App\Database @6
+- use statements @8
+- DatabaseConfig @15 # Configuration interface for database settings.
+   interface DatabaseConfig {
+       public function getHost(): string;
+       public function getPort(): int;
+       public function getDatabase(): string;
+  - getHost () string @16 [public]
+  - getPort () int @17 [public]
+  - getDatabase () string @18 [public]
+- DatabaseManager @24 # Manages database connections and queries.
+  - __construct (string $connectionString) @31 [public] # Constructs a new DatabaseManager with the given connection string.
+     public function __construct(string $connectionString) {
+         $this->connectionString = $connectionString;
+  - connect () void @38 [public] # Establishes a connection to the database.
+     public function connect(): void {
+         …
+  - disconnect () void @45 [public] # Closes the database connection.
+     public function disconnect(): void {
+         if ($this->connection !== null) {
+       …
+  - query (string $sql) array @55 [public] # Executes a SQL query and returns the results.
+     public function query(string $sql): array {
+         return [];
+- Loggable @63 # Trait for logging functionality.
+  - log (string $message) void @69 [public] # Logs a message.
+     public function log(string $message): void {
+         $this->logs[] = $message;
+  - getLogs () array @76 [public] # Gets all logged messages.
+     public function getLogs(): array {
+         return $this->logs;
+- UserService @84 # Handles user-related operations.
+  - __construct (DatabaseManager $db) @92 [public] # Constructs a UserService with a database manager.
+     public function __construct(DatabaseManager $db) {
+         $this->db = $db;
+  - createUser (string $username, string $email) int @99 [public] # Creates a new user in the system.
+     public function createUser(string $username, string $email): int {
+         $this->log("Creating user: {$username}");
+         return 1;
+  - getUser (int $userId) ?array @107 [public] # Retrieves a user by their ID.
+     public function getUser(int $userId): ?array {
+         return null;
+  - deleteUser (int $userId) bool @114 [public] # Deletes a user from the system.
+     public function deleteUser(int $userId): bool {
+         $this->log("Deleting user: {$userId}");
+         return true;
+- validateEmail (string $email) bool @123 # Validates an email address format.
+   function validateEmail(string $email): bool {
+       return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+- formatName (string $firstName, string $lastName) string @130 # Formats a user's full name.
+   function formatName(string $firstName, string $lastName): string {
+       return "{$firstName} {$lastName}";

@@ -1,0 +1,31 @@
+basic.md (1-119)
+- Project Documentation @1
+  - Installation @5
+    - code block (bash) bash @9
+    - Quick Start @13
+      - code block (python) python @17
+  - Features @24
+    - code block (typescript) typescript @28
+    - Advanced Usage @35
+      - code block (python) python @39
+  - Configuration @48
+    - Environment Variables @52
+      - code block (bash) bash @56
+         56 | ```bash
+         57 | export SCANTOOL_DEBUG=1
+         58 | export SCANTOOL_PATH=/usr/local/bin
+         59 | ```
+         60 | 
+  - API Reference @61
+    - FileScanner Class @65
+    - TreeFormatter Class @69
+      - Options @73
+  - Contributing @77
+    - Code Style @81
+    - Testing @85
+      - code block (bash) bash @89
+  - License @93
+- Alternative Heading Style @99
+  - Subheading with Underline @104
+    - code block @111
+    - Final Section @116

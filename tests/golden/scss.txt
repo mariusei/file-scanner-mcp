@@ -1,0 +1,78 @@
+basic.scss (3-124)
+- base/variables @use @3 [use]
+- base/mixins @use @4 [use]
+- components/buttons @forward @5 [forward]
+- legacy/old-styles @import @6 [import]
+- $primary-color #3498db @9 [scss-variable]
+- $secondary-color #2ecc71 @10 [scss-variable]
+- $font-stack 'Helvetica Neue', sans-serif @11 [scss-variable]
+- $spacing-unit 8px @12 [scss-variable]
+- $border-radius 4px @13 [scss-variable]
+- flex-center () @16 [mixin]
+   @mixin flex-center {
+       display: flex;
+       justify-content: center;
+       align-items: center;
+- button-style ($bg-color, $text-color: white) @22 [mixin]
+   @mixin button-style($bg-color, $text-color: white) {
+       background: $bg-color;
+       color: $text-color;
+       padding: $spacing-unit ($spacing-unit * 2);
+       border-radius: $border-radius;
+       cursor: pointer;
+       &:hover {
+           background: darken($bg-color, 10%);
+- responsive ($breakpoint) @34 [mixin]
+   @mixin responsive($breakpoint) {
+       @if $breakpoint == 'mobile' {
+           @media (max-width: 768px) {
+               @content;
+       } @else if $breakpoint == 'tablet' {
+           @media (max-width: 1024px) {
+               @content;
+- shade ($color, $amount: 10%) @47 [scss-function]
+   @function shade($color, $amount: 10%) {
+       @return darken($color, $amount);
+- tint ($color, $amount: 10%) @51 [scss-function]
+   @function tint($color, $amount: 10%) {
+       @return lighten($color, $amount);
+- body 1 sel, 4 decl @56
+   body {
+       font-family: $font-stack;
+       color: #333;
+       margin: 0;
+       padding: 0;
+- .btn 1 sel, 0 decl @64 [class uses-mixin]
+  - &--secondary 1 sel, 0 decl @67 [nested uses-mixin]
+     &--secondary {
+         @include button-style($secondary-color);
+  - &--outline 1 sel, 3 decl @71 [nested]
+    - &:hover 1 sel, 2 decl @76 [nested]
+       &:hover {
+           background: $primary-color;
+           color: white;
+- .card 1 sel, 3 decl @83 [class]
+  - .card-header 1 sel, 2 decl @88 [class]
+     .card-header {
+         font-weight: bold;
+         margin-bottom: $spacing-unit;
+  - .card-body 1 sel, 1 decl @93 [class]
+     .card-body {
+         color: #666;
+- .container 1 sel, 2 decl @99 [class uses-mixin]
+   .container {
+       @include flex-center;
+       max-width: 1200px;
+       margin: 0 auto;
+       @include responsive('mobile') {
+           padding: $spacing-unit;
+- screen and (max-width: 768px) screen and (max-width: 768px) @110 [media]
+  - .hide-mobile 1 sel, 1 decl @111 [class]
+     .hide-mobile {
+         display: none;
+- fadeIn @117 [keyframes]
+   @keyframes fadeIn {
+       from {
+           opacity: 0;
+       to {
+           opacity: 1;

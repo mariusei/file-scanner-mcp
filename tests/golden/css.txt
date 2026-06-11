@@ -1,0 +1,84 @@
+basic.css (1-114)
+- Main stylesheet for the application @1 # /*! Main stylesheet for the application */
+- base/reset.css base/reset.css @3 [import]
+- components/buttons.css components/buttons.css @4 [import]
+- :root 1 sel, 5 decl @6 [root has-pseudo has-variables]
+   :root {
+       --primary-color: #3498db;
+       --secondary-color: #2ecc71;
+       --text-color: #333;
+       --spacing-unit: 8px;
+       --border-radius: 4px;
+- body 1 sel, 4 decl @15
+   body {
+       margin: 0;
+       padding: 0;
+       font-family: system-ui, sans-serif;
+       color: var(--text-color);
+- .header 1 sel, 2 decl @23 [class]
+   .header {
+       background: var(--primary-color);
+       padding: calc(var(--spacing-unit) * 2);
+- #main-nav 1 sel, 2 decl @28 [id]
+   #main-nav {
+       display: flex;
+       justify-content: space-between;
+- .nav-link 1 sel, 2 decl @33 [class]
+   .nav-link {
+       color: white;
+       text-decoration: none;
+- .nav-link:hover 1 sel, 1 decl @38 [class has-pseudo]
+   .nav-link:hover {
+       text-decoration: underline;
+- .btn 1 sel, 4 decl @43 [class]
+   .btn {
+       display: inline-block;
+       padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+       border-radius: var(--border-radius);
+       cursor: pointer;
+- .btn-primary 1 sel, 2 decl @50 [class]
+   .btn-primary {
+       background: var(--primary-color);
+       color: white;
+- .btn-secondary 1 sel, 2 decl @55 [class]
+   .btn-secondary {
+       background: var(--secondary-color);
+       color: white;
+- screen and (max-width: 768px) screen and (max-width: 768px) @61 [media]
+  - .header 1 sel, 1 decl @62 [class]
+     .header {
+         padding: var(--spacing-unit);
+  - #main-nav 1 sel, 1 decl @66 [id]
+     #main-nav {
+         flex-direction: column;
+  - .nav-link 1 sel, 1 decl @70 [class]
+     .nav-link {
+         padding: var(--spacing-unit);
+- print print @75 [media]
+  - .no-print 1 sel, 1 decl @76 [class]
+     .no-print {
+         display: none;
+- fadeIn @82 [keyframes]
+   @keyframes fadeIn {
+       from {
+           opacity: 0;
+       to {
+           opacity: 1;
+- slideIn @91 [keyframes]
+   @keyframes slideIn {
+       0% {
+           transform: translateX(-100%);
+       100% {
+           transform: translateX(0);
+- @font-face @101 [font-face]
+   @font-face {
+       font-family: 'CustomFont';
+       src: url('../fonts/custom.woff2') format('woff2'),
+            url('../fonts/custom.woff') format('woff');
+       font-weight: normal;
+       font-style: normal;
+- .footer 1 sel, 3 decl @110 [class]
+   .footer {
+       background: #333;
+       color: white;
+       padding: calc(var(--spacing-unit) * 3);

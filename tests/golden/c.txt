@@ -1,0 +1,32 @@
+basic.c (3-59)
+- #include directives @3
+- User @8 # User structure definition
+   struct User {
+       …
+- DatabaseConfig @15 # Database configuration structure
+   struct DatabaseConfig {
+       …
+- init_user void (struct User *user, int id, const char *name) @22 # Initialize a user with default values
+   void init_user(struct User *user, int id, const char *name) {
+       user->id = id;
+       strncpy(user->name, name, sizeof(user->name) - 1);
+       user->name[sizeof(user->name) - 1] = '\0';
+- validate_email int (const char *email) @29 # Validate email format
+   int validate_email(const char *email) {
+       return strchr(email, '@') != NULL;
+- connect_database int (struct DatabaseConfig *config) @34 # Connect to database
+   int connect_database(struct DatabaseConfig *config) {
+       printf("Connecting to %s:%d/%s\n", config->host, config->port, config->database);
+       return 1;
+- free_user void (struct User *user) @40 # Free user resources
+   void free_user(struct User *user) {
+       …
+- Status @45 # Status codes enumeration
+   enum Status {
+       …
+- main int (void) @52 # Main entry point
+   int main(void) {
+       struct User user;
+       init_user(&user, 1, "John Doe");
+       printf("User: %s (ID: %d)\n", user.name, user.id);
+       return 0;

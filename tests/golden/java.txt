@@ -1,0 +1,43 @@
+Basic.java (5-104)
+- com.example.demo @5
+- import statements @7
+- Config @14 [public] # Configuration interface for application settings.
+   public interface Config {
+       String getApiKey();
+       String getEndpoint();
+       int getTimeout();
+  - getApiKey () : String @15
+  - getEndpoint () : String @16
+  - getTimeout () : int @17
+- DatabaseManager @23 [public] # Manages database connections and queries.
+  - DatabaseManager (String connectionString) @30 [public] # Constructs a new DatabaseManager with the given connection string.
+     public DatabaseManager(String connectionString) {
+         this.connectionString = connectionString;
+         this.connection = null;
+  - connect () : void @38 [public] # Establishes a connection to the database.
+     public void connect() {
+         System.out.println("Connecting to " + connectionString);
+  - disconnect () : void @45 [public] # Closes the database connection.
+     public void disconnect() {
+         if (connection != null) {
+       …
+  - query (String sql) : List<Map<String, Object>> @54 [public] # Executes a SQL query and returns the results.
+     public List<Map<String, Object>> query(String sql) {
+         return List.of();
+- UserService @62 [public] # Handles user-related operations.
+  - UserService (DatabaseManager db) @68 [public] # Constructs a UserService with a database manager.
+     public UserService(DatabaseManager db) {
+         this.db = db;
+  - createUser (String username, String email) : int @75 [public] # Creates a new user in the system.
+     public int createUser(String username, String email) {
+         return 1;
+  - getUser (int userId) : Optional<Map<String, Object>> @82 [public] # Retrieves a user by their ID.
+     public Optional<Map<String, Object>> getUser(int userId) {
+         return Optional.empty();
+  - deleteUser (int userId) : boolean @89 [public] # Deletes a user from the system.
+     public boolean deleteUser(int userId) {
+         return true;
+- EmailValidator @97 [public] # Utility class for email validation.
+  - validateEmail (String email) : boolean @101 [public static] # Validates an email address format.
+     public static boolean validateEmail(String email) {
+         return email != null && email.contains("@");

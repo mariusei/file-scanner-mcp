@@ -1,0 +1,31 @@
+basic.sql (4-34)
+- users @4 # Users table to store user information
+   CREATE TABLE users (
+       id INT PRIMARY KEY AUTO_INCREMENT,
+       username VARCHAR(50) NOT NULL UNIQUE,
+       email VARCHAR(100) NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  - id INT PRIMARY KEY AUTO_INCREMENT @5
+  - username VARCHAR(50) NOT NULL UNIQUE @6
+  - email VARCHAR(100) NOT NULL @7
+  - created_at TIMESTAMP DEFAULT @8
+- products @12 # Products table
+   CREATE TABLE products (
+       product_id BIGINT PRIMARY KEY,
+       name VARCHAR(200) NOT NULL,
+       price DECIMAL(10, 2),
+       stock_quantity INT DEFAULT 0
+  - product_id BIGINT PRIMARY KEY @13
+  - name VARCHAR(200) NOT NULL @14
+  - price DECIMAL(10, 2) @15
+  - stock_quantity INT DEFAULT @16
+- active_users SELECT id, username, email
+FROM users
+WHERE create... @20 # View for active users
+   20 | CREATE VIEW active_users AS
+   21 | SELECT id, username, email
+   22 | FROM users
+   23 | WHERE created_at > DATE_SUB(NOW(), INTERVAL 30 DAY);
+- calculate_discount (price DECIMAL, discount_pct INT) -> DECIMAL @26 # Function to calculate discount
+- idx_username ON users (username) @31
+- idx_product_price ON products (name, price) @34 # Composite index for product queries
