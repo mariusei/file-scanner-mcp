@@ -388,8 +388,38 @@ def should_analyze(self, file_path: str) -> bool:
 - [ ] Add tree-sitter dependency to `pyproject.toml`
 - [ ] Create test directory: `tests/LANG/samples/`
 - [ ] Create test file: `tests/LANG/test_LANG.py`
+- [ ] Freeze the output format: add a `basic.*` sample, add the language
+      to `SAMPLES` in `tests/test_golden.py`, then generate the snapshot
+      with `UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py`
 - [ ] Run tests: `uv run pytest tests/LANG/`
-- [ ] Run all tests: `uv run pytest`
+- [ ] Run all tests: `uv run pytest tests/`
+
+---
+
+## The Output Contract (golden tests)
+
+The default output format IS the API for LLM consumers — see "Output
+Contract" in README.md. `tests/test_golden.py` freezes it as snapshots
+in `tests/golden/` and fails CI on any drift. How to work with it:
+
+1. **Golden tests fail and you didn't intend a format change** → that's
+   a caught bug in your change, not a flaky test. Don't update the
+   snapshots; fix the cause.
+2. **You intend to change the format** → update deliberately:
+   `UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py`, then review
+   `git diff tests/golden/` — every changed line must be explainable by
+   your change. Commit code and snapshots together and name the format
+   change in the commit message.
+
+Rules that keep the snapshots deterministic:
+
+- Environment-dependent output (file size/mtime, git churn, delta
+  notes) belongs in the server layer — never in the frozen
+  scanner+formatter layer.
+- `tests/golden/fixture_dir/` is frozen input for the directory
+  snapshot — don't "improve" those files.
+- `.gitattributes` pins LF in working trees: CRLF input measurably
+  changes output for html/markdown/sql, so don't remove it.
 
 ---
 
