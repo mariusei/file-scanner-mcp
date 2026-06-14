@@ -1,5 +1,6 @@
 """Code map orchestrator for analyzing codebase structure and relationships."""
 
+import threading
 import time
 from pathlib import Path
 from collections import OrderedDict, defaultdict
@@ -33,24 +34,27 @@ from .consensus import DivergenceConfig, find_divergences, format_divergences
 #   Extraction = (imports, entry_points, cluster, definitions, calls)
 _CACHE_MAX_DIRS = 8
 _EXTRACT_CACHE: "OrderedDict[str, dict]" = OrderedDict()
+_CACHE_LOCK = threading.Lock()  # background warming + a main-thread analyze may race
 
 
 def clear_corpus_cache() -> None:
     """Drop all cached per-file extraction (test isolation / forced refresh)."""
-    _EXTRACT_CACHE.clear()
+    with _CACHE_LOCK:
+        _EXTRACT_CACHE.clear()
 
 
 def _dir_cache(directory: str) -> dict:
     """Per-directory {rel_file: (fingerprint, extraction)} map; LRU over directories."""
-    cache = _EXTRACT_CACHE.get(directory)
-    if cache is None:
-        cache = {}
-        _EXTRACT_CACHE[directory] = cache
-        while len(_EXTRACT_CACHE) > _CACHE_MAX_DIRS:
-            _EXTRACT_CACHE.popitem(last=False)
-    else:
-        _EXTRACT_CACHE.move_to_end(directory)
-    return cache
+    with _CACHE_LOCK:
+        cache = _EXTRACT_CACHE.get(directory)
+        if cache is None:
+            cache = {}
+            _EXTRACT_CACHE[directory] = cache
+            while len(_EXTRACT_CACHE) > _CACHE_MAX_DIRS:
+                _EXTRACT_CACHE.popitem(last=False)
+        else:
+            _EXTRACT_CACHE.move_to_end(directory)
+        return cache
 
 
 class CodeMap:

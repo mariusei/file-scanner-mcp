@@ -15,6 +15,8 @@ so it is outside the frozen golden scope (like git churn / delta notes).
 """
 
 import re
+import threading
+import time
 from collections import Counter, OrderedDict
 from pathlib import Path
 
@@ -24,18 +26,32 @@ from .consensus import DivergenceConfig, find_divergences
 from .scanner import FileScanner
 
 _DEAD_SKIP = frozenset({"__init__", "__repr__", "__str__", "__eq__", "__hash__", "main"})
+# Dispatch-by-name conventions: invoked via getattr/framework (ast.NodeVisitor
+# visit_*, cmd do_*, handlers on_*/handle_*), so structurally invisible to the
+# call graph — a zero-inbound match here is reachable, not dead.
+_DISPATCH_PREFIXES = ("visit_", "do_", "handle_", "on_")
 _MEMO_MAX_DIRS = 8
-# Above this corpus size the dead/orphan whole-repo scans cost too much on a
-# first (cold) call to do inline; keep the cheap drift signal, skip the rest.
-# (Step 4: warm these in the background so huge repos get them too.)
+# Above this corpus size the dead/orphan whole-repo scans are skipped (drift only).
 _MAX_HEAVY_FILES = 6000
-# dir -> (corpus_signature, dead:set[(file,qual)], orphans:list, dyn_dispatch:bool)
-_TAIL_MEMO: "OrderedDict[str, tuple]" = OrderedDict()
 _scanner = FileScanner()
+
+# ── Background warming ────────────────────────────────────────────────────────
+# scan_file's tail is a constant-time read of the LAST computed corpus state;
+# the (expensive) compute runs off the request path in a daemon thread, so a scan
+# never waits. State is at most one refresh cycle stale — you see a just-introduced
+# dead fn on the next scan. Lock-guarded; lives for the server process.
+#   _STATE: dir -> (signature, dead:set[(file,qual)], orphans:list,
+#                   drift_findings:list, dyn_dispatch:bool, timestamp)
+_STATE: "OrderedDict[str, tuple]" = OrderedDict()
+_LOCK = threading.Lock()
+_WARMING: set = set()
+_REFRESH_INTERVAL = 2.0  # seconds: do not respawn a refresh more often than this
 
 
 def clear_connectivity_cache() -> None:
-    _TAIL_MEMO.clear()
+    with _LOCK:
+        _STATE.clear()
+        _WARMING.clear()
 
 
 def _short(qualified: str) -> str:
@@ -105,6 +121,8 @@ def _compute_dead(directory: str, result) -> "tuple[set, bool]":
             continue
         if bare in entry or bare.startswith("_") or bare in _DEAD_SKIP:
             continue
+        if bare.startswith(_DISPATCH_PREFIXES):  # dispatched by name (getattr/framework)
+            continue
         if "test" in n.file.lower():
             continue
         if bare in export_names:                 # exported in __init__/__all__/pyproject
@@ -130,60 +148,60 @@ def _compute_orphans(directory: str) -> list:
     return out
 
 
-def _dead_and_orphans(directory: str, result) -> "tuple[set, list, bool]":
-    sig = (len(result.definitions), len(result.calls))
-    cached = _TAIL_MEMO.get(directory)
-    if cached is not None and cached[0] == sig:
-        _TAIL_MEMO.move_to_end(directory)
-        return cached[1], cached[2], cached[3]
-    dead, dyn = _compute_dead(directory, result)
-    orphans = _compute_orphans(directory)
-    _TAIL_MEMO[directory] = (sig, dead, orphans, dyn)
-    while len(_TAIL_MEMO) > _MEMO_MAX_DIRS:
-        _TAIL_MEMO.popitem(last=False)
-    return dead, orphans, dyn
-
-
-def corpus_dead_orphans(directory: str, result) -> "tuple[set, list, bool]":
-    """Public: channel-subtracted dead residue (set[(file, qualname)]) +
-    reference-mapping orphans (list[(location, tag, key, pid)]) + dynamic-dispatch
-    flag, for a whole repo. Memoised per directory (shared with the scan_file tail).
-    Empty above the heavy-corpus guard — the cheap drift signal still applies."""
-    if result.total_files > _MAX_HEAVY_FILES:
-        return set(), [], False
+def warm(directory: str, result=None) -> None:
+    """Compute and cache a repo's corpus connectivity (dead + orphan + corpus-wide
+    drift). Synchronous, idempotent (skips recompute when the corpus signature is
+    unchanged), NEVER raises. Run inline (scan_diff) or in a daemon thread (scan_file).
+    """
     try:
-        return _dead_and_orphans(directory, result)
-    except Exception:
-        return set(), [], False
-
-
-def connectivity_tail(directory: str, file_path: str, max_items: int = 12) -> str:
-    """A connectivity note for one file, or '' when nothing fires / on error."""
-    try:
-        result = CodeMap(directory).analyze()
-    except Exception:
-        return ""
-    if not result.call_graph:
-        return ""
-    rel = _rel(directory, file_path)
-
-    drift = []
-    try:
-        fc = {f: c for c, fs in result.clusters.items() for f in fs}
-        for fnd in find_divergences(result.definitions, result.calls,
-                                    config=DivergenceConfig(TOP_N=20), file_clusters=fc):
-            if fnd.site.startswith(rel):
-                drift.append((_short(fnd.site), fnd.anchor, fnd.missing))
+        if result is None:
+            result = CodeMap(directory).analyze()
+        sig = (len(result.definitions), len(result.calls))
+        with _LOCK:
+            prev = _STATE.get(directory)
+            if prev is not None and prev[0] == sig:
+                _STATE[directory] = (*prev[:5], time.time())  # touch ts, keep state
+                return
+        if result.total_files > _MAX_HEAVY_FILES:
+            dead, orphans, dyn = set(), [], False
+        else:
+            dead, dyn = _compute_dead(directory, result)
+            orphans = _compute_orphans(directory)
+        try:
+            fc = {f: c for c, fs in result.clusters.items() for f in fs}
+            drift = find_divergences(result.definitions, result.calls,
+                                     config=DivergenceConfig(TOP_N=50), file_clusters=fc)
+        except Exception:
+            drift = []
+        with _LOCK:
+            _STATE[directory] = (sig, dead, orphans, drift, dyn, time.time())
+            while len(_STATE) > _MEMO_MAX_DIRS:
+                _STATE.popitem(last=False)
     except Exception:
         pass
+    finally:
+        with _LOCK:
+            _WARMING.discard(directory)
 
-    dead_all, orphans_all, dyn = corpus_dead_orphans(directory, result)
-    dead = sorted({name for f, name in dead_all if f == rel})
+
+def corpus_dead_orphans(directory: str, result=None) -> "tuple[set, list, bool]":
+    """Public, SYNCHRONOUS: ensure the repo's connectivity is computed, return
+    (dead:set[(file,qual)], orphans:list[(loc,tag,key,pid)], dyn). Used by scan_diff,
+    where review wants the current state, not a stale one."""
+    warm(directory, result)
+    with _LOCK:
+        entry = _STATE.get(directory)
+    return (entry[1], entry[2], entry[4]) if entry else (set(), [], False)
+
+
+def _format_tail(entry: tuple, directory: str, file_path: str, max_items: int) -> str:
+    _sig, dead_all, orphans_all, drift_all, dyn, _ts = entry
+    rel = _rel(directory, file_path)
+    dead = sorted({qual for f, qual in dead_all if f == rel})
     orphan = [(t, k, p) for loc, t, k, p in orphans_all if loc == rel]
-
-    if not (drift or dead or orphan):
+    drift = [(_short(f.site), f.anchor, f.missing) for f in drift_all if f.site.startswith(rel)]
+    if not (dead or orphan or drift):
         return ""
-
     lines = ["", "── CONNECTIVITY (whole-corpus view — candidates, not verdicts) ──"]
     if orphan:
         lines.append("  orphan (referenced nowhere — candidate dead):")
@@ -198,3 +216,23 @@ def connectivity_tail(directory: str, file_path: str, max_items: int = 12) -> st
         for site, anchor, missing in drift[:max_items]:
             lines.append(f"    {site}: calls {anchor} but (unlike peers) not {missing}")
     return "\n".join(lines)
+
+
+def connectivity_tail(directory: str, file_path: str, max_items: int = 12) -> str:
+    """Constant-time connectivity note for a file: serve the last computed corpus
+    state, refresh it in the background. '' until the first warm completes (the next
+    scan shows it) — a scan never blocks on the corpus build."""
+    with _LOCK:
+        entry = _STATE.get(directory)
+        stale = entry is None or (time.time() - entry[5]) > _REFRESH_INTERVAL
+        spawn = stale and directory not in _WARMING
+        if spawn:
+            _WARMING.add(directory)
+    if spawn:
+        threading.Thread(target=warm, args=(directory,), daemon=True).start()
+    if entry is None:
+        return ""
+    try:
+        return _format_tail(entry, directory, file_path, max_items)
+    except Exception:
+        return ""
