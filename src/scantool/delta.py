@@ -95,6 +95,17 @@ def diff_nodes(previous: dict[str, str], current: dict[str, str]) -> NodeDiff:
     return diff
 
 
+def stat_fingerprint(path: str) -> Optional[tuple]:
+    """(st_mtime_ns, st_size) for a file, or None on error. The cheap
+    change-detection key shared by ScanMemory (per-file delta) and the code-map
+    corpus cache (per-file extraction)."""
+    try:
+        stat = os.stat(path)
+        return (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        return None
+
+
 class ScanMemory:
     """Remembers previous scans; answers "what changed since last time?"."""
 
@@ -103,14 +114,6 @@ class ScanMemory:
 
     def clear(self) -> None:
         self._files.clear()
-
-    @staticmethod
-    def _stat_fingerprint(path: str) -> Optional[tuple]:
-        try:
-            stat = os.stat(path)
-            return (stat.st_mtime_ns, stat.st_size)
-        except OSError:
-            return None
 
     def file_unchanged(self, path: str) -> Optional[float]:
         """Age in seconds of the previous identical scan — None if changed,
@@ -122,7 +125,7 @@ class ScanMemory:
         if age > _MEMORY_TTL_SECONDS:
             del self._files[path]
             return None
-        fingerprint = self._stat_fingerprint(path)
+        fingerprint = stat_fingerprint(path)
         if fingerprint is not None and fingerprint == cached[0]:
             return age
         return None
@@ -131,7 +134,7 @@ class ScanMemory:
                         source_lines: list[str]) -> Optional[NodeDiff]:
         """Node-diff against the previous scan (None on first scan), then
         record the current state."""
-        fingerprint = self._stat_fingerprint(path)
+        fingerprint = stat_fingerprint(path)
         current = node_hashes(structures, source_lines)
         previous = self._files.get(path)
 

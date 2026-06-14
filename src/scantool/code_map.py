@@ -2,9 +2,10 @@
 
 import time
 from pathlib import Path
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from typing import Optional
 
+from .delta import stat_fingerprint
 from .gitignore import load_gitignore
 from .languages import (
     get_registry,
@@ -18,6 +19,38 @@ from .languages import (
 from .languages.generic import GenericLanguage
 from . import call_graph
 from .consensus import DivergenceConfig, find_divergences, format_divergences
+
+
+# ── Warm corpus cache ────────────────────────────────────────────────────────
+# analyze()'s per-file extraction (parse + imports/entry-points/clusters/defs/
+# calls) is 96-98% of its cost and is PURE in (file_path, content). Memoise it by
+# the same stat-fingerprint ScanMemory uses, so re-analysing a directory only
+# re-parses files whose (mtime_ns, size) changed; the cheap graph assembly
+# (Phase 3-6) always reruns. Transparent — identical output, just faster (a
+# 1-file edit drops from a full re-parse to ~ms). Lives for the server process,
+# mirroring server.scan_memory. Keyed by directory, LRU-bounded.
+#   _EXTRACT_CACHE: dir -> {rel_file: (fingerprint, Extraction)}
+#   Extraction = (imports, entry_points, cluster, definitions, calls)
+_CACHE_MAX_DIRS = 8
+_EXTRACT_CACHE: "OrderedDict[str, dict]" = OrderedDict()
+
+
+def clear_corpus_cache() -> None:
+    """Drop all cached per-file extraction (test isolation / forced refresh)."""
+    _EXTRACT_CACHE.clear()
+
+
+def _dir_cache(directory: str) -> dict:
+    """Per-directory {rel_file: (fingerprint, extraction)} map; LRU over directories."""
+    cache = _EXTRACT_CACHE.get(directory)
+    if cache is None:
+        cache = {}
+        _EXTRACT_CACHE[directory] = cache
+        while len(_EXTRACT_CACHE) > _CACHE_MAX_DIRS:
+            _EXTRACT_CACHE.popitem(last=False)
+    else:
+        _EXTRACT_CACHE.move_to_end(directory)
+    return cache
 
 
 class CodeMap:
@@ -43,6 +76,7 @@ class CodeMap:
         respect_gitignore: bool = True,
         max_files: int = 10000,
         enable_layer2: bool = True,
+        use_cache: bool = True,
     ):
         """
         Initialize code map analyzer.
@@ -52,11 +86,14 @@ class CodeMap:
             respect_gitignore: Whether to respect .gitignore patterns
             max_files: Maximum number of files to analyze (safety limit)
             enable_layer2: Enable Layer 2 analysis (call graphs, function centrality)
+            use_cache: Reuse the warm per-file extraction cache (transparent;
+                set False to force a fresh parse of every file)
         """
         self.directory = Path(directory).resolve()
         self.respect_gitignore = respect_gitignore
         self.max_files = max_files
         self.enable_layer2 = enable_layer2
+        self.use_cache = use_cache
 
         # Load gitignore patterns
         self.gitignore = None
@@ -66,6 +103,20 @@ class CodeMap:
         # Get analyzer registry
         self.registry = get_registry()
         self.generic_language = GenericLanguage()
+
+    def _extract_file(self, analyzer, file_path: str, content: str) -> tuple:
+        """Per-file extraction — the cacheable unit, pure in (file_path, content).
+
+        Always computes Layer-2 defs/calls so one cache entry serves both
+        enable_layer2 modes; analyze() gates their USE on enable_layer2, so output
+        is unchanged either way.
+        """
+        imports = analyzer.extract_imports(file_path, content)
+        entry_points = analyzer.find_entry_points(file_path, content)
+        cluster = analyzer.classify_file(file_path, content)
+        definitions = analyzer.extract_definitions(file_path, content)
+        calls = analyzer.extract_calls(file_path, content, definitions)
+        return (imports, entry_points, cluster, definitions, calls)
 
     def analyze(self) -> CodeMapResult:
         """
@@ -91,53 +142,66 @@ class CodeMap:
         analyzed_files = []  # Track which files were actually analyzed
         type_to_file = {}  # Map type names to files (for Swift intra-module deps)
 
+        cache = _dir_cache(str(self.directory)) if self.use_cache else None
+        seen = set()
+
         for file_path in files:
             # Get analyzer for this file
             analyzer = self._get_analyzer(file_path)
             if not analyzer:
                 continue
 
-            # Read file content
-            try:
-                content = (self.directory / file_path).read_text(encoding="utf-8")
-            except Exception:
-                continue
+            # Reuse cached extraction if the file's stat-fingerprint is unchanged
+            fp = stat_fingerprint(str(self.directory / file_path)) if cache is not None else None
+            extraction = None
+            if cache is not None and fp is not None:
+                hit = cache.get(file_path)
+                if hit is not None and hit[0] == fp:
+                    extraction = hit[1]
 
-            # Skip if analyzer says to skip
-            if not analyzer.should_analyze(file_path):
-                continue
+            if extraction is None:
+                # Cache miss: read + extract. A file failing should_analyze is
+                # skipped and never cached (so it re-checks every run, as before);
+                # a cache hit means content is unchanged, so that verdict cannot
+                # have changed without a fingerprint change.
+                try:
+                    content = (self.directory / file_path).read_text(encoding="utf-8")
+                except Exception:
+                    continue
+                if not analyzer.should_analyze(file_path):
+                    continue
+                extraction = self._extract_file(analyzer, file_path, content)
+                if cache is not None and fp is not None:
+                    cache[file_path] = (fp, extraction)
+
+            if cache is not None:
+                seen.add(file_path)
+
+            imports, entry_points, cluster, definitions, calls = extraction
 
             # Track that this file was analyzed
             analyzed_files.append(file_path)
+            all_imports.extend(imports)        # Layer 1: imports
+            all_entry_points.extend(entry_points)  # Layer 1: entry points
+            file_clusters[file_path] = cluster     # Layer 1: classification
 
-            # Layer 1: Extract imports
-            imports = analyzer.extract_imports(file_path, content)
-            all_imports.extend(imports)
-
-            # Layer 1: Find entry points
-            entry_points = analyzer.find_entry_points(file_path, content)
-            all_entry_points.extend(entry_points)
-
-            # Layer 1: Classify file
-            cluster = analyzer.classify_file(file_path, content)
-            file_clusters[file_path] = cluster
-
-            # Layer 2: Extract definitions and calls (if enabled)
+            # Layer 2: definitions and calls (if enabled)
             if self.enable_layer2:
-                definitions = analyzer.extract_definitions(file_path, content)
                 all_definitions.extend(definitions)
                 file_definitions[file_path] = definitions
 
-                # Build definitions_map: name → file_path
-                # Used by analyzers for type-based import resolution
-                # (Swift types, TypeScript interfaces, Go types, etc.)
+                # Build definitions_map: name → file_path (first definition wins)
+                # Used by analyzers for type-based import resolution.
                 for defn in definitions:
-                    # Track any named definition - first definition wins
                     if defn.name and defn.name not in type_to_file:
                         type_to_file[defn.name] = file_path
 
-                calls = analyzer.extract_calls(file_path, content, definitions)
                 all_calls.extend(calls)
+
+        # Drop cache entries for files no longer discovered (deleted/renamed)
+        if cache is not None:
+            for stale in [f for f in cache if f not in seen]:
+                del cache[stale]
 
         # Phase 3: Build import graph (only with analyzed files)
         import_graph = self._build_import_graph(all_imports, analyzed_files, type_to_file)
