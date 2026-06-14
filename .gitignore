@@ -41,3 +41,14 @@ prototype_*.py
 .coverage
 CLAUDE.md
 KODEPRAKSIS.md
+
+# Research and experiments — kept local; only the benchmark methodology is public.
+# (R&D dirs hold internal notes/repos and are not part of the shipped tool.)
+/experiments/*
+!/experiments/benchmark/
+/experiments/benchmark/**/*.log
+/research/
+ARTICLE.md
+HANDOVER-golden-output.md
+screenshot1.md
+.playwright-mcp/
