@@ -102,6 +102,21 @@ class DivergenceConfig:
     MIN_FENCE_POP: int = 8  # min candidates for a meaningful IQR; below it, SIG alone gates
     PEERS_SAMPLE: int = 3
     TOP_N: int = 20
+    # Role-conditioning lenses per context. Audit uses all three (max silence on
+    # healthy code). Review drops the GRAPH lens — it judges role from coarse
+    # total fan-out and dissolves real regressions whose fan-out differs from
+    # peers, while name+cluster still removes the cross-role false positives
+    # (measured in experiments/norm_inference/{inject_recall,precision_review}.py).
+    audit_lenses: tuple[str, ...] = ("name", "cluster", "graph")
+    # Review uses NO conditioning. Measured (experiments/norm_inference/): the
+    # only lens that removes the cross-role review false positives is the GRAPH
+    # lens, but it removes them by the SAME coarse fan-out test that dissolves
+    # real regressions — it trades recall for precision 1:1. name+cluster does
+    # neither (the route-auth false positives are same-name/cluster). And those
+    # "false positives" are mostly the right class anyway (a route missing the
+    # require_permission its peers call — CWE-862), adjudicable in review. So
+    # review keeps full recall and leans on the suspect filter + the framing.
+    review_lenses: tuple[str, ...] = ()
 
 
 class _Cand(NamedTuple):
@@ -163,17 +178,19 @@ def _band(x: int) -> str:
     return "0" if x == 0 else "1-2" if x <= 2 else "3-5" if x <= 5 else "6+"
 
 
-def _role_conditioner(bags, file_clusters):
+def _role_conditioner(bags, file_clusters, lenses=("name", "cluster", "graph")):
     """Build same_role(site, conformers, anchor, missing) -> bool.
 
     A site keeps a finding only if its role equals the conformers' modal role
-    under EVERY orthogonal lens. Lenses (all orthogonal to the usage bags, so
-    conditioning cannot define away the signal):
+    under every ENABLED lens (`lenses`). All are orthogonal to the usage bags,
+    so conditioning cannot define away the signal:
       - name: leading verb token of the function name (_extract_* vs _scan_*),
       - cluster: the file's architectural cluster (core vs plugins), if known,
-      - graph: (in-degree band, out-degree band) — but out-degree EXCLUDES the
+      - graph: (in-degree band, out-degree band) — out-degree EXCLUDES the
         contested {anchor, missing} edges so a missing call cannot shift the
-        site's own band (the circularity, hardened in graph_harden.py).
+        site's own band (the circularity, hardened in graph_harden.py). Coarse:
+        dropped in review because it dissolves real same-name/cluster regressions
+        whose total fan-out merely differs (inject_recall.py).
     """
     in_deg: Counter = Counter()
     name_to_cids: dict[str, list] = defaultdict(list)
@@ -195,17 +212,21 @@ def _role_conditioner(bags, file_clusters):
     def modal(values):
         return Counter(values).most_common(1)[0][0]
 
+    def cl(cid):
+        return file_clusters.get(cid[0], "other") if file_clusters else "other"
+
     def same_role(site, conformers, anchor, missing):
         if not conformers:
             return True
-        if name_role(site) != modal(name_role(c) for c in conformers):
+        if "name" in lenses and name_role(site) != modal(
+            name_role(c) for c in conformers
+        ):
             return False
-        if file_clusters is not None:
-            def cl(cid):
-                return file_clusters.get(cid[0], "other")
-            if cl(site) != modal(cl(c) for c in conformers):
-                return False
-        if graph_role(site, anchor, missing) != modal(
+        if "cluster" in lenses and file_clusters is not None and cl(site) != modal(
+            cl(c) for c in conformers
+        ):
+            return False
+        if "graph" in lenses and graph_role(site, anchor, missing) != modal(
             graph_role(c, anchor, missing) for c in conformers
         ):
             return False
@@ -301,14 +322,15 @@ def find_divergences(
     if not candidates:
         return []
 
-    # Self-levelling gate, applied in BOTH contexts: a finding must be a far-out
-    # outlier of the corpus's OWN strength distribution (Tukey fence) — a
-    # consistent codebase has no outliers, hence silence, the truthful signal.
-    # SIG is a secondary floor guarding degenerate tiny corpora. The contexts
-    # differ only in scope:
-    #   audit  (suspects=None): every outlier site.
-    #   review (suspects set):  outliers AND changed code — a touched function
-    #          that breaks a STRONG sibling pattern (likely regression).
+    # The Tukey outlier fence applies in AUDIT ONLY. In audit (suspects=None)
+    # there is no other precision lever, so the fence is what yields silence on
+    # a consistent codebase — the truthful signal. In REVIEW (suspects set) the
+    # suspect filter (changed code only) IS the precision, and the fence on top
+    # of it just discards real regressions: a planted-knock-out recall measure
+    # (experiments/norm_inference/inject_recall.py) showed the fence dropping
+    # qualified-divergence recall from 100% (SIG floor) to 20% on a real repo.
+    # So review keeps the SIG floor (a statistically real consensus) but not the
+    # fence. SIG also guards degenerate tiny corpora in both modes.
     # The Tukey fence needs a populated distribution to mean anything; with too
     # few candidates the IQR is degenerate, so fall back to the SIG floor alone
     # (fence=-inf disables it). Real corpora have hundreds of candidates and use
@@ -321,13 +343,23 @@ def find_divergences(
     else:
         fence = -math.inf
 
-    same_role = _role_conditioner(bags, file_clusters) if role_conditioning else None
+    # Role conditioning applies in both contexts, with context-specific lenses
+    # (DivergenceConfig): audit uses all three; review drops the coarse GRAPH
+    # lens that dissolves real same-name/cluster regressions (inject_recall.py)
+    # while name+cluster still removes the cross-role false positives
+    # (precision_review.py). The fence above stays audit-only.
+    lenses = cfg.audit_lenses if suspects is None else cfg.review_lenses
+    same_role = (
+        _role_conditioner(bags, file_clusters, lenses)
+        if role_conditioning and lenses
+        else None
+    )
 
     findings: list[DivergenceFinding] = []
     for cand in candidates:
         if cand.enrichment < cfg.SIG:  # rule must be statistically real
             continue
-        if cand.strength <= fence:  # self-levelling outlier gate (both contexts)
+        if suspects is None and cand.strength <= fence:  # outlier gate: audit only
             continue
         conformers = sorted(callers_of[cand.anchor] & callers_of[cand.missing])
         sample = [f"{f}:{c}" for f, c in conformers][: cfg.PEERS_SAMPLE]

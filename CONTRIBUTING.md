@@ -467,6 +467,25 @@ How it stays honest (see the `consensus.py` file header for the full rationale):
   base-delegation, alt-parser and traverse-style false positives while keeping
   true knock-outs.
 
+**Audit vs review — the precision levers are audit-only.** The fence and role
+conditioning are precision levers, and a planted-knock-out recall measurement
+(`experiments/norm_inference/inject_recall.py`, with the precision side in
+`precision_review.py`) showed they belong in AUDIT only:
+
+- **Audit** (`find_divergence`, `preview_directory`; `suspects=None`) has no
+  other precision lever, so it keeps the fence + all three conditioning lenses —
+  that is what produces silence on a consistent codebase.
+- **Review** (`scan_diff`; `suspects` set) gets its precision from the suspect
+  filter (changed code only), so it uses NEITHER the fence NOR conditioning
+  (`review_lenses=()`). With them on, review recall of qualified planted
+  regressions was ~20%; without, 100%. The graph lens specifically trades recall
+  for precision 1:1 — it removes the cross-role false positives by the same
+  coarse fan-out test that dissolves real same-name/cluster regressions, so it
+  cannot keep both. And those "false positives" are mostly the right class (a
+  route missing the `require_permission` its peers call — CWE-862), adjudicable
+  in review. So review leans on recall + the "look here, not a bug" framing.
+  This is one config line (`review_lenses`) if a project wants precision-first.
+
 Tests: `tests/test_consensus.py` (knock-out recovery, directional asymmetry,
 self-levelling silence, base-rate suppression, suspect filter) + the golden.
 
