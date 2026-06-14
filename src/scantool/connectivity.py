@@ -23,17 +23,15 @@ from pathlib import Path
 from . import reference_map
 from .code_map import CodeMap
 from .consensus import DivergenceConfig, find_divergences
-from .scanner import FileScanner
+from .languages import get_registry
 
-_DEAD_SKIP = frozenset({"__init__", "__repr__", "__str__", "__eq__", "__hash__", "main"})
-# Dispatch-by-name conventions: invoked via getattr/framework (ast.NodeVisitor
-# visit_*, cmd do_*, handlers on_*/handle_*), so structurally invisible to the
-# call graph — a zero-inbound match here is reachable, not dead.
-_DISPATCH_PREFIXES = ("visit_", "do_", "handle_", "on_")
+# Files scanned for the agnostic "is this bare name referenced anywhere" check.
+_DEAD_EXTS = (".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".j2", ".jinja",
+              ".yaml", ".yml", ".toml", ".json", ".go", ".rs", ".java", ".cs",
+              ".rb", ".php", ".swift")
 _MEMO_MAX_DIRS = 8
 # Above this corpus size the dead/orphan whole-repo scans are skipped (drift only).
 _MAX_HEAVY_FILES = 6000
-_scanner = FileScanner()
 
 # ── Background warming ────────────────────────────────────────────────────────
 # scan_file's tail is a constant-time read of the LAST computed corpus state;
@@ -65,71 +63,77 @@ def _rel(directory: str, file_path: str) -> str:
         return file_path
 
 
-def _decorators_in(repo: Path, relfile: str, cache: dict) -> dict:
-    if relfile in cache:
-        return cache[relfile]
-    out: dict = {}
-    try:
-        nodes = _scanner.scan_file(str(repo / relfile), include_file_metadata=False) or []
-    except Exception:
-        nodes = []
-    stack = list(nodes)
-    while stack:
-        n = stack.pop()
-        if getattr(n, "decorators", None):
-            out[n.name] = n.decorators
-        stack.extend(getattr(n, "children", []) or [])
-    cache[relfile] = out
-    return out
+def _is_test_path(relfile: str) -> bool:
+    p = Path(relfile)
+    return bool(set(p.parts) & {"test", "tests"}) or p.name.startswith("test_")
 
 
 def _compute_dead(directory: str, result) -> "tuple[set, bool]":
-    """Zero-inbound source defs surviving channel subtraction; + dynamic-dispatch flag.
+    """Zero-inbound source defs that no reachability channel explains.
 
-    Channels subtracted (reclassified, NOT claimed dead): decorator-registered,
-    exported (__init__/__all__), name-referenced (dispatch table / registry / config).
+    Language-agnostic by construction: the framework does the agnostic parts
+    (zero-inbound, entry point, decorated, referenced-as-a-bare-name); the def's
+    LANGUAGE adjudicates its own off-graph reachability (`is_offgraph_reachable`).
+    A language that has not modelled its channels (`CLAIMS_DEAD=False`) is SILENT
+    — never a false "this is dead".
     """
     repo = Path(directory)
     entry = {ep.name for ep in result.entry_points if ep.name}
 
-    corpus, inits = [], []
-    exts = (".py", ".js", ".ts", ".html", ".j2", ".jinja", ".yaml", ".yml", ".toml", ".json")
-    for f in reference_map.source_files(repo, exts):
+    corpus = []
+    for f in reference_map.source_files(repo, _DEAD_EXTS):
         try:
-            t = f.read_text(errors="replace")
+            corpus.append(f.read_text(errors="replace"))
         except OSError:
-            continue
-        corpus.append(t)
-        if f.name in ("__init__.py", "pyproject.toml"):
-            inits.append(t)
+            pass
     blob = "\n".join(corpus)
-    init_text = "\n".join(inits)
     dyn = bool(re.search(r"\bgetattr\(|\bglobals\(\)\[|importlib", blob))
-
-    # Precompute once (O(blob)), not per-candidate (O(candidates*blob)): how often
-    # each name appears as a call `name(` and as a bare mention anywhere.
+    # Precompute once (O(blob)): how often each name appears as a call `name(` and
+    # as a bare mention anywhere — a bare-but-not-called name is a dispatch ref.
     call_counts = Counter(re.findall(r"\b(\w+)\s*\(", blob))
     word_counts = Counter(re.findall(r"\b\w+\b", blob))
-    export_names = set(re.findall(r"\b(\w+)\b", init_text))  # lenient: any init/pyproject token
 
-    dec_cache: dict = {}
+    def_by_key = {}
+    for d in result.definitions:
+        qual = f"{d.parent}.{d.name}" if d.parent else d.name
+        def_by_key[(d.file, qual)] = d
+
+    registry = get_registry()
+    analyzers: dict = {}
+    contents: dict = {}
+
+    def analyzer_for(relfile: str):
+        ext = Path(relfile).suffix
+        if ext not in analyzers:
+            cls = registry.get_analyzer(ext)
+            analyzers[ext] = cls() if cls else None
+        return analyzers[ext]
+
+    def content_for(relfile: str) -> str:
+        if relfile not in contents:
+            try:
+                contents[relfile] = (repo / relfile).read_text(errors="replace")
+            except OSError:
+                contents[relfile] = ""
+        return contents[relfile]
+
     residue = set()
     for n in result.call_graph.values():
-        qual = _short(n.name)
-        bare = qual.split(".")[-1]
         if n.callers or n.type not in ("function", "method"):
             continue
-        if bare in entry or bare.startswith("_") or bare in _DEAD_SKIP:
+        analyzer = analyzer_for(n.file)
+        if analyzer is None or not analyzer.CLAIMS_DEAD:   # conservative: opted-in only
             continue
-        if bare.startswith(_DISPATCH_PREFIXES):  # dispatched by name (getattr/framework)
-            continue
-        if "test" in n.file.lower():
-            continue
-        if bare in export_names:                 # exported in __init__/__all__/pyproject
+        qual = _short(n.name)
+        bare = qual.split(".")[-1]
+        if bare in entry or _is_test_path(n.file):
             continue
         if word_counts.get(bare, 0) - call_counts.get(bare, 0) >= 1:
-            continue                             # referenced but not called -> dispatch/registry
-        if _decorators_in(repo, n.file, dec_cache).get(bare):  # framework-registered
+            continue                                       # referenced as a bare name
+        defn = def_by_key.get((n.file, qual))
+        if defn is None or defn.decorators:                # framework-registered
+            continue
+        if analyzer.is_offgraph_reachable(defn, content_for(n.file)):
             continue
         residue.add((n.file, qual))
     return residue, dyn

@@ -46,6 +46,20 @@ class PythonLanguage(BaseLanguage):
         self.parser = Parser()
         self.parser.language = Language(tree_sitter_python.language())
 
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    CLAIMS_DEAD = True
+    #: Dispatch-by-name conventions: invoked via getattr/framework (ast.NodeVisitor
+    #: visit_*, cmd do_*, handlers on_*/handle_*) — invisible to the call graph.
+    _DISPATCH_PREFIXES = ("visit_", "do_", "handle_", "on_")
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        """Python: a zero-inbound def is still reachable if it is leading-underscore
+        (dunder / private protocol — conservative skip) or a dispatch-by-name method.
+        Decorated and __all__/re-exported defs are already subtracted by the
+        framework (decorators field; the export name appears as a bare reference)."""
+        name = defn.name
+        return name.startswith("_") or name.startswith(self._DISPATCH_PREFIXES)
+
     # ===========================================================================
     # Metadata (REQUIRED)
     # ===========================================================================

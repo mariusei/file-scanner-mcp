@@ -39,6 +39,10 @@ class RustLanguage(BaseLanguage):
     CONDENSE_STRATEGY = "skeleton"
     IMPORT_GROUP_LABEL = "use statements"
 
+    # Reachability: NOT opted in — `pub` visibility is not yet captured into
+    # DefinitionInfo.modifiers, so opting in would flag every public fn dead.
+    # Conservative default (silent) until rust.py records pub. (follow-up)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

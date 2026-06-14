@@ -38,6 +38,14 @@ class GoLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # Reachability: Go exports by capitalization — an upper-case identifier is
+    # public API (reachable from outside the corpus); a lower-case one that is
+    # unused is a dead candidate.
+    CLAIMS_DEAD = True
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        return bool(defn.name) and defn.name[0].isupper()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

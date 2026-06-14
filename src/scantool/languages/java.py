@@ -38,6 +38,14 @@ class JavaLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # Reachability: public API (`public` in modifiers) is reachable from outside
+    # the corpus; non-public & unused → dead candidate. Annotations (Spring etc.)
+    # land in decorators and are subtracted by the framework.
+    CLAIMS_DEAD = True
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        return self._public_by_modifier(defn)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

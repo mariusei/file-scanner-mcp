@@ -38,6 +38,10 @@ class CSharpLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # Reachability: NOT opted in — visibility (`public`) is not reliably captured
+    # into DefinitionInfo.modifiers here, so opting in would flag public members
+    # dead. Conservative default (silent) until csharp.py records it. (follow-up)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()

@@ -441,6 +441,41 @@ fix a language, add it to `_CONTRACT_CLEAN`.
 
 ---
 
+## The reachability contract (dead-code detection)
+
+Dead detection flags a zero-inbound definition only if NO channel makes it
+reachable. Those channels (public API, framework dispatch, dispatch-by-name,
+dynamic dispatch) are **language-specific**, so the framework
+(`connectivity._compute_dead`) does only the agnostic parts (zero inbound, entry
+point, decorated, referenced-as-a-bare-name) and delegates the rest to the
+language via `BaseLanguage`:
+
+- `CLAIMS_DEAD: bool = False` — **opt-in**. A language claims dead only once it has
+  modelled its reachability. Default off ⇒ the framework NEVER flags one of its
+  definitions dead. This is what keeps an un-modelled language safe (silent, never
+  a false "this is dead").
+- `is_offgraph_reachable(self, defn, content) -> bool` — default `True` (assume
+  reachable). Override with the language's real verdict. Base helper
+  `_public_by_modifier(defn)` checks `{"public","pub","export"}` in
+  `defn.modifiers`.
+
+`DefinitionInfo` now carries `modifiers` + `decorators` (propagated from
+`StructureNode` in `_structures_to_definitions`), so the verdict reads visibility
+agnostically.
+
+**Opting a language in is a MEASURED step — verify, do not assume.** The export
+channel must actually work: write a fixture (an exported + an unused unexported def)
+and confirm via `_compute_dead` that the **exported one is never flagged** before
+setting `CLAIMS_DEAD=True` (see `tests/test_dead_reachability.py`). Opted in:
+python (dunder/dispatch skip), go (capitalisation — `defn.name[0].isupper()`), java
+(`public` in modifiers). NOT opted in (visibility not captured into modifiers, or
+extra channels unmodelled): rust/c# (record `pub`/`public` first), typescript
+(needs JSX usage in `extract_calls` so components are not falsely dead), ruby/php/
+swift/zig/c-cpp. Reference-mapping orphans are Python-web-scoped (FastAPI/Jinja) and
+silent elsewhere — a separate registry, not this contract.
+
+---
+
 ## Checklist for New Languages
 
 - [ ] Create `src/scantool/languages/LANG.py`

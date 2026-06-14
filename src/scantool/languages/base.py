@@ -604,6 +604,8 @@ class BaseLanguage(ABC):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
                     )
                 )
 
@@ -615,6 +617,31 @@ class BaseLanguage(ABC):
                 )
 
         return definitions
+
+    # ===========================================================================
+    # Reachability contract — for dead-code detection (OPTIONAL, opt-in)
+    # ===========================================================================
+    #: A language sets this True once it has modelled how its definitions stay
+    #: reachable by channels the call graph cannot see. Default False ⇒ the
+    #: framework NEVER claims one of this language's definitions dead — silent, not
+    #: a false "this is dead". This is what keeps an unmodelled language safe.
+    CLAIMS_DEAD: bool = False
+
+    #: Visibility tokens meaning "public API" (reachable from outside the corpus);
+    #: languages emit these into StructureNode.modifiers (Go cap→"public", Rust
+    #: "pub", TS "export", Java/C# "public").
+    _PUBLIC_MODIFIERS = frozenset({"public", "pub", "export"})
+
+    def _public_by_modifier(self, defn: "DefinitionInfo") -> bool:
+        """True if the definition is public API by its declared visibility."""
+        return any(m in self._PUBLIC_MODIFIERS for m in defn.modifiers)
+
+    def is_offgraph_reachable(self, defn: "DefinitionInfo", content: str) -> bool:
+        """For a zero-inbound definition, is it reachable by a channel the call
+        graph cannot see (public API, framework dispatch, dispatch-by-name,
+        dynamic dispatch)? Default True — assume reachable, never claim dead.
+        Opted-in languages (CLAIMS_DEAD) override with their real verdict."""
+        return True
 
     # ===========================================================================
     # Classification (OPTIONAL)

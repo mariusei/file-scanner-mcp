@@ -84,6 +84,12 @@ class DefinitionInfo:
     line: int  # Starting line number
     signature: Optional[str] = None  # Full signature
     parent: Optional[str] = None  # Parent class if method
+    # Reachability facts the call graph cannot see (carried from StructureNode so
+    # dead-detection can read them language-agnostically). Each language already
+    # emits these: visibility in modifiers (Go cap->"public", Rust "pub", TS
+    # "export", Java/C# "public"), framework registration in decorators.
+    modifiers: list[str] = field(default_factory=list)
+    decorators: list[str] = field(default_factory=list)
 
 
 @dataclass
