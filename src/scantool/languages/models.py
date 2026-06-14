@@ -111,7 +111,31 @@ class CallGraphNode:
     type: str  # "function", "class", "method"
     callers: list[str] = field(default_factory=list)  # Who calls this
     callees: list[str] = field(default_factory=list)  # Who this calls
+    # Weighted in/out degree. For an unambiguous name these equal the distinct
+    # caller/callee counts (weight 1). When a call resolves to k candidates the
+    # edge credit is split 1/k across them, so an arbitrary tie-break can no
+    # longer crown one node — see experiments/bucket_entropy/.
+    in_weight: float = 0.0
+    out_weight: float = 0.0
     centrality_score: float = 0.0  # Centrality metric
+
+
+@dataclass
+class DivergenceFinding:
+    """A site that breaks a call-co-occurrence pattern its siblings follow.
+
+    Mined by consensus.find_divergences(): among the callers of `anchor`, a
+    strong majority also call `missing`, but `site` does not. This is a review
+    signal ("look here"), NOT a defect claim — peers may legitimately differ.
+    """
+
+    site: str  # "file:caller" that diverges (the outlier)
+    anchor: str  # shared callee X that defines the cohort (callers of X)
+    missing: str  # coupled callee Y that the peers call and `site` does not
+    peer_count: int  # n: how many callers of X there are
+    conform_count: int  # k: how many of them also call Y
+    surprise: float  # S = -log10 binomial-tail; scale-free consensus strength
+    peers_sample: list[str] = field(default_factory=list)  # a few conforming peers
 
 
 @dataclass

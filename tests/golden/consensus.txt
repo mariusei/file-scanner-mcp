@@ -1,0 +1,5 @@
+━━━ PEER DIVERGENCE ━━━  (sites breaking a sibling pattern — review, not bugs)
+  extractors.py:extract_legacy — calls read_node but not record (8/9 peers do)  [strength 4.1]
+      e.g. siblings that conform: extractors.py:extract_function, extractors.py:extract_index, extractors.py:extract_procedure
+  Note: peers may legitimately differ — treat as "look here", adjudicate by reading.
+

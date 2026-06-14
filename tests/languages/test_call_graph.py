@@ -139,3 +139,55 @@ def test_self_call_ignored():
     # Should not have self-reference
     assert "test.py:recursive" not in node.callers
     assert "test.py:recursive" not in node.callees
+
+
+def test_ambiguous_call_splits_credit():
+    """A call resolving to k candidates splits edge credit 1/k.
+
+    Name alone cannot pick between two same-named functions, so neither is
+    crowned — each gets half the credit. See experiments/bucket_entropy/.
+    """
+    definitions = [
+        DefinitionInfo(file="x.py", type="function", name="target", line=1),
+        DefinitionInfo(file="y.py", type="function", name="target", line=1),
+        DefinitionInfo(file="c.py", type="function", name="caller", line=1),
+    ]
+    calls = [
+        CallInfo(caller_file="c.py", caller_name="caller", callee_name="target", line=2),
+    ]
+
+    graph = build_call_graph(definitions, calls)
+    assert graph["x.py:target"].in_weight == pytest.approx(0.5)
+    assert graph["y.py:target"].in_weight == pytest.approx(0.5)
+    assert graph["c.py:caller"].out_weight == pytest.approx(1.0)
+
+    calculate_centrality(graph)
+    assert graph["x.py:target"].centrality_score == pytest.approx(1.0)
+    assert graph["y.py:target"].centrality_score == pytest.approx(1.0)
+
+
+def test_centrality_is_order_invariant():
+    """Per-node centrality must not depend on definition order.
+
+    Regression for the candidates[0] defect: the old tie-break gave ALL the
+    credit to whichever same-named definition was seen first, so reversing the
+    definition order moved a function in/out of the hot list. Distribute makes
+    each node's score independent of order.
+    """
+    definitions = [
+        DefinitionInfo(file="x.py", type="function", name="target", line=1),
+        DefinitionInfo(file="y.py", type="function", name="target", line=1),
+        DefinitionInfo(file="c.py", type="function", name="caller", line=1),
+        DefinitionInfo(file="d.py", type="function", name="caller2", line=1),
+    ]
+    calls = [
+        CallInfo(caller_file="c.py", caller_name="caller", callee_name="target", line=2),
+        CallInfo(caller_file="d.py", caller_name="caller2", callee_name="target", line=2),
+    ]
+
+    def scores(defs):
+        graph = build_call_graph(defs, calls)
+        calculate_centrality(graph)
+        return {name: node.centrality_score for name, node in graph.items()}
+
+    assert scores(definitions) == scores(list(reversed(definitions)))

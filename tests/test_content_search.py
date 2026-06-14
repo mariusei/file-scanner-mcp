@@ -116,8 +116,9 @@ def evaluate_condition(items):
         found = search_content(results, "skipif")
         leads = find_leads(found, results)
 
-        assert any(name == "evaluate_condition" and "lib.py" in file
-                   for name, file, line in leads)
+        assert any(name == "evaluate_condition"
+                   and any("lib.py" in f for f, _ in targets)
+                   for name, targets in leads)
 
     def test_no_lead_for_same_file_definitions(self, tmp_path):
         from scantool.content_search import find_leads

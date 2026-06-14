@@ -123,13 +123,16 @@ _LEAD_MAX = 5
 _LEAD_MAX_DEFINITIONS = 2  # names defined in several files are too ambiguous
 
 
-def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, str, int]]:
+def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, list[tuple[str, int]]]]:
     """Identifiers called in hit lines but DEFINED in another scanned file —
     the structural hop a grep anchor hides. Measured rationale: concept
     searches often land in the caller while the answer lives one call away
     (SWE-bench pytest-7373).
 
-    Returns (name, defining file, line), most-called first, capped.
+    Returns (name, [(defining file, line), ...]), most-called first, capped.
+    A name defined in several places is genuinely ambiguous — name alone cannot
+    pick the target — so we show all candidates rather than crowning the first
+    (the order-dependent candidates[0] trap, see experiments/bucket_entropy/).
     """
     definitions: dict[str, list[tuple[str, int]]] = {}
     for file_path, structures in results.items():
@@ -171,7 +174,7 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, str, int
         external = [(f, line) for f, line in defined_in if f not in hit_files[name]]
         if not external:
             continue
-        leads.append((name, external[0][0], external[0][1]))
+        leads.append((name, external))
         if len(leads) >= _LEAD_MAX:
             break
     return leads
@@ -199,7 +202,7 @@ def _containing_node(structures, line_no: int):
 
 
 def format_hits(found: list[NodeHits], pattern: str,
-                leads: Optional[list[tuple[str, str, int]]] = None) -> str:
+                leads: Optional[list[tuple[str, list[tuple[str, int]]]]] = None) -> str:
     """Compact structural rendering: node chain + line-numbered hits,
     plus one-hop leads to definitions in other files."""
     if not found:
@@ -229,5 +232,6 @@ def format_hits(found: list[NodeHits], pattern: str,
     if leads:
         # full path — the agent should be able to follow the lead with one scan_file call
         lines.append("\nleads (called in hits, defined elsewhere): " + ", ".join(
-            f"{name} → {file}@{line}" for name, file, line in leads))
+            f"{name} → " + " / ".join(f"{file}@{line}" for file, line in targets)
+            for name, targets in leads))
     return "\n".join(lines)

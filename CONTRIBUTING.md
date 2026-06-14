@@ -420,6 +420,55 @@ Rules that keep the snapshots deterministic:
   snapshot — don't "improve" those files.
 - `.gitattributes` pins LF in working trees: CRLF input measurably
   changes output for html/markdown/sql, so don't remove it.
+- `tests/golden/consensus_fixture/` is frozen input for the peer-divergence
+  snapshot (`consensus.txt`); it has one planted outlier — don't "fix" it.
+
+---
+
+## Peer Divergence (drift detection)
+
+`consensus.py` mines sites that break a call pattern their siblings follow
+(API-usage rule mining — Engler 2001 / PR-Miner 2005). It runs on
+`CodeMap.analyze()` output and is wired into `scan_diff` (review: suspects =
+changed functions) and `preview_directory` (audit: whole corpus).
+
+The honest framing matters: **it is an attention director, not a defect
+oracle.** Peers legitimately differ, so the output says "look here," never
+"this is a bug." Keep that framing in any change — the header/footer in
+`format_divergences` exist to stop an LLM consumer treating a hint as a fact.
+
+How it stays honest (see the `consensus.py` file header for the full rationale):
+
+- **The call graph is the aligner.** A finding's cohort is "callers of X,"
+  aligned by X — not file locality or type. This is what made it work where
+  seven footprint-distance attempts failed (`experiments/network_consensus/`).
+- **Directional.** Only a *missing* coupled call is a finding; an *extra* call
+  is richness and is ignored. A symmetric metric conflates the two.
+- **Name-qualified.** Builtins / common container methods carry no contract and
+  are dropped (`_NOISE_NAMES`); test/throwaway dirs are not a sibling family
+  and are dropped from the corpus (`_NONSOURCE_DIRS`).
+- **Self-levelling gate, no domain-tuned thresholds (REP).** Strength fuses a
+  scale-free enrichment surprise (`-log10` binomial tail vs base rate) with an
+  exceptionality term (how rare the missing side is). Emission requires both
+  statistical significance (`SIG`, a universal p-value) and far-out-outlier
+  status vs the corpus's own distribution (Tukey `Q3 + 3·IQR`). A consistent
+  codebase produces no outliers, hence silence — the truthful signal. The only
+  constants are universal statistical ones, documented in `DivergenceConfig`.
+- **Role-conditioned (multiview-gate).** The residual confound was architectural-
+  style heterogeneity: a function's call pattern depends on its ROLE, so cross-
+  role comparison yields false divergences. A finding survives only if the site's
+  role equals the conformers' modal role under EVERY orthogonal lens —
+  name-morphology, file-cluster (`file_clusters`), and edge-invariant graph
+  position. Orthogonality to the usage bags is mandatory (else conditioning
+  defines away the signal); graph out-degree EXCLUDES the contested edge so a
+  missing call cannot shift the site's own band (the circularity, hardened and
+  measured against an adversarial true positive in
+  `experiments/role_conditioning/graph_harden.py`). Measured to dissolve
+  base-delegation, alt-parser and traverse-style false positives while keeping
+  true knock-outs.
+
+Tests: `tests/test_consensus.py` (knock-out recovery, directional asymmetry,
+self-levelling silence, base-rate suppression, suspect filter) + the golden.
 
 ---
 

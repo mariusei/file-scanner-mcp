@@ -43,22 +43,42 @@ def build_call_graph(
                 method_name = parts[1].rsplit(".", 1)[1]
                 name_index[method_name].append(fqn)
 
-    def find_node(name: str) -> str | None:
-        """Find first matching FQN for a name. O(1) average case."""
-        candidates = name_index.get(name)
-        return candidates[0] if candidates else None
+    def resolve(name: str) -> list[str]:
+        """All FQNs a name could refer to. O(1) average case."""
+        return name_index.get(name) or []
 
-    # Build edges from calls
+    # Build edges from calls. A call resolving to k candidates is genuinely
+    # ambiguous (polymorphic dispatch, overloads, repeated names) — name alone
+    # cannot pick the target. Instead of arbitrarily crowning candidates[0]
+    # (which made centrality depend on definition order — see
+    # experiments/bucket_entropy/), split the edge credit 1/(m*k) across every
+    # caller*callee pair. Distinct (caller_name, callee_name) pairs only, so
+    # call frequency does not inflate centrality (matches prior semantics).
+    seen_pairs: set[tuple[str, str]] = set()
     for call in calls:
-        caller_fqn = find_node(call.caller_name) if call.caller_name else None
-        callee_fqn = find_node(call.callee_name)
+        if not call.caller_name:
+            continue
+        pair = (call.caller_name, call.callee_name)
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
 
-        # Add edge if both found
-        if caller_fqn and callee_fqn and caller_fqn != callee_fqn:
-            if callee_fqn not in graph[caller_fqn].callees:
-                graph[caller_fqn].callees.append(callee_fqn)
-            if caller_fqn not in graph[callee_fqn].callers:
-                graph[callee_fqn].callers.append(caller_fqn)
+        callers = resolve(call.caller_name)
+        callees = resolve(call.callee_name)
+        if not callers or not callees:
+            continue
+
+        weight = 1.0 / (len(callers) * len(callees))
+        for caller_fqn in callers:
+            for callee_fqn in callees:
+                if caller_fqn == callee_fqn:
+                    continue
+                graph[caller_fqn].out_weight += weight
+                graph[callee_fqn].in_weight += weight
+                if callee_fqn not in graph[caller_fqn].callees:
+                    graph[caller_fqn].callees.append(callee_fqn)
+                if caller_fqn not in graph[callee_fqn].callers:
+                    graph[callee_fqn].callers.append(caller_fqn)
 
     return graph
 
@@ -67,8 +87,11 @@ def calculate_centrality(graph: dict[str, CallGraphNode]) -> None:
     """
     Calculate centrality scores for all nodes in the call graph.
 
-    Uses simple degree centrality: score = (callers_count * 2) + callees_count
-    This favors functions that are called by many others (hub functions).
+    Uses weighted degree centrality: score = (in_weight * 2) + out_weight.
+    in_weight/out_weight are the edge-credit sums from build_call_graph; for
+    unambiguous names they equal the distinct caller/callee counts, so this
+    matches the old len-based score wherever no name collision occurred.
+    Favors functions called by many others (hub functions).
 
     Modifies nodes in-place.
 
@@ -77,7 +100,7 @@ def calculate_centrality(graph: dict[str, CallGraphNode]) -> None:
     """
     for node in graph.values():
         # Favor functions that are called often (hubs)
-        node.centrality_score = len(node.callers) * 2 + len(node.callees)
+        node.centrality_score = node.in_weight * 2 + node.out_weight
 
 
 def find_hot_functions(

@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+from scantool.code_map import CodeMap
+from scantool.consensus import find_divergences, format_divergences
 from scantool.directory_formatter import DirectoryFormatter
 from scantool.focus import format_focus
 from scantool.formatter import TreeFormatter
@@ -111,3 +113,16 @@ def test_focus_markdown_heading_is_frozen():
     _assert_matches_golden(
         "focus_markdown",
         _render_focus(TESTS_DIR / SAMPLES["markdown"], "Quick Start"))
+
+
+def _render_divergence(fixture_dir: Path) -> str:
+    # Deterministic: peer divergence is a pure function of the code (no git /
+    # mtime). The fixture has one planted outlier breaking a sibling pattern.
+    result = CodeMap(str(fixture_dir)).analyze()
+    findings = find_divergences(result.definitions, result.calls)
+    return format_divergences(findings)
+
+
+def test_divergence_output_is_frozen():
+    _assert_matches_golden(
+        "consensus", _render_divergence(GOLDEN_DIR / "consensus_fixture"))
