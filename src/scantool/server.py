@@ -16,7 +16,8 @@ from .ref_diff import diff_against_ref
 from .focus import format_focus
 from .formatter import TreeFormatter
 from .directory_formatter import DirectoryFormatter
-from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits
+from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits, repo_root
+from .connectivity import connectivity_tail
 from .scanner import FileScanner
 from .languages import StructureNode
 from .preview import preview_directory as preview_dir_func
@@ -42,7 +43,8 @@ enclosing function/class/section context (replaces grep)
 - cheap overview of a directory -> scan_directory: file tree with one-line \
 gists, code health and churn labels (replaces ls/glob)
 - one file -> scan_file with budget=1500 (300 for a quick look) BEFORE \
-reading it
+reading it; it may append a CONNECTIVITY note (candidate dead/orphan/drift \
+across the whole corpus, silent when clean) — a hint to look at, not a verdict
 - read ONE function/class/section from the scan -> scan_file with \
 focus="name" (or "ClassA.method"): the node verbatim plus parent context. \
 Never cat a whole file or guess a sed/Read line range for this — measured \
@@ -89,6 +91,19 @@ def _git_activity_section(directory: str) -> str:
     if signals is None:
         return ""
     return format_activity(signals)
+
+
+def _connectivity_note(file_path: str) -> str:
+    """Self-levelling connectivity tail for a scanned file (server layer): candidate
+    dead/orphan/drift across the whole corpus, silent when clean. Never raises —
+    a connectivity hiccup must not affect the scan itself."""
+    try:
+        root = repo_root(file_path)
+        if not root:
+            return ""
+        return connectivity_tail(root, file_path)
+    except Exception:
+        return ""
 
 
 def _annotate_churn(results: dict, directory: str) -> None:
@@ -438,7 +453,7 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges"
+    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges. May append a self-levelling CONNECTIVITY note - candidate dead/orphan/drift across the whole corpus, silent when clean; candidates to look at, not verdicts"
 )
 def scan_file(
     file_path: str,
@@ -592,6 +607,7 @@ def scan_file(
                 condense=condense
             )
             result = delta_note + custom_formatter.format(file_path, structures)
+            result += _connectivity_note(file_path)
             return [TextContent(type="text", text=result)]
 
     except FileNotFoundError as e:

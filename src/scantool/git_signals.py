@@ -58,6 +58,21 @@ def _run_git(directory: str, *args: str) -> Optional[str]:
     return result.stdout
 
 
+def repo_root(file_path: str) -> Optional[str]:
+    """Project root containing file_path: the git toplevel, else a walk up to a
+    project marker, else the file's directory. None only if the path is unusable.
+    Used to scope the whole-corpus connectivity view for a single scanned file."""
+    parent = Path(file_path).resolve().parent
+    out = _run_git(str(parent), "rev-parse", "--show-toplevel")
+    if out:
+        return out.strip()
+    markers = ("pyproject.toml", "setup.py", "package.json", "go.mod", "Cargo.toml")
+    for d in (parent, *parent.parents):
+        if any((d / m).exists() for m in markers):
+            return str(d)
+    return str(parent) if parent.is_dir() else None
+
+
 def _last_activity_ts(directory: str) -> Optional[float]:
     """Unix timestamp of the repository's most recent commit."""
     out = _run_git(directory, "log", "-1", "--format=%ct")
