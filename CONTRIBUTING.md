@@ -381,6 +381,66 @@ def should_analyze(self, file_path: str) -> bool:
 
 ---
 
+## The caller-resolution contract (`extract_calls`)
+
+The call graph (hot functions, centrality, peer divergence) is only as good as
+the `CallInfo` records a language emits. There is ONE hard contract:
+
+> **Every `CallInfo.caller_name` must resolve to a `DefinitionInfo` the same
+> language emitted, or be `None` (module level).** The callee may be unresolved
+> (external/stdlib calls are fine) — but an unresolvable *caller* makes the
+> framework silently drop the edge, so the call vanishes from centrality and
+> divergence and the callee looks falsely "dead".
+
+**Responsibility division — the framework owns the rule, languages own the AST:**
+
+| Layer | Owns | Must NOT assume |
+|-------|------|-----------------|
+| Framework (`call_graph.py`, `code_map.py`) | name resolution (FQN + bare-method index), 1/k credit distribution, centrality, divergence, and the contract metric `caller_resolution_health()` | anything language-specific (node types, closure forms, naming) |
+| Language (`languages/LANG.py`) | AST traversal in `extract_calls`, deciding what is a definition, attributing each call to the correct **enclosing extracted definition** | that an intermediate node (closure, lambda, initializer, property wrapper) is a graph node — it is not |
+
+The classic violation: a call inside a nested helper (`def traverse(): self._x()`)
+attributed to `traverse`, which is not an extracted definition. Make such
+intermediates **transparent** — attribute the call to the nearest enclosing
+*extracted* definition (see `python.py::_extract_calls_tree_sitter`, the
+`def_names` guard).
+
+**Data-format requirement (what `extract_calls` must return):** `caller_name`
+matches a `DefinitionInfo.name` (or `f"{parent}.{name}"` for methods) you also
+return from `extract_definitions`, or is `None`. Names only — no qualifiers the
+resolver can't index, no synthetic intermediate names.
+
+**Verify it** — the framework metric makes a violation visible for any language:
+
+```python
+from scantool.code_map import CodeMap
+from scantool.call_graph import caller_resolution_health
+r = CodeMap("tests/LANG/samples").analyze()
+print(caller_resolution_health(r.definitions, r.calls))  # .dropped should be 0
+```
+
+`tests/languages/test_call_graph.py::test_caller_resolution_contract` locks the
+verified-clean languages at `dropped == 0` (a regression ratchet). When you add or
+fix a language, add it to `_CONTRACT_CLEAN`.
+
+**Rollout status** (audited on the sample fixtures):
+
+- **Clean (locked):** python, typescript, go, rust, c#, php, c/cpp.
+- **Known violators (need a per-language `extract_calls` fix, each its own cause):**
+  - `swift` — initializer/property-wrapper calls (`init`/`deinit`/`wrappedValue`)
+    not attributed to an extracted definition.
+  - `ruby` — e.g. `create_default` not resolving to an emitted definition.
+  - `zig` — `deinit` not resolved.
+  - `java` — an occasional unresolved caller.
+
+  Fix pattern: run the metric, read each `top_dropped` name, decide whether it
+  should be (a) emitted as a definition or (b) attributed to its enclosing
+  definition; fix the language's `extract_calls`; move the language into
+  `_CONTRACT_CLEAN`. Do NOT touch `call_graph.py` — the gap is always in the
+  language extractor, by design.
+
+---
+
 ## Checklist for New Languages
 
 - [ ] Create `src/scantool/languages/LANG.py`
@@ -391,6 +451,9 @@ def should_analyze(self, file_path: str) -> bool:
 - [ ] Freeze the output format: add a `basic.*` sample, add the language
       to `SAMPLES` in `tests/test_golden.py`, then generate the snapshot
       with `UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py`
+- [ ] If you implement `extract_calls`: honor the caller-resolution contract
+      (`caller_resolution_health(...).dropped == 0`) and add the language to
+      `_CONTRACT_CLEAN` in `tests/languages/test_call_graph.py`
 - [ ] Run tests: `uv run pytest tests/LANG/`
 - [ ] Run all tests: `uv run pytest tests/`
 

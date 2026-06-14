@@ -1,7 +1,56 @@
 """Call graph construction and centrality analysis."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+
 from .languages import CallInfo, DefinitionInfo, CallGraphNode
+
+
+@dataclass
+class CallerResolution:
+    """Health of the language->framework call contract (see caller_resolution_health)."""
+
+    total: int = 0  # calls carrying a caller_name
+    resolved: int = 0  # caller_name resolves to a definition node
+    dropped: int = 0  # caller_name resolves to nothing -> edge silently dropped
+    top_dropped: list[tuple[str, int]] = field(default_factory=list)
+
+    @property
+    def rate(self) -> float:
+        return self.dropped / self.total if self.total else 0.0
+
+
+def caller_resolution_health(
+    definitions: list[DefinitionInfo], calls: list[CallInfo]
+) -> CallerResolution:
+    """General rule the FRAMEWORK owns: every CallInfo.caller_name must resolve to
+    a definition the same language emitted (or be None for module level). When it
+    does not, build_call_graph silently drops the edge, so the call vanishes from
+    centrality/divergence and the callee looks falsely "dead".
+
+    A high dropped rate means a language extractor is violating the contract —
+    attributing calls to names that are not definitions (e.g. an un-extracted
+    nested closure). Languages own the AST traversal; this metric lets the
+    framework detect a violation in ANY language without hand-debugging.
+    """
+    index: set[str] = set()
+    for defn in definitions:
+        index.add(defn.name)
+        if defn.parent:
+            index.add(f"{defn.parent}.{defn.name}")
+    total = dropped = 0
+    drops: Counter = Counter()
+    for call in calls:
+        if not call.caller_name:
+            continue
+        total += 1
+        if call.caller_name not in index:
+            dropped += 1
+            drops[call.caller_name] += 1
+    return CallerResolution(
+        total=total, resolved=total - dropped, dropped=dropped,
+        top_dropped=drops.most_common(5),
+    )
 
 
 def build_call_graph(

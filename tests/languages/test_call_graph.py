@@ -1,12 +1,38 @@
 """Tests for call graph analysis."""
 
+from pathlib import Path
+
 import pytest
 from scantool.call_graph import (
     build_call_graph,
     calculate_centrality,
+    caller_resolution_health,
     find_hot_functions,
 )
+from scantool.code_map import CodeMap
 from scantool.languages import DefinitionInfo, CallInfo, CallGraphNode
+
+_TESTS_DIR = Path(__file__).resolve().parents[1]
+
+# The language->framework contract: every CallInfo.caller_name must resolve to a
+# definition the same language emitted (or be None). A violation drops the edge
+# silently — false "dead" functions, starved centrality/divergence. These
+# languages are verified clean and LOCKED here (also the regression guard for the
+# Python closure-attribution fix). Known violators (swift init/deinit/wrappedValue,
+# ruby create_default, zig deinit, java) are tracked in the cross-language plan,
+# CONTRIBUTING "Caller-resolution contract" — each needs a per-language fix.
+_CONTRACT_CLEAN = ["python", "typescript", "go", "rust", "csharp", "php", "c_cpp"]
+
+
+@pytest.mark.parametrize("lang", _CONTRACT_CLEAN)
+def test_caller_resolution_contract(lang):
+    """Every call's caller_name resolves to a definition — no silently dropped edges."""
+    result = CodeMap(str(_TESTS_DIR / lang / "samples")).analyze()
+    health = caller_resolution_health(result.definitions, result.calls)
+    assert health.dropped == 0, (
+        f"{lang}: {health.dropped}/{health.total} calls have an unresolvable "
+        f"caller (contract violated) — top: {health.top_dropped}"
+    )
 
 
 @pytest.fixture
