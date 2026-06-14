@@ -6,6 +6,8 @@ import subprocess
 
 import pytest
 
+from scantool.code_map import clear_corpus_cache
+from scantool.connectivity import clear_connectivity_cache
 from scantool.ref_diff import diff_against_ref
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
@@ -118,3 +120,51 @@ class TestRefDiff:
         (tmp_path / "f.py").write_text("x = 1\n")
 
         assert "not in a git repo" in diff_against_ref(str(tmp_path))
+
+
+def _init_connectivity_repo(tmp_path):
+    _git(tmp_path, "init", "-q")
+    (tmp_path / "core.py").write_text("def used():\n    return 1\n")
+    (tmp_path / "main.py").write_text(
+        "from core import used\n\ndef main():\n    return used()\n")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "base")
+    clear_corpus_cache()
+    clear_connectivity_cache()
+
+
+@requires_git
+class TestRefDiffConnectivity:
+    """The review tail: dead/orphan loose ends a change introduces."""
+
+    def test_flags_introduced_dead(self, tmp_path):
+        _init_connectivity_repo(tmp_path)
+        (tmp_path / "core.py").write_text(  # add a function nothing calls
+            "def used():\n    return 1\n\ndef just_added():\n    return 2\n")
+        clear_corpus_cache()
+        clear_connectivity_cache()
+        out = diff_against_ref(str(tmp_path))
+        assert "candidate-dead" in out
+        assert "just_added" in out
+
+    def test_flags_orphan_route(self, tmp_path):
+        _init_connectivity_repo(tmp_path)
+        (tmp_path / "app.py").write_text(  # a route referenced by no URL
+            '@router.get("/konto-hint")\n'
+            'def hent_konto_hint():\n    return 1\n\n'
+            'def main():\n    return hent_konto_hint()\n')
+        clear_corpus_cache()
+        clear_connectivity_cache()
+        out = diff_against_ref(str(tmp_path))
+        assert "orphan" in out
+        assert "/konto-hint" in out
+
+    def test_clean_change_has_no_loose_ends(self, tmp_path):
+        _init_connectivity_repo(tmp_path)
+        (tmp_path / "main.py").write_text(  # body tweak, nothing dead/orphan
+            "from core import used\n\ndef main():\n    return used() + 0\n")
+        clear_corpus_cache()
+        clear_connectivity_cache()
+        out = diff_against_ref(str(tmp_path))
+        assert "candidate-dead" not in out
+        assert "orphan" not in out

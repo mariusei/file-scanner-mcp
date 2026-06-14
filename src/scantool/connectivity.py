@@ -144,6 +144,19 @@ def _dead_and_orphans(directory: str, result) -> "tuple[set, list, bool]":
     return dead, orphans, dyn
 
 
+def corpus_dead_orphans(directory: str, result) -> "tuple[set, list, bool]":
+    """Public: channel-subtracted dead residue (set[(file, qualname)]) +
+    reference-mapping orphans (list[(location, tag, key, pid)]) + dynamic-dispatch
+    flag, for a whole repo. Memoised per directory (shared with the scan_file tail).
+    Empty above the heavy-corpus guard — the cheap drift signal still applies."""
+    if result.total_files > _MAX_HEAVY_FILES:
+        return set(), [], False
+    try:
+        return _dead_and_orphans(directory, result)
+    except Exception:
+        return set(), [], False
+
+
 def connectivity_tail(directory: str, file_path: str, max_items: int = 12) -> str:
     """A connectivity note for one file, or '' when nothing fires / on error."""
     try:
@@ -164,14 +177,9 @@ def connectivity_tail(directory: str, file_path: str, max_items: int = 12) -> st
     except Exception:
         pass
 
-    dead, orphan, dyn = [], [], False
-    if result.total_files <= _MAX_HEAVY_FILES:
-        try:
-            dead_all, orphans_all, dyn = _dead_and_orphans(directory, result)
-            dead = sorted({name for f, name in dead_all if f == rel})
-            orphan = [(t, k, p) for loc, t, k, p in orphans_all if loc == rel]
-        except Exception:
-            dead, orphan, dyn = [], [], False
+    dead_all, orphans_all, dyn = corpus_dead_orphans(directory, result)
+    dead = sorted({name for f, name in dead_all if f == rel})
+    orphan = [(t, k, p) for loc, t, k, p in orphans_all if loc == rel]
 
     if not (drift or dead or orphan):
         return ""

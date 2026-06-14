@@ -125,38 +125,61 @@ def diff_against_ref(
         summary.append("without structural change: " + ", ".join(unstructured))
     body = "\n".join(summary) + "\n" + "\n".join(sections)
 
-    divergence = _divergence_section(toplevel, changed_files)
-    if divergence:
-        body += "\n\n" + divergence
+    review = _connectivity_section(toplevel, changed_files)
+    if review:
+        body += "\n\n" + review
     return body
 
 
-def _divergence_section(toplevel: str, changed_files: set[str]) -> str:
-    """Peer-divergence on the changed code: do the touched functions break a
-    call-pattern their siblings across the repo follow? The repo is the peer
-    corpus, the diff is the suspect set — review-mode precision. Never raises
-    into the diff: a corpus build failure just means no section."""
+def _connectivity_section(toplevel: str, changed_files: set[str]) -> str:
+    """Review-mode connectivity on the changed code: the loose ends a change
+    introduced. Three subsections, scoped to the changed files:
+      - orphan : a route/template you touched that is referenced nowhere
+      - dead   : a definition you touched that now has no inbound caller
+      - drift  : a touched function that breaks a sibling call-pattern
+    The repo is the corpus, the diff is the scope. "Candidates, not verdicts."
+    Never raises into the diff — a corpus build failure just means no section."""
     if not changed_files:
         return ""
     try:
         from .code_map import CodeMap
+        from .connectivity import corpus_dead_orphans
 
         result = CodeMap(toplevel).analyze()
-        suspects = {
-            (d.file, d.name) for d in result.definitions if d.file in changed_files
-        }
-        if not suspects:
-            return ""
-        file_clusters = {
-            f: cluster for cluster, files in result.clusters.items() for f in files
-        }
-        findings = find_divergences(
-            result.definitions, result.calls, suspects=suspects,
-            file_clusters=file_clusters,
-        )
-        if not findings:
-            return ""
-        return format_divergences(findings)
+        blocks: list[str] = []
+
+        # dead + orphan introduced in the changed files
+        dead_all, orphans_all, dyn = corpus_dead_orphans(toplevel, result)
+        orphan = [(t, k, p) for loc, t, k, p in orphans_all if loc in changed_files]
+        dead = sorted((f, qual) for f, qual in dead_all if f in changed_files)
+        if orphan or dead:
+            lines = ["── REVIEW: connectivity in changed files (candidates, not verdicts) ──"]
+            if orphan:
+                lines.append("  orphan (referenced nowhere — candidate dead):")
+                for tag, key, pid in orphan[:20]:
+                    lines.append(f"    {tag} {key}  ({pid})")
+            if dead:
+                note = " [dynamic dispatch — down-weighted]" if dyn else ""
+                lines.append(f"  candidate-dead (no inbound caller){note}:")
+                for f, qual in dead[:20]:
+                    lines.append(f"    {qual}  ({f})")
+            blocks.append("\n".join(lines))
+
+        # peer divergence on the changed functions (the repo is the peer corpus,
+        # the diff is the suspect set — review-mode precision)
+        suspects = {(d.file, d.name) for d in result.definitions if d.file in changed_files}
+        if suspects:
+            file_clusters = {
+                f: cluster for cluster, files in result.clusters.items() for f in files
+            }
+            findings = find_divergences(
+                result.definitions, result.calls, suspects=suspects,
+                file_clusters=file_clusters,
+            )
+            if findings:
+                blocks.append(format_divergences(findings))
+
+        return "\n\n".join(blocks)
     except Exception:
         return ""
 
