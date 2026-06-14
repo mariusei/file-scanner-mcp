@@ -5,6 +5,8 @@
 
 MCP server for analyzing source code structure across 20+ languages. Works with **Claude Code**, **Claude Desktop**, and any **Model Context Protocol** client. Powered by **tree-sitter**. Extracts classes, functions, methods, imports, call graphs, and hot functions with precise line numbers.
 
+**Zero infrastructure**: no index to build, no API keys, no vector database, no model downloads. Point it at a directory and it scans on demand — code *and* documents (Markdown, HTML, CSS, SQL, config) through the same structural lens.
+
 ## Quick Start
 
 **Requires [uv](https://docs.astral.sh/uv/)** (provides the `uvx` command). Install it first if you don't have it — without it, scantool will silently fail to start:
@@ -42,6 +44,55 @@ Add to config (`~/Library/Application Support/Claude/claude_desktop_config.json`
 ```
 
 Restart Claude Desktop after configuration.
+
+### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per project):
+
+```json
+{
+  "mcpServers": {
+    "scantool": {
+      "command": "uvx",
+      "args": ["scantool"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "scantool": {
+      "command": "uvx",
+      "args": ["scantool"]
+    }
+  }
+}
+```
+
+### VS Code (Copilot agent mode)
+
+Add to `.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "servers": {
+    "scantool": {
+      "command": "uvx",
+      "args": ["scantool"]
+    }
+  }
+}
+```
+
+### Cline
+
+In the Cline panel: MCP Servers icon → *Configure* tab → *Configure MCP Servers*, then add the same `mcpServers` entry as above. (Cline CLI reads `~/.cline/mcp.json`.)
 
 ### Troubleshooting: `uvx` not found
 
@@ -116,6 +167,7 @@ Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, Swift
 - **scan_directory**: Compact directory tree with inline function/class names
 - **search_structures**: Filter by type, name pattern, decorator, or complexity
 - **list_directories**: Directory tree (folders only)
+- **find_divergence**: Audit a directory for peer divergence — functions that break a call pattern their siblings follow (peers calling X also call Y, this one doesn't); a review hint, not a verified bug; silent on a consistent codebase. The same section also appears inline in `scan_diff` (changed code) and `preview_directory` (deep)
 
 ### Output Formats
 - Tree format with box-drawing characters
@@ -399,7 +451,9 @@ consumer (measured in `experiments/benchmark/M2B.md`). Two consequences:
   deliberate snapshot update (`UPDATE_GOLDEN=1 uv run pytest
   tests/test_golden.py`); an accidental change fails CI. Environment-
   dependent parts (file size/mtime, git churn, delta memory) live outside
-  the frozen layer.
+  the frozen layer. Peer divergence is a pure function of the code, so it
+  is frozen too (`tests/golden/consensus.txt`, fixture in
+  `tests/golden/consensus_fixture/`).
 
 ## Supported Languages
 
@@ -444,6 +498,8 @@ All files include metadata (size, modified date, permissions) automatically.
 - Generate structural diffs
 - Find functions with specific decorators
 - Identify test coverage gaps
+- Peer divergence: spot a changed function that breaks a call pattern its
+  siblings across the repo follow (a likely regression — adjudicate by reading)
 
 ### Documentation
 - Auto-generate table of contents with line numbers
