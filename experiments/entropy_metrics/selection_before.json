@@ -1,0 +1,623 @@
+{
+  "src/scantool/scanner.py": [
+    {
+      "name": "get_supported_extensions",
+      "type": "method",
+      "lines": [
+        425,
+        427
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "get_scanner_info",
+      "type": "method",
+      "lines": [
+        429,
+        431
+      ],
+      "coverage": 1.0
+    }
+  ],
+  "src/scantool/preview.py": [
+    {
+      "name": "DirectoryStats",
+      "type": "class",
+      "lines": [
+        12,
+        54
+      ],
+      "coverage": 0.535
+    },
+    {
+      "name": "format_extensions",
+      "type": "method",
+      "lines": [
+        38,
+        54
+      ],
+      "coverage": 0.706
+    },
+    {
+      "name": "__init__",
+      "type": "method",
+      "lines": [
+        60,
+        95
+      ],
+      "coverage": 0.583
+    },
+    {
+      "name": "_format_size",
+      "type": "method",
+      "lines": [
+        568,
+        574
+      ],
+      "coverage": 0.714
+    }
+  ],
+  "src/scantool/code_map.py": [
+    {
+      "name": "_format_file_size",
+      "type": "method",
+      "lines": [
+        419,
+        426
+      ],
+      "coverage": 0.875
+    }
+  ],
+  "src/scantool/formatter.py": [],
+  "src/scantool/entropy/core.py": [
+    {
+      "name": "SalientPartition",
+      "type": "class",
+      "lines": [
+        14,
+        24
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "line_range",
+      "type": "method",
+      "lines": [
+        23,
+        24
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_bytes_to_line_number",
+      "type": "function",
+      "lines": [
+        88,
+        90
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "_shannon_entropy",
+      "type": "function",
+      "lines": [
+        247,
+        254
+      ],
+      "coverage": 0.875
+    }
+  ],
+  "src/scantool/languages/python.py": [
+    {
+      "name": "__init__",
+      "type": "method",
+      "lines": [
+        42,
+        45
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "get_language_name",
+      "type": "method",
+      "lines": [
+        56,
+        57
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "get_priority",
+      "type": "method",
+      "lines": [
+        60,
+        61
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "is_low_value_for_inventory",
+      "type": "method",
+      "lines": [
+        81,
+        100
+      ],
+      "coverage": 0.85
+    },
+    {
+      "name": "_extract_function",
+      "type": "method",
+      "lines": [
+        213,
+        238
+      ],
+      "coverage": 0.615
+    },
+    {
+      "name": "_ShortenLiterals",
+      "type": "class",
+      "lines": [
+        822,
+        831
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "visit_Lambda",
+      "type": "method",
+      "lines": [
+        825,
+        826
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "visit_Constant",
+      "type": "method",
+      "lines": [
+        828,
+        831
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "__init__",
+      "type": "method",
+      "lines": [
+        837,
+        838
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "_trunc",
+      "type": "function",
+      "lines": [
+        860,
+        876
+      ],
+      "coverage": 0.941
+    }
+  ],
+  "src/scantool/languages/base.py": [
+    {
+      "name": "_fragment_prefix",
+      "type": "method",
+      "lines": [
+        200,
+        202
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/go/samples/edge_cases.go": [
+    {
+      "name": "Add",
+      "type": "method",
+      "lines": [
+        16,
+        20
+      ],
+      "coverage": 0.6
+    },
+    {
+      "name": "ProcessWithIgnored",
+      "type": "function",
+      "lines": [
+        146,
+        148
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/go/samples/basic.go": [
+    {
+      "name": "Query",
+      "type": "method",
+      "lines": [
+        51,
+        53
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "FormatTimestamp",
+      "type": "function",
+      "lines": [
+        81,
+        83
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "main",
+      "type": "function",
+      "lines": [
+        86,
+        90
+      ],
+      "coverage": 1.0
+    }
+  ],
+  "tests/rust/samples/edge_cases.rs": [
+    {
+      "name": "Container",
+      "type": "struct",
+      "lines": [
+        8,
+        11
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "async_fetch",
+      "type": "function",
+      "lines": [
+        71,
+        73
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "async_unsafe_function",
+      "type": "function",
+      "lines": [
+        91,
+        93
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "impl_trait_return",
+      "type": "function",
+      "lines": [
+        141,
+        143
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "dyn_trait_param",
+      "type": "function",
+      "lines": [
+        146,
+        148
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "User",
+      "type": "impl",
+      "lines": [
+        177,
+        182
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "method_two",
+      "type": "method",
+      "lines": [
+        179,
+        181
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/typescript/samples/basic.ts": [
+    {
+      "name": "Config",
+      "type": "interface",
+      "lines": [
+        11,
+        14
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "constructor",
+      "type": "method",
+      "lines": [
+        26,
+        29
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "generateId",
+      "type": "function",
+      "lines": [
+        95,
+        97
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "validateEmail",
+      "type": "function",
+      "lines": [
+        102,
+        104
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "calculateStats",
+      "type": "function",
+      "lines": [
+        109,
+        114
+      ],
+      "coverage": 0.5
+    }
+  ],
+  "tests/c_cpp/samples/edge_cases.cpp": [
+    {
+      "name": "insert",
+      "type": "method",
+      "lines": [
+        17,
+        19
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "KeyValueStore<std::string, int>",
+      "type": "class",
+      "lines": [
+        38,
+        43
+      ],
+      "coverage": 0.5
+    },
+    {
+      "name": "insert",
+      "type": "method",
+      "lines": [
+        40,
+        42
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "Complex",
+      "type": "method",
+      "lines": [
+        53,
+        53
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "DataCache",
+      "type": "method",
+      "lines": [
+        92,
+        92
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "~Shape",
+      "type": "method",
+      "lines": [
+        115,
+        115
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "area",
+      "type": "method",
+      "lines": [
+        118,
+        118
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "draw",
+      "type": "method",
+      "lines": [
+        121,
+        123
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "validate_input",
+      "type": "function",
+      "lines": [
+        187,
+        189
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "NonCopyable",
+      "type": "class",
+      "lines": [
+        192,
+        199
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "NonCopyable",
+      "type": "method",
+      "lines": [
+        194,
+        194
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "NonCopyable",
+      "type": "method",
+      "lines": [
+        195,
+        195
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "NonCopyable",
+      "type": "method",
+      "lines": [
+        197,
+        197
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "print_all",
+      "type": "function",
+      "lines": [
+        203,
+        205
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "factorial",
+      "type": "function",
+      "lines": [
+        218,
+        220
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "main",
+      "type": "function",
+      "lines": [
+        249,
+        277
+      ],
+      "coverage": 0.966
+    }
+  ],
+  "tests/ruby/samples/basic.rb": [
+    {
+      "name": "initialize",
+      "type": "method",
+      "lines": [
+        43,
+        45
+      ],
+      "coverage": 0.667
+    }
+  ],
+  "tests/swift/samples/basic.swift": [
+    {
+      "name": "connectionString",
+      "type": "property",
+      "lines": [
+        40,
+        40
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "isConnected",
+      "type": "property",
+      "lines": [
+        41,
+        41
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "init",
+      "type": "initializer",
+      "lines": [
+        44,
+        46
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "query",
+      "type": "method",
+      "lines": [
+        63,
+        65
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "DatabaseManager",
+      "type": "extension",
+      "lines": [
+        69,
+        77
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "log",
+      "type": "method",
+      "lines": [
+        70,
+        72
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "logError",
+      "type": "method",
+      "lines": [
+        74,
+        76
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "validateEmail",
+      "type": "function",
+      "lines": [
+        104,
+        106
+      ],
+      "coverage": 0.667
+    },
+    {
+      "name": "UserID",
+      "type": "typealias",
+      "lines": [
+        116,
+        116
+      ],
+      "coverage": 1.0
+    },
+    {
+      "name": "CompletionHandler",
+      "type": "typealias",
+      "lines": [
+        117,
+        117
+      ],
+      "coverage": 1.0
+    }
+  ]
+}

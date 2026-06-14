@@ -1,0 +1,408 @@
+{
+  "src/scantool/scanner.py": [
+    {
+      "name": "scan_file",
+      "type": "method",
+      "lines": [
+        97,
+        169
+      ],
+      "saliency": 0.8
+    }
+  ],
+  "src/scantool/preview.py": [
+    {
+      "name": "format_output",
+      "type": "method",
+      "lines": [
+        255,
+        387
+      ],
+      "saliency": 0.776
+    },
+    {
+      "name": "_calculate_relevance",
+      "type": "method",
+      "lines": [
+        423,
+        454
+      ],
+      "saliency": 0.587
+    },
+    {
+      "name": "_generate_recommendations",
+      "type": "method",
+      "lines": [
+        525,
+        565
+      ],
+      "saliency": 0.582
+    },
+    {
+      "name": "preview_directory",
+      "type": "function",
+      "lines": [
+        584,
+        638
+      ],
+      "saliency": 0.886
+    }
+  ],
+  "src/scantool/code_map.py": [
+    {
+      "name": "analyze",
+      "type": "method",
+      "lines": [
+        69,
+        170
+      ],
+      "saliency": 0.561
+    },
+    {
+      "name": "format_tree",
+      "type": "method",
+      "lines": [
+        428,
+        930
+      ],
+      "saliency": 0.542
+    }
+  ],
+  "src/scantool/formatter.py": [
+    {
+      "name": "_format_node",
+      "type": "method",
+      "lines": [
+        57,
+        148
+      ],
+      "saliency": 0.916
+    }
+  ],
+  "src/scantool/entropy/core.py": [
+    {
+      "name": "_new_information",
+      "type": "function",
+      "lines": [
+        128,
+        146
+      ],
+      "saliency": 0.653
+    }
+  ],
+  "src/scantool/languages/python.py": [
+    {
+      "name": "is_low_value_for_inventory",
+      "type": "method",
+      "lines": [
+        81,
+        100
+      ],
+      "saliency": 0.574
+    },
+    {
+      "name": "condense_excerpt",
+      "type": "method",
+      "lines": [
+        125,
+        146
+      ],
+      "saliency": 0.612
+    },
+    {
+      "name": "_fallback_extract",
+      "type": "method",
+      "lines": [
+        354,
+        384
+      ],
+      "saliency": 0.559
+    },
+    {
+      "name": "extract_imports",
+      "type": "method",
+      "lines": [
+        390,
+        456
+      ],
+      "saliency": 0.574
+    },
+    {
+      "name": "find_entry_points",
+      "type": "method",
+      "lines": [
+        458,
+        543
+      ],
+      "saliency": 0.597
+    },
+    {
+      "name": "_trunc",
+      "type": "function",
+      "lines": [
+        860,
+        876
+      ],
+      "saliency": 0.784
+    },
+    {
+      "name": "_skeleton_stmts",
+      "type": "function",
+      "lines": [
+        890,
+        981
+      ],
+      "saliency": 0.849
+    }
+  ],
+  "src/scantool/languages/base.py": [
+    {
+      "name": "is_low_value_for_inventory",
+      "type": "method",
+      "lines": [
+        144,
+        168
+      ],
+      "saliency": 0.695
+    },
+    {
+      "name": "scan",
+      "type": "method",
+      "lines": [
+        175,
+        188
+      ],
+      "saliency": 0.669
+    },
+    {
+      "name": "condense_excerpt",
+      "type": "method",
+      "lines": [
+        204,
+        240
+      ],
+      "saliency": 0.776
+    },
+    {
+      "name": "_significant_rows",
+      "type": "method",
+      "lines": [
+        282,
+        300
+      ],
+      "saliency": 0.523
+    },
+    {
+      "name": "classify_file",
+      "type": "method",
+      "lines": [
+        439,
+        492
+      ],
+      "saliency": 0.722
+    },
+    {
+      "name": "resolve_import_to_file",
+      "type": "method",
+      "lines": [
+        498,
+        522
+      ],
+      "saliency": 0.617
+    }
+  ],
+  "tests/go/samples/edge_cases.go": [
+    {
+      "name": "Get",
+      "type": "method",
+      "lines": [
+        23,
+        31
+      ],
+      "saliency": 0.931
+    },
+    {
+      "name": "Process",
+      "type": "method",
+      "lines": [
+        59,
+        71
+      ],
+      "saliency": 0.918
+    },
+    {
+      "name": "ComplexOperation",
+      "type": "function",
+      "lines": [
+        89,
+        102
+      ],
+      "saliency": 0.805
+    }
+  ],
+  "tests/go/samples/basic.go": [
+    {
+      "name": "FormatTimestamp",
+      "type": "function",
+      "lines": [
+        81,
+        83
+      ],
+      "saliency": 0.743
+    },
+    {
+      "name": "main",
+      "type": "function",
+      "lines": [
+        86,
+        90
+      ],
+      "saliency": 0.9
+    }
+  ],
+  "tests/rust/samples/edge_cases.rs": [
+    {
+      "name": "async_fetch",
+      "type": "function",
+      "lines": [
+        71,
+        73
+      ],
+      "saliency": 0.984
+    },
+    {
+      "name": "raw_pointer_access",
+      "type": "function",
+      "lines": [
+        76,
+        78
+      ],
+      "saliency": 0.757
+    },
+    {
+      "name": "impl_trait_return",
+      "type": "function",
+      "lines": [
+        141,
+        143
+      ],
+      "saliency": 0.908
+    },
+    {
+      "name": "dyn_trait_param",
+      "type": "function",
+      "lines": [
+        146,
+        148
+      ],
+      "saliency": 0.776
+    }
+  ],
+  "tests/typescript/samples/basic.ts": [
+    {
+      "name": "generateId",
+      "type": "function",
+      "lines": [
+        95,
+        97
+      ],
+      "saliency": 0.719
+    },
+    {
+      "name": "calculateStats",
+      "type": "function",
+      "lines": [
+        109,
+        114
+      ],
+      "saliency": 0.672
+    }
+  ],
+  "tests/c_cpp/samples/edge_cases.cpp": [
+    {
+      "name": "Complex",
+      "type": "class",
+      "lines": [
+        46,
+        83
+      ],
+      "saliency": 0.911
+    },
+    {
+      "name": "get",
+      "type": "method",
+      "lines": [
+        95,
+        99
+      ],
+      "saliency": 0.669
+    },
+    {
+      "name": "NonCopyable",
+      "type": "class",
+      "lines": [
+        192,
+        199
+      ],
+      "saliency": 0.622
+    },
+    {
+      "name": "main",
+      "type": "function",
+      "lines": [
+        249,
+        277
+      ],
+      "saliency": 0.837
+    }
+  ],
+  "tests/ruby/samples/basic.rb": [
+    {
+      "name": "self.create_default",
+      "type": "method",
+      "lines": [
+        35,
+        37
+      ],
+      "saliency": 0.69
+    },
+    {
+      "name": "main",
+      "type": "method",
+      "lines": [
+        69,
+        73
+      ],
+      "saliency": 0.8
+    }
+  ],
+  "tests/swift/samples/basic.swift": [
+    {
+      "name": "logError",
+      "type": "method",
+      "lines": [
+        74,
+        76
+      ],
+      "saliency": 0.674
+    },
+    {
+      "name": "validateEmail",
+      "type": "function",
+      "lines": [
+        104,
+        106
+      ],
+      "saliency": 0.737
+    },
+    {
+      "name": "formatTimestamp",
+      "type": "function",
+      "lines": [
+        109,
+        113
+      ],
+      "saliency": 0.86
+    }
+  ]
+}
