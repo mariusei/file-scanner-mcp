@@ -17,6 +17,7 @@ from .languages import (
 )
 from .languages.generic import GenericLanguage
 from . import call_graph
+from .consensus import DivergenceConfig, find_divergences, format_divergences
 
 
 class CodeMap:
@@ -631,7 +632,7 @@ class CodeMap:
                                 sig = f"({cls.signature})" if cls.signature else ""
                                 centrality = get_centrality(cls)
                                 # Show centrality if significant
-                                cent_str = f" [called by {int(centrality)}]" if centrality > 0 else ""
+                                cent_str = f" [called by {round(centrality)}]" if round(centrality) >= 1 else ""
                                 lines.append(f"     class {cls.name}{sig}{cent_str}")
 
                         # Show top-level functions (sorted by centrality)
@@ -646,7 +647,7 @@ class CodeMap:
                                     sig = f"{func.name}()"
 
                                 centrality = get_centrality(func)
-                                cent_str = f" [called by {int(centrality)}]" if centrality > 0 else ""
+                                cent_str = f" [called by {round(centrality)}]" if round(centrality) >= 1 else ""
                                 lines.append(f"     def {sig}{cent_str}")
 
                         # Show count if more exist
@@ -712,7 +713,7 @@ class CodeMap:
                             shown_items = 0
                             for cls in classes[:2]:
                                 cent = get_centrality_arch(cls)
-                                cent_str = f" [×{int(cent)}]" if cent > 0 else ""
+                                cent_str = f" [×{round(cent)}]" if round(cent) >= 1 else ""
                                 lines.append(f"       class {cls.name}{cent_str}")
                                 shown_items += 1
                             for func in functions[:2]:
@@ -725,7 +726,7 @@ class CodeMap:
                                     sig = f"{func.name}()"
 
                                 cent = get_centrality_arch(func)
-                                cent_str = f" [×{int(cent)}]" if cent > 0 else ""
+                                cent_str = f" [×{round(cent)}]" if round(cent) >= 1 else ""
                                 lines.append(f"       def {sig}{cent_str}")
                                 shown_items += 1
 
@@ -762,6 +763,23 @@ class CodeMap:
                         f"calls {len(func.callees)} @{parts[0] if len(parts) > 1 else 'unknown'}"
                     )
             lines.append("")
+
+        # Section 5b: Peer divergence (audit) — sites that break a sibling call
+        # pattern. Self-levelling outlier gate, so on a consistent codebase this
+        # is silent and omitted entirely. Capped tight: orientation, not audit.
+        if result.definitions and result.calls:
+            file_clusters = {
+                f: cluster for cluster, files in result.clusters.items() for f in files
+            }
+            findings = find_divergences(
+                result.definitions,
+                result.calls,
+                config=DivergenceConfig(TOP_N=5),
+                file_clusters=file_clusters,
+            )
+            if findings:
+                lines.extend(format_divergences(findings).rstrip("\n").split("\n"))
+                lines.append("")
 
         # Section 6: File Inventory (compact list of all files)
         if result.files:

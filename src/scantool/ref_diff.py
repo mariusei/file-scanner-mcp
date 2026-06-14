@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from .consensus import find_divergences, format_divergences
 from .delta import apply_node_delta, diff_nodes, node_hashes
 from .formatter import TreeFormatter
 from .git_signals import _run_git
@@ -65,6 +66,7 @@ def diff_against_ref(
     sections: list[str] = []
     unstructured: list[str] = []   # changed, but no structural change
     deleted: list[str] = []
+    changed_files: set[str] = set()  # structured files touched — divergence suspects
     n_changed_files = 0
 
     for line in name_status.strip().split("\n"):
@@ -84,6 +86,7 @@ def diff_against_ref(
             unstructured.append(f"{rel_path} (unstructured file type)")
             continue
         n_changed_files += 1
+        changed_files.add(rel_path)
 
         if status.startswith("A"):
             sections.append(f"\n{rel_path} [new file]\n"
@@ -120,7 +123,42 @@ def diff_against_ref(
         summary.append(f"deleted: {', '.join(deleted)}")
     if unstructured:
         summary.append("without structural change: " + ", ".join(unstructured))
-    return "\n".join(summary) + "\n" + "\n".join(sections)
+    body = "\n".join(summary) + "\n" + "\n".join(sections)
+
+    divergence = _divergence_section(toplevel, changed_files)
+    if divergence:
+        body += "\n\n" + divergence
+    return body
+
+
+def _divergence_section(toplevel: str, changed_files: set[str]) -> str:
+    """Peer-divergence on the changed code: do the touched functions break a
+    call-pattern their siblings across the repo follow? The repo is the peer
+    corpus, the diff is the suspect set — review-mode precision. Never raises
+    into the diff: a corpus build failure just means no section."""
+    if not changed_files:
+        return ""
+    try:
+        from .code_map import CodeMap
+
+        result = CodeMap(toplevel).analyze()
+        suspects = {
+            (d.file, d.name) for d in result.definitions if d.file in changed_files
+        }
+        if not suspects:
+            return ""
+        file_clusters = {
+            f: cluster for cluster, files in result.clusters.items() for f in files
+        }
+        findings = find_divergences(
+            result.definitions, result.calls, suspects=suspects,
+            file_clusters=file_clusters,
+        )
+        if not findings:
+            return ""
+        return format_divergences(findings)
+    except Exception:
+        return ""
 
 
 def _scan_quietly(scanner: FileScanner, path: str, budget: Optional[int]):

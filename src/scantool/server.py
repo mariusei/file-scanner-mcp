@@ -21,6 +21,7 @@ from .scanner import FileScanner
 from .languages import StructureNode
 from .preview import preview_directory as preview_dir_func
 from .code_map import CodeMap
+from .consensus import DivergenceConfig, find_divergences, format_divergences
 
 # Injected into context at session start even when tools are deferred behind
 # ToolSearch (clients truncate at ~2KB — most important guidance first).
@@ -48,6 +49,9 @@ Never cat a whole file or guess a sed/Read line range for this — measured \
 75% fewer read tokens at equal answer quality (M2c)
 - "what changed" / review -> scan_diff against HEAD/main/any ref: \
 new/changed/removed functions (replaces git diff)
+- hunt drift / misaligned implementations across a codebase -> find_divergence: \
+functions that break a call pattern their siblings follow (review hint, silent \
+when consistent)
 - first-time orientation in an UNKNOWN codebase -> preview_directory: entry \
 points, hot functions, call graph (RICH, ~3-5k tokens — not for targeted \
 questions)
@@ -133,6 +137,9 @@ def preview_directory(
     - ✅ Import Graph: How files depend on each other
     - ✅ Hot Functions: Most called functions (critical code paths)
     - ✅ Call Graph: Function-to-function dependencies
+    - ✅ Peer Divergence: sites breaking a sibling call pattern (review hint,
+         not a bug list) — only shown when a site clearly stands out; silent on
+         a consistent codebase
     - ✅ Git Activity: hot files (churn) and co-changed file pairs over the
          last 90 days — works for any repo content (code, docs, config);
          section is silently absent outside git repositories
@@ -780,6 +787,12 @@ def scan_diff(
     comments) are reported as exactly that. Works for any file type —
     markdown diffs show changed sections.
 
+    A PEER DIVERGENCE tail may follow when a changed function breaks a call
+    pattern its siblings across the repo follow (e.g. peers calling X also call
+    Y, this one doesn't) — a REVIEW HINT to look at, not a verified bug. Peers
+    can legitimately differ; adjudicate by reading. Silent when nothing changed
+    breaks a strong pattern.
+
     Args (tiered — most calls need only Common):
         Common:
             directory: Directory inside the git repository to diff
@@ -794,6 +807,58 @@ def scan_diff(
         return [TextContent(type="text", text=diff_against_ref(directory, ref, budget))]
     except Exception as e:
         return [TextContent(type="text", text=f"Error diffing: {e}")]
+
+
+@mcp.tool(
+    tags={"local", "analysis", "review", "divergence"},
+    description="Audit a directory for peer divergence - functions that break a call pattern their siblings across the codebase follow (peers calling X also call Y, this one doesn't). A REVIEW HINT to look at, not a verified bug list. Silent on a consistent codebase. Use to hunt drift, dead/missing connectivity, or misaligned implementations - cheaper and more focused than preview_directory when divergence is all you want"
+)
+def find_divergence(
+    directory: str,
+    respect_gitignore: bool = True,
+    max_findings: int = 20,
+) -> list[TextContent]:
+    """
+    Audit a whole directory for peer divergence: sites that break a call pattern
+    their siblings across the codebase follow.
+
+    This is a REVIEW HINT, not a verified bug list — peers may legitimately
+    differ, so adjudicate by reading. The detector is self-levelling and
+    role-conditioned: a consistent codebase yields nothing, and that silence is
+    the truthful signal (it does not mean the tool failed).
+
+    Cheaper and more focused than preview_directory when drift is all you want;
+    preview_directory shows the same section but only as part of a full
+    architecture analysis at depth="deep".
+
+    Args:
+        directory: Root directory to audit
+        respect_gitignore: Respect .gitignore patterns (default: True)
+        max_findings: Cap on the number of findings shown (default: 20)
+    """
+    try:
+        cm = CodeMap(directory, respect_gitignore=respect_gitignore)
+        result = cm.analyze()
+        if not result.definitions or not result.calls:
+            return [TextContent(type="text", text=(
+                f"{directory}: no call graph to analyze "
+                f"(peer divergence needs code with cross-function calls)"))]
+        file_clusters = {
+            f: cluster for cluster, files in result.clusters.items() for f in files
+        }
+        findings = find_divergences(
+            result.definitions,
+            result.calls,
+            config=DivergenceConfig(TOP_N=max_findings),
+            file_clusters=file_clusters,
+        )
+        return [TextContent(type="text", text=format_divergences(findings))]
+    except FileNotFoundError:
+        return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
+    except PermissionError:
+        return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error analyzing directory: {e}")]
 
 
 @mcp.tool(
