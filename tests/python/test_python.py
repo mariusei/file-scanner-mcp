@@ -1,7 +1,37 @@
 """Tests for Python scanner."""
 
 from scantool.scanner import FileScanner
+from scantool.languages.python import PythonLanguage
 from conftest import validate_line_range_invariants
+
+
+def test_nested_closure_call_attribution():
+    """A call inside a nested closure attributes to the enclosing EXTRACTED
+    definition, not the (un-extracted) closure.
+
+    Regression: the language handlers use `def traverse(): ... self._helper()`.
+    Attributing the call to `traverse` (not a definition, so not a graph node)
+    made resolve(caller) empty and dropped the edge — every helper call vanished
+    from the call graph, producing false "dead" functions.
+    """
+    src = (
+        "class C:\n"
+        "    def outer(self):\n"
+        "        def inner(node):\n"
+        "            self.helper(node)\n"
+        "        inner(0)\n"
+        "    def helper(self, n):\n"
+        "        pass\n"
+    )
+    lang = PythonLanguage()
+    defs = lang.extract_definitions("c.py", src)
+    calls = lang.extract_calls("c.py", src, defs)
+
+    helper_calls = [c for c in calls if c.callee_name == "helper"]
+    assert helper_calls, "self.helper(...) call was not captured at all"
+    # attributed to the method, not the closure
+    assert all(c.caller_name == "outer" for c in helper_calls), \
+        [c.caller_name for c in helper_calls]
 
 
 def test_basic_parsing(file_scanner):

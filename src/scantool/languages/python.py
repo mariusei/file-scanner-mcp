@@ -510,22 +510,25 @@ class PythonLanguage(BaseLanguage):
     ) -> list[CallInfo]:
         """Extract calls using tree-sitter AST."""
         calls = []
-        current_function = None
+        # Only EXTRACTED definitions become graph nodes; a nested closure does
+        # not. Attributing a call to a closure drops the edge at resolution time
+        # (the closure resolves to no node), so keep the nearest ENCLOSING
+        # extracted definition as the caller context — the closure is transparent.
+        # Without this, every call inside a `def traverse(): ... self._x()` helper
+        # (the pattern across the language handlers) vanishes from the call graph.
+        def_names = {d.name for d in definitions}
 
         def traverse(node, context_func=None):
-            nonlocal current_function
-
             if node.type == "function_definition":
                 name_node = node.child_by_field_name("name")
-                if name_node:
-                    current_function = source_bytes[
-                        name_node.start_byte : name_node.end_byte
-                    ].decode("utf-8")
-
+                fname = (
+                    source_bytes[name_node.start_byte : name_node.end_byte].decode("utf-8")
+                    if name_node
+                    else None
+                )
+                new_context = fname if fname in def_names else context_func
                 for child in node.children:
-                    traverse(child, current_function)
-
-                current_function = context_func
+                    traverse(child, new_context)
                 return
 
             if node.type == "call":
