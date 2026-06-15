@@ -112,60 +112,129 @@ def run(repo: Path, spec: MappingSpec) -> tuple[list, list[Producer], list[Produ
     return reached, orphan, unresolvable
 
 
-# ── spec: fastapi-route ──────────────────────────────────────────────────────
-ROUTE_DEC = re.compile(r'@\w+\.(get|post|put|delete|patch)\(\s*["\']([^"\']+)["\']')
+# ── spec: http-route (cross-framework, cross-language) ────────────────────────
+# Producers are route handlers across frameworks; consumers are URL references in
+# any language (a frontend fetch/href, a server-side render). Same engine, broader
+# conventions. Each pattern is DECORATOR/ANNOTATION-scoped (only matched against a
+# definition's decorators, never arbitrary calls) and captures the path as `path`.
+_ROUTE_PATTERNS = (
+    # FastAPI / Flask / Express decorator: @app.get("/x"), @router.route("/x").
+    # Leading slash REQUIRED so a non-route decorator like @cache.get("key") cannot
+    # masquerade as a route (the false-producer trap).
+    re.compile(r'@\w+\.(?:get|post|put|delete|patch|route)\(\s*["\'](?P<path>/[^"\']*)["\']'),
+    # Spring: @GetMapping("/x"), @RequestMapping(value = "/x").
+    re.compile(r'@(?:Get|Post|Put|Delete|Patch|Request)Mapping\(\s*(?:value\s*=\s*)?["\'](?P<path>[^"\']+)["\']'),
+    # NestJS: @Get("x"), @Post("/x") — capitalised verb, no dot.
+    re.compile(r'@(?:Get|Post|Put|Delete|Patch|All)\(\s*["\'](?P<path>[^"\']*)["\']'),
+)
+# Imperative registration: router.get("/x", handler) / app.post("/x", ...) — the
+# dominant JS style (Express/Hono/Fastify/Koa/Deno), no decorator. The handler is
+# often an inline closure (no named definition), so the ROUTE PATH is the producer
+# for orphan-finding. TWO precision guards (measured on a real wallet/issuer repo):
+#   - a router-like RECEIVER (app/api/server/router/*Router) — distinguishes a route
+#     REGISTRATION from a consumer `axios.get("/x")`/`fetch` (which must NOT be
+#     stripped) and from `store.get(nonce)`/`cache.get(...)` (not routes).
+#   - a leading slash on the path.
+_IMPERATIVE_ROUTE = re.compile(
+    r'\b(?:app|api|server|router|routes|\w*[Rr]outer)'
+    r'\.(?:get|post|put|delete|patch|all|head|options)\(\s*["\'](?P<path>/[^"\']*)["\']'
+)
+_ROUTE_PRODUCER_EXTS = (".py", ".ts", ".tsx", ".js", ".jsx", ".java", ".kt", ".go", ".rb", ".php")
+# A consumer is ANY source/markup/config that can hold a URL literal — a mobile app
+# (Swift/Kotlin/Dart), another backend, a template, a config. Broad by design:
+# scanning more consumers only ever marks a route REACHED (never invents an orphan),
+# so the orphan set stays high-confidence (precision-first). Measured: without
+# .swift, an iOS frontend's `/route` references were invisible → false orphans.
+_ROUTE_CONSUMER_EXTS = (".html", ".j2", ".jinja", ".vue", ".svelte",
+                        ".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
+                        ".java", ".kt", ".kts", ".swift", ".dart", ".m", ".mm",
+                        ".go", ".rs", ".zig", ".cs", ".rb", ".php",
+                        ".json", ".yaml", ".yml", ".xml")
 # Any /path fragment ANYWHERE — catches href/hx-*/action AND dynamic URLs whose
 # string starts with a template/JS prefix ({{scope}}/x, scope ~ "/x/" ~ var,
 # fetch/htmx.ajax). The measured FP cause was exactly these prefixed dynamic
 # forms; matching fragments anywhere is precision-first for orphans.
 URL_ATTR = re.compile(r'/[\w\-]{3,}(?:/[\w\-{}.:]+)*')
 URL_BYNAME = re.compile(r'url_(?:path_)?for\(\s*["\']([^"\']+)["\']')
-EXTERNAL = re.compile(r'^/$|/health|/metrics|/favicon|/callback$|/webhook$|/redirect')
+# Endpoints consumed from OUTSIDE the repo (a relying party, a verifier, a crawler,
+# a browser fetching an asset) have no in-corpus reference by design — they are
+# reached-by-contract, never orphans. Measured on a real wallet/issuer repo: without
+# this guard, `/.well-known/jwks.json`, status lists, `robots.txt` and static assets
+# were false orphans. Standard well-known URIs + asset extensions cover them.
+EXTERNAL = re.compile(
+    r'^/?$|/health|/metrics|/favicon|/callback$|/webhook$|/redirect'
+    r'|/\.well-known|/robots\.txt|/sitemap|/jwks|/openapi|/swagger'
+    r'|\.(?:png|jpe?g|gif|svg|ico|css|js|txt|xml|json|woff2?|map)$'
+)
 
 
-def _fa_producers(repo: Path) -> list[Producer]:
-    out, scanner = [], FileScanner()
-    for py in source_files(repo, (".py",)):
-        if _skip_source(py):
+def _route_path(text: str) -> "str | None":
+    """The route path declared by a framework's decorator/annotation OR an imperative
+    `router.method("/path", …)` registration, or None. Used both to find producers
+    and to strip a route's own definition line from the consumer blob."""
+    for pat in _ROUTE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            return m.group("path")
+    m = _IMPERATIVE_ROUTE.search(text)
+    return m.group("path") if m else None
+
+
+def _http_producers(repo: Path) -> list[Producer]:
+    out, scanner, seen = [], FileScanner(), set()
+    for src in source_files(repo, _ROUTE_PRODUCER_EXTS):
+        if _skip_source(src):
             continue
-        st = scanner.scan_file(str(py), include_file_metadata=False) or []
+        rel = str(src.relative_to(repo))
+        # 1. decorator/annotation routes — the handler is a named definition.
+        st = scanner.scan_file(str(src), include_file_metadata=False) or []
         stack = list(st)
         while stack:
             n = stack.pop()
             for dec in n.decorators or []:
-                m = ROUTE_DEC.search(dec)
-                if m:
-                    out.append(Producer(n.name, str(py.relative_to(repo)),
-                                        m.group(2), m.group(1)))
+                path = _route_path(dec)
+                if path is not None and (rel, path) not in seen:
+                    seen.add((rel, path))
+                    out.append(Producer(n.name, rel, path, "route"))
             stack.extend(n.children)
+        # 2. imperative routes — inline handler, the path itself is the producer id.
+        try:
+            text = src.read_text(errors="replace")
+        except OSError:
+            continue
+        for m in _IMPERATIVE_ROUTE.finditer(text):
+            path = m.group("path")
+            if (rel, path) not in seen:
+                seen.add((rel, path))
+                out.append(Producer(path, rel, path, "route"))
     return out
 
 
-def _fa_consumers(repo: Path) -> tuple[str, set[str]]:
+def _http_consumers(repo: Path) -> tuple[str, set[str]]:
     blob, names = [], set()
-    for f in source_files(repo, (".html", ".j2", ".jinja", ".py", ".js", ".ts")):
+    for f in source_files(repo, _ROUTE_CONSUMER_EXTS):
         try:
             text = f.read_text(errors="replace")
         except OSError:
             continue
         # strip route-DEFINITION lines so a route's own decorator path is not
         # counted as a reference to itself (the self-match trap)
-        text = "\n".join(ln for ln in text.splitlines() if not ROUTE_DEC.search(ln))
+        text = "\n".join(ln for ln in text.splitlines() if _route_path(ln) is None)
         blob += URL_ATTR.findall(text)
         names |= set(URL_BYNAME.findall(text))
     return "\n".join(blob), names
 
 
-def _fa_distinctive(p: Producer) -> "str | None":
-    segs = [s for s in p.key.split("/") if s and not s.startswith("{") and len(s) > 3]
+def _route_distinctive(p: Producer) -> "str | None":
+    segs = [s for s in p.key.split("/") if s and not s.startswith(("{", ":")) and len(s) > 3]
     return max(segs, key=len) if segs else None
 
 
-FASTAPI_ROUTE = MappingSpec(
-    name="fastapi-route",
-    producers=_fa_producers,
-    consumers=_fa_consumers,
-    distinctive=_fa_distinctive,
+HTTP_ROUTE = MappingSpec(
+    name="http-route",
+    producers=_http_producers,
+    consumers=_http_consumers,
+    distinctive=_route_distinctive,
     external=lambda p: bool(EXTERNAL.search(p.key)),
 )
 
@@ -216,4 +285,4 @@ JINJA_TEMPLATE = MappingSpec(
 )
 
 
-DIRECTED_SPECS = (FASTAPI_ROUTE, JINJA_TEMPLATE)
+DIRECTED_SPECS = (HTTP_ROUTE, JINJA_TEMPLATE)
