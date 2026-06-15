@@ -459,20 +459,66 @@ language via `BaseLanguage`:
   `_public_by_modifier(defn)` checks `{"public","pub","export"}` in
   `defn.modifiers`.
 
-`DefinitionInfo` now carries `modifiers` + `decorators` (propagated from
-`StructureNode` in `_structures_to_definitions`), so the verdict reads visibility
-agnostically.
+`DefinitionInfo` now carries `modifiers` + `decorators` + `enclosing_kind`
+(propagated from `StructureNode` in `_structures_to_definitions`), so the verdict
+reads visibility agnostically.
+
+- `corpus_reachable(self, definitions) -> set[(file, qualname)]` — default empty.
+  For reachability that needs the WHOLE corpus, not one definition: a method that
+  **witnesses a protocol/interface requirement** is dispatched through that protocol
+  (often by an external framework — JSONEncoder, UIKit delegates — with zero
+  in-corpus callers). Swift implements it: map each type's declared conformances
+  (parsed from its signature) to requirement names (corpus protocols + a stdlib
+  table); protect witnesses. A type conforming to an UNKNOWN external protocol/
+  superclass is protected wholesale — you cannot tell a witness from a helper, so do
+  not guess. This is what makes precise `internal`-level dead detection safe instead
+  of retreating to private-only. `enclosing_kind` is the container's kind ("class",
+"trait", "impl", "interface", …) — it tells a **public-by-container** member (a
+trait/interface method, public via its container with no modifier of its own) apart
+from a genuinely private one. A language that overrides `_structures_to_definitions`
+must thread `parent_kind` through its recursion to populate it.
 
 **Opting a language in is a MEASURED step — verify, do not assume.** The export
 channel must actually work: write a fixture (an exported + an unused unexported def)
 and confirm via `_compute_dead` that the **exported one is never flagged** before
 setting `CLAIMS_DEAD=True` (see `tests/test_dead_reachability.py`). Opted in:
 python (dunder/dispatch skip), go (capitalisation — `defn.name[0].isupper()`), java
-(`public` in modifiers). NOT opted in (visibility not captured into modifiers, or
-extra channels unmodelled): rust/c# (record `pub`/`public` first), typescript
-(needs JSX usage in `extract_calls` so components are not falsely dead), ruby/php/
-swift/zig/c-cpp. Reference-mapping orphans are Python-web-scoped (FastAPI/Jinja) and
-silent elsewhere — a separate registry, not this contract.
+(`public` in modifiers), rust (`pub` modifier + trait/trait-impl methods via
+`enclosing_kind`), typescript (`export` modifier + interface/non-private class
+methods via `enclosing_kind`; JSX `<Comp/>` emitted as a reference edge in
+`extract_calls` so components are not falsely dead), c# (public/internal/protected
+modifiers + interface members via `enclosing_kind`; no-modifier member = implicitly
+private → flaggable), c/c++ (whole-program linkage is invisible, so ONLY internal
+linkage is flaggable: `static` free functions + `private` members; external/public/
+virtual stay reachable; access labels stamped per-member during extraction), swift
+(open/public + `override` + protocol-declared per-def, AND corpus-level
+protocol-conformance witnesses via `corpus_reachable`; init/deinit are extracted so
+init logic is in the call graph and callers resolve), zig (`pub`/`export`/`extern`
+are public/external; a non-pub declaration is file-private → flaggable), php
+(no-modifier defaults to public; public/protected are external/subclass API and
+magic `__*`/interface methods are runtime/contract → reachable; only a `private`
+member is class-local → flaggable). NOT opted in — **measured, not assumed**: ruby.
+Ruby has no module privacy (public is callable anywhere) and its only narrower scope
+(private) is breachable by `send`/`method_missing`/`define_method` with computed
+names that have NO static declaration to resolve against (unlike a Swift `:Protocol`
+clause). A resolvability gate fails because `send` is cross-file and ubiquitous, so
+it would be silent in practice anyway — silence is the honest verdict. Its
+caller-contract IS fixed (port 1 → 0), so hot-functions/centrality/divergence work.
+Reference-mapping orphans are a separate registry (`reference_map.py`), not this
+contract: a directed producer→consumer→distinctive-token engine that resolves
+**string-keyed dispatch where both ends are source** (an HTTP route bound by a
+decorator/annotation and called by a frontend URL; a template rendered by name).
+The `http-route` spec is cross-framework/cross-language (FastAPI/Flask/NestJS/Spring
+producers; HTML/JS/TS consumers); the registry extends to the same shape (RPC,
+GraphQL, events, CLI, FFI-by-name). Binary/remote/computed-key dispatch (dynamic
+linking, bytecode, a remote service, `getattr`-dispatch) is OUT of a source
+scanner's reach by nature — the engine returns "unresolvable" there, never a guess.
+
+> **Measured trap (rust).** A naive `_public_by_modifier`-only opt-in flagged
+> `pub trait` default methods and `impl Trait for Type` methods as dead — they are
+> public-by-container / reached via dispatch, with no `pub` of their own. The fix
+> was `enclosing_kind`, not more suppressors. Expect the same for C# interfaces.
+> The verify-before-opt-in fixture is what caught it.
 
 ---
 

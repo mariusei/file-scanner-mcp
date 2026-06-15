@@ -18,10 +18,10 @@ _TESTS_DIR = Path(__file__).resolve().parents[1]
 # definition the same language emitted (or be None). A violation drops the edge
 # silently — false "dead" functions, starved centrality/divergence. These
 # languages are verified clean and LOCKED here (also the regression guard for the
-# Python closure-attribution fix). Known violators (swift init/deinit/wrappedValue,
-# ruby create_default, zig deinit, java) are tracked in the cross-language plan,
-# CONTRIBUTING "Caller-resolution contract" — each needs a per-language fix.
-_CONTRACT_CLEAN = ["python", "typescript", "go", "rust", "csharp", "php", "c_cpp"]
+# Python closure-attribution fix, and the Swift/Zig/Ruby/Java transparency fixes).
+# Every code language now honours the caller-resolution contract (the per-language
+# fixes are documented in CONTRIBUTING "Caller-resolution contract").
+_CONTRACT_CLEAN = ["python", "typescript", "go", "rust", "csharp", "php", "c_cpp", "swift", "zig", "ruby", "java"]
 
 
 @pytest.mark.parametrize("lang", _CONTRACT_CLEAN)

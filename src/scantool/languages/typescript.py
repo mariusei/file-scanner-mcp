@@ -38,6 +38,28 @@ class TypeScriptLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # Off-graph channels the static call graph cannot see in TS/JS:
+    #   - `export`ed defs are public API (importable outside the corpus).
+    #   - interface methods (enclosing_kind=="interface") are a type contract,
+    #     implemented/called elsewhere.
+    #   - a non-private class method may be public API of an exported class — the
+    #     method's own facts can't tell an exported from an internal class apart,
+    #     so the safe verdict is reachable (only `private` members are flaggable).
+    # JSX usage (`<Comp/>`) is emitted as a reference edge in extract_calls, so a
+    # used component is never zero-inbound; a never-referenced non-exported
+    # component IS a genuine dead candidate.
+    CLAIMS_DEAD = True
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        if "export" in defn.modifiers:
+            return True
+        if defn.enclosing_kind == "interface":
+            return True
+        if defn.enclosing_kind == "class" and "private" not in defn.modifiers:
+            return True
+        return False
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -184,9 +206,15 @@ class TypeScriptLanguage(BaseLanguage):
 
             # Export statements (may contain other structures)
             elif node.type == "export_statement":
-                # Traverse children to find what's being exported
+                # The `export` keyword sits on this node, not the inner declaration,
+                # so tag whatever the recursion extracts as exported (public API —
+                # importable from outside the corpus, never a dead candidate).
+                before = len(parent_structures)
                 for child in node.children:
                     traverse(child, parent_structures)
+                for added in parent_structures[before:]:
+                    if "export" not in added.modifiers:
+                        added.modifiers.append("export")
 
             # Imports
             elif node.type == "import_statement":
@@ -721,7 +749,11 @@ class TypeScriptLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -740,15 +772,23 @@ class TypeScriptLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
                 # For both class and interface, set child_parent to node name
-                child_parent = node.name if node.type in ("class", "interface") else parent
+                if node.type in ("class", "interface"):
+                    child_parent, child_kind = node.name, node.type
+                else:
+                    child_parent, child_kind = parent, parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions
@@ -770,69 +810,74 @@ class TypeScriptLanguage(BaseLanguage):
     def _extract_calls_tree_sitter(
         self, file_path: str, root, source_bytes: bytes, definitions: list[DefinitionInfo]
     ) -> list[CallInfo]:
-        """Extract calls using tree-sitter AST."""
+        """Extract calls using tree-sitter AST.
+
+        JSX usage (`<Component/>`) is emitted as a reference edge to the component:
+        without it every React component looks zero-inbound (and falsely dead), and
+        the call graph cannot see which components are central. Arrow-function
+        components (`const Card = () => …`) are named from their declarator so calls
+        inside them attribute to the component, not the enclosing scope.
+        """
         calls = []
-        current_function = None
+        # Only real definitions may own a call. A nested arrow/function that was not
+        # extracted (a local helper, an effect callback) stays TRANSPARENT — calls
+        # inside it attribute to the nearest enclosing extracted definition, not to
+        # the closure (which would resolve to nothing and drop the edge).
+        def_names = {d.name for d in definitions}
 
-        def traverse(node, context_func=None):
-            nonlocal current_function
+        def emit(callee_name: str, caller: str, node) -> None:
+            calls.append(
+                CallInfo(
+                    caller_file=file_path,
+                    caller_name=caller,
+                    callee_name=callee_name,
+                    line=node.start_point[0] + 1,
+                    is_cross_file=False,
+                )
+            )
 
-            # Track function context
-            if node.type in ("function_declaration", "method_definition", "arrow_function"):
+        def traverse(node, caller):
+            # Establish the caller for this node's children (only if it is a real
+            # extracted definition — otherwise stay transparent, see def_names).
+            if node.type in ("function_declaration", "method_definition"):
                 name_node = node.child_by_field_name("name")
                 if name_node:
-                    current_function = source_bytes[
-                        name_node.start_byte : name_node.end_byte
-                    ].decode("utf-8")
-
-                for child in node.children:
-                    traverse(child, current_function)
-
-                current_function = context_func
-                return
+                    name = self._get_node_text(name_node, source_bytes)
+                    if name in def_names:
+                        caller = name
+            elif node.type == "variable_declarator":
+                # const Name = () => … / function expr — name the enclosed callable.
+                name_node = node.child_by_field_name("name")
+                value = node.child_by_field_name("value")
+                if name_node and value and value.type in (
+                    "arrow_function", "function_expression",
+                ):
+                    name = self._get_node_text(name_node, source_bytes)
+                    if name in def_names:
+                        caller = name
 
             if node.type == "call_expression":
                 func_node = node.child_by_field_name("function")
-                if func_node:
-                    if func_node.type == "identifier":
-                        callee_name = source_bytes[
-                            func_node.start_byte : func_node.end_byte
-                        ].decode("utf-8")
-                        line = node.start_point[0] + 1
+                if func_node and func_node.type == "identifier":
+                    emit(self._get_node_text(func_node, source_bytes), caller, node)
+                elif func_node and func_node.type == "member_expression":
+                    prop_node = func_node.child_by_field_name("property")
+                    if prop_node:
+                        emit(self._get_node_text(prop_node, source_bytes), caller, node)
 
-                        calls.append(
-                            CallInfo(
-                                caller_file=file_path,
-                                caller_name=context_func,
-                                callee_name=callee_name,
-                                line=line,
-                                is_cross_file=False,
-                            )
-                        )
-
-                    elif func_node.type == "member_expression":
-                        # obj.method()
-                        prop_node = func_node.child_by_field_name("property")
-                        if prop_node:
-                            callee_name = source_bytes[
-                                prop_node.start_byte : prop_node.end_byte
-                            ].decode("utf-8")
-                            line = node.start_point[0] + 1
-
-                            calls.append(
-                                CallInfo(
-                                    caller_file=file_path,
-                                    caller_name=context_func,
-                                    callee_name=callee_name,
-                                    line=line,
-                                    is_cross_file=False,
-                                )
-                            )
+            elif node.type in ("jsx_self_closing_element", "jsx_opening_element"):
+                name_node = node.child_by_field_name("name")
+                if name_node and name_node.type == "identifier":
+                    tag = self._get_node_text(name_node, source_bytes)
+                    # Capitalised tag = component (referenceable def); lower-case = a
+                    # host/HTML element (div, span) with no definition to point at.
+                    if tag and tag[0].isupper():
+                        emit(tag, caller, node)
 
             for child in node.children:
-                traverse(child, context_func)
+                traverse(child, caller)
 
-        traverse(root)
+        traverse(root, None)
 
         local_defs = {d.name for d in definitions}
         for call in calls:

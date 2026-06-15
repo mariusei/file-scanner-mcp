@@ -38,6 +38,19 @@ class ZigLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # Zig visibility is explicit and simple (no inheritance/protocols):
+    #   - `pub` makes a declaration importable from another file -> public API.
+    #   - `export`/`extern` expose a C ABI symbol -> reachable externally.
+    #   - a non-pub declaration is private to its file, so a zero-inbound one is a
+    #     genuine dead candidate. (comptime/@field reflection references surface as
+    #     bare names, kept live by the framework's bare-name check.)
+    CLAIMS_DEAD = True
+    _ZIG_PUBLIC = frozenset({"pub", "export", "extern"})
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        return bool(self._ZIG_PUBLIC & set(defn.modifiers))
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -561,13 +574,18 @@ class ZigLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
         Overrides base class to handle Zig-specific types (struct, enum, union).
         """
         definitions = []
+        containers = ("class", "struct", "enum", "union")
 
         for node in structures:
             # Include Zig-specific types: struct, enum, union
@@ -580,15 +598,23 @@ class ZigLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
                 # For Zig, struct/enum/union can contain methods
-                child_parent = node.name if node.type in ("class", "struct", "enum", "union") else parent
+                if node.type in containers:
+                    child_parent, child_kind = node.name, node.type
+                else:
+                    child_parent, child_kind = parent, parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions
@@ -615,6 +641,11 @@ class ZigLanguage(BaseLanguage):
     ) -> list[CallInfo]:
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
+        # Only a real definition may own a call. A context name that was not
+        # extracted (e.g. a deinit lost to a parse error) stays TRANSPARENT — calls
+        # attribute to the nearest enclosing definition, never to a name that
+        # resolves to nothing (which would silently drop the edge).
+        def_names = {d.name for d in definitions}
 
         def get_callee_name(node: Node) -> Optional[str]:
             """Extract the callee name from a call expression's function node."""
@@ -638,9 +669,10 @@ class ZigLanguage(BaseLanguage):
                         break
 
                 if func_name:
-                    # Traverse children with this function as context
+                    # Adopt as caller only if it is a real definition (else transparent).
+                    caller = func_name if func_name in def_names else current_func
                     for child in node.children:
-                        traverse(child, func_name)
+                        traverse(child, caller)
                     return
 
             # Extract call expressions

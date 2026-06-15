@@ -39,9 +39,26 @@ class RustLanguage(BaseLanguage):
     CONDENSE_STRATEGY = "skeleton"
     IMPORT_GROUP_LABEL = "use statements"
 
-    # Reachability: NOT opted in — `pub` visibility is not yet captured into
-    # DefinitionInfo.modifiers, so opting in would flag every public fn dead.
-    # Conservative default (silent) until rust.py records pub. (follow-up)
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # Off-graph channels the static call graph cannot see in Rust:
+    #   - `pub` items are public API (modifier, captured by _extract_modifiers).
+    #   - a TRAIT method (declaration or default body) is public via its trait and
+    #     invoked through dispatch — never a dead candidate.
+    #   - a TRAIT-IMPL method (`impl Trait for Type`) is reached via the trait,
+    #     often through `dyn Trait`/generic bounds that don't resolve statically.
+    # Inherent-impl methods and free functions ARE call-graph-visible, so a
+    # zero-inbound one is a genuine dead candidate. (#[test]/#[no_mangle]/#[derive]
+    # land in decorators and are subtracted by the framework before we adjudicate.)
+    CLAIMS_DEAD = True
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        if self._public_by_modifier(defn):
+            return True
+        if defn.enclosing_kind == "trait":
+            return True
+        if defn.enclosing_kind == "impl" and defn.parent and " for " in defn.parent:
+            return True
+        return False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -718,7 +735,11 @@ class RustLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -739,15 +760,24 @@ class RustLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children (impl blocks and traits have methods)
             if node.children:
-                # For impl and trait blocks, set them as parent
-                child_parent = node.name if node.type in ("impl", "trait", "struct") else parent
+                # For impl and trait blocks, set them as parent (carry the kind so
+                # a method knows whether it lives in a trait/impl/struct).
+                if node.type in ("impl", "trait", "struct"):
+                    child_parent, child_kind = node.name, node.type
+                else:
+                    child_parent, child_kind = parent, parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions

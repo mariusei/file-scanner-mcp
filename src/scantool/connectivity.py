@@ -25,10 +25,16 @@ from .code_map import CodeMap
 from .consensus import DivergenceConfig, find_divergences
 from .languages import get_registry
 
-# Files scanned for the agnostic "is this bare name referenced anywhere" check.
-_DEAD_EXTS = (".py", ".js", ".ts", ".tsx", ".jsx", ".html", ".j2", ".jinja",
-              ".yaml", ".yml", ".toml", ".json", ".go", ".rs", ".java", ".cs",
-              ".rb", ".php", ".swift")
+# Files scanned for the agnostic "is this bare name referenced anywhere" check —
+# a handler wired by NAME in any of these is reachable, never dead. Spans code +
+# the config/markup that loaders use to name handlers (DI beans, build scripts,
+# property files), so a cross-language binding that names the symbol protects it.
+_DEAD_EXTS = (".py", ".js", ".ts", ".tsx", ".jsx", ".mjs", ".cjs", ".html",
+              ".j2", ".jinja", ".vue", ".svelte",
+              ".yaml", ".yml", ".toml", ".json", ".xml", ".ini", ".cfg",
+              ".env", ".properties", ".gradle", ".go", ".rs", ".java", ".kt",
+              ".kts", ".scala", ".cs", ".rb", ".php", ".swift", ".zig",
+              ".c", ".cc", ".cpp", ".h", ".hpp")
 _MEMO_MAX_DIRS = 8
 # Above this corpus size the dead/orphan whole-repo scans are skipped (drift only).
 _MAX_HEAVY_FILES = 6000
@@ -117,6 +123,19 @@ def _compute_dead(directory: str, result) -> "tuple[set, bool]":
                 contents[relfile] = ""
         return contents[relfile]
 
+    # Corpus-level reachability pre-pass (once per opted-in language present): a
+    # protocol/interface witness is reachable through dispatch the call graph and a
+    # single-definition check cannot see. Unioned, keyed like def_by_key.
+    corpus_reachable: set = set()
+    seen_analyzers: set = set()
+    for d in result.definitions:
+        analyzer = analyzer_for(d.file)
+        if analyzer is None or not analyzer.CLAIMS_DEAD:
+            continue
+        if id(analyzer) not in seen_analyzers:
+            seen_analyzers.add(id(analyzer))
+            corpus_reachable |= analyzer.corpus_reachable(result.definitions)
+
     residue = set()
     for n in result.call_graph.values():
         if n.callers or n.type not in ("function", "method"):
@@ -130,6 +149,8 @@ def _compute_dead(directory: str, result) -> "tuple[set, bool]":
             continue
         if word_counts.get(bare, 0) - call_counts.get(bare, 0) >= 1:
             continue                                       # referenced as a bare name
+        if (n.file, qual) in corpus_reachable:             # protocol/interface witness
+            continue
         defn = def_by_key.get((n.file, qual))
         if defn is None or defn.decorators:                # framework-registered
             continue

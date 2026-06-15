@@ -38,9 +38,25 @@ class CSharpLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
-    # Reachability: NOT opted in — visibility (`public`) is not reliably captured
-    # into DefinitionInfo.modifiers here, so opting in would flag public members
-    # dead. Conservative default (silent) until csharp.py records it. (follow-up)
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # Off-graph channels the static call graph cannot see in C#:
+    #   - public/internal/protected members are API reachable from outside the type
+    #     (and via DI/reflection in ASP.NET, which the call graph cannot trace).
+    #   - interface members are implicitly public and implemented elsewhere
+    #     (enclosing_kind=="interface") — the same public-by-container shape as a
+    #     Rust trait method, with no modifier of their own.
+    # A class/struct member with no visibility modifier is implicitly PRIVATE in C#,
+    # so a zero-inbound one with no public/internal/protected modifier is a genuine
+    # dead candidate. ([Attribute]s land in decorators, subtracted by the framework.)
+    CLAIMS_DEAD = True
+    _PUBLIC_CS = frozenset({"public", "internal", "protected"})
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        if any(m in self._PUBLIC_CS for m in defn.modifiers):
+            return True
+        if defn.enclosing_kind == "interface":
+            return True
+        return False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -904,13 +920,18 @@ class CSharpLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
         Extended for C# to handle more types (interfaces, structs, etc.)
         """
         definitions = []
+        container = ("class", "interface", "struct", "record", "namespace")
 
         for node in structures:
             # Include C#-specific types
@@ -923,14 +944,22 @@ class CSharpLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
-                child_parent = node.name if node.type in ("class", "interface", "struct", "record", "namespace") else parent
+                if node.type in container:
+                    child_parent, child_kind = node.name, node.type
+                else:
+                    child_parent, child_kind = parent, parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions

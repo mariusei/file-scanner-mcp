@@ -578,6 +578,11 @@ class RubyLanguage(BaseLanguage):
     ) -> list[CallInfo]:
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
+        # Only a real definition may own a call. A method defined dynamically
+        # (define_method, a DSL block) is not extracted, so calls inside it stay
+        # TRANSPARENT — attributed to the nearest enclosing definition rather than to
+        # a name that resolves to nothing (which would silently drop the edge).
+        def_names = {d.name for d in definitions}
 
         def traverse(node: Node, current_method: Optional[str] = None, in_statement: bool = False):
             # Track method context
@@ -585,9 +590,10 @@ class RubyLanguage(BaseLanguage):
                 name_node = node.child_by_field_name("name")
                 if name_node:
                     method_name = self._get_node_text(name_node, source_bytes)
+                    caller = method_name if method_name in def_names else current_method
                     # Traverse children with this method as context
                     for child in node.children:
-                        traverse(child, method_name, False)
+                        traverse(child, caller, False)
                     return
 
             # Extract method calls with receiver: obj.method or method(args)

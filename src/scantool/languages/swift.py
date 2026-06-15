@@ -37,6 +37,93 @@ class SwiftLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # Per-definition channels the call graph cannot see in Swift:
+    #   - open/public → module API (reachable from another module).
+    #   - `override` → dispatched through the superclass.
+    #   - a protocol's own requirement declaration (enclosing_kind=="protocol").
+    #   - @objc/@IBAction/@main etc. land in decorators, subtracted by the framework.
+    # The hard channel is protocol-conformance witnesses (a method satisfying a
+    # requirement, dispatched via the protocol — sometimes only by an external
+    # framework like JSONEncoder/UIKit, never called in-corpus). That needs a corpus
+    # view, handled in corpus_reachable(): a type's methods are protected as
+    # witnesses when its conformances are FULLY accountable (corpus protocols + a
+    # known stdlib table); a type conforming to an UNKNOWN external protocol/
+    # superclass is protected wholesale (we cannot tell a witness from a helper). So
+    # we flag genuine dead helpers precisely where dispatch is fully visible, and
+    # stay silent where a framework may be calling in.
+    CLAIMS_DEAD = True
+
+    # Method-shaped requirements of common stdlib protocols (property-shaped ones
+    # like `description`/`id` are computed properties, never dead-flagged anyway).
+    _STDLIB_PROTOCOL_REQS = {
+        "Codable": {"encode", "init"},
+        "Encodable": {"encode"},
+        "Decodable": {"init"},
+        "Equatable": {"=="},
+        "Comparable": {"<", "<=", ">", ">="},
+        "Hashable": {"hash"},
+        "Sequence": {"makeIterator"},
+        "IteratorProtocol": {"next"},
+        "RawRepresentable": {"init"},
+        "ExpressibleByStringLiteral": {"init"},
+    }
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        mods = defn.modifiers
+        if "open" in mods or "public" in mods:
+            return True
+        if "override" in mods:
+            return True
+        if defn.enclosing_kind == "protocol":
+            return True
+        return False
+
+    @staticmethod
+    def _parse_conformances(signature: Optional[str]) -> list[str]:
+        """Names in a type's inheritance clause (`: Base, Proto<T> where …`)."""
+        s = (signature or "").strip()
+        if not s.startswith(":"):
+            return []
+        s = re.sub(r"<[^>]*>", "", s[1:]).split(" where ")[0]
+        return [p.strip() for p in s.split(",") if p.strip()]
+
+    def corpus_reachable(self, definitions) -> set:
+        from collections import defaultdict
+
+        type_sig: dict = {}
+        methods_by_parent: dict = defaultdict(list)
+        type_method_names: dict = defaultdict(set)
+        corpus_types: set = set()
+        for d in definitions:
+            if d.type in ("class", "struct", "enum", "protocol", "actor", "extension"):
+                corpus_types.add(d.name)
+                if d.signature:
+                    type_sig[d.name] = d.signature
+            if d.parent and d.type in ("method", "function", "initializer", "deinitializer"):
+                methods_by_parent[d.parent].append(d)
+                type_method_names[d.parent].add(d.name)
+
+        reachable: set = set()
+        for type_name, methods in methods_by_parent.items():
+            conformances = self._parse_conformances(type_sig.get(type_name))
+            if not conformances:
+                continue  # no protocol/superclass dispatch -> helpers are flaggable
+            requirements: set = set()
+            fully_resolvable = True
+            for proto in conformances:
+                if proto in corpus_types:
+                    requirements |= type_method_names.get(proto, set())
+                elif proto in self._STDLIB_PROTOCOL_REQS:
+                    requirements |= self._STDLIB_PROTOCOL_REQS[proto]
+                else:
+                    fully_resolvable = False  # unknown external protocol/superclass
+            for m in methods:
+                if not fully_resolvable or m.name in requirements:
+                    qual = f"{m.parent}.{m.name}" if m.parent else m.name
+                    reachable.add((m.file, qual))
+        return reachable
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -1028,8 +1115,21 @@ class SwiftLanguage(BaseLanguage):
     # Semantic Analysis - Layer 2
     # ===========================================================================
 
+    _CONTAINER_TYPES = {"class", "struct", "enum", "protocol", "actor", "extension"}
+    # Initializers/deinitializers are real methods: a call inside `init { }` must
+    # resolve to a definition, and init logic belongs in the call graph (hot
+    # functions, centrality) like any method.
+    _SWIFT_DEF_TYPES = {
+        "class", "struct", "enum", "protocol", "actor", "extension", "typealias",
+        "function", "method", "initializer", "deinitializer",
+    }
+
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list for Swift.
 
@@ -1037,11 +1137,8 @@ class SwiftLanguage(BaseLanguage):
         """
         definitions = []
 
-        # Swift type kinds that should be included
-        swift_types = {"class", "struct", "enum", "protocol", "actor", "extension", "typealias", "function", "method"}
-
         for node in structures:
-            if node.type in swift_types:
+            if node.type in self._SWIFT_DEF_TYPES:
                 definitions.append(
                     DefinitionInfo(
                         file=file_path,
@@ -1050,15 +1147,23 @@ class SwiftLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
                 # For Swift, use the type name as parent for nested types
-                child_parent = node.name if node.type in {"class", "struct", "enum", "protocol", "actor", "extension"} else parent
+                if node.type in self._CONTAINER_TYPES:
+                    child_parent, child_kind = node.name, node.type
+                else:
+                    child_parent, child_kind = parent, parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions
@@ -1112,14 +1217,24 @@ class SwiftLanguage(BaseLanguage):
                     return self._get_node_text(child, source_bytes)
             return None
 
+        # Only real definitions may own a call. A context whose name is not an
+        # extracted definition (a computed property like a property wrapper's
+        # wrappedValue, an init? variant we did not name) stays TRANSPARENT — calls
+        # inside it attribute to the nearest enclosing definition, never to a name
+        # that resolves to nothing (which would silently drop the edge).
+        def_names = {d.name for d in definitions}
+
+        def adopt(name: Optional[str], current: Optional[str]) -> Optional[str]:
+            return name if name and name in def_names else current
+
         def traverse(node: Node, current_func: Optional[str] = None):
             # Track function context
             if node.type == "function_declaration":
                 for child in node.children:
                     if child.type == "simple_identifier":
-                        func_name = self._get_node_text(child, source_bytes)
+                        caller = adopt(self._get_node_text(child, source_bytes), current_func)
                         for c in node.children:
-                            traverse(c, func_name)
+                            traverse(c, caller)
                         return
 
             # Track computed property context (like SwiftUI's body)
@@ -1133,15 +1248,17 @@ class SwiftLanguage(BaseLanguage):
                         if child.type == "pattern":
                             prop_name = self._get_node_text(child, source_bytes)
                             break
-                    if prop_name:
-                        for c in node.children:
-                            traverse(c, prop_name)
-                        return
+                    caller = adopt(prop_name, current_func)
+                    for c in node.children:
+                        traverse(c, caller)
+                    return
 
-            # Track initializer context
-            if node.type == "init_declaration":
+            # Track initializer / deinitializer context
+            if node.type in ("init_declaration", "deinit_declaration"):
+                name = "init" if node.type == "init_declaration" else "deinit"
+                caller = adopt(name, current_func)
                 for child in node.children:
-                    traverse(child, "init")
+                    traverse(child, caller)
                 return
 
             # Extract call expressions

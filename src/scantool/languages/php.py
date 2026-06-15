@@ -38,6 +38,24 @@ class PHPLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # PHP has explicit visibility, but no-modifier defaults to PUBLIC. public and
+    # protected members are external/subclass API (a library consumer or a child
+    # class — outside the corpus — may call them), so they cannot be proven dead;
+    # only `private` is strictly class-local. Magic methods (__call/__get/…) are
+    # invoked implicitly by the runtime, and interface methods are implicitly public.
+    # So a zero-inbound PRIVATE method (not referenced by a literal name the
+    # framework's bare-name check would catch) is the one genuine dead candidate.
+    # #[Attribute] routing/DI lands in decorators, subtracted by the framework.
+    CLAIMS_DEAD = True
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        if defn.name.startswith("__"):          # magic method, runtime-invoked
+            return True
+        if defn.enclosing_kind == "interface":   # implicitly public contract
+            return True
+        return "private" not in defn.modifiers   # public/protected = external/subclass API
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -716,7 +734,11 @@ class PHPLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -726,6 +748,7 @@ class PHPLanguage(BaseLanguage):
 
         # PHP structure types that should become definitions
         php_types = ("class", "function", "method", "interface", "trait", "enum")
+        containers = ("class", "interface", "trait", "enum")
 
         for node in structures:
             if node.type in php_types:
@@ -737,15 +760,23 @@ class PHPLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
                 # Set parent for child methods in class-like structures
-                child_parent = node.name if node.type in ("class", "interface", "trait", "enum") else parent
+                if node.type in containers:
+                    child_parent, child_kind = node.name, node.type
+                else:
+                    child_parent, child_kind = parent, parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions

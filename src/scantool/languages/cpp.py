@@ -40,6 +40,30 @@ class CCppLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
 
+    # ── Reachability contract (dead-code detection) ──────────────────────────
+    # C/C++ has whole-program linkage the single-file call graph cannot see, so the
+    # ONLY safe dead claim is INTERNAL-linkage code unused within its own file:
+    #   - a free function is reachable unless `static` (an external-linkage symbol
+    #     may be called from another translation unit we never parse).
+    #   - a class/struct member is reachable if public/protected (API) or `virtual`
+    #     (dispatched through a base pointer); a `private` member is class-local, so
+    #     a zero-inbound one is a genuine dead candidate. Access labels are stamped
+    #     onto each member during extraction (struct default public, class private).
+    # Constructors stay reachable (invoked implicitly at instantiation sites the
+    # graph may miss). Function-pointer/&fn references are kept live by the
+    # framework's bare-name check. (Recall gaps in extract_calls only ever risk a
+    # static/private symbol — never external API.)
+    CLAIMS_DEAD = True
+
+    def is_offgraph_reachable(self, defn, content: str) -> bool:
+        if defn.type == "constructor":
+            return True
+        if defn.enclosing_kind in (None, "namespace"):
+            return "static" not in defn.modifiers  # external linkage -> cross-TU reachable
+        if "virtual" in defn.modifiers:
+            return True
+        return "private" not in defn.modifiers
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -153,6 +177,26 @@ class CCppLanguage(BaseLanguage):
         """Extract structure using tree-sitter."""
         structures = []
 
+        def traverse_members(body: Node, target: list, default_access: str) -> None:
+            # Walk a class/struct body tracking the running access label (C++
+            # `public:`/`private:`/`protected:` govern every member that follows
+            # until the next label) and stamp it onto each extracted member, so the
+            # reachability verdict can tell a private member from public API.
+            access = default_access
+            for child in body.children:
+                if child.type == "access_specifier":
+                    label = self._get_node_text(child, source_code).rstrip(":").strip()
+                    if label:
+                        access = label
+                    continue
+                before = len(target)
+                traverse(child, target)
+                for added in target[before:]:
+                    if added.type in ("method", "constructor") and not (
+                        {"public", "private", "protected"} & set(added.modifiers)
+                    ):
+                        added.modifiers.insert(0, access)
+
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
             if node.type == "ERROR":
@@ -171,22 +215,20 @@ class CCppLanguage(BaseLanguage):
                 struct_node = self._extract_struct(node, source_code)
                 if struct_node:
                     parent_structures.append(struct_node)
-                    # Traverse children for nested declarations
+                    # Traverse children for nested declarations (struct default: public)
                     body = node.child_by_field_name("body")
                     if body:
-                        for child in body.children:
-                            traverse(child, struct_node.children)
+                        traverse_members(body, struct_node.children, "public")
 
             # Classes (C++)
             elif node.type == "class_specifier":
                 class_node = self._extract_class(node, source_code)
                 if class_node:
                     parent_structures.append(class_node)
-                    # Traverse children for methods and nested structures
+                    # Traverse children for methods (class default access: private)
                     body = node.child_by_field_name("body")
                     if body:
-                        for child in body.children:
-                            traverse(child, class_node.children)
+                        traverse_members(body, class_node.children, "private")
 
             # Enums
             elif node.type == "enum_specifier":

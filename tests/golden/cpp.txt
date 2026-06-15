@@ -9,48 +9,48 @@ basic.cpp (3-138)
          return first + " " + last;
 - database @24 # Database namespace
   - DatabaseManager @27 # Database manager class
-    - DatabaseManager (const std::string& conn_str) @34 # Constructor
+    - DatabaseManager (const std::string& conn_str) @34 [public] # Constructor
        DatabaseManager(const std::string& conn_str)
            …
-    - ~DatabaseManager () @38 [virtual] # Virtual destructor
+    - ~DatabaseManager () @38 [public virtual] # Virtual destructor
        virtual ~DatabaseManager() {
            disconnect();
-    - connect bool () @43 [virtual] # Connect to database
+    - connect bool () @43 [public virtual] # Connect to database
        virtual bool connect() {
            …
            connected = true;
            return true;
-    - disconnect void () @50 [virtual] # Disconnect from database
+    - disconnect void () @50 [public virtual] # Disconnect from database
        virtual void disconnect() {
            if (connected) {
          …
-    - is_connected bool () @58 [const] # Check if connected
+    - is_connected bool () @58 [public const] # Check if connected
        bool is_connected() const {
            return connected;
-    - query std::vector<std::string> (const std::string& sql) @63 [const] # Execute query
+    - query std::vector<std::string> (const std::string& sql) @63 [public const] # Execute query
        std::vector<std::string> query(const std::string& sql) const {
            return std::vector<std::string>();
 - UserService @71 # User service class
-  - UserService (std::shared_ptr<database::DatabaseManager> database) @78 # Constructor
+  - UserService (std::shared_ptr<database::DatabaseManager> database) @78 [public] # Constructor
      UserService(std::shared_ptr<database::DatabaseManager> database)
          …
-  - create_user int (const std::string& username, const std::string& email) @82 # Create a new user
+  - create_user int (const std::string& username, const std::string& email) @82 [public] # Create a new user
      int create_user(const std::string& username, const std::string& email) {
          if (!utils::validate_email(email)) {
              return -1;
          …
          return user_count;
-  - get_user std::string (int user_id) @91 [const] # Get user by ID
+  - get_user std::string (int user_id) @91 [public const] # Get user by ID
      std::string get_user(int user_id) const {
          return "User" + std::to_string(user_id);
-  - delete_user bool (int user_id) @96 # Delete user
+  - delete_user bool (int user_id) @96 [public] # Delete user
      bool delete_user(int user_id) {
          …
          return true;
-  - get_version std::string () @102 [static] # Static method to get service version
+  - get_version std::string () @102 [public static] # Static method to get service version
      static std::string get_version() {
          return "1.0.0";
-  - get_user_count int () @107 [const] # Get user count
+  - get_user_count int () @107 [public const] # Get user count
      int get_user_count() const {
          return user_count;
 - Status @113 # Status enumeration

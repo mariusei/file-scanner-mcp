@@ -747,6 +747,11 @@ class JavaLanguage(BaseLanguage):
     ) -> list[CallInfo]:
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
+        # Only a real definition may own a call. A method that was not extracted
+        # (e.g. one lost to a parse error in a broken file) stays TRANSPARENT — calls
+        # attribute to the nearest enclosing definition rather than to a name that
+        # resolves to nothing (which would silently drop the edge).
+        def_names = {d.name for d in definitions}
 
         def traverse(node: Node, current_method: Optional[str] = None):
             # Track current method/constructor context
@@ -754,9 +759,10 @@ class JavaLanguage(BaseLanguage):
                 name_node = node.child_by_field_name("name")
                 if name_node:
                     method_name = self._get_node_text(name_node, source_bytes)
+                    caller = method_name if method_name in def_names else current_method
                     # Traverse children with this method as context
                     for child in node.children:
-                        traverse(child, method_name)
+                        traverse(child, caller)
                     return
 
             # Extract method invocations

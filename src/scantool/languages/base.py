@@ -586,7 +586,11 @@ class BaseLanguage(ABC):
         return calls
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str = None,
+        parent_kind: str = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -606,14 +610,18 @@ class BaseLanguage(ABC):
                         parent=parent,
                         modifiers=list(node.modifiers or []),
                         decorators=list(node.decorators or []),
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
                 child_parent = node.name if node.type == "class" else parent
+                child_kind = node.type if node.type == "class" else parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions
@@ -642,6 +650,17 @@ class BaseLanguage(ABC):
         dynamic dispatch)? Default True — assume reachable, never claim dead.
         Opted-in languages (CLAIMS_DEAD) override with their real verdict."""
         return True
+
+    def corpus_reachable(
+        self, definitions: list["DefinitionInfo"]
+    ) -> set[tuple[str, str]]:
+        """Reachability that needs the WHOLE corpus, not one definition — e.g. a
+        method that witnesses a protocol/interface requirement is dispatched through
+        that protocol (often by an external framework) and must not be called dead
+        even with zero in-corpus callers. Returns the {(file, qualname)} to treat as
+        reachable, keyed exactly like dead-detection (parent.name, or name). Default:
+        none — the per-definition `is_offgraph_reachable` is sufficient."""
+        return set()
 
     # ===========================================================================
     # Classification (OPTIONAL)

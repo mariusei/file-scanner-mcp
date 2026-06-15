@@ -90,6 +90,11 @@ class DefinitionInfo:
     # "export", Java/C# "public"), framework registration in decorators.
     modifiers: list[str] = field(default_factory=list)
     decorators: list[str] = field(default_factory=list)
+    # Kind of the enclosing definition ("class", "trait", "impl", "interface", ...).
+    # Lets a language tell a public-by-container method (a trait/interface member,
+    # public via its container) apart from a genuinely private one. None when the
+    # definition is top-level or the language has not modelled it.
+    enclosing_kind: Optional[str] = None
 
 
 @dataclass
