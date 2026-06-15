@@ -3,9 +3,21 @@
 [![PyPI version](https://badge.fury.io/py/scantool.svg)](https://pypi.org/project/scantool/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-MCP server for analyzing source code structure across 20+ languages. Works with **Claude Code**, **Claude Desktop**, and any **Model Context Protocol** client. Powered by **tree-sitter**. Extracts classes, functions, methods, imports, call graphs, and hot functions with precise line numbers.
+MCP server that hands an AI agent a codebase's **structure** — classes, functions, call graphs, imports, hot functions, all with exact line numbers — instead of raw file dumps. Works with **Claude Code**, **Claude Desktop**, **Cursor**, **VS Code** and any **Model Context Protocol** client. 20+ languages via **tree-sitter** — and code *and* documents (Markdown, HTML, CSS, SQL, config) through the same lens, which the code-only tools don't do.
 
-**Zero infrastructure**: no index to build, no API keys, no vector database, no model downloads. Point it at a directory and it scans on demand — code *and* documents (Markdown, HTML, CSS, SQL, config) through the same structural lens.
+**What that buys, measured — not claimed:**
+
+```
+"Where is the cache invalidated?"    scantool   378 tokens / 1 call
+                                     grep      9,370 tokens / 4 calls    -> 25x less
+
+pytest skipif-caching bug            scantool   solved in 3 calls
+                                     grep       gave up after 13,450 tokens
+```
+
+On real agent episodes, scantool agents answered with **88% fact coverage vs 73%** for a grep-only agent — better-anchored answers, fewer wrong files. Honest scope: grep still wins plain literal lookups and top-level overviews. Scantool measures **both** axes and reports the losses too (`experiments/benchmark/`).
+
+**Zero infrastructure**: no index to build, no API keys, no vector database, no model downloads. Point it at a directory and it scans on demand.
 
 ## Quick Start
 
