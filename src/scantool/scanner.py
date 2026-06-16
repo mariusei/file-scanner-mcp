@@ -5,9 +5,28 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import fnmatch as _fnmatch
+
 from .languages import StructureNode, get_registry
+from .languages.skip_patterns import should_skip_directory
 from .gitignore import load_gitignore, GitignoreParser
 from .glob_expander import expand_braces
+
+
+def _matches_pattern(rel_path: str, pattern: str) -> bool:
+    """Check if a forward-slash relative path matches a glob pattern with ** support."""
+    if pattern in ("**/*", "**"):
+        return True
+    if pattern.startswith("**/"):
+        suffix = pattern[3:]
+        if "/" not in suffix:
+            return _fnmatch.fnmatch(rel_path.rsplit("/", 1)[-1], suffix)
+        suffix_parts = suffix.split("/")
+        rel_parts = rel_path.split("/")
+        if len(rel_parts) >= len(suffix_parts):
+            return all(_fnmatch.fnmatch(a, b) for a, b in zip(rel_parts[-len(suffix_parts):], suffix_parts))
+        return False
+    return _fnmatch.fnmatch(rel_path, pattern)
 
 
 def _estimate_tokens(lines: list[str]) -> int:
@@ -397,52 +416,62 @@ class FileScanner:
         # Expand brace patterns (e.g., "**/*.{py,js}" → ["**/*.py", "**/*.js"])
         expanded_patterns = expand_braces(pattern)
 
-        # Process each expanded pattern
-        seen_files = set()  # Avoid duplicates if patterns overlap
-        for expanded_pattern in expanded_patterns:
-            for file_path in dir_path.glob(expanded_pattern):
-                if not file_path.is_file():
-                    continue
+        seen_files: set[str] = set()
 
-                # Skip if already processed
+        for root, dirs, files in os.walk(str(dir_path)):
+            root_path = Path(root)
+            try:
+                rel_root = root_path.relative_to(dir_path)
+            except ValueError:
+                dirs.clear()
+                continue
+            rel_root_str = str(rel_root).replace(os.sep, "/")
+            if rel_root_str == ".":
+                rel_root_str = ""
+
+            # Prune directories in-place so os.walk never descends into them.
+            pruned = []
+            for d in sorted(dirs):
+                if d.startswith("."):
+                    continue
+                if should_skip_directory(d):
+                    continue
+                dir_rel = f"{rel_root_str}/{d}" if rel_root_str else d
+                if gitignore and gitignore.matches(dir_rel + "/", True):
+                    continue
+                if exclude_parser and exclude_parser.matches(dir_rel + "/", True):
+                    continue
+                pruned.append(d)
+            dirs[:] = pruned
+
+            for fname in sorted(files):
+                file_path = root_path / fname
                 file_str = str(file_path)
                 if file_str in seen_files:
                     continue
+
+                rel_path_raw = f"{rel_root_str}/{fname}" if rel_root_str else fname
+                rel_path_native = str(file_path.relative_to(dir_path))
+
+                # Check if file matches any of the expanded patterns
+                if not any(_matches_pattern(rel_path_raw, pat) for pat in expanded_patterns):
+                    continue
+
+                # Check gitignore and additional exclusions
+                if gitignore and gitignore.matches(rel_path_native, False):
+                    continue
+                if exclude_parser and exclude_parser.matches(rel_path_native, False):
+                    continue
+
                 seen_files.add(file_str)
 
-                # Check exclusions
-                try:
-                    rel_path = str(file_path.relative_to(dir_path))
-                except ValueError:
-                    # File outside base directory
-                    continue
-
-                # Skip files inside hidden directories (directories starting with .)
-                # But allow hidden files themselves (e.g., .gitignore, .python-version)
-                path_parts = Path(rel_path).parts
-                if any(part.startswith('.') and part not in [file_path.name] for part in path_parts):
-                    # File is inside a hidden directory, skip it
-                    continue
-
-                # Check gitignore
-                if gitignore and gitignore.matches(rel_path, file_path.is_dir()):
-                    continue
-
-                # Check additional exclusions
-                if exclude_parser and exclude_parser.matches(rel_path, file_path.is_dir()):
-                    continue
-
-                # Check if we have a scanner for this file type
                 scanner_class = self.registry.get_scanner(file_path.suffix.lower())
                 if scanner_class:
-                    # Check if scanner wants to skip this file
                     if scanner_class.should_skip(file_path.name):
                         continue
-
                     try:
                         results[file_str] = self.scan_file(file_str, mode=mode)
                     except Exception as e:
-                        # Continue scanning even if one file fails
                         results[file_str] = [StructureNode(
                             type="error",
                             name=f"Failed to scan: {str(e)}",
@@ -450,7 +479,6 @@ class FileScanner:
                             end_line=1
                         )]
                 else:
-                    # Unsupported file type - include with basic metadata only
                     try:
                         file_stats = os.stat(file_str)
                         size_bytes = file_stats.st_size
@@ -460,7 +488,6 @@ class FileScanner:
                             size_str = f"{size_bytes / 1024:.1f}KB"
                         else:
                             size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
-
                         results[file_str] = [StructureNode(
                             type="file-info",
                             name=file_path.name,
@@ -475,7 +502,6 @@ class FileScanner:
                             }
                         )]
                     except Exception:
-                        # If we can't even get metadata, skip the file
                         continue
 
         return results

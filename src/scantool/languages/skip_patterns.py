@@ -120,9 +120,15 @@ BUILD_DIRS = {
 # Cache directories
 CACHE_DIRS = {
     ".cache",
+    "cache",
     ".parcel-cache",
     ".turbo",
     ".nx",
+}
+
+# Data science / ML artifacts (large binary stores)
+DATA_DIRS = {
+    "__MACOSX",   # macOS archive artefact
 }
 
 # Test coverage
@@ -171,7 +177,16 @@ COMMON_SKIP_DIRS = (
     | COVERAGE_DIRS
     | FRONTEND_DIRS
     | OS_DIRS
+    | DATA_DIRS
 )
+
+# Directory name suffixes that indicate directory-based binary formats.
+# These are pruned by should_skip_directory() regardless of the base name.
+DATA_FORMAT_DIR_SUFFIXES = {
+    ".zarr",        # Zarr array store (chunk files, no code)
+    ".parquet",     # Hive-partitioned Parquet dataset
+    ".lance",       # Lance columnar format
+}
 
 # =============================================================================
 # FILE PATTERNS
@@ -219,6 +234,21 @@ COMMON_SKIP_EXTENSIONS = {
     ".jar",      # Java archive
     ".war",      # Java web archive
     ".wasm",     # WebAssembly
+    # Data science / ML binary formats (large, no code value)
+    ".parquet",
+    ".feather",
+    ".arrow",
+    ".npy",
+    ".npz",
+    ".h5",
+    ".hdf5",
+    ".pkl",
+    ".pickle",
+    ".joblib",
+    ".pt",
+    ".pth",
+    ".onnx",
+    ".safetensors",
 }
 
 
@@ -236,7 +266,13 @@ def should_skip_directory(dir_name: str) -> bool:
     Returns:
         True if directory should be skipped
     """
-    return dir_name in COMMON_SKIP_DIRS
+    if dir_name in COMMON_SKIP_DIRS:
+        return True
+    # Skip directory-based binary formats regardless of base name
+    # e.g. "weather.zarr", "dataset.parquet"
+    from pathlib import Path
+    suffix = Path(dir_name).suffix.lower()
+    return suffix in DATA_FORMAT_DIR_SUFFIXES
 
 
 def should_skip_file(file_name: str) -> bool:

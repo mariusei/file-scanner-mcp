@@ -106,6 +106,20 @@ def _connectivity_note(file_path: str) -> str:
         return ""
 
 
+def _is_unsupported(structures: list) -> bool:
+    """True if the file has no parseable structure — just an 'unsupported'
+    file-info stub. Reading such files (e.g. multi-GB binaries) as text is
+    pointless and can be ruinously slow, so callers skip them."""
+    if len(structures) != 1:
+        return False
+    node = structures[0]
+    return (
+        node.type == "file-info"
+        and node.file_metadata is not None
+        and node.file_metadata.get("unsupported", False)
+    )
+
+
 def _annotate_churn(results: dict, directory: str) -> None:
     """Inject per-file churn into file-info metadata; no-op without git."""
     signals = collect_git_signals(directory)
@@ -742,7 +756,7 @@ def scan_directory(
                 for path in results:
                     if scan_memory.file_unchanged(path) is not None:
                         unchanged_paths.append(path)
-                    elif results[path]:
+                    elif results[path] and not _is_unsupported(results[path]):
                         try:
                             lines = Path(path).read_text(errors="replace").split("\n")
                             scan_memory.diff_and_record(path, results[path], lines)

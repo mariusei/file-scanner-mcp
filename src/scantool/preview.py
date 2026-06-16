@@ -86,7 +86,7 @@ class DirectoryPreview:
         self.collapsed_paths: dict[str, str] = {}  # {collapsed_display: leaf_path}
         self.total_files = 0
         self.total_size = 0
-        self.ignored_dirs: dict[str, int] = defaultdict(int)
+        self.ignored_dirs: dict[str, tuple[int, int]] = {}  # {name: (file_count, total_bytes)}
         self.scan_time = 0.0
 
         # Gitignore
@@ -140,7 +140,7 @@ class DirectoryPreview:
         for entry in entries:
             # Check skip patterns first (fast O(1) lookup)
             if entry.is_dir() and should_skip_directory(entry.name):
-                self.ignored_dirs[entry.name] = self._quick_count_files(entry.path)
+                self.ignored_dirs[entry.name] = self._quick_count_and_size(entry.path)
                 continue
 
             # Check gitignore
@@ -153,8 +153,7 @@ class DirectoryPreview:
 
                 if self.gitignore.matches(rel_entry, entry.is_dir()):
                     if entry.is_dir():
-                        # Count files in ignored directory (estimate)
-                        self.ignored_dirs[entry.name] = self._quick_count_files(entry.path)
+                        self.ignored_dirs[entry.name] = self._quick_count_and_size(entry.path)
                     continue
 
             if entry.is_dir(follow_symlinks=False):
@@ -172,17 +171,23 @@ class DirectoryPreview:
                 except (OSError, PermissionError):
                     pass
 
-    def _quick_count_files(self, path: str, max_count: int = 10000) -> int:
-        """Quick estimate of files in directory (for ignored dirs)."""
+    def _quick_count_and_size(self, path: str, max_count: int = 10000) -> tuple[int, int]:
+        """Quick estimate of file count and total bytes in an ignored directory."""
         count = 0
+        size = 0
         try:
             for root, dirs, files in os.walk(path):
+                for fname in files:
+                    try:
+                        size += os.path.getsize(os.path.join(root, fname))
+                    except OSError:
+                        pass
                 count += len(files)
                 if count > max_count:
-                    return max_count  # Just return "many"
+                    return max_count, size
         except (OSError, PermissionError):
             pass
-        return count
+        return count, size
 
     def _collapse_linear_paths(self) -> None:
         """
@@ -363,12 +368,17 @@ class DirectoryPreview:
 
         lines.append("")
 
-        # Show ignored directories
+        # Show ignored directories (data stores, build artefacts, etc.)
         if self.ignored_dirs:
             ignored_items = []
-            for dir_name, count in self.ignored_dirs.items():
-                count_str = f"{count}k" if count >= 1000 else f"{count}"
-                ignored_items.append(f"{dir_name}/ ({count_str} files)")
+            for dir_name, (count, size) in self.ignored_dirs.items():
+                count_str = f"{count // 1000}k" if count >= 1000 else str(count)
+                size_str = self._format_size(size) if size > 0 else ""
+                label = f"{dir_name}/ ({count_str} files"
+                if size_str:
+                    label += f", {size_str}"
+                label += ")"
+                ignored_items.append(label)
 
             if ignored_items:
                 lines.append("Ignored: " + ", ".join(ignored_items[:5]))
