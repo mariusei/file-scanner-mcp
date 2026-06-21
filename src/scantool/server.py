@@ -464,6 +464,7 @@ def scan_file(
     show_complexity: bool = False,
     condense: bool = True,
     budget: Optional[int] = None,
+    depth: Optional[str] = None,
     delta: bool = True,
     mode: str = "balanced",
     output_format: str = "tree"
@@ -507,6 +508,9 @@ def scan_file(
                 Presets for the exploration funnel — use instead of grep:
                 budget=300 ≈ file preview (top functions only), budget=1500 ≈
                 compact overview, None = full two-tier detail
+            depth: Convenience alias for budget, mirroring preview_directory's
+                knob — "quick"≈300, "normal"≈1500, "deep"=full. budget= is the
+                native lever and wins if both are given (default: None)
             delta: Re-scans show only what changed since YOUR previous scan of
                 the same file in this session: unchanged file → one line;
                 modified file → full structure but code detail only for new or
@@ -546,6 +550,11 @@ def scan_file(
         - validate_email (email: str) -> bool @48 # Validate email format
     """
     try:
+        # depth is an alias carried over from preview_directory; map it to the
+        # native cost lever. Explicit budget always wins; "deep" == full (None).
+        if budget is None and depth is not None:
+            budget = {"quick": 300, "normal": 1500, "deep": None}.get(depth)
+
         # Delta: unchanged since this session's previous scan → one line.
         # Focused reads bypass delta entirely — they request content, not
         # structure changes
@@ -628,6 +637,7 @@ def scan_directory(
     exclude_patterns: Optional[list[str]] = None,
     delta: bool = True,
     mode: str = "balanced",
+    depth: Optional[str] = None,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -688,6 +698,10 @@ def scan_directory(
             mode: Saliency weight profile for the per-file glimpse lines —
                 "balanced" (default) or "active" (weights actively-edited
                 code higher)
+            depth: Accepted but inert — scan_directory is already the shallow
+                bird's-eye tier, so there is no depth axis to set. Passing it
+                triggers a one-line usage hint pointing at the right lever
+                (pattern for breadth; scan_file/preview_directory for depth)
             output_format: "tree" or "json" (default: "tree")
 
     Returns:
@@ -704,6 +718,17 @@ def scan_directory(
         scan_directory(".", pattern="*/*")
     """
     try:
+        # depth has no analog here — scan_directory is already the shallow tier.
+        # Accept it (no crash) but flag it as non-optimal tool use, in-loop.
+        depth_note = ""
+        if depth is not None:
+            depth_note = (
+                "Note: scan_directory has no depth setting — it is already the "
+                "shallow bird's-eye tier (one-line gists, no deep analysis), so "
+                "'depth' was ignored. Narrow breadth with pattern (e.g. '*/*' = "
+                "one level); for deeper per-file detail use scan_file(budget=) "
+                "or preview_directory(depth=).\n\n")
+
         results = scanner.scan_directory(
             directory=directory,
             pattern=pattern,
@@ -713,15 +738,15 @@ def scan_directory(
         )
 
         if not results:
-            return [TextContent(type="text", text=f"No supported files found in {directory} matching {pattern}")]
+            return [TextContent(type="text", text=depth_note + f"No supported files found in {directory} matching {pattern}")]
 
         # Apply max_files limit if specified
         if max_files is not None and len(results) > max_files:
             sorted_items = sorted(results.items())[:max_files]
             results = dict(sorted_items)
-            warning = f"Note: Limited to first {max_files} files (out of {len(results)} total)\n\n"
+            warning = depth_note + f"Note: Limited to first {max_files} files (out of {len(results)} total)\n\n"
         else:
-            warning = ""
+            warning = depth_note
 
         if output_format == "json":
             json_results = {}
@@ -754,7 +779,7 @@ def scan_directory(
 
             if delta and not display_results:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
-                return [TextContent(type="text", text=(
+                return [TextContent(type="text", text=depth_note + (
                     f"{directory}: all {len(unchanged_paths)} files unchanged "
                     f"since last scan in this session ({names}) — "
                     f"delta=False for full output"))]
