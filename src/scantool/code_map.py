@@ -43,6 +43,25 @@ def clear_corpus_cache() -> None:
         _EXTRACT_CACHE.clear()
 
 
+def _read_text_skip_binary(path: Path) -> Optional[str]:
+    """Read a file as UTF-8 text, but bail cheaply on binaries.
+
+    A directory of geodata or media carries multi-GB binaries (GeoTIFF,
+    shapefiles, …) with no analysable structure; read_text()'ing them in full
+    just to find nothing is ruinously slow. Sniff the first chunk for a NUL byte
+    (the universal binary tell, extension-independent) and skip the file before
+    paying for the rest. Returns None for binary or unreadable files."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(8192)
+            if b"\x00" in head:
+                return None
+            rest = fh.read()
+    except OSError:
+        return None
+    return (head + rest).decode("utf-8", errors="replace")
+
+
 def _dir_cache(directory: str) -> dict:
     """Per-directory {rel_file: (fingerprint, extraction)} map; LRU over directories."""
     with _CACHE_LOCK:
@@ -168,11 +187,10 @@ class CodeMap:
                 # skipped and never cached (so it re-checks every run, as before);
                 # a cache hit means content is unchanged, so that verdict cannot
                 # have changed without a fingerprint change.
-                try:
-                    content = (self.directory / file_path).read_text(encoding="utf-8")
-                except Exception:
-                    continue
                 if not analyzer.should_analyze(file_path):
+                    continue
+                content = _read_text_skip_binary(self.directory / file_path)
+                if content is None:
                     continue
                 extraction = self._extract_file(analyzer, file_path, content)
                 if cache is not None and fp is not None:

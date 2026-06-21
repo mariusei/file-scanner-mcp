@@ -47,6 +47,21 @@ class StructureNode:
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"
 
 
+def is_unsupported_stub(structures: Optional[list["StructureNode"]]) -> bool:
+    """True if a file's scan is just an 'unsupported' file-info stub — no
+    parseable structure, only name + size metadata. Reading such files (e.g.
+    multi-GB binaries carried as stubs) as text is pointless and can be
+    ruinously slow, so every code path that would read_text() must skip them."""
+    if not structures or len(structures) != 1:
+        return False
+    node = structures[0]
+    return (
+        node.type == "file-info"
+        and node.file_metadata is not None
+        and node.file_metadata.get("unsupported", False)
+    )
+
+
 # ===========================================================================
 # Analysis models (from analyzers)
 # ===========================================================================

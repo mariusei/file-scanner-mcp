@@ -1,10 +1,9 @@
 """Hierarchical directory tree formatter with integrated code structures."""
 
 from pathlib import Path
-from collections import defaultdict
 from typing import Optional
 from datetime import datetime
-from .languages import StructureNode
+from .languages import StructureNode, is_unsupported_stub
 
 
 class DirectoryFormatter:
@@ -255,16 +254,8 @@ class DirectoryFormatter:
                 # File
                 structures = child["structures"]
 
-                # Check if this is an unsupported file (only has file-info with unsupported flag)
-                is_unsupported = (
-                    len(structures) == 1
-                    and structures[0].type == "file-info"
-                    and hasattr(structures[0], "file_metadata")
-                    and structures[0].file_metadata
-                    and structures[0].file_metadata.get("unsupported", False)
-                )
-
-                if is_unsupported:
+                # Unsupported file: only a file-info stub with the unsupported flag
+                if is_unsupported_stub(structures):
                     # Unsupported file - show with metadata (no extension needed, it's in the filename)
                     metadata = structures[0].file_metadata
                     size = metadata.get("size_formatted", "")

@@ -19,7 +19,7 @@ from .directory_formatter import DirectoryFormatter
 from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits, repo_root
 from .connectivity import connectivity_tail
 from .scanner import FileScanner
-from .languages import StructureNode
+from .languages import StructureNode, is_unsupported_stub
 from .preview import preview_directory as preview_dir_func
 from .code_map import CodeMap
 from .consensus import DivergenceConfig, find_divergences, format_divergences
@@ -104,20 +104,6 @@ def _connectivity_note(file_path: str) -> str:
         return connectivity_tail(root, file_path)
     except Exception:
         return ""
-
-
-def _is_unsupported(structures: list) -> bool:
-    """True if the file has no parseable structure — just an 'unsupported'
-    file-info stub. Reading such files (e.g. multi-GB binaries) as text is
-    pointless and can be ruinously slow, so callers skip them."""
-    if len(structures) != 1:
-        return False
-    node = structures[0]
-    return (
-        node.type == "file-info"
-        and node.file_metadata is not None
-        and node.file_metadata.get("unsupported", False)
-    )
 
 
 def _annotate_churn(results: dict, directory: str) -> None:
@@ -756,7 +742,7 @@ def scan_directory(
                 for path in results:
                     if scan_memory.file_unchanged(path) is not None:
                         unchanged_paths.append(path)
-                    elif results[path] and not _is_unsupported(results[path]):
+                    elif results[path] and not is_unsupported_stub(results[path]):
                         try:
                             lines = Path(path).read_text(errors="replace").split("\n")
                             scan_memory.diff_and_record(path, results[path], lines)
