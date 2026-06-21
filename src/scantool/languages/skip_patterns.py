@@ -20,6 +20,8 @@ Categories:
 - FRONTEND_DIRS: Frontend framework outputs
 """
 
+from pathlib import Path
+
 # =============================================================================
 # DIRECTORY PATTERNS BY CATEGORY
 # =============================================================================
@@ -118,9 +120,10 @@ BUILD_DIRS = {
 }
 
 # Cache directories
+# NB: only dot-prefixed tool caches — a bare "cache/" is frequently a real
+# source module (e.g. src/cache/manager.py), so it must not be pruned blindly.
 CACHE_DIRS = {
     ".cache",
-    "cache",
     ".parcel-cache",
     ".turbo",
     ".nx",
@@ -270,7 +273,6 @@ def should_skip_directory(dir_name: str) -> bool:
         return True
     # Skip directory-based binary formats regardless of base name
     # e.g. "weather.zarr", "dataset.parquet"
-    from pathlib import Path
     suffix = Path(dir_name).suffix.lower()
     return suffix in DATA_FORMAT_DIR_SUFFIXES
 
@@ -292,7 +294,6 @@ def should_skip_file(file_name: str) -> bool:
         return True
 
     # Check file extension
-    from pathlib import Path
     ext = Path(file_name).suffix.lower()
     if ext in COMMON_SKIP_EXTENSIONS:
         return True
