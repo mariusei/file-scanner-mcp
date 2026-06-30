@@ -170,3 +170,17 @@ def local_helper(items):
         output = format_hits(search_content(results, "target_"), "target_")
 
         assert "+4 more in this structure" in output
+
+    def test_unsupported_stub_not_read(self, tmp_path):
+        # An unsupported file type (e.g. multi-GB geodata) is carried as a
+        # file-info stub with no parseable structure; read_text()'ing it is
+        # ruinously slow and yields no structural context. The matching hit
+        # must come only from the supported file, never the stub.
+        results = scan(tmp_path, {
+            "code.py": "def find_lake():\n    return 'lake'\n",
+            "lakes.geojson": '{"features": ["lake", "lake", "lake"]}\n',
+        })
+
+        found = search_content(results, "lake")
+
+        assert {h.file.split("/")[-1] for h in found} == {"code.py"}

@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .languages import is_unsupported_stub
+
 # Node types that never anchor a hit (a hit in an import still belongs
 # to module level, not to the imports node)
 _NON_ANCHOR_TYPES = {"file-info", "imports", "error", "parse-error"}
@@ -67,6 +69,11 @@ def search_content(
 
     for file_path in sorted(results):
         structures = results[file_path]
+        # Unsupported stubs (multi-GB geodata/binaries carried as file-info
+        # only) have no structure to anchor a hit, and read_text()'ing them is
+        # ruinously slow — the same guard every read_text() path must apply.
+        if is_unsupported_stub(structures):
+            continue
         try:
             lines = Path(file_path).read_text(errors="replace").split("\n")
         except OSError:
