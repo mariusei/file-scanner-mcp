@@ -2,6 +2,8 @@
 on top. A hit must come back with the node chain it lives in — in any
 file type."""
 
+from pathlib import Path
+
 from scantool.content_search import search_content, format_hits
 from scantool.scanner import FileScanner
 
@@ -183,4 +185,4 @@ def local_helper(items):
 
         found = search_content(results, "lake")
 
-        assert {h.file.split("/")[-1] for h in found} == {"code.py"}
+        assert {Path(h.file).name for h in found} == {"code.py"}
