@@ -33,7 +33,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Optional
 
-from .languages import get_language, is_unsupported_stub
+from .languages import get_language, is_file_info_stub
 
 # Structural node types that are never definitions worth flagging
 _SKIP_TYPES = {
@@ -75,7 +75,7 @@ def analyze_health(
         # structure; reading a multi-GB GeoTIFF as text just to count words is
         # ruinously slow and yields nothing. Skip them — they contribute no
         # definitions and no meaningful references.
-        if is_unsupported_stub(structures):
+        if is_file_info_stub(structures):
             contents[file_path] = ""
             continue
         try:

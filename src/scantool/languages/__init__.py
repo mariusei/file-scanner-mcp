@@ -41,7 +41,7 @@ from .models import (
     CallGraphNode,
     FileNode,
     CodeMapResult,
-    is_unsupported_stub,
+    is_file_info_stub,
 )
 
 __all__ = [
@@ -52,7 +52,7 @@ __all__ = [
     "get_registry",
     # Models
     "StructureNode",
-    "is_unsupported_stub",
+    "is_file_info_stub",
     "ImportInfo",
     "EntryPointInfo",
     "DefinitionInfo",

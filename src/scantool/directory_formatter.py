@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
-from .languages import StructureNode, is_unsupported_stub
+from .languages import StructureNode, is_file_info_stub
 
 
 class DirectoryFormatter:
@@ -255,7 +255,7 @@ class DirectoryFormatter:
                 structures = child["structures"]
 
                 # Unsupported file: only a file-info stub with the unsupported flag
-                if is_unsupported_stub(structures):
+                if is_file_info_stub(structures):
                     # Unsupported file - show with metadata (no extension needed, it's in the filename)
                     metadata = structures[0].file_metadata
                     size = metadata.get("size_formatted", "")

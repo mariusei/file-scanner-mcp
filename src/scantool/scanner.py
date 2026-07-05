@@ -35,6 +35,44 @@ def _estimate_tokens(lines: list[str]) -> int:
     return len("\n".join(lines)) // 4 + len(lines)
 
 
+# A directory sweep never parses a file past this size, whatever its type:
+# tree-sitter parsing plus the full read_text() downstream search does cost
+# ~seconds per GB, and a file this large is a data dump (geodata, DB export,
+# media) with no source structure worth mapping. scan_directory emits a
+# name+size stub instead. An explicit scan_file(path) leaves max_bytes=None
+# and still parses in full — naming one file IS the opt-in to scan it.
+SWEEP_MAX_BYTES = 100 * 1024 * 1024  # 100 MB; far above any hand/generated source file
+
+
+def _format_size(size_bytes: int) -> str:
+    """Human-readable byte count for file-info metadata."""
+    if size_bytes < 1024:
+        return f"{size_bytes}B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f}KB"
+    return f"{size_bytes / (1024 * 1024):.1f}MB"
+
+
+def _file_info_stub(path: Path, file_stats: os.stat_result, *, reason: str) -> "StructureNode":
+    """A name+size-only file-info node for a file the sweep does not parse —
+    an unsupported type or one too large to parse. `reason` is the metadata
+    flag ('unsupported' or 'oversized') that is_file_info_stub keys on so every
+    read_text() path skips it."""
+    return StructureNode(
+        type="file-info",
+        name=path.name,
+        start_line=1,
+        end_line=1,
+        file_metadata={
+            "size": file_stats.st_size,
+            "size_formatted": _format_size(file_stats.st_size),
+            "extension": path.suffix or "(no extension)",
+            "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
+            reason: True,
+        },
+    )
+
+
 class FileScanner:
     """Main scanner that delegates to language-specific scanner plugins."""
 
@@ -129,7 +167,8 @@ class FileScanner:
         include_file_metadata: bool = True,
         budget: Optional[int] = None,
         line_edits: Optional[dict[int, str]] = None,
-        mode: str = "balanced"
+        mode: str = "balanced",
+        max_bytes: Optional[int] = None
     ) -> Optional[list[StructureNode]]:
         """
         Scan a single file and return its structure.
@@ -144,6 +183,10 @@ class FileScanner:
                 (from git_signals.recent_line_edits); boosts actively-worked
                 nodes in selection and sets "[N edits/90d]" labels
             mode: Saliency weight profile — "balanced" or "active"
+            max_bytes: Sweep guard — over this size the file is returned as a
+                name+size stub instead of parsed (a data dump has no source
+                structure worth the ~seconds/GB cost). None = no cap, so an
+                explicit single-file scan always parses in full.
 
         Returns:
             List of StructureNode objects, or None if file type not supported
@@ -162,6 +205,10 @@ class FileScanner:
 
         # Get file metadata
         file_stats = os.stat(file_path)
+
+        # Sweep guard: a file too large to be source is not parsed, only stubbed.
+        if max_bytes is not None and file_stats.st_size > max_bytes:
+            return [_file_info_stub(path, file_stats, reason="oversized")]
 
         # Create scanner instance with options
         scanner = scanner_class(
@@ -470,7 +517,8 @@ class FileScanner:
                     if scanner_class.should_skip(file_path.name):
                         continue
                     try:
-                        results[file_str] = self.scan_file(file_str, mode=mode)
+                        results[file_str] = self.scan_file(
+                            file_str, mode=mode, max_bytes=SWEEP_MAX_BYTES)
                     except Exception as e:
                         results[file_str] = [StructureNode(
                             type="error",
@@ -481,26 +529,8 @@ class FileScanner:
                 else:
                     try:
                         file_stats = os.stat(file_str)
-                        size_bytes = file_stats.st_size
-                        if size_bytes < 1024:
-                            size_str = f"{size_bytes}B"
-                        elif size_bytes < 1024 * 1024:
-                            size_str = f"{size_bytes / 1024:.1f}KB"
-                        else:
-                            size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
-                        results[file_str] = [StructureNode(
-                            type="file-info",
-                            name=file_path.name,
-                            start_line=1,
-                            end_line=1,
-                            file_metadata={
-                                "size": size_bytes,
-                                "size_formatted": size_str,
-                                "extension": file_path.suffix or "(no extension)",
-                                "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
-                                "unsupported": True
-                            }
-                        )]
+                        results[file_str] = [
+                            _file_info_stub(file_path, file_stats, reason="unsupported")]
                     except Exception:
                         continue
 

@@ -134,3 +134,41 @@ def test_scan_directory_propagates_mode(monkeypatch):
 
     assert results
     assert seen_modes and all(m == "active" for m in seen_modes)
+
+
+def test_scan_file_stubs_oversized_supported_file(tmp_path):
+    """max_bytes stubs a file too large to parse regardless of type; None
+    (an explicit single-file scan) always parses in full."""
+    from scantool.languages import is_file_info_stub
+
+    big = tmp_path / "big.py"
+    big.write_text("def real_function():\n    return 1\n" * 500)
+    scanner = FileScanner()
+
+    stubbed = scanner.scan_file(str(big), max_bytes=100)
+    assert stubbed is not None and is_file_info_stub(stubbed)
+    assert stubbed[0].file_metadata["oversized"] is True
+    assert stubbed[0].file_metadata["size_formatted"]
+
+    parsed = scanner.scan_file(str(big), max_bytes=None)
+    assert parsed is not None and not is_file_info_stub(parsed)
+    assert any(n.name == "real_function" for n in parsed)
+
+
+def test_scan_directory_stubs_oversized_by_size_not_type(tmp_path, monkeypatch):
+    """A directory sweep stubs any file over the sweep cap — a large SUPPORTED
+    file (not just an unsupported type) — while small files still parse."""
+    import scantool.scanner as scanner_module
+    from scantool.languages import is_file_info_stub
+
+    (tmp_path / "small.py").write_text("def small():\n    return 1\n")
+    (tmp_path / "huge.py").write_text("def huge():\n    return 1\n" * 500)
+    monkeypatch.setattr(scanner_module, "SWEEP_MAX_BYTES", 100)
+
+    results = FileScanner().scan_directory(str(tmp_path), "**/*")
+
+    huge = results[str(tmp_path / "huge.py")]
+    small = results[str(tmp_path / "small.py")]
+    assert is_file_info_stub(huge)          # supported type, stubbed on size
+    assert not is_file_info_stub(small)     # under the cap, parsed
+    assert any(n.name == "small" for n in small)

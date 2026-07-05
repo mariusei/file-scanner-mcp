@@ -47,19 +47,19 @@ class StructureNode:
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"
 
 
-def is_unsupported_stub(structures: Optional[list["StructureNode"]]) -> bool:
-    """True if a file's scan is just an 'unsupported' file-info stub — no
-    parseable structure, only name + size metadata. Reading such files (e.g.
-    multi-GB binaries carried as stubs) as text is pointless and can be
+def is_file_info_stub(structures: Optional[list["StructureNode"]]) -> bool:
+    """True if a file's scan is just a bare file-info stub — no parseable
+    structure, only name + size metadata. A file is stubbed either because its
+    type is unsupported or because it is too large to parse in a sweep (a
+    multi-GB data dump). Reading such files as text is pointless and can be
     ruinously slow, so every code path that would read_text() must skip them."""
     if not structures or len(structures) != 1:
         return False
     node = structures[0]
-    return (
-        node.type == "file-info"
-        and node.file_metadata is not None
-        and node.file_metadata.get("unsupported", False)
-    )
+    if node.type != "file-info" or node.file_metadata is None:
+        return False
+    return bool(node.file_metadata.get("unsupported")
+                or node.file_metadata.get("oversized"))
 
 
 # ===========================================================================
