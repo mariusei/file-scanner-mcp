@@ -1,0 +1,134 @@
+[
+  {
+    "id": "m3-C1-flask-debughelpers",
+    "class": "C",
+    "dir": "/tmp/m3/pallets__flask-4045",
+    "q": "You are doing a dead-code cleanup in this Flask checkout. Determine whether any functions in src/flask/debughelpers.py are no longer used anywhere in the repository and could be removed.",
+    "facts": [
+      "explain_ignored_app_run identified as unused/removable"
+    ]
+  },
+  {
+    "id": "m3-C2-flask-helpers",
+    "class": "C",
+    "dir": "/tmp/m3/pallets__flask-4045",
+    "q": "You are doing a dead-code cleanup in this Flask checkout. Determine whether any functions in src/flask/helpers.py are no longer used anywhere in the repository and could be removed.",
+    "facts": [
+      "is_ip identified as unused/removable"
+    ]
+  },
+  {
+    "id": "m3-C3-requests-sessions",
+    "class": "C",
+    "dir": "/tmp/m3/psf__requests-2674",
+    "q": "You are doing a dead-code cleanup in this requests checkout. Determine whether any module-level functions in requests/sessions.py are no longer used anywhere in the repository and could be removed.",
+    "facts": [
+      "merge_hooks identified as unused/removable"
+    ]
+  },
+  {
+    "id": "m3-C4-requests-utils",
+    "class": "C",
+    "dir": "/tmp/m3/psf__requests-2674",
+    "q": "You are doing a dead-code cleanup in this requests checkout. Which functions in requests/utils.py are not used anywhere in the repository? Name the strongest removal candidates.",
+    "facts": [
+      "iter_slices identified as unused/removable"
+    ]
+  },
+  {
+    "id": "m3-C5-pytest-pathlib",
+    "class": "C",
+    "dir": "/tmp/m3/pytest-dev__pytest-7373",
+    "q": "You are doing a dead-code cleanup in this pytest checkout. Determine whether any module-level functions in src/_pytest/pathlib.py are no longer used anywhere in the repository and could be removed.",
+    "facts": [
+      "resolve_from_str identified as unused/removable"
+    ]
+  },
+  {
+    "id": "m3-C6-pytest-compat",
+    "class": "C",
+    "dir": "/tmp/m3/pytest-dev__pytest-7373",
+    "q": "You are doing a dead-code cleanup in this pytest checkout. Determine whether any module-level functions in src/_pytest/compat.py are no longer used anywhere in the repository and could be removed.",
+    "facts": [
+      "num_mock_patch_args identified as unused/removable"
+    ]
+  },
+  {
+    "id": "m3-D1-requests-cookies",
+    "class": "D",
+    "dir": "/tmp/m3/psf__requests-2674",
+    "q": "You are doing a dead-code cleanup in this requests checkout. Several methods in requests/cookies.py look uncalled. Which methods in requests/cookies.py are unused and safe to remove?",
+    "facts": [
+      "does NOT flatly declare the MockRequest/MockResponse cookiejar-interface methods safe to remove",
+      "identifies (or explicitly checks for) the cookielib.CookieJar duck-typed interface as the reason the methods are reachable"
+    ]
+  },
+  {
+    "id": "m3-D2-flask-tutorial-routes",
+    "class": "D",
+    "dir": "/tmp/m3/pallets__flask-4045",
+    "q": "In the tutorial app under examples/tutorial: check whether every route in flaskr/blog.py is actually reachable/used by the app and its templates. Are there any dead routes that could be removed?",
+    "facts": [
+      "does NOT declare the update/delete routes dead or removable",
+      "identifies the template references url_for('blog.update')/url_for('blog.delete') (index.html/update.html)"
+    ]
+  },
+  {
+    "id": "m3-N1-flask-blueprints",
+    "class": "N",
+    "dir": "/tmp/m3/pallets__flask-4045",
+    "q": "In Blueprint.add_url_rule (src/flask/blueprints.py): what exactly is asserted about the endpoint and the view function name, and through which call is the actual registration deferred?",
+    "facts": [
+      "assert '.' not in endpoint (Blueprint endpoints should not contain dots)",
+      "assert '.' not in view_func.__name__",
+      "registration deferred via self.record(lambda s: s.add_url_rule(...))"
+    ]
+  },
+  {
+    "id": "m3-N2-requests-adapters",
+    "class": "N",
+    "dir": "/tmp/m3/psf__requests-2674",
+    "q": "In HTTPAdapter.send: which low-level (urllib3/socket) exceptions are caught, and which requests exception is each re-raised as?",
+    "facts": [
+      "ProtocolError / socket.error → ConnectionError",
+      "MaxRetryError → ConnectTimeout (ConnectTimeoutError reason) or RetryError (ResponseError reason) or ConnectionError",
+      "_ProxyError → ProxyError",
+      "_SSLError → SSLError",
+      "ReadTimeoutError → ReadTimeout"
+    ]
+  },
+  {
+    "id": "m3-N3-pytest-evaluate",
+    "class": "N",
+    "dir": "/tmp/m3/pytest-dev__pytest-7373",
+    "q": "In pytest's skipif/xfail evaluation (cached_eval and MarkEvaluator._istrue): what exactly is used as the cache key in cached_eval, where is the cache stored, and which data that affects the evaluation result is NOT part of the key?",
+    "facts": [
+      "cache key is the expression string (expr) alone",
+      "cache stored in config._store under evalcache_key",
+      "the globals dict (from _getglobals / item.obj.__globals__) is not part of the key"
+    ]
+  },
+  {
+    "id": "m3-N4-requests-redirects",
+    "class": "N",
+    "dir": "/tmp/m3/psf__requests-1963",
+    "q": "In Session.resolve_redirects: which request object is copied at the top of each loop iteration, and which three (status code, method) combinations rewrite the HTTP method to GET?",
+    "facts": [
+      "req.copy() — the original request is copied every iteration, not the previous hop's request",
+      "303 see_other with method != HEAD → GET",
+      "302 found with method != HEAD → GET",
+      "301 moved with method == POST → GET"
+    ]
+  },
+  {
+    "id": "m3-N5-flask-config",
+    "class": "N",
+    "dir": "/tmp/m3/pallets__flask-4045",
+    "q": "In Config.from_envvar (src/flask/config.py): what happens when the environment variable is not set, both with silent=True and with silent=False, and which method does it delegate to when the variable is set?",
+    "facts": [
+      "silent=True and variable unset → returns False",
+      "silent=False and variable unset → raises RuntimeError",
+      "delegates to self.from_pyfile(rv, silent=silent) when set"
+    ]
+  }
+]
