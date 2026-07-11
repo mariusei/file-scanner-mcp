@@ -11,7 +11,8 @@ from mcp.types import TextContent
 
 from .code_health import analyze_health
 from .content_search import search_content, format_hits, find_leads
-from .delta import ScanMemory, apply_node_delta, format_age
+from .delta import (FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta,
+                    format_age)
 from .ref_diff import diff_against_ref
 from .focus import format_focus
 from .formatter import TreeFormatter
@@ -515,8 +516,10 @@ def scan_file(
                 the same file in this session: unchanged file → one line;
                 modified file → full structure but code detail only for new or
                 changed functions ([new]/[changed] labels, removed ones listed).
-                First scan is always full. Pass delta=False for full output
-                (default: True)
+                First scan is always full. Only a previous scan_file at equal
+                or deeper detail (budget) counts — a scan_directory gist or a
+                shallower budget never shortens the answer. Pass delta=False
+                for full output (default: True)
         Semantics & display:
             mode: Saliency weight profile — "balanced" (default) or "active"
                 (weights actively-edited code higher in skeleton selection)
@@ -555,11 +558,16 @@ def scan_file(
         if budget is None and depth is not None:
             budget = {"quick": 300, "normal": 1500, "deep": None}.get(depth)
 
+        # The detail level THIS call would show — a previous record may only
+        # shorten the answer if the consumer already saw at least this much
+        # (a directory gist or shallower budget never suppresses this scan)
+        detail = float(budget) if budget is not None else FULL_DETAIL
+
         # Delta: unchanged since this session's previous scan → one line.
         # Focused reads bypass delta entirely — they request content, not
         # structure changes
         if delta and focus is None and output_format != "json":
-            age = scan_memory.file_unchanged(file_path)
+            age = scan_memory.file_unchanged(file_path, detail)
             if age is not None:
                 return [TextContent(type="text", text=(
                     f"{file_path}: unchanged since last scan "
@@ -594,7 +602,8 @@ def scan_file(
         delta_note = ""
         if delta and output_format != "json":
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
-            diff = scan_memory.diff_and_record(file_path, structures, source_lines)
+            diff = scan_memory.diff_and_record(file_path, structures,
+                                               source_lines, detail)
             if diff is not None:
                 changed, unchanged = apply_node_delta(structures, diff)
                 removed = f"; removed: {', '.join(diff.removed)}" if diff.removed else ""
@@ -765,12 +774,15 @@ def scan_directory(
             display_results = results
             if delta:
                 for path in results:
-                    if scan_memory.file_unchanged(path) is not None:
+                    # Gist-level records: enough to aggregate future directory
+                    # scans, but never enough to suppress a scan_file
+                    if scan_memory.file_unchanged(path, GIST_DETAIL) is not None:
                         unchanged_paths.append(path)
                     elif results[path] and not is_file_info_stub(results[path]):
                         try:
                             lines = Path(path).read_text(errors="replace").split("\n")
-                            scan_memory.diff_and_record(path, results[path], lines)
+                            scan_memory.diff_and_record(path, results[path],
+                                                        lines, GIST_DETAIL)
                         except OSError:
                             pass
                 if unchanged_paths:

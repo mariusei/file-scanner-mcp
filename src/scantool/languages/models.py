@@ -43,6 +43,14 @@ class StructureNode:
     recent_edits: Optional[int] = None  # Distinct commits behind this node's lines (90d window)
     delta_status: Optional[str] = None  # "new"/"changed" vs previous scan (delta mode)
 
+    def __post_init__(self):
+        # Names are single-line by contract: they are interpolated into
+        # one-line tree rows and used as focus= keys. Multi-line sources
+        # exist (e.g. a setext heading whose content spans several lines)
+        # and collapse to single spaces here.
+        if self.name and ("\n" in self.name or "\r" in self.name):
+            self.name = " ".join(self.name.split())
+
     def __repr__(self):
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"
 

@@ -18,6 +18,10 @@ CONTRACT:
     Output always says how to get everything (delta=False), because the
     consumer's context may have been compacted away.
   - The first scan of a file is always full.
+  - Records carry the DETAIL LEVEL the consumer was shown. A one-liner (or
+    node-level suppression) may only replace output seen at AT LEAST the
+    requested detail: a scan_directory gist never suppresses a scan_file,
+    and a budget=300 skeleton never suppresses a full scan.
   - The memory is AGE-LIMITED: a long-lived server process (HTTP, reused
     stdio) crosses conversations, and delta must never refer to output a
     new conversation has never seen. Entries older than the TTL are treated
@@ -32,6 +36,12 @@ from typing import Optional
 
 # Within-session iteration is preserved; cross-conversation ghosts die
 _MEMORY_TTL_SECONDS = 30 * 60
+
+# Detail levels for ScanMemory records. scan_directory's per-file gist is the
+# floor, a full (uncapped) scan_file the ceiling; budgeted scan_file calls sit
+# in between at their token budget.
+GIST_DETAIL = 0.0
+FULL_DETAIL = float("inf")
 
 
 def format_age(seconds: float) -> str:
@@ -110,14 +120,18 @@ class ScanMemory:
     """Remembers previous scans; answers "what changed since last time?"."""
 
     def __init__(self):
-        self._files: dict[str, tuple] = {}  # path -> (stat_fp, {key: hash}, recorded_at)
+        # path -> (stat_fp, {key: hash}, recorded_at, detail)
+        self._files: dict[str, tuple] = {}
 
     def clear(self) -> None:
         self._files.clear()
 
-    def file_unchanged(self, path: str) -> Optional[float]:
+    def file_unchanged(self, path: str,
+                       detail: float = FULL_DETAIL) -> Optional[float]:
         """Age in seconds of the previous identical scan — None if changed,
-        unseen, or the memory has expired (TTL)."""
+        unseen, expired (TTL), or previously shown at LESS detail than this
+        request: "identical to the previous response" must refer to a
+        response that actually contained this level of detail."""
         cached = self._files.get(path)
         if cached is None:
             return None
@@ -125,23 +139,29 @@ class ScanMemory:
         if age > _MEMORY_TTL_SECONDS:
             del self._files[path]
             return None
+        if cached[3] < detail:
+            return None
         fingerprint = stat_fingerprint(path)
         if fingerprint is not None and fingerprint == cached[0]:
             return age
         return None
 
-    def diff_and_record(self, path: str, structures,
-                        source_lines: list[str]) -> Optional[NodeDiff]:
+    def diff_and_record(self, path: str, structures, source_lines: list[str],
+                        detail: float = FULL_DETAIL) -> Optional[NodeDiff]:
         """Node-diff against the previous scan (None on first scan), then
-        record the current state."""
+        record the current state. A previous record at less detail counts
+        as a first scan — node-level suppression must never point at
+        detail the consumer was never shown."""
         fingerprint = stat_fingerprint(path)
         current = node_hashes(structures, source_lines)
         previous = self._files.get(path)
 
-        self._files[path] = (fingerprint, current, time.time())
+        self._files[path] = (fingerprint, current, time.time(), detail)
 
-        if previous is None or time.time() - previous[2] > _MEMORY_TTL_SECONDS:
-            return None  # expired memory = first scan, never a ghost diff
+        if (previous is None
+                or time.time() - previous[2] > _MEMORY_TTL_SECONDS
+                or previous[3] < detail):
+            return None  # expired or shallower memory = first scan, never a ghost diff
         return diff_nodes(previous[1], current)
 
 

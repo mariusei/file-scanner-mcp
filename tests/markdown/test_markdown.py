@@ -308,3 +308,27 @@ def test_line_range_invariants(file_scanner):
     structures = file_scanner.scan_file("tests/markdown/samples/edge_cases.md")
     validate_line_range_invariants(structures)
 
+
+
+def test_multiline_setext_heading_name_is_single_line(file_scanner, tmp_path):
+    """A setext underline after a multi-line paragraph makes the WHOLE
+    paragraph the heading (CommonMark). The node name must still be a single
+    line — names are interpolated into one-line tree rows and focus= keys.
+    Real-world source: ChatGPT-pasted text where formulas split into
+    'G' / '=' / '3' on separate lines."""
+    md = tmp_path / "setext.md"
+    md.write_text(
+        "G\n=\n3\nG=3 gives you up to\nH\n=\n5\nH=5 (864 rows)\n",
+        encoding="utf-8",
+    )
+
+    structures = file_scanner.scan_file(str(md))
+    assert structures is not None
+
+    def walk(nodes):
+        for node in nodes:
+            assert "\n" not in node.name, f"multi-line name: {node.name!r}"
+            assert "\r" not in node.name
+            walk(node.children)
+
+    walk(structures)
