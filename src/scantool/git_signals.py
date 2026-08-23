@@ -47,6 +47,10 @@ def _run_git(directory: str, *args: str) -> Optional[str]:
     try:
         result = subprocess.run(
             ["git", "-C", directory, *args],
+            # Never inherit the MCP stdio transport. On Windows, cmd/git.exe
+            # can spawn mingw64/bin/git.exe with those handles; if the wrapper
+            # times out, the child keeps the pipes open and communicate() hangs.
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=_GIT_TIMEOUT,

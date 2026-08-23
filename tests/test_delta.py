@@ -219,6 +219,18 @@ class TestCrossToolDelta:
         assert "unchanged since last scan" not in out
         assert "alpha" in out and "beta" in out
 
+    def test_max_files_reports_and_enforces_scan_limit(self, tmp_path):
+        for name in ("a.py", "b.py", "c.py"):
+            (tmp_path / name).write_text(SOURCE_V1)
+
+        out = scan_directory.fn(
+            str(tmp_path), pattern="**/*.py", max_files=2, delta=False,
+        )[0].text
+
+        assert "Limited to first 2 files" in out
+        assert "a.py" in out and "b.py" in out
+        assert "c.py" not in out
+
     def test_scan_file_then_scan_directory_aggregates(self, tmp_path):
         path = tmp_path / "app.py"
         path.write_text(SOURCE_V1)

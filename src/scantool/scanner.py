@@ -403,7 +403,8 @@ class FileScanner:
         pattern: str = "**/*",
         respect_gitignore: bool = True,
         exclude_patterns: Optional[list[str]] = None,
-        mode: str = "balanced"
+        mode: str = "balanced",
+        max_files: Optional[int] = None,
     ) -> dict[str, Optional[list[StructureNode]]]:
         """
         Scan all supported files in a directory.
@@ -414,6 +415,8 @@ class FileScanner:
             respect_gitignore: Respect .gitignore exclusions (default: True)
             exclude_patterns: Additional patterns to exclude (gitignore syntax)
             mode: Saliency weight profile per file — "balanced" or "active"
+            max_files: Stop scanning after this many matching files. None scans
+                every match
 
         Returns:
             Dictionary mapping file paths to their structures
@@ -464,6 +467,9 @@ class FileScanner:
         expanded_patterns = expand_braces(pattern)
 
         seen_files: set[str] = set()
+
+        if max_files is not None and max_files <= 0:
+            return results
 
         for root, dirs, files in os.walk(str(dir_path)):
             root_path = Path(root)
@@ -533,6 +539,9 @@ class FileScanner:
                             _file_info_stub(file_path, file_stats, reason="unsupported")]
                     except Exception:
                         continue
+
+                if max_files is not None and len(results) >= max_files:
+                    return results
 
         return results
 
