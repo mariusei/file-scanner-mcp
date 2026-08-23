@@ -11,9 +11,25 @@ import subprocess
 
 import pytest
 
-from scantool.git_signals import collect_git_signals, file_churn, format_activity
+from scantool.git_signals import (
+    _run_git, collect_git_signals, file_churn, format_activity,
+)
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
+
+
+def test_git_subprocess_does_not_inherit_mcp_stdin(monkeypatch, tmp_path):
+    """Git children must not inherit the MCP server's stdio transport."""
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return subprocess.CompletedProcess(args[0], 0, stdout="ok\n", stderr="")
+
+    monkeypatch.setattr("scantool.git_signals.subprocess.run", fake_run)
+
+    assert _run_git(str(tmp_path), "status") == "ok\n"
+    assert calls[0][1]["stdin"] is subprocess.DEVNULL
 
 
 def _git(cwd, *args, date=None):
