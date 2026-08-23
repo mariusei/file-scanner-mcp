@@ -743,19 +743,19 @@ def scan_directory(
             pattern=pattern,
             respect_gitignore=respect_gitignore,
             exclude_patterns=exclude_patterns,
-            mode=mode
+            mode=mode,
+            max_files=max_files,
         )
 
         if not results:
             return [TextContent(type="text", text=depth_note + f"No supported files found in {directory} matching {pattern}")]
 
-        # Apply max_files limit if specified
-        if max_files is not None and len(results) > max_files:
-            sorted_items = sorted(results.items())[:max_files]
-            results = dict(sorted_items)
-            warning = depth_note + f"Note: Limited to first {max_files} files (out of {len(results)} total)\n\n"
-        else:
-            warning = depth_note
+        warning = depth_note
+        if max_files is not None and len(results) >= max_files:
+            warning += (
+                f"Note: Limited to first {max_files} files; scanning stopped "
+                "at the limit\n\n"
+            )
 
         if output_format == "json":
             json_results = {}

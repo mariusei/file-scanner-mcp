@@ -136,6 +136,27 @@ def test_scan_directory_propagates_mode(monkeypatch):
     assert seen_modes and all(m == "active" for m in seen_modes)
 
 
+def test_scan_directory_max_files_stops_parsing(tmp_path, monkeypatch):
+    """max_files must cap parsing work, not only truncate formatted output."""
+    for name in ("a.py", "b.py", "c.py", "d.py"):
+        (tmp_path / name).write_text(f"def {name[0]}():\n    return 1\n")
+
+    scanner = FileScanner()
+    scanned = []
+    original = scanner.scan_file
+
+    def spy(path, **kwargs):
+        scanned.append(Path(path).name)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(scanner, "scan_file", spy)
+
+    results = scanner.scan_directory(str(tmp_path), max_files=2)
+
+    assert [Path(path).name for path in results] == ["a.py", "b.py"]
+    assert scanned == ["a.py", "b.py"]
+
+
 def test_scan_file_stubs_oversized_supported_file(tmp_path):
     """max_bytes stubs a file too large to parse regardless of type; None
     (an explicit single-file scan) always parses in full."""
