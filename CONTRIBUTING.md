@@ -367,6 +367,42 @@ implementations of `_structures_to_definitions` had all dropped `parent_kind`.
 
 ---
 
+## Releasing
+
+The version is stated in three places: `pyproject.toml`, the project's own
+entry in `uv.lock`, and the git tag. Do not set them by hand — `uv version
+--bump` writes pyproject and leaves the lockfile behind, which is precisely
+how they drift apart.
+
+```bash
+uv run scripts/release.py --bump patch     # or minor / major / --set X.Y.Z
+git push origin main --follow-tags
+```
+
+The script refuses to start on a dirty tree, off main, or behind origin, then
+runs the same three gates CI runs. Only if they pass does it bump, re-lock,
+verify `uv sync --locked` agrees, commit, and tag. The tag is read back out of
+pyproject rather than typed again, so it cannot name a different version.
+`--dry-run` walks the whole sequence and undoes the bump.
+
+It stops before pushing on purpose. Pushing the tag is what triggers the
+release, and that is worth a look first.
+
+If a tag gets made by hand anyway, the `pre-push` hook blocks it — it reads
+`pyproject.toml` and `uv.lock` out of the tagged commit and compares them to
+the tag name. Enable it with:
+
+```bash
+uv run pre-commit install --hook-type pre-commit --hook-type pre-push
+```
+
+Publishing itself is gated: the `verify` job checks the tag against the
+packaged version and fails on a stale lockfile before `publish` ever runs. That
+is the backstop, not the plan — by then the tag already exists, and a published
+PyPI version can never be replaced.
+
+---
+
 ## Two-Tier Noise Filtering
 
 Languages integrate with two-tier skip system:
