@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import cast
 
 from tree_sitter import Node, Parser
-from tree_sitter_language_pack import get_language
+from tree_sitter_language_pack import get_language as get_packed_grammar
 
 from .base import BaseLanguage
 from .css import CSSLanguage
@@ -49,7 +49,7 @@ class SCSSLanguage(BaseLanguage):
         # where unsigned long is 32-bit — OverflowError, 16 SCSS tests down.
         # Every other grammar here ships its own maintained package; this is
         # the one that needs the language pack.
-        self.parser.language = get_language("scss")
+        self.parser.language = get_packed_grammar("scss")
 
     # ===========================================================================
     # Metadata (REQUIRED)
