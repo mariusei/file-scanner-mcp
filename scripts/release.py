@@ -28,15 +28,25 @@ ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILES = ("pyproject.toml", "uv.lock")
 
 
-def run(*args: str, capture: bool = False) -> str:
-    """Run a command in the repo root; abort the release on any failure."""
+def run(*args: str, capture: bool = False, quiet: bool = False) -> str:
+    """Run a command in the repo root; abort the release on any failure.
+
+    quiet swallows the command's own output — step() already reports the
+    outcome — but replays it when the command fails, which is when you
+    need it.
+    """
+    hide = capture or quiet
     result = subprocess.run(
         args,
         cwd=ROOT,
         text=True,
-        stdout=subprocess.PIPE if capture else None,
+        stdout=subprocess.PIPE if hide else None,
+        stderr=subprocess.PIPE if quiet else None,
     )
     if result.returncode != 0:
+        if quiet:
+            print(result.stdout or "", file=sys.stderr)
+            print(result.stderr or "", file=sys.stderr)
         die(f"command failed: {' '.join(args)}")
     return (result.stdout or "").strip()
 
@@ -82,14 +92,14 @@ def preflight(allow_dirty: bool) -> None:
 
 def gates() -> None:
     """The same three gates CI runs. Cheaper to fail here than after tagging."""
-    run("uv", "run", "ruff", "check", ".")
+    run("uv", "run", "ruff", "check", ".", quiet=True)
     step("ruff check")
-    run("uv", "run", "ruff", "format", "--check", ".")
+    run("uv", "run", "ruff", "format", "--check", ".", quiet=True)
     step("ruff format")
-    run("uv", "run", "mypy")
+    run("uv", "run", "mypy", quiet=True)
     step("mypy")
-    run("uv", "run", "pytest", "tests/", "-q")
-    step("tests")
+    out = run("uv", "run", "pytest", "tests/", "-q", capture=True)
+    step("tests", out.splitlines()[-1].strip() if out else "ok")
 
 
 def main() -> None:
@@ -113,15 +123,15 @@ def main() -> None:
 
     was = current_version()
     if args.bump:
-        run("uv", "version", "--bump", args.bump)
+        run("uv", "version", "--bump", args.bump, quiet=True)
     else:
-        run("uv", "version", args.exact)
+        run("uv", "version", args.exact, quiet=True)
     now = current_version()
     step("version", f"{was} => {now}")
 
     # uv version writes pyproject only; the lockfile records the project's own
     # version too and has to follow, or `uv sync --locked` fails in CI.
-    run("uv", "lock")
+    run("uv", "lock", quiet=True)
     step("uv lock")
 
     if subprocess.run(
