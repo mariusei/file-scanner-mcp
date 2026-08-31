@@ -1,12 +1,24 @@
 # Run `uv run pre-commit install` once to enable. Mirrors the quality job in
 # .github/workflows/test.yml, so a clean commit is a clean CI run.
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.5
+  # Ruff runs from the dev group rather than a rev pinned here. Two pinned
+  # versions drift, and when the hook and CI disagree on formatting you get
+  # a loop: the hook reformats, CI rejects, repeat. pyproject owns it, so
+  # dependabot's dev group keeps it current.
+  - repo: local
     hooks:
       - id: ruff-check
-        args: [--fix]
+        name: ruff check
+        entry: uv run ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
       - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
