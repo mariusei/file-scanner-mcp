@@ -35,6 +35,9 @@ jobs:
       - name: Ruff (lint)
         run: uv run ruff check .
 
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+
       - name: mypy
         run: uv run mypy
 

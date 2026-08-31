@@ -201,9 +201,9 @@ class CodeMap:
 
             # Track that this file was analyzed
             analyzed_files.append(file_path)
-            all_imports.extend(imports)        # Layer 1: imports
+            all_imports.extend(imports)  # Layer 1: imports
             all_entry_points.extend(entry_points)  # Layer 1: entry points
-            file_clusters[file_path] = cluster     # Layer 1: classification
+            file_clusters[file_path] = cluster  # Layer 1: classification
 
             # Layer 2: definitions and calls (if enabled)
             if self.enable_layer2:
@@ -417,11 +417,9 @@ class CodeMap:
         Returns:
             Dict with top-level dirs, their subdirs, and file type info
         """
-        structure: defaultdict[str, dict[str, Any]] = defaultdict(lambda: {
-            "subdirs": set(),
-            "extensions": defaultdict(int),
-            "file_count": 0
-        })
+        structure: defaultdict[str, dict[str, Any]] = defaultdict(
+            lambda: {"subdirs": set(), "extensions": defaultdict(int), "file_count": 0}
+        )
 
         for file_path in files:
             parts = file_path.split("/")
@@ -527,7 +525,7 @@ class CodeMap:
             sorted_dirs = sorted(
                 [(k, v) for k, v in structure.items() if k != "(root)"],
                 key=lambda x: x[1]["file_count"],
-                reverse=True
+                reverse=True,
             )
 
             if sorted_dirs:
@@ -554,7 +552,11 @@ class CodeMap:
                 if "(root)" in structure:
                     root_info = structure["(root)"]
                     lang_tag = self._format_language_tag(root_info["extensions"])
-                    lines.append(f"  (root files)     {root_info['file_count']} files            [{lang_tag}]" if lang_tag else f"  (root files)     {root_info['file_count']} files")
+                    lines.append(
+                        f"  (root files)     {root_info['file_count']} files            [{lang_tag}]"
+                        if lang_tag
+                        else f"  (root files)     {root_info['file_count']} files"
+                    )
 
                 lines.append("")
 
@@ -574,16 +576,16 @@ class CodeMap:
 
                 # Thresholds (relative to project)
                 recent_threshold = min_age + (age_span * 0.25)  # Top 25% newest
-                old_threshold = min_age + (age_span * 0.50)     # Older than median
-                large_threshold = max(median_size, 2000)        # Larger than median or 2KB
+                old_threshold = min_age + (age_span * 0.50)  # Older than median
+                large_threshold = max(median_size, 2000)  # Larger than median or 2KB
 
                 # Classify each file into archetypes
                 archetypes: dict[str, list[FileNode]] = {
                     "core_infrastructure": [],  # 🏛️ old + central + stable
-                    "active_core": [],          # 🔧 central + recently changed
-                    "active_development": [],   # 🚀 recent + large + not central
-                    "stable_utilities": [],     # 📦 central + small + old
-                    "potentially_stale": [],    # 💤 old + small + not central + not recent
+                    "active_core": [],  # 🔧 central + recently changed
+                    "active_development": [],  # 🚀 recent + large + not central
+                    "stable_utilities": [],  # 📦 central + small + old
+                    "potentially_stale": [],  # 💤 old + small + not central + not recent
                 }
 
                 for f in files_with_meta:
@@ -618,7 +620,9 @@ class CodeMap:
                 has_any = any(archetypes[key] for key, _, _, _ in archetype_config)
                 if has_any:
                     lines.append("━━━ FILE ARCHETYPES ━━━")
-                    lines.append(f"  (project span: {self._format_age(min_age)} - {self._format_age(max_age)})")
+                    lines.append(
+                        f"  (project span: {self._format_age(min_age)} - {self._format_age(max_age)})"
+                    )
                     lines.append("")
 
                     for key, emoji, label, description in archetype_config:
@@ -627,7 +631,9 @@ class CodeMap:
                             # Sort by relevance within archetype
                             if key in ["core_infrastructure", "active_core", "stable_utilities"]:
                                 # Sort by centrality (most imported first)
-                                files_in_archetype.sort(key=lambda f: len(f.imported_by), reverse=True)
+                                files_in_archetype.sort(
+                                    key=lambda f: len(f.imported_by), reverse=True
+                                )
                             elif key == "active_development":
                                 # Sort by recency (newest first)
                                 files_in_archetype.sort(key=lambda f: f.age_days)
@@ -639,8 +645,14 @@ class CodeMap:
                             for f in files_in_archetype[:4]:
                                 age_str = self._format_age(f.age_days)
                                 size_str = self._format_file_size(f.size)
-                                used_by = f"used by {len(f.imported_by)}" if len(f.imported_by) > 0 else ""
-                                lines.append(f"     {f.path:<45} {age_str:<8} {size_str:<8} {used_by}")
+                                used_by = (
+                                    f"used by {len(f.imported_by)}"
+                                    if len(f.imported_by) > 0
+                                    else ""
+                                )
+                                lines.append(
+                                    f"     {f.path:<45} {age_str:<8} {size_str:<8} {used_by}"
+                                )
                             if len(files_in_archetype) > 4:
                                 lines.append(f"     ... +{len(files_in_archetype) - 4} more")
                             lines.append("")
@@ -671,9 +683,7 @@ class CodeMap:
         # Section 2: Core Files (by centrality) with their contents
         if result.files:
             lines.append("━━━ CORE FILES (by centrality) ━━━")
-            sorted_files = sorted(
-                result.files, key=lambda f: f.centrality_score, reverse=True
-            )
+            sorted_files = sorted(result.files, key=lambda f: f.centrality_score, reverse=True)
 
             # Build a map of file -> definitions for quick lookup
             file_defs: dict[str, list[DefinitionInfo]] = {}
@@ -718,14 +728,18 @@ class CodeMap:
                                 sig = f"({cls.signature})" if cls.signature else ""
                                 centrality = get_centrality(cls)
                                 # Show centrality if significant
-                                cent_str = f" [called by {round(centrality)}]" if round(centrality) >= 1 else ""
+                                cent_str = (
+                                    f" [called by {round(centrality)}]"
+                                    if round(centrality) >= 1
+                                    else ""
+                                )
                                 lines.append(f"     class {cls.name}{sig}{cent_str}")
 
                         # Show top-level functions (sorted by centrality)
                         if functions:
                             for func in functions[:5]:  # Top 5 functions
                                 # func.signature might be "name(args)" or just "(args)"
-                                if func.signature and not func.signature.startswith('('):
+                                if func.signature and not func.signature.startswith("("):
                                     sig = func.signature
                                 elif func.signature:
                                     sig = f"{func.name}{func.signature}"
@@ -733,7 +747,11 @@ class CodeMap:
                                     sig = f"{func.name}()"
 
                                 centrality = get_centrality(func)
-                                cent_str = f" [called by {round(centrality)}]" if round(centrality) >= 1 else ""
+                                cent_str = (
+                                    f" [called by {round(centrality)}]"
+                                    if round(centrality) >= 1
+                                    else ""
+                                )
                                 lines.append(f"     def {sig}{cent_str}")
 
                         # Show count if more exist
@@ -768,9 +786,7 @@ class CodeMap:
             ]:
                 files = result.clusters.get(cluster_name, [])
                 if files:
-                    lines.append(
-                        f"  {cluster_name.replace('_', ' ').title()}: {len(files)} files"
-                    )
+                    lines.append(f"  {cluster_name.replace('_', ' ').title()}: {len(files)} files")
 
                     # For important clusters, show file contents
                     show_contents = cluster_name in ["entry_points", "core_logic", "plugins"]
@@ -803,7 +819,7 @@ class CodeMap:
                                 shown_items += 1
                             for func in functions[:2]:
                                 # func.signature might be "name(args)" or just "(args)"
-                                if func.signature and not func.signature.startswith('('):
+                                if func.signature and not func.signature.startswith("("):
                                     sig = func.signature
                                 elif func.signature:
                                     sig = f"{func.name}{func.signature}"
@@ -822,9 +838,7 @@ class CodeMap:
         # Section 4: Key Dependencies
         if result.import_graph:
             lines.append("━━━ KEY DEPENDENCIES ━━━")
-            sorted_files = sorted(
-                result.files, key=lambda f: f.centrality_score, reverse=True
-            )
+            sorted_files = sorted(result.files, key=lambda f: f.centrality_score, reverse=True)
             for node in sorted_files[:5]:
                 if node.imports:
                     lines.append(f"  {node.path}")
@@ -901,6 +915,7 @@ class CodeMap:
 
             # Get analyzers for filtering
             from .languages import get_registry
+
             registry = get_registry()
 
             # Sort directories by file count
@@ -918,7 +933,9 @@ class CodeMap:
                     # Check if low-value via analyzer
                     ext = Path(f.path).suffix
                     analyzer_class = registry.get_analyzer(ext)
-                    if analyzer_class and analyzer_class().is_low_value_for_inventory(f.path, f.size):
+                    if analyzer_class and analyzer_class().is_low_value_for_inventory(
+                        f.path, f.size
+                    ):
                         continue
 
                     filtered_files.append(f)
@@ -927,7 +944,9 @@ class CodeMap:
                     continue
 
                 # Sort by centrality/importance
-                filtered_files.sort(key=lambda x: (x.path in important_files, x.centrality_score), reverse=True)
+                filtered_files.sort(
+                    key=lambda x: (x.path in important_files, x.centrality_score), reverse=True
+                )
 
                 # Format: directory (N files)
                 #   file1.py, file2.py, file3.py, ...
@@ -941,13 +960,25 @@ class CodeMap:
                 lines.append(f"  {dir_path:<24} {files_str}")
 
             # Show count of hidden low-value files
-            total_shown = sum(len([f for f in files if f.path in important_files or not (
-                (analyzer_cls := registry.get_analyzer(Path(f.path).suffix)) and
-                analyzer_cls().is_low_value_for_inventory(f.path, f.size)
-            )]) for _, files in dir_files.items())
+            total_shown = sum(
+                len(
+                    [
+                        f
+                        for f in files
+                        if f.path in important_files
+                        or not (
+                            (analyzer_cls := registry.get_analyzer(Path(f.path).suffix))
+                            and analyzer_cls().is_low_value_for_inventory(f.path, f.size)
+                        )
+                    ]
+                )
+                for _, files in dir_files.items()
+            )
             total_files = len(result.files)
             if total_files > total_shown:
-                lines.append(f"  ({total_files - total_shown} low-value files hidden: __init__.py, configs, etc.)")
+                lines.append(
+                    f"  ({total_files - total_shown} low-value files hidden: __init__.py, configs, etc.)"
+                )
 
             lines.append("")
 
@@ -985,7 +1016,9 @@ class CodeMap:
         if result.files:
             central_files = [f for f in result.files if len(f.imported_by) >= 2]
             if central_files:
-                top_central = sorted(central_files, key=lambda f: len(f.imported_by), reverse=True)[0]
+                top_central = sorted(central_files, key=lambda f: len(f.imported_by), reverse=True)[
+                    0
+                ]
                 recommendations.append(
                     f'scan_file("{top_central.path}")  → see functions/classes in core file'
                 )
@@ -1015,12 +1048,16 @@ class CodeMap:
         lines.append("")
         lines.append("  What each tool gives you:")
         lines.append("    scan_directory  → functions, classes, line numbers per file")
-        lines.append("    scan_file       → full structure + signatures + entropy-based code snippets")
+        lines.append(
+            "    scan_file       → full structure + signatures + entropy-based code snippets"
+        )
         lines.append("    Read(offset=N)  → actual source code at specific lines")
         lines.append("")
 
         # Footer
         layers_str = "+".join(result.layers_analyzed)
-        lines.append(f"Analysis: {result.total_files} files in {result.analysis_time:.2f}s ({layers_str})")
+        lines.append(
+            f"Analysis: {result.total_files} files in {result.analysis_time:.2f}s ({layers_str})"
+        )
 
         return "\n".join(lines)

@@ -19,7 +19,23 @@ def lang():
 
 class TestCondenseExcerpt:
     def test_keeps_control_flow_and_calls(self, lang):
-        excerpt = ['def format_extensions(self, max_types: int = 3) -> str:', '    """Format top file extensions as compact string."""', '    if not self.extensions:', '        return ""', '', '    # Sort by count, descending', '    sorted_exts = sorted(self.extensions.items(), key=lambda x: x[1], reverse=True)', '    top_exts = sorted_exts[:max_types]', '', '    parts = [f"{ext}:{count}" for ext, count in top_exts]', '', '    if len(sorted_exts) > max_types:', '        parts.append("...")', '', '    return " ".join(parts)']
+        excerpt = [
+            "def format_extensions(self, max_types: int = 3) -> str:",
+            '    """Format top file extensions as compact string."""',
+            "    if not self.extensions:",
+            '        return ""',
+            "",
+            "    # Sort by count, descending",
+            "    sorted_exts = sorted(self.extensions.items(), key=lambda x: x[1], reverse=True)",
+            "    top_exts = sorted_exts[:max_types]",
+            "",
+            '    parts = [f"{ext}:{count}" for ext, count in top_exts]',
+            "",
+            "    if len(sorted_exts) > max_types:",
+            '        parts.append("...")',
+            "",
+            '    return " ".join(parts)',
+        ]
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -41,7 +57,11 @@ class TestCondenseExcerpt:
         assert "…" in text
 
     def test_header_and_docstring_excluded(self, lang):
-        excerpt = ['def connect(self):', '    """Establish database connection."""', '    self.conn = driver.connect(self.connection_string)']
+        excerpt = [
+            "def connect(self):",
+            '    """Establish database connection."""',
+            "    self.conn = driver.connect(self.connection_string)",
+        ]
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -80,7 +100,18 @@ class TestCondenseExcerpt:
         assert skeleton is None or skeleton == ["…"]
 
     def test_try_except_and_loops(self, lang):
-        excerpt = ['def load(self, paths):', '    results = []', '    for path in paths:', '        try:', '            with open(path) as f:', '                results.append(parse(f.read()))', '        except OSError as e:', '            log.warning(e)', '            continue', '    return results']
+        excerpt = [
+            "def load(self, paths):",
+            "    results = []",
+            "    for path in paths:",
+            "        try:",
+            "            with open(path) as f:",
+            "                results.append(parse(f.read()))",
+            "        except OSError as e:",
+            "            log.warning(e)",
+            "            continue",
+            "    return results",
+        ]
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -94,19 +125,33 @@ class TestCondenseExcerpt:
         assert "return results" in text
 
     def test_long_expression_elides_but_keeps_call_names(self, lang):
-        excerpt = ['def rank(self, partitions):', '    score = compute_weighted_score(shannon_entropy(data), compression_ratio(data), structural_uniqueness(idx, partitions, cache))', '    return score']
+        excerpt = [
+            "def rank(self, partitions):",
+            "    score = compute_weighted_score(shannon_entropy(data), compression_ratio(data), structural_uniqueness(idx, partitions, cache))",
+            "    return score",
+        ]
 
         skeleton = lang.condense_excerpt(excerpt)
 
         assert skeleton is not None
         text = "\n".join(skeleton)
         # outer and nested call names all survive elision
-        for name in ("compute_weighted_score", "shannon_entropy",
-                     "compression_ratio", "structural_uniqueness"):
+        for name in (
+            "compute_weighted_score",
+            "shannon_entropy",
+            "compression_ratio",
+            "structural_uniqueness",
+        ):
             assert name in text
 
     def test_trailing_comment_survives_on_kept_line(self, lang):
-        excerpt = ['def get_ttl(tile_type):', '    # full-line comments are dropped', "    if tile_type == 'grid':", '        return None  # Never expires', '    return 300  # 5 minutes default']
+        excerpt = [
+            "def get_ttl(tile_type):",
+            "    # full-line comments are dropped",
+            "    if tile_type == 'grid':",
+            "        return None  # Never expires",
+            "    return 300  # 5 minutes default",
+        ]
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -135,7 +180,17 @@ class TestGenericStrategies:
     def test_typescript_skeleton_keeps_flow_and_calls(self):
         from scantool.languages.typescript import TypeScriptLanguage
 
-        excerpt = ['function login(username: string): User | null {', '  // look up the user', '  const user = users.get(username);', '  if (!user) {', '    return null;', '  }', '  log.info("ok");', '  return user;', '}']
+        excerpt = [
+            "function login(username: string): User | null {",
+            "  // look up the user",
+            "  const user = users.get(username);",
+            "  if (!user) {",
+            "    return null;",
+            "  }",
+            '  log.info("ok");',
+            "  return user;",
+            "}",
+        ]
 
         skeleton = TypeScriptLanguage().condense_excerpt(excerpt)
 
@@ -152,7 +207,17 @@ class TestGenericStrategies:
     def test_go_skeleton_keeps_defer_and_branches(self):
         from scantool.languages.go import GoLanguage
 
-        excerpt = ['func Get(index int) (int, bool) {', '\tmu.Lock()', '\tdefer mu.Unlock()', '\t// bounds check', '\tif index >= 0 && index < len(items) {', '\t\treturn items[index], true', '\t}', '\treturn 0, false', '}']
+        excerpt = [
+            "func Get(index int) (int, bool) {",
+            "\tmu.Lock()",
+            "\tdefer mu.Unlock()",
+            "\t// bounds check",
+            "\tif index >= 0 && index < len(items) {",
+            "\t\treturn items[index], true",
+            "\t}",
+            "\treturn 0, false",
+            "}",
+        ]
 
         skeleton = GoLanguage().condense_excerpt(excerpt)
 
@@ -166,7 +231,14 @@ class TestGenericStrategies:
     def test_php_fragment_prefix_enables_parsing(self):
         from scantool.languages.php import PHPLanguage
 
-        excerpt = ['function login($user) {', '    if (!$user) {', '        return null;', '    }', '    return validate($user);', '}']
+        excerpt = [
+            "function login($user) {",
+            "    if (!$user) {",
+            "        return null;",
+            "    }",
+            "    return validate($user);",
+            "}",
+        ]
 
         skeleton = PHPLanguage().condense_excerpt(excerpt)
 
@@ -179,7 +251,14 @@ class TestGenericStrategies:
     def test_sql_compact_keeps_columns(self):
         from scantool.languages.sql import SQLLanguage
 
-        excerpt = ['-- Users table for auth', 'CREATE TABLE users (', '    id BIGINT PRIMARY KEY,', '', '    name VARCHAR(50) NOT NULL', ');']
+        excerpt = [
+            "-- Users table for auth",
+            "CREATE TABLE users (",
+            "    id BIGINT PRIMARY KEY,",
+            "",
+            "    name VARCHAR(50) NOT NULL",
+            ");",
+        ]
 
         skeleton = SQLLanguage().condense_excerpt(excerpt)
 
@@ -196,7 +275,14 @@ class TestGenericStrategies:
     def test_css_compact_keeps_declarations(self):
         from scantool.languages.css import CSSLanguage
 
-        excerpt = ['.button {', '    /* primary color */', '    color: red;', '', '    background: blue;', '}']
+        excerpt = [
+            ".button {",
+            "    /* primary color */",
+            "    color: red;",
+            "",
+            "    background: blue;",
+            "}",
+        ]
 
         skeleton = CSSLanguage().condense_excerpt(excerpt)
 
@@ -234,7 +320,14 @@ class TestGenericStrategies:
     def test_swift_multiline_init_keeps_header(self):
         from scantool.languages.swift import SwiftLanguage
 
-        excerpt = ['init(', '    store: Store<GameState, GameAction>,', '    nub: Nub? = nil', ') {', '    self.store = store', '}']
+        excerpt = [
+            "init(",
+            "    store: Store<GameState, GameAction>,",
+            "    nub: Nub? = nil",
+            ") {",
+            "    self.store = store",
+            "}",
+        ]
 
         skeleton = SwiftLanguage().condense_excerpt(excerpt)
 
@@ -250,9 +343,7 @@ class TestGenericStrategies:
 
 class TestFormatterRendering:
     def _node(self, **kwargs) -> StructureNode:
-        return StructureNode(
-            type="function", name="foo", start_line=10, end_line=12, **kwargs
-        )
+        return StructureNode(type="function", name="foo", start_line=10, end_line=12, **kwargs)
 
     def test_skeleton_preferred_over_excerpt(self):
         node = self._node(
@@ -311,10 +402,7 @@ def transform_{i}(items, threshold):
         structures = FileScanner().scan_file(str(path))
 
         assert structures is not None
-        annotated = [
-            n for n in structures
-            if n.code_excerpt is not None
-        ]
+        annotated = [n for n in structures if n.code_excerpt is not None]
         # every excerpt on a parseable function must have been condensed
         for node in annotated:
             assert node.code_excerpt is not None

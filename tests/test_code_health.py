@@ -19,7 +19,7 @@ def scan_dir(tmp_path, files: dict[str, str], pattern="**/*"):
 
 
 GO_FILES = {
-    "util.go": '''\
+    "util.go": """\
 package util
 
 func ClampValue(value, low, high int) int {
@@ -39,8 +39,8 @@ func forgottenHelper(items []int) int {
 \t}
 \treturn total
 }
-''',
-    "app.go": '''\
+""",
+    "app.go": """\
 package util
 
 func RunPipeline(values []int) []int {
@@ -50,7 +50,7 @@ func RunPipeline(values []int) []int {
 \t}
 \treturn result
 }
-''',
+""",
 }
 
 
@@ -65,8 +65,10 @@ class TestUnreferencedLanguageAgnostic:
         assert "ClampValue" not in section  # called from app.go
 
     def test_swift(self, tmp_path):
-        results = scan_dir(tmp_path, {
-            "Badge.swift": '''\
+        results = scan_dir(
+            tmp_path,
+            {
+                "Badge.swift": """\
 func formatBadgeText(count: Int) -> String {
     if count > 99 {
         return "99+"
@@ -77,13 +79,14 @@ func formatBadgeText(count: Int) -> String {
 func renderTitleBar(title: String) -> String {
     return "== \\(title) =="
 }
-''',
-            "Screen.swift": '''\
+""",
+                "Screen.swift": """\
 func buildScreen(title: String) -> String {
     return renderTitleBar(title: title)
 }
-''',
-        })
+""",
+            },
+        )
 
         section = analyze_health(results)
 
@@ -91,49 +94,65 @@ func buildScreen(title: String) -> String {
         assert "renderTitleBar" not in section
 
     def test_markdown_only_project_is_silent(self, tmp_path):
-        results = scan_dir(tmp_path, {
-            "README.md": "# Prosjekt\n\n## Bakgrunn\n\nTekst her.\n",
-            "docs/guide.md": "# Guide\n\nMer tekst.\n",
-        })
+        results = scan_dir(
+            tmp_path,
+            {
+                "README.md": "# Prosjekt\n\n## Bakgrunn\n\nTekst her.\n",
+                "docs/guide.md": "# Guide\n\nMer tekst.\n",
+            },
+        )
 
         assert analyze_health(results) == ""
 
 
 class TestRootGuards:
     def test_decorated_definitions_never_flagged(self, tmp_path):
-        results = scan_dir(tmp_path, {"tools.py": '''\
+        results = scan_dir(
+            tmp_path,
+            {
+                "tools.py": """\
 import framework
 
 @framework.tool()
 def exposed_endpoint(request):
     payload = framework.parse(request)
     return framework.respond(payload)
-'''})
+"""
+            },
+        )
 
         assert "exposed_endpoint" not in analyze_health(results)
 
     def test_string_reference_suppresses_flag(self, tmp_path):
         """Registry patterns reference classes by name in strings."""
-        results = scan_dir(tmp_path, {
-            "handler.py": '''\
+        results = scan_dir(
+            tmp_path,
+            {
+                "handler.py": """\
 class LegacyHandler:
     def handle(self, event):
         return process(event, mode="legacy")
-''',
-            "registry.py": 'REGISTRY = {"legacy": "LegacyHandler"}\n',
-        })
+""",
+                "registry.py": 'REGISTRY = {"legacy": "LegacyHandler"}\n',
+            },
+        )
 
         assert "LegacyHandler" not in analyze_health(results)
 
     def test_main_and_tests_never_flagged(self, tmp_path):
-        results = scan_dir(tmp_path, {"prog.py": '''\
+        results = scan_dir(
+            tmp_path,
+            {
+                "prog.py": """\
 def main():
     value = compute_something(42)
     print(value)
 
 def test_compute_behaviour():
     assert compute_something(1) == 2
-'''})
+"""
+            },
+        )
 
         section = analyze_health(results)
 
@@ -143,39 +162,52 @@ def test_compute_behaviour():
     def test_container_classes_never_flagged(self, tmp_path):
         """Registries/DI instantiate classes dynamically — a class with
         members must not be flagged even when its name never appears."""
-        results = scan_dir(tmp_path, {"plugin.py": '''\
+        results = scan_dir(
+            tmp_path,
+            {
+                "plugin.py": """\
 class ObscurePluginImpl:
     def execute(self, payload):
         return transform_payload(payload)
-'''})
+"""
+            },
+        )
 
         assert "ObscurePluginImpl" not in analyze_health(results)
 
     def test_subclass_methods_never_flagged(self, tmp_path):
         """Visitor/override/hook methods are dispatched dynamically."""
-        results = scan_dir(tmp_path, {"visitor.py": '''\
+        results = scan_dir(
+            tmp_path,
+            {
+                "visitor.py": """\
 import ast
 
 class LiteralShortener(ast.NodeTransformer):
     def visit_Lambda_custom(self, node):
         return rewrite_lambda(node)
-'''})
+"""
+            },
+        )
 
         assert "visit_Lambda_custom" not in analyze_health(results)
 
     def test_shared_names_not_flagged(self, tmp_path):
         """Same name defined twice (overrides/interface impls) is exempt."""
-        results = scan_dir(tmp_path, {
-            "a.py": "class A:\n    def render_widget(self):\n        return 1\n",
-            "b.py": "class B:\n    def render_widget(self):\n        return 2\n",
-        })
+        results = scan_dir(
+            tmp_path,
+            {
+                "a.py": "class A:\n    def render_widget(self):\n        return 1\n",
+                "b.py": "class B:\n    def render_widget(self):\n        return 2\n",
+            },
+        )
 
         assert "render_widget" not in analyze_health(results)
 
 
 class TestDuplicates:
     def test_identical_blocks_across_go_files(self, tmp_path):
-        block = '''\
+        block = """\
 func normalizeScores(scores []float64) []float64 {
 \tresult := make([]float64, len(scores))
 \tfor i, s := range scores {
@@ -183,11 +215,14 @@ func normalizeScores(scores []float64) []float64 {
 \t}
 \treturn result
 }
-'''
-        results = scan_dir(tmp_path, {
-            "a.go": "package a\n\n" + block + "\nfunc UseA() { normalizeScores(nil) }\n",
-            "b.go": "package b\n\n" + block + "\nfunc UseB() { normalizeScores(nil) }\n",
-        })
+"""
+        results = scan_dir(
+            tmp_path,
+            {
+                "a.go": "package a\n\n" + block + "\nfunc UseA() { normalizeScores(nil) }\n",
+                "b.go": "package b\n\n" + block + "\nfunc UseB() { normalizeScores(nil) }\n",
+            },
+        )
 
         section = analyze_health(results)
 
@@ -195,24 +230,30 @@ func normalizeScores(scores []float64) []float64 {
         assert "normalizeScores" in section
 
     def test_short_blocks_not_flagged(self, tmp_path):
-        results = scan_dir(tmp_path, {
-            "a.py": "def tiny_fn():\n    return shared_call()\n",
-            "b.py": "def tiny_fn():\n    return shared_call()\n",
-        })
+        results = scan_dir(
+            tmp_path,
+            {
+                "a.py": "def tiny_fn():\n    return shared_call()\n",
+                "b.py": "def tiny_fn():\n    return shared_call()\n",
+            },
+        )
 
         assert "DUPLICATE" not in analyze_health(results)
 
     def test_duplicates_within_same_file(self, tmp_path):
-        block = '''\
+        block = """\
 def scale_values(values):
     result = []
     for v in values:
         result.append(v * 2.5)
     return result
-'''
-        results = scan_dir(tmp_path, {
-            "a.py": block + "\n" + block + "\nX = scale_values([1])\n",
-        })
+"""
+        results = scan_dir(
+            tmp_path,
+            {
+                "a.py": block + "\n" + block + "\nX = scale_values([1])\n",
+            },
+        )
 
         # two identical definitions in the same file — still a duplicate fact
         section = analyze_health(results)

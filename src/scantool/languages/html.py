@@ -26,9 +26,7 @@ from .templates import merge_trees
 from .templates import preprocess as preprocess_templates
 
 # Semantic HTML5 elements that define document structure
-SEMANTIC_SECTIONS = {
-    "header", "nav", "main", "footer", "article", "aside", "section"
-}
+SEMANTIC_SECTIONS = {"header", "nav", "main", "footer", "article", "aside", "section"}
 
 # Form-related elements
 FORM_ELEMENTS = {"form"}
@@ -93,7 +91,9 @@ class HTMLLanguage(BaseLanguage):
         if filename.endswith(".min.html"):
             return True
         # Skip common generated/template cache files
-        return bool(any(pattern in filename.lower() for pattern in [".cache.", ".generated.", ".compiled."]))
+        return bool(
+            any(pattern in filename.lower() for pattern in [".cache.", ".generated.", ".compiled."])
+        )
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip HTML files that should not be analyzed.
@@ -172,9 +172,7 @@ class HTMLLanguage(BaseLanguage):
 
         return html_nodes
 
-    def _extract_structure(
-        self, root: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure from HTML document."""
         structures: list[StructureNode] = []
 
@@ -189,12 +187,14 @@ class HTMLLanguage(BaseLanguage):
 
             # DOCTYPE declaration
             if node.type == "doctype":
-                parent_list.append(StructureNode(
-                    type="doctype",
-                    name="DOCTYPE",
-                    start_line=node.start_point[0] + 1,
-                    end_line=node.end_point[0] + 1
-                ))
+                parent_list.append(
+                    StructureNode(
+                        type="doctype",
+                        name="DOCTYPE",
+                        start_line=node.start_point[0] + 1,
+                        end_line=node.end_point[0] + 1,
+                    )
+                )
 
             # Element nodes
             elif node.type == "element":
@@ -223,9 +223,7 @@ class HTMLLanguage(BaseLanguage):
         traverse(root, structures)
         return structures
 
-    def _extract_element(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_element(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract a structural HTML element."""
         tag_name = self._get_tag_name(node, source_code)
         if not tag_name:
@@ -261,9 +259,7 @@ class HTMLLanguage(BaseLanguage):
                         return self._get_node_text(tag_child, source_code)
         return None
 
-    def _extract_attributes(
-        self, node: Node, source_code: bytes
-    ) -> dict[str, str]:
+    def _extract_attributes(self, node: Node, source_code: bytes) -> dict[str, str]:
         """Extract attributes from an element."""
         attrs = {}
         for child in node.children:
@@ -275,19 +271,13 @@ class HTMLLanguage(BaseLanguage):
                         for attr_child in attr_node.children:
                             if attr_child.type == "attribute_name":
                                 name = self._get_node_text(attr_child, source_code)
-                            elif attr_child.type in (
-                                "attribute_value", "quoted_attribute_value"
-                            ):
-                                value = self._get_node_text(
-                                    attr_child, source_code
-                                ).strip('"\'')
+                            elif attr_child.type in ("attribute_value", "quoted_attribute_value"):
+                                value = self._get_node_text(attr_child, source_code).strip("\"'")
                         if name:
                             attrs[name.lower()] = value or ""
         return attrs
 
-    def _create_section_node(
-        self, node: Node, source_code: bytes, tag_name: str
-    ) -> StructureNode:
+    def _create_section_node(self, node: Node, source_code: bytes, tag_name: str) -> StructureNode:
         """Create a node for semantic section elements."""
         attrs = self._extract_attributes(node, source_code)
         name = attrs.get("id") or attrs.get("aria-label") or tag_name
@@ -307,12 +297,10 @@ class HTMLLanguage(BaseLanguage):
             signature=" ".join(signature_parts) if signature_parts else None,
             docstring=attrs.get("aria-label") or attrs.get("title"),
             modifiers=[tag_name],
-            children=[]
+            children=[],
         )
 
-    def _create_form_node(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode:
+    def _create_form_node(self, node: Node, source_code: bytes) -> StructureNode:
         """Create a node for form elements."""
         attrs = self._extract_attributes(node, source_code)
         name = attrs.get("id") or attrs.get("name") or "form"
@@ -331,7 +319,7 @@ class HTMLLanguage(BaseLanguage):
             docstring=attrs.get("aria-label") or attrs.get("title"),
             modifiers=[method.lower()],
             complexity={"fields": control_count},
-            children=[]
+            children=[],
         )
 
     def _count_form_controls(self, node: Node, source_code: bytes) -> int:
@@ -350,9 +338,7 @@ class HTMLLanguage(BaseLanguage):
         count_controls(node)
         return count
 
-    def _create_heading_node(
-        self, node: Node, source_code: bytes, tag_name: str
-    ) -> StructureNode:
+    def _create_heading_node(self, node: Node, source_code: bytes, tag_name: str) -> StructureNode:
         """Create a node for heading elements."""
         level = int(tag_name[1])  # h1 -> 1, h2 -> 2, etc.
         text = self._extract_text_content(node, source_code)
@@ -369,16 +355,14 @@ class HTMLLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=f"H{level}",
             docstring=attrs.get("id"),
-            children=[]
+            children=[],
         )
 
-    def _create_list_node(
-        self, node: Node, source_code: bytes, tag_name: str
-    ) -> StructureNode:
+    def _create_list_node(self, node: Node, source_code: bytes, tag_name: str) -> StructureNode:
         """Create a node for list elements."""
         attrs = self._extract_attributes(node, source_code)
-        list_type = "ordered" if tag_name == "ol" else (
-            "definition" if tag_name == "dl" else "unordered"
+        list_type = (
+            "ordered" if tag_name == "ol" else ("definition" if tag_name == "dl" else "unordered")
         )
 
         # Count list items
@@ -393,7 +377,7 @@ class HTMLLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=f"{item_count} items",
             modifiers=[list_type],
-            children=[]
+            children=[],
         )
 
     def _count_list_items(self, node: Node, tag_name: str) -> int:
@@ -407,9 +391,11 @@ class HTMLLanguage(BaseLanguage):
                 for child in n.children:
                     if child.type == "start_tag":
                         for tag_child in child.children:
-                            if (tag_child.type == "tag_name"
-                                    and self._get_node_text(tag_child, n.text or b"").lower()
-                                    == item_tag):
+                            if (
+                                tag_child.type == "tag_name"
+                                and self._get_node_text(tag_child, n.text or b"").lower()
+                                == item_tag
+                            ):
                                 count += 1
             for child in n.children:
                 count_items(child)
@@ -417,9 +403,7 @@ class HTMLLanguage(BaseLanguage):
         count_items(node)
         return count
 
-    def _create_table_node(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode:
+    def _create_table_node(self, node: Node, source_code: bytes) -> StructureNode:
         """Create a node for table elements."""
         attrs = self._extract_attributes(node, source_code)
         name = attrs.get("id") or "table"
@@ -434,12 +418,10 @@ class HTMLLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=f"{rows}x{cols}" if cols > 0 else f"{rows} rows",
             docstring=attrs.get("aria-label") or attrs.get("summary"),
-            children=[]
+            children=[],
         )
 
-    def _count_table_dimensions(
-        self, node: Node, source_code: bytes
-    ) -> tuple[int, int]:
+    def _count_table_dimensions(self, node: Node, source_code: bytes) -> tuple[int, int]:
         """Count rows and columns in a table."""
         rows = 0
         max_cols = 0
@@ -453,8 +435,7 @@ class HTMLLanguage(BaseLanguage):
                 cols = 0
                 for child in n.children:
                     child_tag = (
-                        self._get_tag_name(child, source_code)
-                        if child.type == "element" else None
+                        self._get_tag_name(child, source_code) if child.type == "element" else None
                     )
                     if child_tag and child_tag.lower() in ("td", "th"):
                         cols += 1
@@ -485,12 +466,10 @@ class HTMLLanguage(BaseLanguage):
             signature=" ".join(signature_parts),
             docstring=attrs.get("title") or attrs.get("aria-label"),
             modifiers=[tag_name],
-            children=[]
+            children=[],
         )
 
-    def _extract_resource_element(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_resource_element(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract script or style element."""
         is_script = node.type == "script_element"
         element_type = "script" if is_script else "style"
@@ -506,12 +485,8 @@ class HTMLLanguage(BaseLanguage):
                         for attr_child in attr_node.children:
                             if attr_child.type == "attribute_name":
                                 name = self._get_node_text(attr_child, source_code)
-                            elif attr_child.type in (
-                                "attribute_value", "quoted_attribute_value"
-                            ):
-                                value = self._get_node_text(
-                                    attr_child, source_code
-                                ).strip('"\'')
+                            elif attr_child.type in ("attribute_value", "quoted_attribute_value"):
+                                value = self._get_node_text(attr_child, source_code).strip("\"'")
                         if name:
                             attrs[name.lower()] = value or ""
 
@@ -539,7 +514,7 @@ class HTMLLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=signature,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_text_content(self, node: Node, source_code: bytes) -> str:
@@ -561,99 +536,102 @@ class HTMLLanguage(BaseLanguage):
         structures: list[StructureNode] = []
 
         # Find DOCTYPE
-        doctype_match = re.search(r'<!DOCTYPE[^>]*>', text, re.IGNORECASE)
+        doctype_match = re.search(r"<!DOCTYPE[^>]*>", text, re.IGNORECASE)
         if doctype_match:
-            line_num = text[:doctype_match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="doctype",
-                name="DOCTYPE",
-                start_line=line_num,
-                end_line=line_num
-            ))
+            line_num = text[: doctype_match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="doctype", name="DOCTYPE", start_line=line_num, end_line=line_num
+                )
+            )
 
         # Find headings
-        heading_pattern = r'<(h[1-6])[^>]*>(.*?)</\1>'
+        heading_pattern = r"<(h[1-6])[^>]*>(.*?)</\1>"
         for match in re.finditer(heading_pattern, text, re.IGNORECASE | re.DOTALL):
             tag = match.group(1).lower()
-            content = re.sub(r'<[^>]+>', '', match.group(2)).strip()
-            line_num = text[:match.start()].count("\n") + 1
+            content = re.sub(r"<[^>]+>", "", match.group(2)).strip()
+            line_num = text[: match.start()].count("\n") + 1
             level = int(tag[1])
 
             name = content[:50] + "..." if len(content) > 50 else content
             if not name:
                 name = f"(empty {tag})"
 
-            structures.append(StructureNode(
-                type="heading",
-                name=name,
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"H{level}"
-            ))
+            structures.append(
+                StructureNode(
+                    type="heading",
+                    name=name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"H{level}",
+                )
+            )
 
         # Find forms
-        form_pattern = r'<form([^>]*)>'
+        form_pattern = r"<form([^>]*)>"
         for match in re.finditer(form_pattern, text, re.IGNORECASE):
             attrs_str = match.group(1)
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
 
             # Extract id/name/method/action from attributes
             id_match = re.search(r'id=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
-            method_match = re.search(
-                r'method=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE
-            )
-            action_match = re.search(
-                r'action=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE
-            )
+            method_match = re.search(r'method=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
+            action_match = re.search(r'action=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
 
             name = id_match.group(1) if id_match else "form"
             method = method_match.group(1).upper() if method_match else "GET"
             action = action_match.group(1) if action_match else "#"
 
-            structures.append(StructureNode(
-                type="form",
-                name=name,
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"{method} {action}",
-                modifiers=[method.lower()]
-            ))
+            structures.append(
+                StructureNode(
+                    type="form",
+                    name=name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"{method} {action}",
+                    modifiers=[method.lower()],
+                )
+            )
 
         # Find semantic sections
-        section_pattern = r'<(header|nav|main|footer|article|aside|section)([^>]*)>'
+        section_pattern = r"<(header|nav|main|footer|article|aside|section)([^>]*)>"
         for match in re.finditer(section_pattern, text, re.IGNORECASE):
             tag = match.group(1).lower()
             attrs_str = match.group(2)
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
 
             id_match = re.search(r'id=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
             name = id_match.group(1) if id_match else tag
 
-            structures.append(StructureNode(
-                type="section",
-                name=name,
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=[tag]
-            ))
+            structures.append(
+                StructureNode(
+                    type="section",
+                    name=name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=[tag],
+                )
+            )
 
         # Find scripts with src
-        script_pattern = r'<script([^>]*)>'
+        script_pattern = r"<script([^>]*)>"
         for match in re.finditer(script_pattern, text, re.IGNORECASE):
             attrs_str = match.group(1)
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
 
             src_match = re.search(r'src=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
             if src_match:
                 src = src_match.group(1)
                 name = src.split("/")[-1]
-                structures.append(StructureNode(
-                    type="script",
-                    name=name,
-                    start_line=line_num,
-                    end_line=line_num,
-                    signature=src
-                ))
+                structures.append(
+                    StructureNode(
+                        type="script",
+                        name=name,
+                        start_line=line_num,
+                        end_line=line_num,
+                        signature=src,
+                    )
+                )
 
         return structures
 
@@ -677,86 +655,92 @@ class HTMLLanguage(BaseLanguage):
         link_pattern = r'<link[^>]+href=["\']([^"\']+)["\'][^>]*>'
         for match in re.finditer(link_pattern, content, re.IGNORECASE):
             href = match.group(1)
-            line_num = content[:match.start()].count("\n") + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Determine link type from rel attribute
-            rel_match = re.search(
-                r'rel=["\']([^"\']+)["\']',
-                match.group(0),
-                re.IGNORECASE
-            )
+            rel_match = re.search(r'rel=["\']([^"\']+)["\']', match.group(0), re.IGNORECASE)
             rel = rel_match.group(1) if rel_match else "unknown"
 
             # Skip external URLs for import tracking
             if self._is_external_url(href):
                 continue
 
-            import_type = "stylesheet" if "stylesheet" in rel.lower() else (
-                "icon" if "icon" in rel.lower() else "link"
+            import_type = (
+                "stylesheet"
+                if "stylesheet" in rel.lower()
+                else ("icon" if "icon" in rel.lower() else "link")
             )
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=href,
-                line=line_num,
-                import_type=import_type,
-                imported_names=[],
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=href,
+                    line=line_num,
+                    import_type=import_type,
+                    imported_names=[],
+                )
+            )
 
         # Pattern 2: <script src="...">
         script_pattern = r'<script[^>]+src=["\']([^"\']+)["\'][^>]*>'
         for match in re.finditer(script_pattern, content, re.IGNORECASE):
             src = match.group(1)
-            line_num = content[:match.start()].count("\n") + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             if self._is_external_url(src):
                 continue
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=src,
-                line=line_num,
-                import_type="script",
-                imported_names=[],
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=src,
+                    line=line_num,
+                    import_type="script",
+                    imported_names=[],
+                )
+            )
 
         # Pattern 3: <img src="..."> (for asset tracking)
         img_pattern = r'<img[^>]+src=["\']([^"\']+)["\'][^>]*>'
         for match in re.finditer(img_pattern, content, re.IGNORECASE):
             src = match.group(1)
-            line_num = content[:match.start()].count("\n") + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             if self._is_external_url(src):
                 continue
 
             # Only track local images
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=src,
-                line=line_num,
-                import_type="image",
-                imported_names=[],
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=src,
+                    line=line_num,
+                    import_type="image",
+                    imported_names=[],
+                )
+            )
 
         # Pattern 4: CSS @import in <style> blocks
-        style_pattern = r'<style[^>]*>(.*?)</style>'
+        style_pattern = r"<style[^>]*>(.*?)</style>"
         for style_match in re.finditer(style_pattern, content, re.IGNORECASE | re.DOTALL):
             style_content = style_match.group(1)
-            style_start = content[:style_match.start()].count("\n")
+            style_start = content[: style_match.start()].count("\n")
 
             import_pattern = r'@import\s+(?:url\(["\']?([^"\')\s]+)["\']?\)|["\']([^"\']+)["\'])'
             for import_match in re.finditer(import_pattern, style_content, re.IGNORECASE):
                 url = import_match.group(1) or import_match.group(2)
-                line_num = style_start + style_content[:import_match.start()].count("\n") + 1
+                line_num = style_start + style_content[: import_match.start()].count("\n") + 1
 
                 if not self._is_external_url(url):
-                    imports.append(ImportInfo(
-                        source_file=file_path,
-                        target_module=url,
-                        line=line_num,
-                        import_type="css_import",
-                        imported_names=[],
-                    ))
+                    imports.append(
+                        ImportInfo(
+                            source_file=file_path,
+                            target_module=url,
+                            line=line_num,
+                            import_type="css_import",
+                            imported_names=[],
+                        )
+                    )
 
         # Pattern 5: Template extends/include/import
         # Jinja/Django: {% extends "base.html" %}, {% include "nav.html" %}
@@ -764,28 +748,32 @@ class HTMLLanguage(BaseLanguage):
         for match in re.finditer(tpl_import_pattern, content):
             keyword = match.group(1)
             target = match.group(2)
-            line_num = content[:match.start()].count("\n") + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=target,
-                line=line_num,
-                import_type=f"template_{keyword}",
-                imported_names=[],
-            ))
+            line_num = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=target,
+                    line=line_num,
+                    import_type=f"template_{keyword}",
+                    imported_names=[],
+                )
+            )
 
         # Blade: @extends('base'), @include('nav')
         blade_import_pattern = r'@(extends|include|component)\s*\(\s*["\']([^"\']+)["\']'
         for match in re.finditer(blade_import_pattern, content):
             keyword = match.group(1)
             target = match.group(2)
-            line_num = content[:match.start()].count("\n") + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=target,
-                line=line_num,
-                import_type=f"template_{keyword}",
-                imported_names=[],
-            ))
+            line_num = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=target,
+                    line=line_num,
+                    import_type=f"template_{keyword}",
+                    imported_names=[],
+                )
+            )
 
         return imports
 
@@ -802,37 +790,43 @@ class HTMLLanguage(BaseLanguage):
 
         # Check for index files (common entry points)
         if filename in ("index.html", "index.htm", "default.html", "default.htm"):
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="html_entry",
-                name="index",
-                line=1,
-                framework="HTML",
-            ))
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="html_entry",
+                    name="index",
+                    line=1,
+                    framework="HTML",
+                )
+            )
 
         # Check for DOCTYPE (indicates complete HTML document)
-        doctype_pattern = r'<!DOCTYPE\s+html'
+        doctype_pattern = r"<!DOCTYPE\s+html"
         doctype_match = re.search(doctype_pattern, content, re.IGNORECASE)
         if doctype_match:
-            line_num = content[:doctype_match.start()].count("\n") + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="html_document",
-                name="DOCTYPE html",
-                line=line_num,
-            ))
+            line_num = content[: doctype_match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="html_document",
+                    name="DOCTYPE html",
+                    line=line_num,
+                )
+            )
 
         # Check for meta viewport (indicates responsive web page)
         viewport_pattern = r'<meta[^>]+name=["\']viewport["\'][^>]*>'
         viewport_match = re.search(viewport_pattern, content, re.IGNORECASE)
         if viewport_match:
-            line_num = content[:viewport_match.start()].count("\n") + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="responsive_page",
-                name="viewport meta",
-                line=line_num,
-            ))
+            line_num = content[: viewport_match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="responsive_page",
+                    name="viewport meta",
+                    line=line_num,
+                )
+            )
 
         return entry_points
 
@@ -949,4 +943,16 @@ class HTMLLanguage(BaseLanguage):
             return True
 
         # Check for CDN patterns
-        return bool(any(cdn in url.lower() for cdn in ["cdn.", "cdnjs.", "unpkg.com", "jsdelivr.net", "googleapis.com", "cloudflare.com"]))
+        return bool(
+            any(
+                cdn in url.lower()
+                for cdn in [
+                    "cdn.",
+                    "cdnjs.",
+                    "unpkg.com",
+                    "jsdelivr.net",
+                    "googleapis.com",
+                    "cloudflare.com",
+                ]
+            )
+        )

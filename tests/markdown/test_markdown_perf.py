@@ -10,10 +10,7 @@ from scantool.languages.markdown import MarkdownLanguage
 def _giant_report() -> bytes:
     table_row = "| " + " | ".join(f"value_{i}" for i in range(12)) + " |\n"
     return (
-        "# Results\n\n"
-        "## Model run\n\n"
-        + table_row * 90_000
-        + "\n## Conclusion\n\nText.\n"
+        "# Results\n\n## Model run\n\n" + table_row * 90_000 + "\n## Conclusion\n\nText.\n"
     ).encode()
 
 
@@ -57,6 +54,7 @@ class TestOversizedMarkdown:
         structures = MarkdownLanguage().scan(b"# Title\n\n```python\nx = 1\n```\n")
 
         all_types = {n.type for n in structures} | {
-            c.type for n in structures for c in (n.children or [])}
+            c.type for n in structures for c in (n.children or [])
+        }
         # code-block nodes exist only on the tree-sitter path
         assert "code-block" in all_types

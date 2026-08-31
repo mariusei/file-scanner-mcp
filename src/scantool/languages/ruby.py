@@ -97,7 +97,7 @@ class RubyLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -163,7 +163,7 @@ class RubyLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             docstring=docstring,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_class(self, node: Node, source_code: bytes) -> StructureNode:
@@ -192,7 +192,7 @@ class RubyLanguage(BaseLanguage):
             signature=signature,
             docstring=docstring,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -221,7 +221,7 @@ class RubyLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_singleton_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -254,7 +254,7 @@ class RubyLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
@@ -276,7 +276,7 @@ class RubyLanguage(BaseLanguage):
         while prev:
             if prev.type == "comment":
                 comment_text = self._get_node_text(prev, source_code)
-                comment_text = comment_text.lstrip('#').strip()
+                comment_text = comment_text.lstrip("#").strip()
                 if comment_text:
                     return comment_text
             # Stop at non-whitespace, non-comment nodes
@@ -291,7 +291,7 @@ class RubyLanguage(BaseLanguage):
             while parent_prev:
                 if parent_prev.type == "comment":
                     comment_text = self._get_node_text(parent_prev, source_code)
-                    comment_text = comment_text.lstrip('#').strip()
+                    comment_text = comment_text.lstrip("#").strip()
                     if comment_text:
                         return comment_text
                 # Stop at non-comment nodes
@@ -327,7 +327,7 @@ class RubyLanguage(BaseLanguage):
                 type="requires",
                 name="require statements",
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(require_node)
         else:
@@ -366,13 +366,12 @@ class RubyLanguage(BaseLanguage):
         require_pattern = r'^\s*require\s+["\']([^"\']+)["\']'
         for match in re.finditer(require_pattern, content, re.MULTILINE):
             module = match.group(1).strip()
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=module,
-                import_type="require",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path, target_module=module, import_type="require", line=line
+                )
+            )
 
         # Pattern 2: require_relative '../path'
         # Matches: require_relative '../foo'
@@ -380,18 +379,20 @@ class RubyLanguage(BaseLanguage):
         require_relative_pattern = r'^\s*require_relative\s+["\']([^"\']+)["\']'
         for match in re.finditer(require_relative_pattern, content, re.MULTILINE):
             relative_path = match.group(1).strip()
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             # Resolve relative path
             resolved = self._resolve_relative_import(file_path, relative_path)
             target = resolved if resolved else relative_path
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=target,
-                import_type="require_relative",
-                line=line
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=target,
+                    import_type="require_relative",
+                    line=line,
+                )
+            )
 
         # Pattern 3: gem 'name', version
         # Matches: gem 'rails', '~> 7.0'
@@ -399,26 +400,24 @@ class RubyLanguage(BaseLanguage):
         gem_pattern = r'^\s*gem\s+["\']([^"\']+)["\']'
         for match in re.finditer(gem_pattern, content, re.MULTILINE):
             gem_name = match.group(1).strip()
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=gem_name,
-                import_type="gem",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path, target_module=gem_name, import_type="gem", line=line
+                )
+            )
 
         # Pattern 4: load 'file.rb'
         # Matches: load 'config.rb'
         load_pattern = r'^\s*load\s+["\']([^"\']+)["\']'
         for match in re.finditer(load_pattern, content, re.MULTILINE):
             load_file = match.group(1).strip()
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=load_file,
-                import_type="load",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path, target_module=load_file, import_type="load", line=line
+                )
+            )
 
         # Pattern 5: autoload :Constant, 'path/to/file'
         # Matches: autoload :MyClass, 'lib/my_class'
@@ -426,14 +425,16 @@ class RubyLanguage(BaseLanguage):
         for match in re.finditer(autoload_pattern, content, re.MULTILINE):
             constant_name = match.group(1).strip()
             path = match.group(2).strip()
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=path,
-                import_type="autoload",
-                line=line,
-                imported_names=[constant_name]
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=path,
+                    import_type="autoload",
+                    line=line,
+                    imported_names=[constant_name],
+                )
+            )
 
         return imports
 
@@ -453,77 +454,80 @@ class RubyLanguage(BaseLanguage):
         # Pattern 1: if __FILE__ == $0 (script entry point)
         # Matches: if __FILE__ == $0
         #          if __FILE__ == $PROGRAM_NAME
-        file_guard_pattern = r'^\s*if\s+__FILE__\s*==\s*\$(?:0|PROGRAM_NAME)'
+        file_guard_pattern = r"^\s*if\s+__FILE__\s*==\s*\$(?:0|PROGRAM_NAME)"
         for match in re.finditer(file_guard_pattern, content, re.MULTILINE):
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="if_main",
-                name="__FILE__",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="if_main", name="__FILE__", line=line)
+            )
 
         # Pattern 2: Rails controllers
         # Matches: class FooController < ApplicationController
         #          class Api::V1::UsersController < ActionController::API
-        controller_pattern = r'^\s*class\s+((?:\w+::)*\w*Controller)\s*<\s*(?:Application|ActionController)'
+        controller_pattern = (
+            r"^\s*class\s+((?:\w+::)*\w*Controller)\s*<\s*(?:Application|ActionController)"
+        )
         for match in re.finditer(controller_pattern, content, re.MULTILINE):
             controller_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="controller",
-                name=controller_name,
-                line=line,
-                framework="Rails"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="controller",
+                    name=controller_name,
+                    line=line,
+                    framework="Rails",
+                )
+            )
 
         # Pattern 3: Rails models
         # Matches: class User < ApplicationRecord
         #          class User < ActiveRecord::Base
-        model_pattern = r'^\s*class\s+((?:\w+::)*\w+)\s*<\s*(?:ApplicationRecord|ActiveRecord::Base)'
+        model_pattern = (
+            r"^\s*class\s+((?:\w+::)*\w+)\s*<\s*(?:ApplicationRecord|ActiveRecord::Base)"
+        )
         for match in re.finditer(model_pattern, content, re.MULTILINE):
             model_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="model",
-                name=model_name,
-                line=line,
-                framework="Rails"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path, type="model", name=model_name, line=line, framework="Rails"
+                )
+            )
 
         # Pattern 4: Sinatra HTTP routes
         # Matches: get '/foo' do
         #          post '/api/users' do
         #          put '/resource/:id' do
-        sinatra_route_pattern = r'^\s*(get|post|put|patch|delete|options|head)\s+["\']([^"\']+)["\']'
+        sinatra_route_pattern = (
+            r'^\s*(get|post|put|patch|delete|options|head)\s+["\']([^"\']+)["\']'
+        )
         for match in re.finditer(sinatra_route_pattern, content, re.MULTILINE):
             method = match.group(1).upper()
             route_path = match.group(2)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="route",
-                name=f"{method} {route_path}",
-                line=line,
-                framework="Sinatra"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="route",
+                    name=f"{method} {route_path}",
+                    line=line,
+                    framework="Sinatra",
+                )
+            )
 
         # Pattern 5: Rack run statement
         # Matches: run MyApp
         #          run App.new
-        rack_run_pattern = r'^\s*run\s+(\w+(?:\.new)?)'
+        rack_run_pattern = r"^\s*run\s+(\w+(?:\.new)?)"
         for match in re.finditer(rack_run_pattern, content, re.MULTILINE):
             app_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="rack_app",
-                name=app_name,
-                line=line,
-                framework="Rack"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path, type="rack_app", name=app_name, line=line, framework="Rack"
+                )
+            )
 
         # Pattern 6: RSpec test blocks
         # Matches: describe MyClass do
@@ -531,30 +535,34 @@ class RubyLanguage(BaseLanguage):
         rspec_describe_pattern = r'^\s*(?:RSpec\.)?describe\s+["\']?(\w+)'
         for match in re.finditer(rspec_describe_pattern, content, re.MULTILINE):
             subject = match.group(1)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="test",
-                name=f"describe {subject}",
-                line=line,
-                framework="RSpec"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="test",
+                    name=f"describe {subject}",
+                    line=line,
+                    framework="RSpec",
+                )
+            )
 
         # Pattern 7: Rake tasks
         # Matches: task :my_task do
         #          namespace :deployment do
-        if file_path.endswith('.rake') or 'Rakefile' in file_path:
-            rake_task_pattern = r'^\s*(?:task|namespace)\s+:(\w+)'
+        if file_path.endswith(".rake") or "Rakefile" in file_path:
+            rake_task_pattern = r"^\s*(?:task|namespace)\s+:(\w+)"
             for match in re.finditer(rake_task_pattern, content, re.MULTILINE):
                 task_name = match.group(1)
-                line = content[:match.start()].count('\n') + 1
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="rake_task",
-                    name=task_name,
-                    line=line,
-                    framework="Rake"
-                ))
+                line = content[: match.start()].count("\n") + 1
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path,
+                        type="rake_task",
+                        name=task_name,
+                        line=line,
+                        framework="Rake",
+                    )
+                )
 
         return entry_points
 
@@ -644,15 +652,49 @@ class RubyLanguage(BaseLanguage):
 
     # Match method calls: identifier followed by optional arguments
     REGEX_CALL_PATTERN = r"\b(\w+)(?:\s*\(|\s+\w)"
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "else", "elsif", "unless", "case", "when",
-        "while", "until", "for", "do", "end", "begin", "rescue",
-        "ensure", "raise", "return", "yield", "super", "self",
-        "true", "false", "nil", "and", "or", "not", "in",
-        "def", "class", "module", "attr_reader", "attr_writer",
-        "attr_accessor", "private", "protected", "public",
-        "require", "require_relative", "include", "extend",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "else",
+            "elsif",
+            "unless",
+            "case",
+            "when",
+            "while",
+            "until",
+            "for",
+            "do",
+            "end",
+            "begin",
+            "rescue",
+            "ensure",
+            "raise",
+            "return",
+            "yield",
+            "super",
+            "self",
+            "true",
+            "false",
+            "nil",
+            "and",
+            "or",
+            "not",
+            "in",
+            "def",
+            "class",
+            "module",
+            "attr_reader",
+            "attr_writer",
+            "attr_accessor",
+            "private",
+            "protected",
+            "public",
+            "require",
+            "require_relative",
+            "include",
+            "extend",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Ruby)
@@ -675,38 +717,41 @@ class RubyLanguage(BaseLanguage):
         filename = path.name
 
         # Check standard Ruby/Rails file names
-        if filename in ('Gemfile', 'Rakefile', 'config.ru'):
+        if filename in ("Gemfile", "Rakefile", "config.ru"):
             return "infrastructure"
 
         # Check directory structure
-        if 'spec' in path.parts or 'test' in path.parts:
+        if "spec" in path.parts or "test" in path.parts:
             return "tests"
 
-        if 'controllers' in path.parts:
+        if "controllers" in path.parts:
             return "entry_points"
 
-        if 'models' in path.parts:
+        if "models" in path.parts:
             return "core"
 
-        if 'lib' in path.parts:
+        if "lib" in path.parts:
             return "core"
 
-        if 'config' in path.parts:
+        if "config" in path.parts:
             return "infrastructure"
 
         # Check content patterns
-        if 'describe' in content or 'RSpec.describe' in content or 'context' in content:
+        if "describe" in content or "RSpec.describe" in content or "context" in content:
             return "tests"
 
-        if 'Controller <' in content:
+        if "Controller <" in content:
             return "entry_points"
 
-        if 'ApplicationRecord' in content or 'ActiveRecord::Base' in content:
+        if "ApplicationRecord" in content or "ActiveRecord::Base" in content:
             return "core"
 
         # Likely a route definition: an HTTP verb with a block and a quoted path
-        if (any(keyword in content for keyword in ['get ', 'post ', 'put ', 'patch ', 'delete '])
-                and 'do' in content and ("'" in content or '"' in content)):
+        if (
+            any(keyword in content for keyword in ["get ", "post ", "put ", "patch ", "delete "])
+            and "do" in content
+            and ("'" in content or '"' in content)
+        ):
             return "entry_points"
 
         # Fall back to base implementation

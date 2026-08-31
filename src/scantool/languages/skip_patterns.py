@@ -36,10 +36,10 @@ VERSION_CONTROL_DIRS = {
 
 # IDE/Editor configuration
 IDE_DIRS = {
-    ".idea",      # JetBrains
-    ".vscode",    # VS Code
-    ".vs",        # Visual Studio
-    ".eclipse",   # Eclipse
+    ".idea",  # JetBrains
+    ".vscode",  # VS Code
+    ".vs",  # Visual Studio
+    ".eclipse",  # Eclipse
     ".settings",  # Eclipse
 }
 
@@ -51,9 +51,9 @@ PYTHON_DIRS = {
     "venv",
     "virtualenv",
     ".python_packages",  # Azure Functions
-    "site-packages",     # Installed packages
+    "site-packages",  # Installed packages
     ".eggs",
-    ".pixi",             # Pixi package manager
+    ".pixi",  # Pixi package manager
     ".tox",
     ".nox",
     ".pytest_cache",
@@ -76,27 +76,27 @@ NODE_DIRS = {
 DOTNET_DIRS = {
     "bin",
     "obj",
-    "packages",      # NuGet (legacy)
+    "packages",  # NuGet (legacy)
     ".nuget",
 }
 
 # Java / Kotlin / Scala
 JAVA_DIRS = {
-    "target",        # Maven
+    "target",  # Maven
     ".gradle",
-    ".m2",           # Maven local repo
-    "build",         # Gradle
+    ".m2",  # Maven local repo
+    "build",  # Gradle
 }
 
 # Rust
 RUST_DIRS = {
-    "target",        # Cargo build output
-    ".cargo",        # Cargo cache
+    "target",  # Cargo build output
+    ".cargo",  # Cargo cache
 }
 
 # Go
 GO_DIRS = {
-    "vendor",        # Go vendor (also used by PHP)
+    "vendor",  # Go vendor (also used by PHP)
 }
 
 # Ruby
@@ -107,7 +107,7 @@ RUBY_DIRS = {
 
 # PHP
 PHP_DIRS = {
-    "vendor",        # Composer (shared with Go)
+    "vendor",  # Composer (shared with Go)
 }
 
 # Generic build outputs
@@ -115,7 +115,7 @@ BUILD_DIRS = {
     "dist",
     "build",
     "out",
-    "_build",        # Elixir, some C projects
+    "_build",  # Elixir, some C projects
     "release",
 }
 
@@ -131,7 +131,7 @@ CACHE_DIRS = {
 
 # Data science / ML artifacts (large binary stores)
 DATA_DIRS = {
-    "__MACOSX",   # macOS archive artefact
+    "__MACOSX",  # macOS archive artefact
 }
 
 # Test coverage
@@ -145,18 +145,18 @@ COVERAGE_DIRS = {
 
 # Frontend frameworks
 FRONTEND_DIRS = {
-    ".next",         # Next.js
-    ".nuxt",         # Nuxt.js
-    ".output",       # Nuxt 3
-    ".svelte-kit",   # SvelteKit
-    ".angular",      # Angular
-    ".expo",         # Expo (React Native)
+    ".next",  # Next.js
+    ".nuxt",  # Nuxt.js
+    ".output",  # Nuxt 3
+    ".svelte-kit",  # SvelteKit
+    ".angular",  # Angular
+    ".expo",  # Expo (React Native)
 }
 
 # OS-specific
 OS_DIRS = {
-    ".DS_Store",     # macOS
-    ".Trash-*",      # Linux trash
+    ".DS_Store",  # macOS
+    ".Trash-*",  # Linux trash
 }
 
 # =============================================================================
@@ -186,9 +186,9 @@ COMMON_SKIP_DIRS = (
 # Directory name suffixes that indicate directory-based binary formats.
 # These are pruned by should_skip_directory() regardless of the base name.
 DATA_FORMAT_DIR_SUFFIXES = {
-    ".zarr",        # Zarr array store (chunk files, no code)
-    ".parquet",     # Hive-partitioned Parquet dataset
-    ".lance",       # Lance columnar format
+    ".zarr",  # Zarr array store (chunk files, no code)
+    ".parquet",  # Hive-partitioned Parquet dataset
+    ".lance",  # Lance columnar format
 }
 
 # =============================================================================
@@ -233,10 +233,10 @@ COMMON_SKIP_EXTENSIONS = {
     # Lock files
     ".lock",
     # Other binary
-    ".class",    # Java compiled
-    ".jar",      # Java archive
-    ".war",      # Java web archive
-    ".wasm",     # WebAssembly
+    ".class",  # Java compiled
+    ".jar",  # Java archive
+    ".war",  # Java web archive
+    ".wasm",  # WebAssembly
     # Data science / ML binary formats (large, no code value)
     ".parquet",
     ".feather",
@@ -258,6 +258,7 @@ COMMON_SKIP_EXTENSIONS = {
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 def should_skip_directory(dir_name: str) -> bool:
     """

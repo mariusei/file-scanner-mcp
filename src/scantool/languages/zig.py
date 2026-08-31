@@ -93,7 +93,7 @@ class ZigLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip cache and build directories
-        return not ('/zig-cache/' in path_lower or '/zig-out/' in path_lower)
+        return not ("/zig-cache/" in path_lower or "/zig-out/" in path_lower)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Zig files for inventory listing.
@@ -110,9 +110,7 @@ class ZigLanguage(BaseLanguage):
     # Structure Scanning (from ZigScanner)
     # ===========================================================================
 
-    def _extract_structure(
-        self, root: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
         structures: list[StructureNode] = []
 
@@ -123,9 +121,7 @@ class ZigLanguage(BaseLanguage):
 
             elif node.type == "variable_declaration":
                 # Check if this is a struct, enum, union, or import
-                struct_node = self._extract_variable_declaration(
-                    node, source_code, root
-                )
+                struct_node = self._extract_variable_declaration(node, source_code, root)
                 if struct_node:
                     structures.append(struct_node)
 
@@ -135,9 +131,7 @@ class ZigLanguage(BaseLanguage):
 
         return structures
 
-    def _extract_function(
-        self, node: Node, source_code: bytes, root: Node
-    ) -> StructureNode:
+    def _extract_function(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
         """Extract function with signature and metadata."""
         name = "unnamed"
         for child in node.children:
@@ -474,7 +468,7 @@ class ZigLanguage(BaseLanguage):
         import_pattern = r'@import\s*\(\s*"([^"]+)"\s*\)'
         for match in re.finditer(import_pattern, content):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Determine import type
             if module == "std" or module == "builtin":
@@ -497,7 +491,7 @@ class ZigLanguage(BaseLanguage):
         embed_pattern = r'@embedFile\s*\(\s*"([^"]+)"\s*\)'
         for match in re.finditer(embed_pattern, content):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -521,9 +515,9 @@ class ZigLanguage(BaseLanguage):
         entry_points = []
 
         # Pattern 1: pub fn main()
-        main_pattern = r'^\s*pub\s+fn\s+main\s*\('
+        main_pattern = r"^\s*pub\s+fn\s+main\s*\("
         for match in re.finditer(main_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -534,10 +528,10 @@ class ZigLanguage(BaseLanguage):
             )
 
         # Pattern 2: export fn name()
-        export_pattern = r'^\s*export\s+fn\s+(\w+)\s*\('
+        export_pattern = r"^\s*export\s+fn\s+(\w+)\s*\("
         for match in re.finditer(export_pattern, content, re.MULTILINE):
             name = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -551,7 +545,7 @@ class ZigLanguage(BaseLanguage):
         test_pattern = r'^\s*test\s+"([^"]+)"'
         for match in re.finditer(test_pattern, content, re.MULTILINE):
             name = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -705,11 +699,29 @@ class ZigLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "while", "for", "switch", "fn", "pub", "const",
-        "var", "return", "break", "continue", "defer", "errdefer",
-        "catch", "try", "struct", "enum", "union", "error",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "while",
+            "for",
+            "switch",
+            "fn",
+            "pub",
+            "const",
+            "var",
+            "return",
+            "break",
+            "continue",
+            "defer",
+            "errdefer",
+            "catch",
+            "try",
+            "struct",
+            "enum",
+            "union",
+            "error",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Zig)
@@ -732,7 +744,7 @@ class ZigLanguage(BaseLanguage):
                 return "entry_points"
 
             # Check for pub fn main
-            if re.search(r'pub\s+fn\s+main\s*\(', content):
+            if re.search(r"pub\s+fn\s+main\s*\(", content):
                 return "entry_points"
 
             # Build files
@@ -744,7 +756,7 @@ class ZigLanguage(BaseLanguage):
                 return "tests"
 
             # Source files in src/
-            if '/src/' in path_lower:
+            if "/src/" in path_lower:
                 return "core_logic"
 
         return base_cluster
@@ -800,7 +812,7 @@ class ZigLanguage(BaseLanguage):
         if ep.type == "main_function":
             return f"  {ep.file}:pub fn main() @{ep.line}"
         elif ep.type == "test":
-            return f"  {ep.file}:test \"{ep.name}\" @{ep.line}"
+            return f'  {ep.file}:test "{ep.name}" @{ep.line}'
         elif ep.type == "export":
             return f"  {ep.file}:export {ep.name} @{ep.line}"
         else:

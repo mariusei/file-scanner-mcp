@@ -13,16 +13,26 @@ def test_c_parsing(file_scanner):
     assert any(s.type == "includes" for s in structures), "Should find includes"
 
     # Verify structs
-    assert any(s.type == "struct" and s.name == "User" for s in structures), "Should find User struct"
-    assert any(s.type == "struct" and s.name == "DatabaseConfig" for s in structures), "Should find DatabaseConfig struct"
+    assert any(s.type == "struct" and s.name == "User" for s in structures), (
+        "Should find User struct"
+    )
+    assert any(s.type == "struct" and s.name == "DatabaseConfig" for s in structures), (
+        "Should find DatabaseConfig struct"
+    )
 
     # Verify functions
-    assert any(s.type == "function" and s.name == "init_user" for s in structures), "Should find init_user"
-    assert any(s.type == "function" and s.name == "validate_email" for s in structures), "Should find validate_email"
+    assert any(s.type == "function" and s.name == "init_user" for s in structures), (
+        "Should find init_user"
+    )
+    assert any(s.type == "function" and s.name == "validate_email" for s in structures), (
+        "Should find validate_email"
+    )
     assert any(s.type == "function" and s.name == "main" for s in structures), "Should find main"
 
     # Verify enum
-    assert any(s.type == "enum" and s.name == "Status" for s in structures), "Should find Status enum"
+    assert any(s.type == "enum" and s.name == "Status" for s in structures), (
+        "Should find Status enum"
+    )
 
 
 def test_cpp_parsing(file_scanner):
@@ -35,8 +45,12 @@ def test_cpp_parsing(file_scanner):
     assert any(s.type == "includes" for s in structures), "Should find includes"
 
     # Verify namespaces
-    assert any(s.type == "namespace" and s.name == "utils" for s in structures), "Should find utils namespace"
-    assert any(s.type == "namespace" and s.name == "database" for s in structures), "Should find database namespace"
+    assert any(s.type == "namespace" and s.name == "utils" for s in structures), (
+        "Should find utils namespace"
+    )
+    assert any(s.type == "namespace" and s.name == "database" for s in structures), (
+        "Should find database namespace"
+    )
 
     # Helper to find recursively
     def find_recursive(structures, type_name, name):
@@ -48,11 +62,17 @@ def test_cpp_parsing(file_scanner):
         return False
 
     # Verify classes (may be inside namespaces)
-    assert find_recursive(structures, "class", "DatabaseManager"), "Should find DatabaseManager class"
-    assert any(s.type == "class" and s.name == "UserService" for s in structures), "Should find UserService class"
+    assert find_recursive(structures, "class", "DatabaseManager"), (
+        "Should find DatabaseManager class"
+    )
+    assert any(s.type == "class" and s.name == "UserService" for s in structures), (
+        "Should find UserService class"
+    )
 
     # Verify enum
-    assert any(s.type == "enum" and s.name == "Status" for s in structures), "Should find Status enum"
+    assert any(s.type == "enum" and s.name == "Status" for s in structures), (
+        "Should find Status enum"
+    )
 
     # Verify functions
     assert any(s.type == "function" and s.name == "main" for s in structures), "Should find main"
@@ -78,7 +98,9 @@ def test_classes(file_scanner):
     assert len(db_class.children) > 0, "Should have methods"
 
     # Find UserService class (top-level)
-    user_class = next((s for s in structures if s.type == "class" and s.name == "UserService"), None)
+    user_class = next(
+        (s for s in structures if s.type == "class" and s.name == "UserService"), None
+    )
     assert user_class is not None, "Should find UserService class"
     assert len(user_class.children) > 0, "Should have methods"
 
@@ -98,7 +120,9 @@ def test_namespaces(file_scanner):
     assert len(db_ns.children) > 0, "Should have content in namespace"
 
     # Check that DatabaseManager is inside database namespace
-    db_manager = next((c for c in db_ns.children if c.type == "class" and c.name == "DatabaseManager"), None)
+    db_manager = next(
+        (c for c in db_ns.children if c.type == "class" and c.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager inside database namespace"
 
 
@@ -107,10 +131,14 @@ def test_signatures(file_scanner):
     structures = file_scanner.scan_file("tests/c_cpp/samples/basic.c")
 
     # Find validate_email function
-    func = next((s for s in structures if s.type == "function" and s.name == "validate_email"), None)
+    func = next(
+        (s for s in structures if s.type == "function" and s.name == "validate_email"), None
+    )
     assert func is not None, "Should find validate_email"
     assert func.signature is not None, "Should have signature"
-    assert "(const char *email)" in func.signature, f"Signature should include parameters, got: {func.signature}"
+    assert "(const char *email)" in func.signature, (
+        f"Signature should include parameters, got: {func.signature}"
+    )
 
 
 def test_cpp_signatures(file_scanner):
@@ -122,7 +150,9 @@ def test_cpp_signatures(file_scanner):
     assert db_ns is not None, "Should find database namespace"
 
     # Find DatabaseManager class
-    db_class = next((c for c in db_ns.children if c.type == "class" and c.name == "DatabaseManager"), None)
+    db_class = next(
+        (c for c in db_ns.children if c.type == "class" and c.name == "DatabaseManager"), None
+    )
     assert db_class is not None, "Should find DatabaseManager class"
 
     # Find connect method
@@ -147,20 +177,34 @@ def test_header_parsing(file_scanner):
         return False
 
     # Verify namespaces
-    assert any(s.type == "namespace" and s.name == "utils" for s in structures), "Should find utils namespace"
-    assert any(s.type == "namespace" and s.name == "database" for s in structures), "Should find database namespace"
+    assert any(s.type == "namespace" and s.name == "utils" for s in structures), (
+        "Should find utils namespace"
+    )
+    assert any(s.type == "namespace" and s.name == "database" for s in structures), (
+        "Should find database namespace"
+    )
 
     # Verify classes (may be inside namespaces)
     assert find_recursive(structures, "class", "IConnection"), "Should find IConnection interface"
-    assert find_recursive(structures, "class", "DatabaseManager"), "Should find DatabaseManager class"
-    assert any(s.type == "class" and s.name == "UserService" for s in structures), "Should find UserService class"
+    assert find_recursive(structures, "class", "DatabaseManager"), (
+        "Should find DatabaseManager class"
+    )
+    assert any(s.type == "class" and s.name == "UserService" for s in structures), (
+        "Should find UserService class"
+    )
 
     # Verify structs
-    assert any(s.type == "struct" and s.name == "UserData" for s in structures), "Should find UserData struct"
+    assert any(s.type == "struct" and s.name == "UserData" for s in structures), (
+        "Should find UserData struct"
+    )
 
     # Verify enums
-    assert any(s.type == "enum" and s.name == "Status" for s in structures), "Should find Status enum"
-    assert any(s.type == "enum" and s.name == "Permission" for s in structures), "Should find Permission enum"
+    assert any(s.type == "enum" and s.name == "Status" for s in structures), (
+        "Should find Status enum"
+    )
+    assert any(s.type == "enum" and s.name == "Permission" for s in structures), (
+        "Should find Permission enum"
+    )
 
 
 def test_edge_cases(file_scanner):
@@ -170,9 +214,13 @@ def test_edge_cases(file_scanner):
     assert len(structures) > 0, "Should find structures"
 
     # Test template classes
-    kv_store = next((s for s in structures if s.type == "class" and s.name == "KeyValueStore"), None)
+    kv_store = next(
+        (s for s in structures if s.type == "class" and s.name == "KeyValueStore"), None
+    )
     assert kv_store is not None, "Should find KeyValueStore template class"
-    assert "template" in kv_store.modifiers if kv_store.modifiers else False, "Should have template modifier"
+    assert "template" in kv_store.modifiers if kv_store.modifiers else False, (
+        "Should have template modifier"
+    )
 
     # Test operator overloading class
     complex_class = next((s for s in structures if s.type == "class" and s.name == "Complex"), None)
@@ -208,11 +256,15 @@ def test_edge_cases(file_scanner):
     # Test nested namespaces
     outer_ns = next((s for s in structures if s.type == "namespace" and s.name == "outer"), None)
     assert outer_ns is not None, "Should find outer namespace"
-    inner_ns = next((c for c in outer_ns.children if c.type == "namespace" and c.name == "inner"), None)
+    inner_ns = next(
+        (c for c in outer_ns.children if c.type == "namespace" and c.name == "inner"), None
+    )
     assert inner_ns is not None, "Should find inner namespace inside outer"
 
     # Test anonymous namespace
-    anon_ns = next((s for s in structures if s.type == "namespace" and s.name == "<anonymous>"), None)
+    anon_ns = next(
+        (s for s in structures if s.type == "namespace" and s.name == "<anonymous>"), None
+    )
     assert anon_ns is not None, "Should find anonymous namespace"
 
 
@@ -224,7 +276,9 @@ def test_comments(file_scanner):
     user_struct = next((s for s in structures if s.type == "struct" and s.name == "User"), None)
     assert user_struct is not None, "Should find User struct"
     assert user_struct.docstring is not None, "Should have docstring from comment"
-    assert "User" in user_struct.docstring, f"Comment should mention User, got: {user_struct.docstring}"
+    assert "User" in user_struct.docstring, (
+        f"Comment should mention User, got: {user_struct.docstring}"
+    )
 
 
 def test_error_handling():
@@ -235,7 +289,7 @@ def test_error_handling():
     import os
     import tempfile
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.cpp', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".cpp", delete=False) as f:
         f.write("""
         class BrokenClass {
             // Missing semicolon, broken syntax
@@ -260,8 +314,9 @@ def test_modifiers(file_scanner):
     assert counter_class is not None, "Should find Counter class"
 
     # Find static method
-    static_method = next((m for m in counter_class.children
-                         if m.modifiers and "static" in m.modifiers), None)
+    static_method = next(
+        (m for m in counter_class.children if m.modifiers and "static" in m.modifiers), None
+    )
     assert static_method is not None, "Should find static method"
 
     # Find DataCache class for const methods
@@ -269,8 +324,9 @@ def test_modifiers(file_scanner):
     assert cache_class is not None, "Should find DataCache class"
 
     # Find const method
-    const_method = next((m for m in cache_class.children
-                        if m.modifiers and "const" in m.modifiers), None)
+    const_method = next(
+        (m for m in cache_class.children if m.modifiers and "const" in m.modifiers), None
+    )
     assert const_method is not None, "Should find const method"
 
 

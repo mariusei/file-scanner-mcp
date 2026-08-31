@@ -22,7 +22,10 @@ def _matches_pattern(rel_path: str, pattern: str) -> bool:
         suffix_parts = suffix.split("/")
         rel_parts = rel_path.split("/")
         if len(rel_parts) >= len(suffix_parts):
-            return all(_fnmatch.fnmatch(a, b) for a, b in zip(rel_parts[-len(suffix_parts):], suffix_parts))
+            return all(
+                _fnmatch.fnmatch(a, b)
+                for a, b in zip(rel_parts[-len(suffix_parts) :], suffix_parts)
+            )
         return False
     return _fnmatch.fnmatch(rel_path, pattern)
 
@@ -91,10 +94,7 @@ class FileScanner:
         self.fallback_on_errors = fallback_on_errors
 
     def scan_content(
-        self,
-        content: str | bytes,
-        filename: str,
-        include_metadata: bool = False
+        self, content: str | bytes, filename: str, include_metadata: bool = False
     ) -> list[StructureNode] | None:
         """
         Scan file content directly without requiring a file path.
@@ -121,13 +121,12 @@ class FileScanner:
 
         # Create scanner instance with options
         scanner = scanner_class(
-            show_errors=self.show_errors,
-            fallback_on_errors=self.fallback_on_errors
+            show_errors=self.show_errors, fallback_on_errors=self.fallback_on_errors
         )
 
         # Convert content to bytes if needed
         if isinstance(content, str):
-            source_code = content.encode('utf-8')
+            source_code = content.encode("utf-8")
         else:
             source_code = content
 
@@ -153,7 +152,7 @@ class FileScanner:
                     "size": size_bytes,
                     "size_formatted": size_str,
                     "source": "content",
-                }
+                },
             )
             structures = [file_info] + structures
 
@@ -166,7 +165,7 @@ class FileScanner:
         budget: int | None = None,
         line_edits: dict[int, str] | None = None,
         mode: str = "balanced",
-        max_bytes: int | None = None
+        max_bytes: int | None = None,
     ) -> list[StructureNode] | None:
         """
         Scan a single file and return its structure.
@@ -210,8 +209,7 @@ class FileScanner:
 
         # Create scanner instance with options
         scanner = scanner_class(
-            show_errors=self.show_errors,
-            fallback_on_errors=self.fallback_on_errors
+            show_errors=self.show_errors, fallback_on_errors=self.fallback_on_errors
         )
 
         # Read file
@@ -223,11 +221,17 @@ class FileScanner:
 
         # Entropy-based saliency analysis (annotate high-importance code regions)
         # Skip for binary/non-code files where entropy analysis is meaningless
-        binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.pdf'}
+        binary_extensions = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf"}
         if structures is not None and suffix not in binary_extensions:
-            self._annotate_salient_code(structures, file_path, source_code,
-                                        language=scanner, budget=budget,
-                                        line_edits=line_edits, mode=mode)
+            self._annotate_salient_code(
+                structures,
+                file_path,
+                source_code,
+                language=scanner,
+                budget=budget,
+                line_edits=line_edits,
+                mode=mode,
+            )
 
         # Prepend file metadata if requested and structures exist
         if include_file_metadata and structures is not None:
@@ -252,7 +256,7 @@ class FileScanner:
                     "created": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
                     "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
                     "permissions": oct(file_stats.st_mode)[-3:],
-                }
+                },
             )
             structures = [file_info] + structures
 
@@ -274,9 +278,11 @@ class FileScanner:
         def walk(nodes):
             for node in nodes:
                 if node.type != "file-info" and node.name and node.end_line >= node.start_line:
-                    commits = {line_edits[line]
-                               for line in range(node.start_line, node.end_line + 1)
-                               if line in line_edits}
+                    commits = {
+                        line_edits[line]
+                        for line in range(node.start_line, node.end_line + 1)
+                        if line in line_edits
+                    }
                     eligible.append((node, len(commits)))
                 if node.children:
                     walk(node.children)
@@ -297,7 +303,7 @@ class FileScanner:
         language=None,
         budget: int | None = None,
         line_edits: dict[int, str] | None = None,
-        mode: str = "balanced"
+        mode: str = "balanced",
     ) -> None:
         """
         Annotate structure nodes with code in tiers by saliency, optionally
@@ -323,10 +329,11 @@ class FileScanner:
             from .entropy import select_salient_nodes
             from .languages.base import limit_skeleton_depth
 
-            source_lines = source_code.decode('utf-8', errors='replace').split('\n')
+            source_lines = source_code.decode("utf-8", errors="replace").split("\n")
 
-            ranked = select_salient_nodes(source_code, structures, top_percent=1.0,
-                                          line_edits=line_edits, mode=mode)
+            ranked = select_salient_nodes(
+                source_code, structures, top_percent=1.0, line_edits=line_edits, mode=mode
+            )
             if not ranked:
                 return
             if line_edits:
@@ -344,10 +351,12 @@ class FileScanner:
                 skeleton = language.condense_excerpt(excerpt) if language is not None else None
                 items.append((node, score, excerpt, skeleton))
 
-            levels: list = ["full" if i < full_count else self.BROAD_TIER_DEPTH
-                            for i in range(len(items))]
+            levels: list = [
+                "full" if i < full_count else self.BROAD_TIER_DEPTH for i in range(len(items))
+            ]
 
             if budget is not None:
+
                 def cost(i, level):
                     _, _, excerpt, skeleton = items[i]
                     if level == 0:
@@ -393,6 +402,7 @@ class FileScanner:
             # Fail gracefully if entropy analysis fails (e.g., file too small, import error)
             if self.show_errors:
                 import sys
+
                 print(f"Warning: Entropy analysis failed for {file_path}: {e}", file=sys.stderr)
 
     def scan_directory(
@@ -431,26 +441,26 @@ class FileScanner:
         # Default exclusions - always applied
         default_exclusions = [
             # Files
-            '.DS_Store',      # macOS
-            'Thumbs.db',      # Windows
-            'desktop.ini',    # Windows
-            '.localized',     # macOS
+            ".DS_Store",  # macOS
+            "Thumbs.db",  # Windows
+            "desktop.ini",  # Windows
+            ".localized",  # macOS
             # Directories (universal noise)
-            'node_modules/',  # Node.js dependencies
-            '__pycache__/',   # Python bytecode
-            '.pytest_cache/', # pytest cache
-            'dist/',          # Build output
-            'build/',         # Build output
-            'target/',        # Rust/Java/Kotlin build
-            '*.egg-info/',    # Python package metadata
-            '.venv/',         # Python virtual env
-            'venv/',          # Python virtual env
-            '.next/',         # Next.js build
-            '.nuxt/',         # Nuxt build
-            'coverage/',      # Test coverage
-            '.coverage/',     # Coverage reports
-            '.ruff_cache/',   # Ruff cache
-            '.mypy_cache/',   # MyPy cache
+            "node_modules/",  # Node.js dependencies
+            "__pycache__/",  # Python bytecode
+            ".pytest_cache/",  # pytest cache
+            "dist/",  # Build output
+            "build/",  # Build output
+            "target/",  # Rust/Java/Kotlin build
+            "*.egg-info/",  # Python package metadata
+            ".venv/",  # Python virtual env
+            "venv/",  # Python virtual env
+            ".next/",  # Next.js build
+            ".nuxt/",  # Nuxt build
+            "coverage/",  # Test coverage
+            ".coverage/",  # Coverage reports
+            ".ruff_cache/",  # Ruff cache
+            ".mypy_cache/",  # MyPy cache
         ]
 
         # Combine defaults with user-provided exclusions
@@ -522,19 +532,23 @@ class FileScanner:
                         continue
                     try:
                         results[file_str] = self.scan_file(
-                            file_str, mode=mode, max_bytes=SWEEP_MAX_BYTES)
+                            file_str, mode=mode, max_bytes=SWEEP_MAX_BYTES
+                        )
                     except Exception as e:
-                        results[file_str] = [StructureNode(
-                            type="error",
-                            name=f"Failed to scan: {str(e)}",
-                            start_line=1,
-                            end_line=1
-                        )]
+                        results[file_str] = [
+                            StructureNode(
+                                type="error",
+                                name=f"Failed to scan: {str(e)}",
+                                start_line=1,
+                                end_line=1,
+                            )
+                        ]
                 else:
                     try:
                         file_stats = os.stat(file_str)
                         results[file_str] = [
-                            _file_info_stub(file_path, file_stats, reason="unsupported")]
+                            _file_info_stub(file_path, file_stats, reason="unsupported")
+                        ]
                     except Exception:
                         continue
 

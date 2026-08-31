@@ -102,8 +102,14 @@ require_once 'vendor/autoload.php';
         imports = language.extract_imports("test.php", content)
 
         assert len(imports) == 2
-        assert any(imp.target_module == "config/database.php" and imp.import_type == "require" for imp in imports)
-        assert any(imp.target_module == "vendor/autoload.php" and imp.import_type == "require_once" for imp in imports)
+        assert any(
+            imp.target_module == "config/database.php" and imp.import_type == "require"
+            for imp in imports
+        )
+        assert any(
+            imp.target_module == "vendor/autoload.php" and imp.import_type == "require_once"
+            for imp in imports
+        )
 
     def test_extract_imports_include(self, language):
         """Test extraction of include statements."""
@@ -114,8 +120,13 @@ include_once 'footer.php';
         imports = language.extract_imports("test.php", content)
 
         assert len(imports) == 2
-        assert any(imp.target_module == "header.php" and imp.import_type == "include" for imp in imports)
-        assert any(imp.target_module == "footer.php" and imp.import_type == "include_once" for imp in imports)
+        assert any(
+            imp.target_module == "header.php" and imp.import_type == "include" for imp in imports
+        )
+        assert any(
+            imp.target_module == "footer.php" and imp.import_type == "include_once"
+            for imp in imports
+        )
 
     def test_extract_imports_require_with_parentheses(self, language):
         """Test extraction of require statements with parentheses."""
@@ -445,7 +456,9 @@ class UserController extends Controller
 }
 """
         imports = language.extract_imports("app/Http/Controllers/UserController.php", content)
-        entry_points = language.find_entry_points("app/Http/Controllers/UserController.php", content)
+        entry_points = language.find_entry_points(
+            "app/Http/Controllers/UserController.php", content
+        )
 
         # Should extract imports
         assert len(imports) == 3
@@ -497,4 +510,7 @@ class HomeController extends AbstractController
         assert any(imp.target_module == "App\\Services\\EmailService" for imp in imports)
 
         # Should extract function imports
-        assert any(imp.target_module == "App\\Utils\\validateEmail" and imp.import_type == "use_function" for imp in imports)
+        assert any(
+            imp.target_module == "App\\Utils\\validateEmail" and imp.import_type == "use_function"
+            for imp in imports
+        )

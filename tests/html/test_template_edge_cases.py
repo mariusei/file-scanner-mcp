@@ -260,7 +260,7 @@ class TestUnusualPositions:
         result = preprocess(source.encode())
         assert result is not None
         # The neutralized source should have valid-ish HTML
-        assert b'{%' not in result.cleaned_source
+        assert b"{%" not in result.cleaned_source
 
     def test_single_value_in_attribute_below_threshold(self):
         # Single {{ }} is ambiguous — not enough signal
@@ -272,14 +272,14 @@ class TestUnusualPositions:
         source = '<img src="{{ image_url }}" alt="{{ alt_text }}">'
         result = preprocess(source.encode())
         assert result is not None
-        assert b'{{' not in result.cleaned_source
-        assert b'<img' in result.cleaned_source
+        assert b"{{" not in result.cleaned_source
+        assert b"<img" in result.cleaned_source
 
     def test_tag_in_href(self):
-        source = '<a href="{% url \'detail\' pk=obj.pk %}">Link</a>'
+        source = "<a href=\"{% url 'detail' pk=obj.pk %}\">Link</a>"
         result = preprocess(source.encode())
         assert result is not None
-        assert b'{%' not in result.cleaned_source
+        assert b"{%" not in result.cleaned_source
 
     def test_multiline_tag(self):
         source = "{% if\n   long_condition\n   and another\n%}\n<p>ok</p>\n{% endif %}"
@@ -377,7 +377,7 @@ class TestBladeEdgeCases:
         source = b"@if($x)\n<p>{!! $html !!}</p>\n@endif"
         result = preprocess(source)
         assert result is not None
-        assert b'{!!' not in result.cleaned_source
+        assert b"{!!" not in result.cleaned_source
 
     def test_section_without_endsection(self):
         source = b"@extends('layout')\n@section('content')\n<p>WIP</p>\n"
@@ -401,10 +401,12 @@ class TestHTMLLanguageScanEdgeCases:
         """Should extract template structure even from messy files."""
         structures = html_language.scan(edge_cases_html)
         types = set()
+
         def collect(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect(n.children)
+
         collect(structures)
         assert "template-extends" in types
         assert "template-block" in types
@@ -413,10 +415,12 @@ class TestHTMLLanguageScanEdgeCases:
         """Should still extract HTML structure from messy template files."""
         structures = html_language.scan(edge_cases_html)
         types = set()
+
         def collect(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect(n.children)
+
         collect(structures)
         html_types = types - {t for t in types if t.startswith("template-")}
         assert len(html_types) > 0
@@ -431,12 +435,12 @@ class TestHTMLLanguageScanEdgeCases:
         """A truly messy WIP file."""
         source = (
             b'{% extends "base.html" %}\n'
-            b'{% block content %}\n'
+            b"{% block content %}\n"
             b'<div id="main">\n'
-            b'  {% if user %}\n'
-            b'  <h1>{{ user.name }}</h1>\n'
-            b'  {% for item in user.items %}\n'
-            b'  <p>{{ item }}\n'  # unclosed <p>
+            b"  {% if user %}\n"
+            b"  <h1>{{ user.name }}</h1>\n"
+            b"  {% for item in user.items %}\n"
+            b"  <p>{{ item }}\n"  # unclosed <p>
             # no endfor, no endif, no endblock
         )
         structures = html_language.scan(source)

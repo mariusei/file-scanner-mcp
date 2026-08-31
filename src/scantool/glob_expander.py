@@ -22,7 +22,7 @@ def expand_braces(pattern: str) -> list[str]:
         expand_braces("**/*.py") → ["**/*.py"]
     """
     # Find brace expressions: {option1,option2,option3}
-    brace_pattern = r'\{([^}]+)\}'
+    brace_pattern = r"\{([^}]+)\}"
     match = re.search(brace_pattern, pattern)
 
     if not match:
@@ -31,11 +31,11 @@ def expand_braces(pattern: str) -> list[str]:
 
     # Extract the options inside braces
     options_str = match.group(1)
-    options = [opt.strip() for opt in options_str.split(',')]
+    options = [opt.strip() for opt in options_str.split(",")]
 
     # Get the parts before and after the braces
-    before = pattern[:match.start()]
-    after = pattern[match.end():]
+    before = pattern[: match.start()]
+    after = pattern[match.end() :]
 
     # Generate patterns for each option
     expanded = []

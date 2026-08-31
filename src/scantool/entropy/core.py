@@ -22,9 +22,19 @@ import numpy as np
 
 # Structural node types that never get code excerpts
 _SKIP_TYPES = {
-    "file-info", "imports", "section", "heading", "heading-1", "heading-2",
-    "heading-3", "heading-4", "heading-5", "heading-6", "paragraph",
-    "error", "parse-error",
+    "file-info",
+    "imports",
+    "section",
+    "heading",
+    "heading-1",
+    "heading-2",
+    "heading-3",
+    "heading-4",
+    "heading-5",
+    "heading-6",
+    "paragraph",
+    "error",
+    "parse-error",
 }
 
 # zlib's fixed output overhead — subtracted so short nodes aren't scored
@@ -44,10 +54,8 @@ _CALL_RE = re.compile(r"\b(\w+)\s*\(")
 # centrality favors local helpers, not hubs — cross-file architecture is
 # preview_directory's domain.
 _PROFILES = {
-    "balanced": {"shannon": 0.30, "conditional": 0.50, "centrality": 0.20,
-                 "churn": 0.15},
-    "active":   {"shannon": 0.25, "conditional": 0.30, "centrality": 0.10,
-                 "churn": 0.45},
+    "balanced": {"shannon": 0.30, "conditional": 0.50, "centrality": 0.20, "churn": 0.15},
+    "active": {"shannon": 0.25, "conditional": 0.30, "centrality": 0.10, "churn": 0.45},
 }
 
 
@@ -94,13 +102,14 @@ def select_salient_nodes(
         conditional.append(np.log1p(_new_information(data, start, end)))
         centrality.append(float(call_counts.get(node.name, 0)))
         if line_edits:
-            commits = {line_edits[line]
-                       for line in range(node.start_line, node.end_line + 1)
-                       if line in line_edits}
+            commits = {
+                line_edits[line]
+                for line in range(node.start_line, node.end_line + 1)
+                if line in line_edits
+            }
             churn.append(float(len(commits)))
 
-    w_shannon, w_cond, w_centr = (profile["shannon"], profile["conditional"],
-                                  profile["centrality"])
+    w_shannon, w_cond, w_centr = (profile["shannon"], profile["conditional"], profile["centrality"])
     if not use_centrality:
         # renormaliser sentralitetsvekten inn i de to andre
         scale = (w_shannon + w_cond + w_centr) / (w_shannon + w_cond)
@@ -170,8 +179,7 @@ def _new_information(data: bytes, start: int, end: int) -> float:
     if not segment:
         return 0.0
 
-    context = data[max(0, start - _CONTEXT_WINDOW):start] + \
-        data[end:end + _CONTEXT_WINDOW]
+    context = data[max(0, start - _CONTEXT_WINDOW) : start] + data[end : end + _CONTEXT_WINDOW]
     try:
         if context:
             compressor = zlib.compressobj(level=6, zdict=context)

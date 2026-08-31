@@ -14,7 +14,7 @@ def scan(tmp_path, files: dict[str, str]):
     return FileScanner().scan_directory(str(tmp_path), pattern="**/*")
 
 
-PY_FILE = '''\
+PY_FILE = """\
 import zlib
 
 
@@ -29,7 +29,7 @@ class Compressor:
 
 def unrelated():
     return 42
-'''
+"""
 
 
 class TestContentSearch:
@@ -53,10 +53,15 @@ class TestContentSearch:
         assert chains["(module level)"] == 1  # the import line
 
     def test_markdown_hit_returns_section(self, tmp_path):
-        results = scan(tmp_path, {"doc.md": (
-            "# Innledning\n\nGenerelt stoff.\n\n"
-            "# Konfigurasjon\n\nSett zdict-parameteren for kontekst.\n"
-        )})
+        results = scan(
+            tmp_path,
+            {
+                "doc.md": (
+                    "# Innledning\n\nGenerelt stoff.\n\n"
+                    "# Konfigurasjon\n\nSett zdict-parameteren for kontekst.\n"
+                )
+            },
+        )
 
         found = search_content(results, "zdict")
 
@@ -88,12 +93,15 @@ class TestContentSearch:
 
     def test_densest_file_ranked_first(self, tmp_path):
         """Caps must keep the most relevant structures — densest files first."""
-        results = scan(tmp_path, {
-            "aaa_sparse.py": "def one_mention():\n    return target_term()\n",
-            "zzz_dense.py": "\n".join(
-                f"def dense_{i}():\n    return target_term_{i}()\n" for i in range(4)
-            ).replace("target_term_", "target_term_x"),
-        })
+        results = scan(
+            tmp_path,
+            {
+                "aaa_sparse.py": "def one_mention():\n    return target_term()\n",
+                "zzz_dense.py": "\n".join(
+                    f"def dense_{i}():\n    return target_term_{i}()\n" for i in range(4)
+                ).replace("target_term_", "target_term_x"),
+            },
+        )
 
         found = search_content(results, "target_term")
 
@@ -102,37 +110,46 @@ class TestContentSearch:
     def test_leads_point_to_definitions_in_other_files(self, tmp_path):
         from scantool.content_search import find_leads
 
-        results = scan(tmp_path, {
-            "caller.py": '''\
+        results = scan(
+            tmp_path,
+            {
+                "caller.py": """\
 def orchestrate(items):
     if check_skipif(items):
         return evaluate_condition(items)
     return None
-''',
-            "lib.py": '''\
+""",
+                "lib.py": """\
 def evaluate_condition(items):
     return all(i.valid for i in items)
-''',
-        })
+""",
+            },
+        )
 
         found = search_content(results, "skipif")
         leads = find_leads(found, results)
 
-        assert any(name == "evaluate_condition"
-                   and any("lib.py" in f for f, _ in targets)
-                   for name, targets in leads)
+        assert any(
+            name == "evaluate_condition" and any("lib.py" in f for f, _ in targets)
+            for name, targets in leads
+        )
 
     def test_no_lead_for_same_file_definitions(self, tmp_path):
         from scantool.content_search import find_leads
 
-        results = scan(tmp_path, {"solo.py": '''\
+        results = scan(
+            tmp_path,
+            {
+                "solo.py": """\
 def orchestrate(items):
     return local_helper(items)  # skipif-relatert
 
 
 def local_helper(items):
     return items
-'''})
+"""
+            },
+        )
 
         found = search_content(results, "skipif")
 
@@ -154,10 +171,13 @@ def local_helper(items):
     def test_leads_rendered_in_output(self, tmp_path):
         from scantool.content_search import find_leads
 
-        results = scan(tmp_path, {
-            "caller.py": "def run(x):\n    return transform_payload(x)  # skipif\n",
-            "lib.py": "def transform_payload(x):\n    return x * 2\n",
-        })
+        results = scan(
+            tmp_path,
+            {
+                "caller.py": "def run(x):\n    return transform_payload(x)  # skipif\n",
+                "lib.py": "def transform_payload(x):\n    return x * 2\n",
+            },
+        )
         found = search_content(results, "skipif")
 
         output = format_hits(found, "skipif", find_leads(found, results))
@@ -178,10 +198,13 @@ def local_helper(items):
         # file-info stub with no parseable structure; read_text()'ing it is
         # ruinously slow and yields no structural context. The matching hit
         # must come only from the supported file, never the stub.
-        results = scan(tmp_path, {
-            "code.py": "def find_lake():\n    return 'lake'\n",
-            "lakes.geojson": '{"features": ["lake", "lake", "lake"]}\n',
-        })
+        results = scan(
+            tmp_path,
+            {
+                "code.py": "def find_lake():\n    return 'lake'\n",
+                "lakes.geojson": '{"features": ["lake", "lake", "lake"]}\n',
+            },
+        )
 
         found = search_content(results, "lake")
 

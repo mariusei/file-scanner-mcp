@@ -75,10 +75,10 @@ def _skip_source(p: Path) -> bool:
 
 @dataclass
 class Producer:
-    pid: str        # identity (handler name, template relpath, ...)
-    location: str   # file (relative to repo)
-    key: str        # the referenceable thing (route path, template path, ...)
-    tag: str = ""   # convention label (HTTP method, "template", ...)
+    pid: str  # identity (handler name, template relpath, ...)
+    location: str  # file (relative to repo)
+    key: str  # the referenceable thing (route path, template path, ...)
+    tag: str = ""  # convention label (HTTP method, "template", ...)
 
 
 @dataclass
@@ -86,8 +86,8 @@ class MappingSpec:
     name: str
     producers: Callable[[Path], list[Producer]]
     consumers: Callable[[Path], tuple[str, set[str]]]  # (blob, names referenced by-name)
-    distinctive: Callable[[Producer], "str | None"]    # matchable token, or None = unresolvable
-    external: Callable[[Producer], bool]               # legit external entry — never orphan
+    distinctive: Callable[[Producer], "str | None"]  # matchable token, or None = unresolvable
+    external: Callable[[Producer], bool]  # legit external entry — never orphan
 
 
 def run(repo: Path, spec: MappingSpec) -> tuple[list, list[Producer], list[Producer]]:
@@ -123,7 +123,9 @@ _ROUTE_PATTERNS = (
     # masquerade as a route (the false-producer trap).
     re.compile(r'@\w+\.(?:get|post|put|delete|patch|route)\(\s*["\'](?P<path>/[^"\']*)["\']'),
     # Spring: @GetMapping("/x"), @RequestMapping(value = "/x").
-    re.compile(r'@(?:Get|Post|Put|Delete|Patch|Request)Mapping\(\s*(?:value\s*=\s*)?["\'](?P<path>[^"\']+)["\']'),
+    re.compile(
+        r'@(?:Get|Post|Put|Delete|Patch|Request)Mapping\(\s*(?:value\s*=\s*)?["\'](?P<path>[^"\']+)["\']'
+    ),
     # NestJS: @Get("x"), @Post("/x") — capitalised verb, no dot.
     re.compile(r'@(?:Get|Post|Put|Delete|Patch|All)\(\s*["\'](?P<path>[^"\']*)["\']'),
 )
@@ -136,7 +138,7 @@ _ROUTE_PATTERNS = (
 #     stripped) and from `store.get(nonce)`/`cache.get(...)` (not routes).
 #   - a leading slash on the path.
 _IMPERATIVE_ROUTE = re.compile(
-    r'\b(?:app|api|server|router|routes|\w*[Rr]outer)'
+    r"\b(?:app|api|server|router|routes|\w*[Rr]outer)"
     r'\.(?:get|post|put|delete|patch|all|head|options)\(\s*["\'](?P<path>/[^"\']*)["\']'
 )
 _ROUTE_PRODUCER_EXTS = (".py", ".ts", ".tsx", ".js", ".jsx", ".java", ".kt", ".go", ".rb", ".php")
@@ -145,16 +147,42 @@ _ROUTE_PRODUCER_EXTS = (".py", ".ts", ".tsx", ".js", ".jsx", ".java", ".kt", ".g
 # scanning more consumers only ever marks a route REACHED (never invents an orphan),
 # so the orphan set stays high-confidence (precision-first). Measured: without
 # .swift, an iOS frontend's `/route` references were invisible → false orphans.
-_ROUTE_CONSUMER_EXTS = (".html", ".j2", ".jinja", ".vue", ".svelte",
-                        ".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
-                        ".java", ".kt", ".kts", ".swift", ".dart", ".m", ".mm",
-                        ".go", ".rs", ".zig", ".cs", ".rb", ".php",
-                        ".json", ".yaml", ".yml", ".xml")
+_ROUTE_CONSUMER_EXTS = (
+    ".html",
+    ".j2",
+    ".jinja",
+    ".vue",
+    ".svelte",
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".cjs",
+    ".java",
+    ".kt",
+    ".kts",
+    ".swift",
+    ".dart",
+    ".m",
+    ".mm",
+    ".go",
+    ".rs",
+    ".zig",
+    ".cs",
+    ".rb",
+    ".php",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".xml",
+)
 # Any /path fragment ANYWHERE — catches href/hx-*/action AND dynamic URLs whose
 # string starts with a template/JS prefix ({{scope}}/x, scope ~ "/x/" ~ var,
 # fetch/htmx.ajax). The measured FP cause was exactly these prefixed dynamic
 # forms; matching fragments anywhere is precision-first for orphans.
-URL_ATTR = re.compile(r'/[\w\-]{3,}(?:/[\w\-{}.:]+)*')
+URL_ATTR = re.compile(r"/[\w\-]{3,}(?:/[\w\-{}.:]+)*")
 URL_BYNAME = re.compile(r'url_(?:path_)?for\(\s*["\']([^"\']+)["\']')
 # Endpoints consumed from OUTSIDE the repo (a relying party, a verifier, a crawler,
 # a browser fetching an asset) have no in-corpus reference by design — they are
@@ -162,9 +190,9 @@ URL_BYNAME = re.compile(r'url_(?:path_)?for\(\s*["\']([^"\']+)["\']')
 # this guard, `/.well-known/jwks.json`, status lists, `robots.txt` and static assets
 # were false orphans. Standard well-known URIs + asset extensions cover them.
 EXTERNAL = re.compile(
-    r'^/?$|/health|/metrics|/favicon|/callback$|/webhook$|/redirect'
-    r'|/\.well-known|/robots\.txt|/sitemap|/jwks|/openapi|/swagger'
-    r'|\.(?:png|jpe?g|gif|svg|ico|css|js|txt|xml|json|woff2?|map)$'
+    r"^/?$|/health|/metrics|/favicon|/callback$|/webhook$|/redirect"
+    r"|/\.well-known|/robots\.txt|/sitemap|/jwks|/openapi|/swagger"
+    r"|\.(?:png|jpe?g|gif|svg|ico|css|js|txt|xml|json|woff2?|map)$"
 )
 
 

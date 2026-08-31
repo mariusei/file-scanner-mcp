@@ -18,28 +18,32 @@ def test_basic_parsing(file_scanner):
     names = [s.name for s in structures]
 
     # Should find structs
-    assert any(s.type == "struct" and s.name == "Config" for s in structures), \
+    assert any(s.type == "struct" and s.name == "Config" for s in structures), (
         f"Should find Config struct, got: {list(zip(types, names))}"
+    )
 
     # Should find protocols
-    assert any(s.type == "protocol" and s.name == "Logger" for s in structures), \
+    assert any(s.type == "protocol" and s.name == "Logger" for s in structures), (
         "Should find Logger protocol"
+    )
 
     # Should find enums
-    assert any(s.type == "enum" and s.name == "UserStatus" for s in structures), \
+    assert any(s.type == "enum" and s.name == "UserStatus" for s in structures), (
         "Should find UserStatus enum"
+    )
 
     # Should find classes
-    assert any(s.type == "class" and s.name == "DatabaseManager" for s in structures), \
+    assert any(s.type == "class" and s.name == "DatabaseManager" for s in structures), (
         "Should find DatabaseManager class"
+    )
 
     # Should find extensions
-    assert any(s.type == "extension" for s in structures), \
-        "Should find extension"
+    assert any(s.type == "extension" for s in structures), "Should find extension"
 
     # Should find standalone functions
-    assert any(s.type == "function" and s.name == "validateEmail" for s in structures), \
+    assert any(s.type == "function" and s.name == "validateEmail" for s in structures), (
         "Should find validateEmail function"
+    )
 
 
 def test_signatures(file_scanner):
@@ -51,8 +55,9 @@ def test_signatures(file_scanner):
     func = next((s for s in structures if s.type == "function" and s.name == "validateEmail"), None)
     assert func is not None, "Should find validateEmail"
     assert func.signature is not None, f"Should have signature, got: {func}"
-    assert "String" in func.signature or "email" in func.signature, \
+    assert "String" in func.signature or "email" in func.signature, (
         f"Signature should include parameter, got: {func.signature}"
+    )
 
 
 def test_methods(file_scanner):
@@ -61,7 +66,9 @@ def test_methods(file_scanner):
     structures = file_scanner.scan_file(str(file_path))
 
     # Find DatabaseManager class
-    db_manager = next((s for s in structures if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_manager = next(
+        (s for s in structures if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager"
 
     # Check for methods in children
@@ -80,8 +87,9 @@ def test_docstrings(file_scanner):
     config = next((s for s in structures if s.type == "struct" and s.name == "Config"), None)
     assert config is not None, "Should find Config"
     assert config.docstring is not None, f"Should have docstring, got: {config}"
-    assert "configuration" in config.docstring.lower() or "config" in config.docstring.lower(), \
+    assert "configuration" in config.docstring.lower() or "config" in config.docstring.lower(), (
         f"Docstring should mention configuration, got: {config.docstring}"
+    )
 
 
 def test_visibility_modifiers(file_scanner):
@@ -90,10 +98,13 @@ def test_visibility_modifiers(file_scanner):
     structures = file_scanner.scan_file(str(file_path))
 
     # Find public DatabaseManager class
-    db_manager = next((s for s in structures if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_manager = next(
+        (s for s in structures if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager"
-    assert "public" in db_manager.modifiers, \
+    assert "public" in db_manager.modifiers, (
         f"DatabaseManager should be public, got modifiers: {db_manager.modifiers}"
+    )
 
 
 def test_inheritance(file_scanner):
@@ -105,8 +116,9 @@ def test_inheritance(file_scanner):
     user_status = next((s for s in structures if s.type == "enum" and s.name == "UserStatus"), None)
     assert user_status is not None, "Should find UserStatus"
     if user_status.signature:
-        assert "String" in user_status.signature, \
+        assert "String" in user_status.signature, (
             f"Should show String inheritance, got: {user_status.signature}"
+        )
 
 
 def test_edge_cases(file_scanner):
@@ -133,8 +145,9 @@ def test_edge_cases(file_scanner):
     assert view_model is not None, "Should find ViewModel"
     # @MainActor should be in decorators
     if view_model.decorators:
-        assert any("MainActor" in d for d in view_model.decorators), \
+        assert any("MainActor" in d for d in view_model.decorators), (
             f"Should have @MainActor decorator, got: {view_model.decorators}"
+        )
 
     # Test property wrapper struct
     clamped = next((s for s in structures if s.name == "Clamped"), None)
@@ -149,8 +162,9 @@ def test_edge_cases(file_scanner):
     assert outer is not None, "Should find OuterType"
     if outer.children:
         inner_names = [c.name for c in outer.children]
-        assert "InnerType" in inner_names or any("Inner" in n for n in inner_names), \
+        assert "InnerType" in inner_names or any("Inner" in n for n in inner_names), (
             f"Should find nested InnerType, got: {inner_names}"
+        )
 
 
 def test_async_functions(file_scanner):
@@ -159,13 +173,18 @@ def test_async_functions(file_scanner):
     structures = file_scanner.scan_file(str(file_path))
 
     # Find async function
-    fetch_data = next((s for s in structures if s.type == "function" and s.name == "fetchData"), None)
+    fetch_data = next(
+        (s for s in structures if s.type == "function" and s.name == "fetchData"), None
+    )
     assert fetch_data is not None, "Should find fetchData"
     # Check for async modifier or in signature
-    has_async = "async" in fetch_data.modifiers or (fetch_data.signature and "async" in fetch_data.signature)
+    has_async = "async" in fetch_data.modifiers or (
+        fetch_data.signature and "async" in fetch_data.signature
+    )
     # async might also be in the signature text itself
-    assert has_async or (fetch_data.signature and "throws" in fetch_data.signature), \
+    assert has_async or (fetch_data.signature and "throws" in fetch_data.signature), (
         f"Should detect async/throws function, modifiers: {fetch_data.modifiers}, sig: {fetch_data.signature}"
+    )
 
 
 def test_subscripts(file_scanner):
@@ -180,7 +199,9 @@ def test_subscripts(file_scanner):
     # Check for subscript in children
     if matrix.children:
         subscripts = [c for c in matrix.children if c.type == "subscript"]
-        assert len(subscripts) >= 1, f"Should find subscripts in Matrix, got: {[c.type for c in matrix.children]}"
+        assert len(subscripts) >= 1, (
+            f"Should find subscripts in Matrix, got: {[c.type for c in matrix.children]}"
+        )
 
 
 def test_initializers(file_scanner):
@@ -195,8 +216,9 @@ def test_initializers(file_scanner):
     # Check for initializers in children
     if init_examples.children:
         initializers = [c for c in init_examples.children if c.type == "initializer"]
-        assert len(initializers) >= 1, \
+        assert len(initializers) >= 1, (
             f"Should find initializers, got: {[(c.type, c.name) for c in init_examples.children]}"
+        )
 
 
 def test_deinit(file_scanner):
@@ -211,8 +233,9 @@ def test_deinit(file_scanner):
     # Check for deinit in children
     if resource_manager.children:
         deinits = [c for c in resource_manager.children if c.type == "deinitializer"]
-        assert len(deinits) >= 1, \
+        assert len(deinits) >= 1, (
             f"Should find deinit, got: {[(c.type, c.name) for c in resource_manager.children]}"
+        )
 
 
 def test_error_handling():
@@ -227,7 +250,9 @@ def test_error_handling():
 
     # Should show parse errors or valid structures
     has_error = any(s.type in ("parse-error", "error") for s in structures)
-    has_valid = any(s.type in ("struct", "class", "protocol", "enum", "function") for s in structures)
+    has_valid = any(
+        s.type in ("struct", "class", "protocol", "enum", "function") for s in structures
+    )
 
     assert has_error or has_valid, "Should have either errors or valid structures"
 
@@ -236,8 +261,9 @@ def test_error_handling():
     valid_func = next((s for s in structures if "validFunction" in s.name), None)
     valid_protocol = next((s for s in structures if "ValidProtocol" in s.name), None)
 
-    assert valid_struct is not None or valid_func is not None or valid_protocol is not None, \
+    assert valid_struct is not None or valid_func is not None or valid_protocol is not None, (
         f"Should find at least some valid structures in broken file, got: {[(s.type, s.name) for s in structures]}"
+    )
 
 
 def test_typealias(file_scanner):
@@ -247,7 +273,9 @@ def test_typealias(file_scanner):
 
     # Find typealiases
     user_id = next((s for s in structures if s.type == "typealias" and s.name == "UserID"), None)
-    assert user_id is not None, f"Should find UserID typealias, got: {[(s.type, s.name) for s in structures if s.type == 'typealias']}"
+    assert user_id is not None, (
+        f"Should find UserID typealias, got: {[(s.type, s.name) for s in structures if s.type == 'typealias']}"
+    )
 
 
 def test_enum_cases(file_scanner):
@@ -280,8 +308,9 @@ def test_mutating_modifier(file_scanner):
     if point.children:
         move_by = next((c for c in point.children if c.name == "moveBy"), None)
         if move_by:
-            assert "mutating" in move_by.modifiers, \
+            assert "mutating" in move_by.modifiers, (
                 f"moveBy should have mutating modifier, got: {move_by.modifiers}"
+            )
 
 
 def test_static_and_class_methods(file_scanner):
@@ -298,12 +327,14 @@ def test_static_and_class_methods(file_scanner):
         class_method = next((c for c in base_class.children if c.name == "classMethod"), None)
 
         if static_method:
-            assert "static" in static_method.modifiers, \
+            assert "static" in static_method.modifiers, (
                 f"staticMethod should have static modifier, got: {static_method.modifiers}"
+            )
 
         if class_method:
-            assert "class" in class_method.modifiers, \
+            assert "class" in class_method.modifiers, (
                 f"classMethod should have class modifier, got: {class_method.modifiers}"
+            )
 
 
 def test_swiftui_patterns(file_scanner):
@@ -317,8 +348,10 @@ def test_swiftui_patterns(file_scanner):
 
     # Check for @Published properties in children
     if view_model.children:
-        published_props = [c for c in view_model.children
-                         if c.type == "property" and c.decorators and
-                         any("Published" in d for d in c.decorators)]
+        published_props = [
+            c
+            for c in view_model.children
+            if c.type == "property" and c.decorators and any("Published" in d for d in c.decorators)
+        ]
         # It's OK if we don't capture all @Published - just verify structure is found
         assert view_model.children, "ViewModel should have children (properties/methods)"

@@ -14,14 +14,18 @@ def test_basic_parsing(file_scanner):
     assert len(structures) > 0, "Should find structures"
 
     # Verify expected structures
-    assert any(s.type == "struct" and s.name == "Config" for s in structures), \
+    assert any(s.type == "struct" and s.name == "Config" for s in structures), (
         "Should find Config struct"
-    assert any(s.type == "struct" and s.name == "DatabaseManager" for s in structures), \
+    )
+    assert any(s.type == "struct" and s.name == "DatabaseManager" for s in structures), (
         "Should find DatabaseManager struct"
-    assert any(s.type == "interface" and s.name == "Logger" for s in structures), \
+    )
+    assert any(s.type == "interface" and s.name == "Logger" for s in structures), (
         "Should find Logger interface"
-    assert any(s.type == "function" and s.name == "ValidateEmail" for s in structures), \
+    )
+    assert any(s.type == "function" and s.name == "ValidateEmail" for s in structures), (
         "Should find ValidateEmail function"
+    )
 
 
 def test_signatures(file_scanner):
@@ -33,7 +37,9 @@ def test_signatures(file_scanner):
     func = next((s for s in structures if s.type == "function" and s.name == "ValidateEmail"), None)
     assert func is not None, "Should find ValidateEmail"
     assert func.signature is not None, "Should have signature"
-    assert "email string" in func.signature, f"Signature should include parameter, got: {func.signature}"
+    assert "email string" in func.signature, (
+        f"Signature should include parameter, got: {func.signature}"
+    )
     assert "bool" in func.signature, f"Signature should include return type, got: {func.signature}"
 
 
@@ -47,7 +53,9 @@ def test_methods(file_scanner):
     assert method is not None, "Should find Connect method"
     assert method.signature is not None, "Should have signature"
     # Receiver should be in signature
-    assert "DatabaseManager" in method.signature, f"Signature should include receiver, got: {method.signature}"
+    assert "DatabaseManager" in method.signature, (
+        f"Signature should include receiver, got: {method.signature}"
+    )
 
 
 def test_docstrings(file_scanner):
@@ -56,10 +64,14 @@ def test_docstrings(file_scanner):
     structures = file_scanner.scan_file(str(file_path))
 
     # Find DatabaseManager struct
-    struct = next((s for s in structures if s.type == "struct" and s.name == "DatabaseManager"), None)
+    struct = next(
+        (s for s in structures if s.type == "struct" and s.name == "DatabaseManager"), None
+    )
     assert struct is not None, "Should find DatabaseManager"
     assert struct.docstring is not None, "Should have docstring"
-    assert "database" in struct.docstring.lower(), f"Docstring should mention database, got: {struct.docstring}"
+    assert "database" in struct.docstring.lower(), (
+        f"Docstring should mention database, got: {struct.docstring}"
+    )
 
 
 def test_visibility_modifiers(file_scanner):
@@ -73,7 +85,9 @@ def test_visibility_modifiers(file_scanner):
     assert "public" in config.modifiers, "Config should be public"
 
     # Public function (capitalized)
-    validate = next((s for s in structures if s.type == "function" and s.name == "ValidateEmail"), None)
+    validate = next(
+        (s for s in structures if s.type == "function" and s.name == "ValidateEmail"), None
+    )
     assert validate is not None, "Should find ValidateEmail"
     assert "public" in validate.modifiers, "ValidateEmail should be public"
 
@@ -93,33 +107,43 @@ def test_edge_cases(file_scanner):
     assert len(structures) > 0, "Should find structures"
 
     # Test generic types
-    generic = next((s for s in structures if s.type == "struct" and "GenericContainer" in s.name), None)
+    generic = next(
+        (s for s in structures if s.type == "struct" and "GenericContainer" in s.name), None
+    )
     assert generic is not None, "Should find GenericContainer"
 
     # Test named return values
-    divide = next((s for s in structures if s.type == "function" and s.name == "DivideWithRemainder"), None)
+    divide = next(
+        (s for s in structures if s.type == "function" and s.name == "DivideWithRemainder"), None
+    )
     assert divide is not None, "Should find DivideWithRemainder"
     assert divide.signature is not None, "Should have signature"
     # Should have multiple return values
-    assert "quotient" in divide.signature or "int" in divide.signature, \
+    assert "quotient" in divide.signature or "int" in divide.signature, (
         f"Should show return values, got: {divide.signature}"
+    )
 
     # Test variadic function
     sum_func = next((s for s in structures if s.type == "function" and s.name == "Sum"), None)
     assert sum_func is not None, "Should find Sum function"
     assert sum_func.signature is not None, "Should have signature"
-    assert "..." in sum_func.signature or "numbers" in sum_func.signature, \
+    assert "..." in sum_func.signature or "numbers" in sum_func.signature, (
         f"Should show variadic parameter, got: {sum_func.signature}"
+    )
 
     # Test pointer vs value receiver
     increment = next((s for s in structures if s.type == "method" and s.name == "Increment"), None)
     assert increment is not None, "Should find Increment method"
     assert increment.signature is not None, "Should have signature"
     # Pointer receiver should be indicated
-    assert "*Counter" in increment.signature, f"Should show pointer receiver, got: {increment.signature}"
+    assert "*Counter" in increment.signature, (
+        f"Should show pointer receiver, got: {increment.signature}"
+    )
 
     # Test embedded interfaces
-    read_writer = next((s for s in structures if s.type == "interface" and s.name == "ReadWriter"), None)
+    read_writer = next(
+        (s for s in structures if s.type == "interface" and s.name == "ReadWriter"), None
+    )
     assert read_writer is not None, "Should find ReadWriter interface"
 
 
@@ -143,8 +167,9 @@ def test_error_handling():
     valid_struct = next((s for s in structures if "ValidStruct" in s.name), None)
     valid_func = next((s for s in structures if "ValidFunction" in s.name), None)
 
-    assert valid_struct is not None or valid_func is not None, \
+    assert valid_struct is not None or valid_func is not None, (
         "Should find at least some valid structures in broken file"
+    )
 
 
 def test_interface_detection(file_scanner):
@@ -163,9 +188,12 @@ def test_multiple_return_values(file_scanner):
     structures = file_scanner.scan_file(str(file_path))
 
     # Find CreateUser method with multiple returns
-    create_user = next((s for s in structures if s.type == "method" and s.name == "CreateUser"), None)
+    create_user = next(
+        (s for s in structures if s.type == "method" and s.name == "CreateUser"), None
+    )
     assert create_user is not None, "Should find CreateUser"
     assert create_user.signature is not None, "Should have signature"
     # Should show both parameters and return types
-    assert "username" in create_user.signature or "string" in create_user.signature, \
+    assert "username" in create_user.signature or "string" in create_user.signature, (
         f"Should show parameters, got: {create_user.signature}"
+    )

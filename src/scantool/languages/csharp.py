@@ -84,11 +84,11 @@ class CSharpLanguage(BaseLanguage):
     def should_skip(cls, filename: str) -> bool:
         """Skip designer and generated files."""
         lower = filename.lower()
-        if '.designer.cs' in lower:
+        if ".designer.cs" in lower:
             return True
-        if lower.endswith('.g.cs') or lower.endswith('.generated.cs'):
+        if lower.endswith(".g.cs") or lower.endswith(".generated.cs"):
             return True
-        return lower == 'assemblyinfo.cs'
+        return lower == "assemblyinfo.cs"
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -104,19 +104,19 @@ class CSharpLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip designer files
-        if '.designer.cs' in filename:
+        if ".designer.cs" in filename:
             return False
 
         # Skip generated files
-        if filename.endswith('.g.cs') or filename.endswith('.generated.cs'):
+        if filename.endswith(".g.cs") or filename.endswith(".generated.cs"):
             return False
 
         # Skip auto-generated AssemblyInfo files
-        if filename == 'assemblyinfo.cs':
+        if filename == "assemblyinfo.cs":
             return False
 
         # Skip bin/obj (should be caught by COMMON_SKIP_DIRS, but double-check)
-        return not ('/bin/' in path_lower or '/obj/' in path_lower)
+        return not ("/bin/" in path_lower or "/obj/" in path_lower)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value C# files for inventory listing.
@@ -128,7 +128,7 @@ class CSharpLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # GlobalUsings.cs is usually auto-generated boilerplate
-        if filename == 'globalusings.cs' and size < 500:
+        if filename == "globalusings.cs" and size < 500:
             return True
 
         return super().is_low_value_for_inventory(file_path, size)
@@ -149,7 +149,7 @@ class CSharpLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -258,7 +258,7 @@ class CSharpLanguage(BaseLanguage):
         if base_list:
             base_text = self._get_node_text(base_list, source_code).strip()
             # Remove the colon if present
-            base_text = base_text.lstrip(':').strip()
+            base_text = base_text.lstrip(":").strip()
             signature_parts.append(f": {base_text}")
 
         signature = " ".join(signature_parts) if signature_parts else None
@@ -279,7 +279,7 @@ class CSharpLanguage(BaseLanguage):
             docstring=docstring,
             complexity=complexity,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_interface(self, node: Node, source_code: bytes) -> StructureNode:
@@ -304,7 +304,7 @@ class CSharpLanguage(BaseLanguage):
         base_list = node.child_by_field_name("bases")
         if base_list:
             base_text = self._get_node_text(base_list, source_code).strip()
-            base_text = base_text.lstrip(':').strip()
+            base_text = base_text.lstrip(":").strip()
             signature_parts.append(f": {base_text}")
 
         signature = " ".join(signature_parts) if signature_parts else None
@@ -321,7 +321,7 @@ class CSharpLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_struct(self, node: Node, source_code: bytes) -> StructureNode:
@@ -346,7 +346,7 @@ class CSharpLanguage(BaseLanguage):
         base_list = node.child_by_field_name("bases")
         if base_list:
             base_text = self._get_node_text(base_list, source_code).strip()
-            base_text = base_text.lstrip(':').strip()
+            base_text = base_text.lstrip(":").strip()
             signature_parts.append(f": {base_text}")
 
         signature = " ".join(signature_parts) if signature_parts else None
@@ -363,7 +363,7 @@ class CSharpLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_record(self, node: Node, source_code: bytes) -> StructureNode:
@@ -394,7 +394,7 @@ class CSharpLanguage(BaseLanguage):
         base_list = node.child_by_field_name("bases")
         if base_list:
             base_text = self._get_node_text(base_list, source_code).strip()
-            base_text = base_text.lstrip(':').strip()
+            base_text = base_text.lstrip(":").strip()
             signature_parts.append(f": {base_text}")
 
         signature = " ".join(signature_parts) if signature_parts else None
@@ -411,7 +411,7 @@ class CSharpLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_enum(self, node: Node, source_code: bytes) -> StructureNode:
@@ -431,7 +431,7 @@ class CSharpLanguage(BaseLanguage):
         for child in node.children:
             if child.type == "base_list":
                 base_text = self._get_node_text(child, source_code).strip()
-                base_text = base_text.lstrip(':').strip()
+                base_text = base_text.lstrip(":").strip()
                 signature = f": {base_text}"
                 break
 
@@ -447,7 +447,7 @@ class CSharpLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -480,7 +480,7 @@ class CSharpLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_property(self, node: Node, source_code: bytes) -> StructureNode:
@@ -513,7 +513,7 @@ class CSharpLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_constructor(self, node: Node, source_code: bytes) -> StructureNode:
@@ -549,7 +549,7 @@ class CSharpLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
@@ -568,8 +568,15 @@ class CSharpLanguage(BaseLanguage):
             if child.type == "modifier":
                 continue
             # This must be the return type
-            if child.type in ("generic_name", "predefined_type", "identifier", "nullable_type",
-                            "array_type", "qualified_name", "tuple_type"):
+            if child.type in (
+                "generic_name",
+                "predefined_type",
+                "identifier",
+                "nullable_type",
+                "array_type",
+                "qualified_name",
+                "tuple_type",
+            ):
                 return_type = self._get_node_text(child, source_code).strip()
                 break
 
@@ -623,30 +630,30 @@ class CSharpLanguage(BaseLanguage):
         start_byte = node.start_byte
 
         # Look backwards in source to find XML doc comments
-        text = source_code.decode('utf-8', errors='replace')
-        lines_before = text[:start_byte].split('\n')
+        text = source_code.decode("utf-8", errors="replace")
+        lines_before = text[:start_byte].split("\n")
 
         # Collect XML doc comment lines (///)
         doc_lines: list[str] = []
         for line in reversed(lines_before):
             stripped = line.strip()
-            if stripped.startswith('///'):
+            if stripped.startswith("///"):
                 # Remove /// and extract content
                 content = stripped[3:].strip()
                 # Extract from <summary> tags if present
-                if '<summary>' in content:
-                    content = content.replace('<summary>', '').strip()
-                if '</summary>' in content:
-                    content = content.replace('</summary>', '').strip()
-                if content and not content.startswith('<') and not content.startswith('/'):
+                if "<summary>" in content:
+                    content = content.replace("<summary>", "").strip()
+                if "</summary>" in content:
+                    content = content.replace("</summary>", "").strip()
+                if content and not content.startswith("<") and not content.startswith("/"):
                     doc_lines.insert(0, content)
-            elif stripped and not stripped.startswith('//'):
+            elif stripped and not stripped.startswith("//"):
                 # Stop at first non-comment line
                 break
 
         # Return first meaningful line
         for line in doc_lines:
-            if line and not line.startswith('<') and not line.startswith('/'):
+            if line and not line.startswith("<") and not line.startswith("/"):
                 return line
 
         return None
@@ -665,7 +672,9 @@ class CSharpLanguage(BaseLanguage):
 
         return None
 
-    def _handle_namespace(self, node: Node, parent_structures: list, source_code: bytes, root: Node, traverse_func):
+    def _handle_namespace(
+        self, node: Node, parent_structures: list, source_code: bytes, root: Node, traverse_func
+    ):
         """Handle namespace declaration."""
         name_node = node.child_by_field_name("name")
 
@@ -676,7 +685,7 @@ class CSharpLanguage(BaseLanguage):
                 name=namespace_name,
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
-                children=[]
+                children=[],
             )
             parent_structures.append(namespace_node)
 
@@ -698,7 +707,7 @@ class CSharpLanguage(BaseLanguage):
                 type="imports",
                 name="using directives",
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(import_node)
         else:
@@ -747,10 +756,10 @@ class CSharpLanguage(BaseLanguage):
 
         # Pattern 1: Standard using directives
         # using System.Collections.Generic;
-        using_pattern = r'^\s*using\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;'
+        using_pattern = r"^\s*using\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;"
         for match in re.finditer(using_pattern, content, re.MULTILINE):
             namespace = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -763,10 +772,10 @@ class CSharpLanguage(BaseLanguage):
 
         # Pattern 2: Static using directives
         # using static System.Math;
-        static_using_pattern = r'^\s*using\s+static\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;'
+        static_using_pattern = r"^\s*using\s+static\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;"
         for match in re.finditer(static_using_pattern, content, re.MULTILINE):
             namespace = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -780,11 +789,13 @@ class CSharpLanguage(BaseLanguage):
         # Pattern 3: Alias using directives
         # using MyList = System.Collections.Generic.List<int>;
         # Note: Allow full type syntax including generics with commas and spaces
-        alias_using_pattern = r'^\s*using\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_.<>,\s]+?)\s*;'
+        alias_using_pattern = (
+            r"^\s*using\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_.<>,\s]+?)\s*;"
+        )
         for match in re.finditer(alias_using_pattern, content, re.MULTILINE):
             alias = match.group(1)
             namespace = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -815,11 +826,11 @@ class CSharpLanguage(BaseLanguage):
         # Pattern 1: Main methods (various signatures)
         # static void Main(), static int Main(string[] args), static async Task Main()
         main_patterns = [
-            r'^\s*(?:public\s+|private\s+|internal\s+)?static\s+(?:async\s+)?(?:void|int|Task(?:<int>)?)\s+Main\s*\(',
+            r"^\s*(?:public\s+|private\s+|internal\s+)?static\s+(?:async\s+)?(?:void|int|Task(?:<int>)?)\s+Main\s*\(",
         ]
         for pattern in main_patterns:
             for match in re.finditer(pattern, content, re.MULTILINE):
-                line_num = content[:match.start()].count('\n') + 1
+                line_num = content[: match.start()].count("\n") + 1
                 entry_points.append(
                     EntryPointInfo(
                         file=file_path,
@@ -831,13 +842,15 @@ class CSharpLanguage(BaseLanguage):
 
         # Pattern 2: ASP.NET Controllers (class-level attributes)
         # [ApiController], [Controller]
-        controller_pattern = r'^\s*\[(?:Api)?Controller\]'
+        controller_pattern = r"^\s*\[(?:Api)?Controller\]"
         for match in re.finditer(controller_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Try to find the class name following the attribute
-            remaining_content = content[match.end():]
-            class_match = re.search(r'\s*(?:public\s+|internal\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)', remaining_content)
+            remaining_content = content[match.end() :]
+            class_match = re.search(
+                r"\s*(?:public\s+|internal\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)", remaining_content
+            )
             class_name = class_match.group(1) if class_match else "Controller"
 
             entry_points.append(
@@ -852,15 +865,15 @@ class CSharpLanguage(BaseLanguage):
 
         # Pattern 3: ASP.NET Action methods (HTTP verb attributes)
         # [HttpGet], [HttpPost], [HttpPut], [HttpDelete], etc.
-        http_verb_pattern = r'^\s*\[Http(?:Get|Post|Put|Delete|Patch|Head|Options)\]'
+        http_verb_pattern = r"^\s*\[Http(?:Get|Post|Put|Delete|Patch|Head|Options)\]"
         for match in re.finditer(http_verb_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Try to find the method name following the attribute
-            remaining_content = content[match.end():]
+            remaining_content = content[match.end() :]
             method_match = re.search(
-                r'\s*(?:public\s+|private\s+|protected\s+|internal\s+)?(?:async\s+)?(?:Task<?[^>]*>?|ActionResult<?[^>]*>?|IActionResult|[A-Za-z_][A-Za-z0-9_.<>]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(',
-                remaining_content
+                r"\s*(?:public\s+|private\s+|protected\s+|internal\s+)?(?:async\s+)?(?:Task<?[^>]*>?|ActionResult<?[^>]*>?|IActionResult|[A-Za-z_][A-Za-z0-9_.<>]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+                remaining_content,
             )
             method_name = method_match.group(1) if method_match else "ActionMethod"
 
@@ -876,9 +889,9 @@ class CSharpLanguage(BaseLanguage):
 
         # Pattern 4: Startup class (ASP.NET Core convention)
         # public class Startup
-        startup_pattern = r'^\s*(?:public\s+)?class\s+Startup\s*(?::|{)'
+        startup_pattern = r"^\s*(?:public\s+)?class\s+Startup\s*(?::|{)"
         for match in re.finditer(startup_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -891,9 +904,9 @@ class CSharpLanguage(BaseLanguage):
 
         # Pattern 5: Program class (ASP.NET Core 6+ minimal API)
         # Look for WebApplication.CreateBuilder or WebApplicationBuilder
-        minimal_api_pattern = r'(?:WebApplication\.CreateBuilder|WebApplicationBuilder)'
+        minimal_api_pattern = r"(?:WebApplication\.CreateBuilder|WebApplicationBuilder)"
         for match in re.finditer(minimal_api_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -927,7 +940,16 @@ class CSharpLanguage(BaseLanguage):
 
         for node in structures:
             # Include C#-specific types
-            if node.type in ("class", "function", "method", "interface", "struct", "enum", "record", "constructor"):
+            if node.type in (
+                "class",
+                "function",
+                "method",
+                "interface",
+                "struct",
+                "enum",
+                "record",
+                "constructor",
+            ):
                 definitions.append(
                     DefinitionInfo(
                         file=file_path,
@@ -1043,12 +1065,34 @@ class CSharpLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "for", "while", "foreach", "switch", "catch",
-        "using", "lock", "return", "new", "typeof", "nameof",
-        "class", "struct", "interface", "enum", "void", "int",
-        "string", "bool", "double", "float", "decimal", "byte",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "for",
+            "while",
+            "foreach",
+            "switch",
+            "catch",
+            "using",
+            "lock",
+            "return",
+            "new",
+            "typeof",
+            "nameof",
+            "class",
+            "struct",
+            "interface",
+            "enum",
+            "void",
+            "int",
+            "string",
+            "bool",
+            "double",
+            "float",
+            "decimal",
+            "byte",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for C#)
@@ -1073,7 +1117,9 @@ class CSharpLanguage(BaseLanguage):
                 return "entry_points"
 
             # Check for Main method
-            if re.search(r'^\s*static\s+(?:async\s+)?(?:void|int|Task)\s+Main\s*\(', content, re.MULTILINE):
+            if re.search(
+                r"^\s*static\s+(?:async\s+)?(?:void|int|Task)\s+Main\s*\(", content, re.MULTILINE
+            ):
                 return "entry_points"
 
             # Controllers
@@ -1081,7 +1127,7 @@ class CSharpLanguage(BaseLanguage):
                 return "core_logic"
 
             # ASP.NET Controller attribute
-            if re.search(r'^\s*\[(?:Api)?Controller\]', content, re.MULTILINE):
+            if re.search(r"^\s*\[(?:Api)?Controller\]", content, re.MULTILINE):
                 return "core_logic"
 
             # Models

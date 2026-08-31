@@ -16,20 +16,25 @@ def test_basic_parsing(file_scanner, tree_formatter):
     assert structures is not None, f"Should parse {file_path}"
     assert len(structures) > 0, "Should find at least one structure"
 
-    assert any(s.type == "interface" and s.name == "Config" for s in structures), \
+    assert any(s.type == "interface" and s.name == "Config" for s in structures), (
         "Should find Config interface"
+    )
 
-    assert any(s.type == "class" and s.name == "AuthService" for s in structures), \
+    assert any(s.type == "class" and s.name == "AuthService" for s in structures), (
         "Should find AuthService class"
+    )
 
-    assert any(s.type == "class" and s.name == "UserManager" for s in structures), \
+    assert any(s.type == "class" and s.name == "UserManager" for s in structures), (
         "Should find UserManager class"
+    )
 
-    assert any(s.type == "function" and s.name == "generateId" for s in structures), \
+    assert any(s.type == "function" and s.name == "generateId" for s in structures), (
         "Should find generateId function"
+    )
 
-    assert any(s.type == "function" and s.name == "validateEmail" for s in structures), \
+    assert any(s.type == "function" and s.name == "validateEmail" for s in structures), (
         "Should find validateEmail function"
+    )
 
 
 def test_tsx_parsing(file_scanner, tree_formatter):
@@ -41,20 +46,24 @@ def test_tsx_parsing(file_scanner, tree_formatter):
     assert structures is not None, f"Should parse {file_path}"
     assert len(structures) > 0, "Should find at least one structure"
 
-    assert any(s.type == "interface" and s.name == "UserCardProps" for s in structures), \
+    assert any(s.type == "interface" and s.name == "UserCardProps" for s in structures), (
         "Should find UserCardProps interface"
+    )
 
-    assert any(s.type == "interface" and s.name == "User" for s in structures), \
+    assert any(s.type == "interface" and s.name == "User" for s in structures), (
         "Should find User interface"
+    )
 
     has_user_card = any(s.type == "function" and "UserCard" in s.name for s in structures)
     assert has_user_card, "Should find UserCard component"
 
-    assert any(s.type == "class" and s.name == "UserList" for s in structures), \
+    assert any(s.type == "class" and s.name == "UserList" for s in structures), (
         "Should find UserList class component"
+    )
 
-    assert any(s.type == "function" and s.name == "useUserData" for s in structures), \
+    assert any(s.type == "function" and s.name == "useUserData" for s in structures), (
         "Should find useUserData hook"
+    )
 
 
 def test_signatures(file_scanner):
@@ -87,7 +96,9 @@ def test_jsdoc_extraction(file_scanner):
     assert config.docstring is not None, "Should have JSDoc comment"
     assert len(config.docstring) > 0, "JSDoc should not be empty"
 
-    auth_service = next((s for s in structures if s.type == "class" and s.name == "AuthService"), None)
+    auth_service = next(
+        (s for s in structures if s.type == "class" and s.name == "AuthService"), None
+    )
     assert auth_service is not None, "Should find AuthService class"
 
     assert auth_service.docstring is not None, "Should have JSDoc comment"
@@ -98,7 +109,9 @@ def test_nested_structures(file_scanner):
     file_path = Path(__file__).parent / "samples" / "basic.ts"
     structures = file_scanner.scan_file(str(file_path))
 
-    auth_service = next((s for s in structures if s.type == "class" and s.name == "AuthService"), None)
+    auth_service = next(
+        (s for s in structures if s.type == "class" and s.name == "AuthService"), None
+    )
     assert auth_service is not None, "Should find AuthService class"
 
     assert len(auth_service.children) > 0, "Class should have methods"
@@ -121,7 +134,9 @@ def test_modifiers(file_scanner):
     file_path = Path(__file__).parent / "samples" / "basic.ts"
     structures = file_scanner.scan_file(str(file_path))
 
-    auth_service = next((s for s in structures if s.type == "class" and s.name == "AuthService"), None)
+    auth_service = next(
+        (s for s in structures if s.type == "class" and s.name == "AuthService"), None
+    )
     assert auth_service is not None, "Should find AuthService class"
 
     login_method = next((c for c in auth_service.children if c.name == "login"), None)
@@ -138,7 +153,7 @@ def test_error_handling():
         method(incomplete
     """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.ts', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
         f.write(malformed_code)
         temp_path = f.name
 
@@ -147,7 +162,9 @@ def test_error_handling():
 
         assert structures is not None, "Should return structures even for broken code"
 
-        has_error = any(s.type in ("parse-error", "error") or "\u26a0" in s.name for s in structures)
+        has_error = any(
+            s.type in ("parse-error", "error") or "\u26a0" in s.name for s in structures
+        )
 
     finally:
         os.unlink(temp_path)
@@ -167,7 +184,7 @@ def test_fallback_mode():
     function stillVisible() {{{{
     """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.ts', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
         f.write(very_broken_code)
         temp_path = f.name
 
@@ -177,8 +194,7 @@ def test_fallback_mode():
         assert structures is not None, "Should return structures even for very broken code"
 
         fallback_used = any(
-            "\u26a0" in s.name and s.type not in ("parse-error", "error")
-            for s in structures
+            "\u26a0" in s.name and s.type not in ("parse-error", "error") for s in structures
         )
         if fallback_used:
             has_class = any("SomewhatRecognizable" in s.name for s in structures)

@@ -105,14 +105,14 @@ def _render_focus(sample: Path, focus: str) -> str:
 
 def test_focus_python_method_is_frozen():
     _assert_matches_golden(
-        "focus_python",
-        _render_focus(TESTS_DIR / SAMPLES["python"], "DatabaseManager.query"))
+        "focus_python", _render_focus(TESTS_DIR / SAMPLES["python"], "DatabaseManager.query")
+    )
 
 
 def test_focus_markdown_heading_is_frozen():
     _assert_matches_golden(
-        "focus_markdown",
-        _render_focus(TESTS_DIR / SAMPLES["markdown"], "Quick Start"))
+        "focus_markdown", _render_focus(TESTS_DIR / SAMPLES["markdown"], "Quick Start")
+    )
 
 
 def _render_divergence(fixture_dir: Path) -> str:
@@ -124,5 +124,4 @@ def _render_divergence(fixture_dir: Path) -> str:
 
 
 def test_divergence_output_is_frozen():
-    _assert_matches_golden(
-        "consensus", _render_divergence(GOLDEN_DIR / "consensus_fixture"))
+    _assert_matches_golden("consensus", _render_divergence(GOLDEN_DIR / "consensus_fixture"))

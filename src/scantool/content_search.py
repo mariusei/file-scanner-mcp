@@ -38,13 +38,13 @@ class NodeHits:
     """All hits inside one structural node (or module level)."""
 
     file: str
-    chain: str                       # e.g. "CodeMap > analyze"
-    node_type: str | None         # containing node's type, None at module level
+    chain: str  # e.g. "CodeMap > analyze"
+    node_type: str | None  # containing node's type, None at module level
     node_name: str | None
     signature: str | None
     start_line: int
     end_line: int
-    hits: list[tuple[int, str]]      # (line number, line text)
+    hits: list[tuple[int, str]]  # (line number, line text)
 
 
 def search_content(
@@ -87,15 +87,25 @@ def search_content(
             if key not in by_node:
                 if node is not None:
                     by_node[key] = NodeHits(
-                        file=file_path, chain=chain, node_type=node.type,
-                        node_name=node.name, signature=node.signature,
-                        start_line=node.start_line, end_line=node.end_line, hits=[],
+                        file=file_path,
+                        chain=chain,
+                        node_type=node.type,
+                        node_name=node.name,
+                        signature=node.signature,
+                        start_line=node.start_line,
+                        end_line=node.end_line,
+                        hits=[],
                     )
                 else:
                     by_node[key] = NodeHits(
-                        file=file_path, chain="(module level)", node_type=None,
-                        node_name=None, signature=None,
-                        start_line=line_no, end_line=line_no, hits=[],
+                        file=file_path,
+                        chain="(module level)",
+                        node_type=None,
+                        node_name=None,
+                        signature=None,
+                        start_line=line_no,
+                        end_line=line_no,
+                        hits=[],
                     )
             by_node[key].hits.append((line_no, line.rstrip()))
 
@@ -109,8 +119,15 @@ def search_content(
     file_totals: dict[str, int] = {}
     for node_hits in found:
         file_totals[node_hits.file] = file_totals.get(node_hits.file, 0) + len(node_hits.hits)
-    found.sort(key=lambda n: (_is_test_path(n.file), -file_totals[n.file],
-                              n.file, -len(n.hits), n.start_line))
+    found.sort(
+        key=lambda n: (
+            _is_test_path(n.file),
+            -file_totals[n.file],
+            n.file,
+            -len(n.hits),
+            n.start_line,
+        )
+    )
 
     return found
 
@@ -118,8 +135,11 @@ def search_content(
 def _is_test_path(file_path: str) -> bool:
     parts = Path(file_path).parts
     name = Path(file_path).name
-    return (any(p in ("test", "tests", "testing") for p in parts)
-            or name.startswith("test_") or name.endswith("_test.py"))
+    return (
+        any(p in ("test", "tests", "testing") for p in parts)
+        or name.startswith("test_")
+        or name.endswith("_test.py")
+    )
 
 
 # ── leads: one structural hop from hit to definition ───────────────────────
@@ -141,11 +161,11 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, list[tup
     (the order-dependent candidates[0] trap, see experiments/bucket_entropy/).
     """
     definitions: dict[str, list[tuple[str, int]]] = {}
+
     def walk(nodes, file_path):
         for node in nodes or []:
             if node.name and node.type != "file-info":
-                definitions.setdefault(node.name, []).append(
-                    (file_path, node.start_line))
+                definitions.setdefault(node.name, []).append((file_path, node.start_line))
             walk(node.children, file_path)
 
     for file_path, structures in results.items():
@@ -162,12 +182,13 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, list[tup
     for node_hits in sources:
         if node_hits.file not in block_cache:
             try:
-                block_cache[node_hits.file] = Path(node_hits.file).read_text(
-                    errors="replace").split("\n")
+                block_cache[node_hits.file] = (
+                    Path(node_hits.file).read_text(errors="replace").split("\n")
+                )
             except OSError:
                 block_cache[node_hits.file] = []
         lines = block_cache[node_hits.file]
-        block = "\n".join(lines[node_hits.start_line - 1:node_hits.end_line])
+        block = "\n".join(lines[node_hits.start_line - 1 : node_hits.end_line])
         for name in _CALL_IN_HIT.findall(block):
             call_counts[name] = call_counts.get(name, 0) + 1
             hit_files.setdefault(name, set()).add(node_hits.file)
@@ -195,8 +216,11 @@ def _containing_node(structures, line_no: int):
     def walk(nodes, path):
         nonlocal best, best_chain
         for node in nodes or []:
-            if (node.type not in _NON_ANCHOR_TYPES and node.name
-                    and node.start_line <= line_no <= node.end_line):
+            if (
+                node.type not in _NON_ANCHOR_TYPES
+                and node.name
+                and node.start_line <= line_no <= node.end_line
+            ):
                 chain = path + [node.name]
                 best = node
                 best_chain = " > ".join(chain)
@@ -208,8 +232,11 @@ def _containing_node(structures, line_no: int):
     return best, best_chain
 
 
-def format_hits(found: list[NodeHits], pattern: str,
-                leads: list[tuple[str, list[tuple[str, int]]]] | None = None) -> str:
+def format_hits(
+    found: list[NodeHits],
+    pattern: str,
+    leads: list[tuple[str, list[tuple[str, int]]]] | None = None,
+) -> str:
     """Compact structural rendering: node chain + line-numbered hits,
     plus one-hop leads to definitions in other files."""
     if not found:
@@ -238,7 +265,11 @@ def format_hits(found: list[NodeHits], pattern: str,
         lines.append(f"\n+{len(found) - _MAX_NODES} more structures — narrow the pattern")
     if leads:
         # full path — the agent should be able to follow the lead with one scan_file call
-        lines.append("\nleads (called in hits, defined elsewhere): " + ", ".join(
-            f"{name} → " + " / ".join(f"{file}@{line}" for file, line in targets)
-            for name, targets in leads))
+        lines.append(
+            "\nleads (called in hits, defined elsewhere): "
+            + ", ".join(
+                f"{name} → " + " / ".join(f"{file}@{line}" for file, line in targets)
+                for name, targets in leads
+            )
+        )
     return "\n".join(lines)

@@ -97,9 +97,15 @@ class TestSQLAnalyzer:
         imports = language.extract_imports("test.sql", content)
 
         assert len(imports) == 3
-        assert any(imp.target_module == "production" and imp.import_type == "database" for imp in imports)
-        assert any(imp.target_module == "staging" and imp.import_type == "database" for imp in imports)
-        assert any(imp.target_module == "test_db" and imp.import_type == "database" for imp in imports)
+        assert any(
+            imp.target_module == "production" and imp.import_type == "database" for imp in imports
+        )
+        assert any(
+            imp.target_module == "staging" and imp.import_type == "database" for imp in imports
+        )
+        assert any(
+            imp.target_module == "test_db" and imp.import_type == "database" for imp in imports
+        )
 
     def test_extract_imports_cross_database(self, language):
         """Test extraction of cross-database table references."""
@@ -216,7 +222,7 @@ class TestSQLAnalyzer:
             "seeds/users_seed.sql",
             "fixtures/user_fixture.sql",
             "sample_data.sql",
-            "seeds/initial.sql"
+            "seeds/initial.sql",
         ]
 
         for pattern in patterns:

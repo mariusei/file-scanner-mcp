@@ -6,9 +6,7 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
-      # ruff-format is deliberately absent: enabling it would reformat 88 of
-      # 103 files in one sweep, and tests/golden/fixture_dir is frozen input
-      # that must stay byte-exact. Adopt it as its own commit if wanted.
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

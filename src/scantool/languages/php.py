@@ -49,11 +49,11 @@ class PHPLanguage(BaseLanguage):
     CLAIMS_DEAD = True
 
     def is_offgraph_reachable(self, defn, content: str) -> bool:
-        if defn.name.startswith("__"):          # magic method, runtime-invoked
+        if defn.name.startswith("__"):  # magic method, runtime-invoked
             return True
-        if defn.enclosing_kind == "interface":   # implicitly public contract
+        if defn.enclosing_kind == "interface":  # implicitly public contract
             return True
-        return "private" not in defn.modifiers   # public/protected = external/subclass API
+        return "private" not in defn.modifiers  # public/protected = external/subclass API
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -93,7 +93,7 @@ class PHPLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip Laravel Blade cache files
-        return 'storage/framework/views' not in path_lower
+        return "storage/framework/views" not in path_lower
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value PHP files for inventory listing.
@@ -124,7 +124,7 @@ class PHPLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -239,7 +239,7 @@ class PHPLanguage(BaseLanguage):
             docstring=docstring,
             complexity=complexity,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_interface(self, node: Node, source_code: bytes) -> StructureNode:
@@ -267,7 +267,7 @@ class PHPLanguage(BaseLanguage):
             signature=signature,
             decorators=decorators,
             docstring=docstring,
-            children=[]
+            children=[],
         )
 
     def _extract_trait(self, node: Node, source_code: bytes) -> StructureNode:
@@ -288,7 +288,7 @@ class PHPLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             decorators=decorators,
             docstring=docstring,
-            children=[]
+            children=[],
         )
 
     def _extract_enum(self, node: Node, source_code: bytes) -> StructureNode:
@@ -329,7 +329,7 @@ class PHPLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -362,7 +362,7 @@ class PHPLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_function(self, node: Node, source_code: bytes) -> StructureNode:
@@ -391,7 +391,7 @@ class PHPLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
@@ -437,7 +437,12 @@ class PHPLanguage(BaseLanguage):
         modifiers = []
 
         for child in node.children:
-            if child.type in ("visibility_modifier", "final_modifier", "abstract_modifier", "static_modifier"):
+            if child.type in (
+                "visibility_modifier",
+                "final_modifier",
+                "abstract_modifier",
+                "static_modifier",
+            ):
                 modifier_text = self._get_node_text(child, source_code).strip()
                 modifiers.append(modifier_text)
 
@@ -466,7 +471,7 @@ class PHPLanguage(BaseLanguage):
                 # Check if it's a PHPDoc comment (/** ... */)
                 if comment_text.startswith("/**"):
                     # Extract first meaningful line
-                    lines = comment_text.split('\n')
+                    lines = comment_text.split("\n")
                     for line in lines:
                         line = line.strip()
                         # Remove comment markers
@@ -488,7 +493,7 @@ class PHPLanguage(BaseLanguage):
                 type="namespace",
                 name=namespace_name,
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(namespace_node)
 
@@ -499,7 +504,7 @@ class PHPLanguage(BaseLanguage):
                 type="imports",
                 name="use statements",
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(import_node)
         else:
@@ -509,7 +514,9 @@ class PHPLanguage(BaseLanguage):
     def _is_in_class_or_trait(self, root: Node, target: Node) -> bool:
         """Check if a node is inside a class or trait."""
         ancestors = self._get_ancestors(root, target)
-        return any(ancestor.type in ("class_declaration", "trait_declaration") for ancestor in ancestors)
+        return any(
+            ancestor.type in ("class_declaration", "trait_declaration") for ancestor in ancestors
+        )
 
     REGEX_FALLBACK_PATTERNS = [
         {
@@ -553,10 +560,10 @@ class PHPLanguage(BaseLanguage):
         # Pattern 1: use statements (namespace imports)
         # use Foo\Bar\Baz;
         # use Foo\Bar\Baz as Alias;
-        use_pattern = r'^\s*use\s+([\w\\]+)(?:\s+as\s+\w+)?\s*;'
+        use_pattern = r"^\s*use\s+([\w\\]+)(?:\s+as\s+\w+)?\s*;"
         for match in re.finditer(use_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -569,19 +576,19 @@ class PHPLanguage(BaseLanguage):
 
         # Pattern 2: grouped use statements
         # use Foo\Bar\{ClassA, ClassB, ClassC};
-        grouped_use_pattern = r'^\s*use\s+([\w\\]+)\s*\{([^}]+)\}\s*;'
+        grouped_use_pattern = r"^\s*use\s+([\w\\]+)\s*\{([^}]+)\}\s*;"
         for match in re.finditer(grouped_use_pattern, content, re.MULTILINE):
-            base_namespace = match.group(1).rstrip('\\')  # Remove trailing backslash
+            base_namespace = match.group(1).rstrip("\\")  # Remove trailing backslash
             grouped_items_str = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Parse grouped items
-            items = [item.strip() for item in grouped_items_str.split(',') if item.strip()]
+            items = [item.strip() for item in grouped_items_str.split(",") if item.strip()]
 
             for item in items:
                 # Remove 'as Alias' if present
-                if ' as ' in item:
-                    item = item.split(' as ')[0].strip()
+                if " as " in item:
+                    item = item.split(" as ")[0].strip()
 
                 # Construct full namespace
                 full_namespace = f"{base_namespace}\\{item}"
@@ -600,14 +607,16 @@ class PHPLanguage(BaseLanguage):
         # require_once 'path/to/file.php';
         # include 'path/to/file.php';
         # include_once 'path/to/file.php';
-        require_pattern = r'(require|require_once|include|include_once)\s*[\(\s]+[\'"]([^\'"]+)[\'"]'
+        require_pattern = (
+            r'(require|require_once|include|include_once)\s*[\(\s]+[\'"]([^\'"]+)[\'"]'
+        )
         for match in re.finditer(require_pattern, content, re.MULTILINE):
             keyword = match.group(1)
             file_path_str = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Determine if relative import
-            is_relative = file_path_str.startswith(('./', '../'))
+            is_relative = file_path_str.startswith(("./", "../"))
             import_type = f"{keyword}_relative" if is_relative else keyword
 
             # Resolve relative paths (for PHP file includes, not Python dot imports)
@@ -628,10 +637,10 @@ class PHPLanguage(BaseLanguage):
 
         # Pattern 4: use function statements
         # use function App\Utils\validateEmail;
-        use_function_pattern = r'^\s*use\s+function\s+([\w\\]+)\s*;'
+        use_function_pattern = r"^\s*use\s+function\s+([\w\\]+)\s*;"
         for match in re.finditer(use_function_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -674,11 +683,13 @@ class PHPLanguage(BaseLanguage):
         # Route::delete('/path', ...);
         # Route::patch('/path', ...);
         # Route::any('/path', ...);
-        route_pattern = r'Route::(get|post|put|delete|patch|any|resource|group)\s*\(\s*[\'"]([^\'"]*)[\'"]'
+        route_pattern = (
+            r'Route::(get|post|put|delete|patch|any|resource|group)\s*\(\s*[\'"]([^\'"]*)[\'"]'
+        )
         for match in re.finditer(route_pattern, content):
             method = match.group(1)
             route_path = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             entry_points.append(
                 EntryPointInfo(
@@ -693,10 +704,10 @@ class PHPLanguage(BaseLanguage):
         # Pattern 3: Symfony/Laravel controllers
         # class UserController extends Controller
         # class SomethingController
-        controller_pattern = r'^\s*(?:final\s+)?class\s+(\w*Controller)\s*(?:extends|implements|\{)'
+        controller_pattern = r"^\s*(?:final\s+)?class\s+(\w*Controller)\s*(?:extends|implements|\{)"
         for match in re.finditer(controller_pattern, content, re.MULTILINE):
             controller_name = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             entry_points.append(
                 EntryPointInfo(
@@ -708,9 +719,9 @@ class PHPLanguage(BaseLanguage):
             )
 
         # Pattern 4: Single-action controllers (__invoke)
-        invoke_pattern = r'^\s*public\s+function\s+__invoke\s*\('
+        invoke_pattern = r"^\s*public\s+function\s+__invoke\s*\("
         for match in re.finditer(invoke_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             entry_points.append(
                 EntryPointInfo(
@@ -877,13 +888,41 @@ class PHPLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "else", "elseif", "while", "for", "foreach", "switch",
-        "case", "function", "class", "interface", "trait", "enum",
-        "return", "echo", "print", "array", "list", "isset", "unset",
-        "empty", "eval", "exit", "die", "include", "require",
-        "include_once", "require_once", "new", "clone", "throw",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "else",
+            "elseif",
+            "while",
+            "for",
+            "foreach",
+            "switch",
+            "case",
+            "function",
+            "class",
+            "interface",
+            "trait",
+            "enum",
+            "return",
+            "echo",
+            "print",
+            "array",
+            "list",
+            "isset",
+            "unset",
+            "empty",
+            "eval",
+            "exit",
+            "die",
+            "include",
+            "require",
+            "include_once",
+            "require_once",
+            "new",
+            "clone",
+            "throw",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for PHP)
@@ -964,8 +1003,14 @@ class PHPLanguage(BaseLanguage):
         """
         # Skip vendor packages (common third-party prefixes)
         vendor_prefixes = (
-            "Illuminate\\", "Symfony\\", "Doctrine\\", "Monolog\\",
-            "PHPUnit\\", "Carbon\\", "GuzzleHttp\\", "Psr\\",
+            "Illuminate\\",
+            "Symfony\\",
+            "Doctrine\\",
+            "Monolog\\",
+            "PHPUnit\\",
+            "Carbon\\",
+            "GuzzleHttp\\",
+            "Psr\\",
         )
         if any(module.startswith(p) for p in vendor_prefixes):
             return None
@@ -986,9 +1031,7 @@ class PHPLanguage(BaseLanguage):
 
         return None
 
-    def _resolve_php_relative_path(
-        self, current_file: str, relative_path: str
-    ) -> str | None:
+    def _resolve_php_relative_path(self, current_file: str, relative_path: str) -> str | None:
         """Resolve PHP relative file path (e.g., './config.php', '../utils.php').
 
         Unlike Python's dot imports, PHP uses Unix-style relative paths.
@@ -1007,19 +1050,19 @@ class PHPLanguage(BaseLanguage):
         # Normalize the path
         # ./config.php -> config.php
         # ../utils.php -> (parent)/utils.php
-        if relative_path.startswith('./'):
+        if relative_path.startswith("./"):
             relative_path = relative_path[2:]
-        elif relative_path.startswith('../'):
+        elif relative_path.startswith("../"):
             # Go up directories
-            parts = current_dir.split('/') if current_dir else []
-            path_parts = relative_path.split('/')
+            parts = current_dir.split("/") if current_dir else []
+            path_parts = relative_path.split("/")
             for part in path_parts:
-                if part == '..':
+                if part == "..":
                     if parts:
                         parts.pop()
                 else:
                     parts.append(part)
-            return '/'.join(parts) if parts else None
+            return "/".join(parts) if parts else None
 
         # Combine current directory with relative path
         if current_dir:

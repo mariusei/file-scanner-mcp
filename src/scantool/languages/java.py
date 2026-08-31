@@ -73,7 +73,7 @@ class JavaLanguage(BaseLanguage):
     @classmethod
     def should_skip(cls, filename: str) -> bool:
         """Skip compiled Java files."""
-        return bool(filename.endswith('.class'))
+        return bool(filename.endswith(".class"))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip compiled Java files.
@@ -85,7 +85,7 @@ class JavaLanguage(BaseLanguage):
         build/ and target/ directories are already filtered by COMMON_SKIP_DIRS.
         """
         filename = Path(file_path).name
-        return not filename.endswith('.class')
+        return not filename.endswith(".class")
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Java files for inventory listing.
@@ -120,7 +120,7 @@ class JavaLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -227,7 +227,7 @@ class JavaLanguage(BaseLanguage):
             docstring=docstring,
             complexity=complexity,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_interface(self, node: Node, source_code: bytes) -> StructureNode:
@@ -268,7 +268,7 @@ class JavaLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_enum(self, node: Node, source_code: bytes) -> StructureNode:
@@ -300,7 +300,7 @@ class JavaLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -333,7 +333,7 @@ class JavaLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_constructor(self, node: Node, source_code: bytes) -> StructureNode:
@@ -369,7 +369,7 @@ class JavaLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
@@ -404,9 +404,19 @@ class JavaLanguage(BaseLanguage):
         for child in node.children:
             if child.type == "modifiers":
                 for modifier in child.children:
-                    if modifier.type in ("public", "private", "protected", "static",
-                                        "final", "abstract", "synchronized", "native",
-                                        "strictfp", "transient", "volatile"):
+                    if modifier.type in (
+                        "public",
+                        "private",
+                        "protected",
+                        "static",
+                        "final",
+                        "abstract",
+                        "synchronized",
+                        "native",
+                        "strictfp",
+                        "transient",
+                        "volatile",
+                    ):
                         modifiers.append(modifier.type)
 
         return modifiers
@@ -452,7 +462,7 @@ class JavaLanguage(BaseLanguage):
                 # Check if it's a JavaDoc comment (/** ... */)
                 if comment_text.startswith("/**"):
                     # Extract first meaningful line
-                    lines = comment_text.split('\n')
+                    lines = comment_text.split("\n")
                     for line in lines:
                         line = line.strip()
                         # Remove comment markers
@@ -485,7 +495,7 @@ class JavaLanguage(BaseLanguage):
                 type="package",
                 name=package_name,
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(package_node)
 
@@ -526,10 +536,10 @@ class JavaLanguage(BaseLanguage):
         # Pattern 1: Regular imports (import foo.bar.Baz;)
         # Matches: import foo.bar.Baz;
         # Matches: import foo.bar.*;
-        regular_import_pattern = r'^\s*import\s+(?!static\s)([a-zA-Z_$][a-zA-Z0-9_.$*]*)\s*;'
+        regular_import_pattern = r"^\s*import\s+(?!static\s)([a-zA-Z_$][a-zA-Z0-9_.$*]*)\s*;"
         for match in re.finditer(regular_import_pattern, content, re.MULTILINE):
             package = match.group(1).strip()
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Determine if wildcard import
             import_type = "wildcard" if package.endswith(".*") else "import"
@@ -546,15 +556,15 @@ class JavaLanguage(BaseLanguage):
         # Pattern 2: Static imports (import static foo.bar.Utils.*;)
         # Matches: import static foo.bar.Utils.*;
         # Matches: import static foo.bar.Utils.method;
-        static_import_pattern = r'^\s*import\s+static\s+([a-zA-Z_$][a-zA-Z0-9_.$*]*)\s*;'
+        static_import_pattern = r"^\s*import\s+static\s+([a-zA-Z_$][a-zA-Z0-9_.$*]*)\s*;"
         for match in re.finditer(static_import_pattern, content, re.MULTILINE):
             package = match.group(1).strip()
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Extract class and member if possible
             # foo.bar.Utils.method -> Utils.method
             # foo.bar.Utils.* -> Utils.*
-            parts = package.split('.')
+            parts = package.split(".")
             if len(parts) >= 2:
                 imported_name = f"{parts[-2]}.{parts[-1]}"
             else:
@@ -589,9 +599,9 @@ class JavaLanguage(BaseLanguage):
         # - public static void main(String[] args)
         # - public static void main(String args[])
         # - public static void main(String... args)
-        main_pattern = r'public\s+static\s+void\s+main\s*\(\s*String\s*(?:\[\s*\]\s*\w+|\w+\s*\[\s*\]|\.{3}\s*\w+)\s*\)'
+        main_pattern = r"public\s+static\s+void\s+main\s*\(\s*String\s*(?:\[\s*\]\s*\w+|\w+\s*\[\s*\]|\.{3}\s*\w+)\s*\)"
         for match in re.finditer(main_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Extract class name from file path
             class_name = Path(file_path).stem
@@ -606,13 +616,13 @@ class JavaLanguage(BaseLanguage):
             )
 
         # Pattern 2: @SpringBootApplication
-        spring_boot_pattern = r'@SpringBootApplication'
+        spring_boot_pattern = r"@SpringBootApplication"
         for match in re.finditer(spring_boot_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Find class name after annotation
-            class_pattern = r'class\s+(\w+)'
-            class_match = re.search(class_pattern, content[match.end():])
+            class_pattern = r"class\s+(\w+)"
+            class_match = re.search(class_pattern, content[match.end() :])
             class_name = class_match.group(1) if class_match else "Unknown"
 
             entry_points.append(
@@ -628,17 +638,17 @@ class JavaLanguage(BaseLanguage):
         # Pattern 3: @WebServlet
         # Matches: @WebServlet("/path")
         # Matches: @WebServlet(name = "MyServlet", urlPatterns = {"/path"})
-        servlet_pattern = r'@WebServlet\s*(?:\([^)]*\))?'
+        servlet_pattern = r"@WebServlet\s*(?:\([^)]*\))?"
         for match in re.finditer(servlet_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Extract servlet URL pattern if present
             url_match = re.search(r'[@(].*["\']([^"\']+)["\']', match.group(0))
             url_pattern = url_match.group(1) if url_match else None
 
             # Find class name after annotation
-            class_pattern = r'class\s+(\w+)'
-            class_match = re.search(class_pattern, content[match.end():])
+            class_pattern = r"class\s+(\w+)"
+            class_match = re.search(class_pattern, content[match.end() :])
             class_name = class_match.group(1) if class_match else "Unknown"
 
             entry_points.append(
@@ -652,13 +662,13 @@ class JavaLanguage(BaseLanguage):
             )
 
         # Pattern 4: @RestController (Spring REST API)
-        rest_controller_pattern = r'@RestController'
+        rest_controller_pattern = r"@RestController"
         for match in re.finditer(rest_controller_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Find class name
-            class_pattern = r'class\s+(\w+)'
-            class_match = re.search(class_pattern, content[match.end():])
+            class_pattern = r"class\s+(\w+)"
+            class_match = re.search(class_pattern, content[match.end() :])
             class_name = class_match.group(1) if class_match else "Unknown"
 
             entry_points.append(
@@ -672,13 +682,13 @@ class JavaLanguage(BaseLanguage):
             )
 
         # Pattern 5: @Controller (Spring MVC)
-        controller_pattern = r'@Controller\b'
+        controller_pattern = r"@Controller\b"
         for match in re.finditer(controller_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Find class name
-            class_pattern = r'class\s+(\w+)'
-            class_match = re.search(class_pattern, content[match.end():])
+            class_pattern = r"class\s+(\w+)"
+            class_match = re.search(class_pattern, content[match.end() :])
             class_name = class_match.group(1) if class_match else "Unknown"
 
             entry_points.append(
@@ -796,13 +806,40 @@ class JavaLanguage(BaseLanguage):
         traverse(root)
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "for", "while", "switch", "catch", "synchronized",
-        "return", "new", "class", "interface", "enum", "void",
-        "int", "long", "double", "float", "boolean", "char",
-        "byte", "short", "String", "Integer", "Long", "Double",
-        "Float", "Boolean", "Object", "List", "Map", "Set",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "for",
+            "while",
+            "switch",
+            "catch",
+            "synchronized",
+            "return",
+            "new",
+            "class",
+            "interface",
+            "enum",
+            "void",
+            "int",
+            "long",
+            "double",
+            "float",
+            "boolean",
+            "char",
+            "byte",
+            "short",
+            "String",
+            "Integer",
+            "Long",
+            "Double",
+            "Float",
+            "Boolean",
+            "Object",
+            "List",
+            "Map",
+            "Set",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Java)
@@ -831,8 +868,7 @@ class JavaLanguage(BaseLanguage):
 
             # Controllers and REST APIs
             if any(
-                pattern in content
-                for pattern in ["@RestController", "@Controller", "@WebServlet"]
+                pattern in content for pattern in ["@RestController", "@Controller", "@WebServlet"]
             ):
                 return "core_logic"
 
@@ -863,11 +899,7 @@ class JavaLanguage(BaseLanguage):
                 return "core_logic"
 
             # Repositories/DAOs
-            if (
-                "/repositories/" in path_lower
-                or "/dao/" in path_lower
-                or "@Repository" in content
-            ):
+            if "/repositories/" in path_lower or "/dao/" in path_lower or "@Repository" in content:
                 return "core_logic"
 
             # Configuration

@@ -213,7 +213,7 @@ class SwiftLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -315,7 +315,7 @@ class SwiftLanguage(BaseLanguage):
             modifiers=modifiers,
             decorators=decorators,
             complexity=complexity,
-            children=children
+            children=children,
         )
 
     def _extract_protocol(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -351,7 +351,7 @@ class SwiftLanguage(BaseLanguage):
             modifiers=modifiers,
             decorators=decorators,
             complexity=complexity,
-            children=children
+            children=children,
         )
 
     def _extract_function(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -381,7 +381,7 @@ class SwiftLanguage(BaseLanguage):
             modifiers=modifiers,
             decorators=decorators,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_typealias(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -411,10 +411,12 @@ class SwiftLanguage(BaseLanguage):
             signature=signature,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
-    def _extract_type_members(self, node: Node, source_code: bytes, parent_type: str) -> list[StructureNode]:
+    def _extract_type_members(
+        self, node: Node, source_code: bytes, parent_type: str
+    ) -> list[StructureNode]:
         """Extract members from a type declaration."""
         members: list[StructureNode] = []
 
@@ -457,7 +459,7 @@ class SwiftLanguage(BaseLanguage):
                     start_line=child.start_point[0] + 1,
                     end_line=child.end_point[0] + 1,
                     docstring=self._extract_docstring(child, source_code),
-                    children=[]
+                    children=[],
                 )
                 members.append(deinit_node)
 
@@ -529,7 +531,7 @@ class SwiftLanguage(BaseLanguage):
             signature=signature,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_property(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -580,7 +582,7 @@ class SwiftLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             decorators=decorators,
-            children=[]
+            children=[],
         )
 
     def _extract_subscript(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -604,7 +606,7 @@ class SwiftLanguage(BaseLanguage):
             signature=signature,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_initializer(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -631,7 +633,7 @@ class SwiftLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             decorators=decorators,
-            children=[]
+            children=[],
         )
 
     def _extract_enum_case(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -661,19 +663,32 @@ class SwiftLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=signature,
             docstring=docstring,
-            children=[]
+            children=[],
         )
 
     def _extract_modifiers(self, node: Node, source_code: bytes) -> list[str]:
         """Extract modifiers from a declaration."""
         modifiers = []
         modifier_keywords = {
-            "public", "private", "internal", "fileprivate", "open",
-            "static", "class", "final", "lazy",
-            "mutating", "nonmutating",
-            "async", "nonisolated",
-            "required", "convenience", "override",
-            "weak", "unowned", "optional"
+            "public",
+            "private",
+            "internal",
+            "fileprivate",
+            "open",
+            "static",
+            "class",
+            "final",
+            "lazy",
+            "mutating",
+            "nonmutating",
+            "async",
+            "nonisolated",
+            "required",
+            "convenience",
+            "override",
+            "weak",
+            "unowned",
+            "optional",
         }
 
         for child in node.children:
@@ -848,17 +863,19 @@ class SwiftLanguage(BaseLanguage):
         imports = []
 
         # Pattern 1: Regular import and @testable import
-        import_pattern = r'^(?:@testable\s+)?import\s+(?:(?:struct|class|enum|protocol|func|typealias|var|let)\s+)?([^\s;]+)'
+        import_pattern = r"^(?:@testable\s+)?import\s+(?:(?:struct|class|enum|protocol|func|typealias|var|let)\s+)?([^\s;]+)"
 
         for match in re.finditer(import_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             import_type = "import"
-            if '@testable' in match.group(0):
+            if "@testable" in match.group(0):
                 import_type = "@testable import"
 
-            selective_match = re.search(r'import\s+(struct|class|enum|protocol|func|typealias|var|let)\s+', match.group(0))
+            selective_match = re.search(
+                r"import\s+(struct|class|enum|protocol|func|typealias|var|let)\s+", match.group(0)
+            )
             if selective_match:
                 import_type = f"import {selective_match.group(1)}"
 
@@ -906,75 +923,132 @@ class SwiftLanguage(BaseLanguage):
         # Common Swift standard library types to exclude
         stdlib_types = {
             # Primitives
-            'Int', 'Int8', 'Int16', 'Int32', 'Int64',
-            'UInt', 'UInt8', 'UInt16', 'UInt32', 'UInt64',
-            'Float', 'Double', 'Bool', 'String', 'Character',
-            'Void', 'Never', 'Any', 'AnyObject', 'AnyClass',
+            "Int",
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "UInt",
+            "UInt8",
+            "UInt16",
+            "UInt32",
+            "UInt64",
+            "Float",
+            "Double",
+            "Bool",
+            "String",
+            "Character",
+            "Void",
+            "Never",
+            "Any",
+            "AnyObject",
+            "AnyClass",
             # Collections
-            'Array', 'Dictionary', 'Set', 'Optional',
+            "Array",
+            "Dictionary",
+            "Set",
+            "Optional",
             # Foundation types
-            'Date', 'Data', 'URL', 'UUID', 'Error',
-            'NSObject', 'NSError', 'NSCoding',
+            "Date",
+            "Data",
+            "URL",
+            "UUID",
+            "Error",
+            "NSObject",
+            "NSError",
+            "NSCoding",
             # UI types (commonly imported from frameworks)
-            'View', 'Text', 'Image', 'Button', 'VStack', 'HStack', 'ZStack',
-            'List', 'NavigationView', 'NavigationStack', 'NavigationLink',
-            'Color', 'Font', 'CGFloat', 'CGPoint', 'CGSize', 'CGRect',
-            'UIView', 'UIViewController', 'UIColor', 'UIImage',
-            'UITableView', 'UICollectionView', 'UIButton', 'UILabel',
+            "View",
+            "Text",
+            "Image",
+            "Button",
+            "VStack",
+            "HStack",
+            "ZStack",
+            "List",
+            "NavigationView",
+            "NavigationStack",
+            "NavigationLink",
+            "Color",
+            "Font",
+            "CGFloat",
+            "CGPoint",
+            "CGSize",
+            "CGRect",
+            "UIView",
+            "UIViewController",
+            "UIColor",
+            "UIImage",
+            "UITableView",
+            "UICollectionView",
+            "UIButton",
+            "UILabel",
             # Common protocols
-            'Codable', 'Decodable', 'Encodable', 'Hashable', 'Equatable',
-            'Comparable', 'Identifiable', 'CustomStringConvertible',
-            'ObservableObject', 'Published',
+            "Codable",
+            "Decodable",
+            "Encodable",
+            "Hashable",
+            "Equatable",
+            "Comparable",
+            "Identifiable",
+            "CustomStringConvertible",
+            "ObservableObject",
+            "Published",
             # Keywords that look like types
-            'Self', 'self', 'Type', 'some',
+            "Self",
+            "self",
+            "Type",
+            "some",
         }
 
         # Pattern 1: Type annotations - var/let name: Type
-        type_annotation = r'(?:var|let)\s+\w+\s*:\s*(\[?\w+\]?(?:<[^>]+>)?(?:\?|\!)?)'
+        type_annotation = r"(?:var|let)\s+\w+\s*:\s*(\[?\w+\]?(?:<[^>]+>)?(?:\?|\!)?)"
         for match in re.finditer(type_annotation, content):
             type_str = match.group(1)
             # Extract base type (remove Optional, Array brackets, generics)
-            base_type = re.sub(r'[\[\]<>?!].*', '', type_str).strip()
+            base_type = re.sub(r"[\[\]<>?!].*", "", type_str).strip()
             if base_type and base_type[0].isupper() and base_type not in stdlib_types:
                 references.add(base_type)
 
         # Pattern 2: Function parameters - (param: Type)
-        param_pattern = r'\(\s*(?:\w+\s+)?(\w+)\s*:\s*(\[?\w+\]?(?:<[^>]+>)?(?:\?|\!)?)'
+        param_pattern = r"\(\s*(?:\w+\s+)?(\w+)\s*:\s*(\[?\w+\]?(?:<[^>]+>)?(?:\?|\!)?)"
         for match in re.finditer(param_pattern, content):
             type_str = match.group(2)
-            base_type = re.sub(r'[\[\]<>?!].*', '', type_str).strip()
+            base_type = re.sub(r"[\[\]<>?!].*", "", type_str).strip()
             if base_type and base_type[0].isupper() and base_type not in stdlib_types:
                 references.add(base_type)
 
         # Pattern 3: Return types - -> Type
-        return_pattern = r'->\s*(\[?\w+\]?(?:<[^>]+>)?(?:\?|\!)?)'
+        return_pattern = r"->\s*(\[?\w+\]?(?:<[^>]+>)?(?:\?|\!)?)"
         for match in re.finditer(return_pattern, content):
             type_str = match.group(1)
-            base_type = re.sub(r'[\[\]<>?!].*', '', type_str).strip()
+            base_type = re.sub(r"[\[\]<>?!].*", "", type_str).strip()
             if base_type and base_type[0].isupper() and base_type not in stdlib_types:
                 references.add(base_type)
 
         # Pattern 4: Type instantiation - TypeName(
-        instantiation_pattern = r'\b([A-Z]\w+)\s*\('
+        instantiation_pattern = r"\b([A-Z]\w+)\s*\("
         for match in re.finditer(instantiation_pattern, content):
             type_name = match.group(1)
             if type_name not in stdlib_types:
                 references.add(type_name)
 
         # Pattern 5: Inheritance/conformance - : TypeName or , TypeName
-        inheritance_pattern = r'(?:struct|class|enum|actor|extension)\s+\w+(?:<[^>]+>)?\s*:\s*([^{]+)\{'
+        inheritance_pattern = (
+            r"(?:struct|class|enum|actor|extension)\s+\w+(?:<[^>]+>)?\s*:\s*([^{]+)\{"
+        )
         for match in re.finditer(inheritance_pattern, content):
             inheritance_list = match.group(1)
             # Split by comma and extract type names
-            for part in inheritance_list.split(','):
+            for part in inheritance_list.split(","):
                 part = part.strip()
                 # Handle generic constraints like SomeType<T>
-                base_type = re.sub(r'<.*', '', part).strip()
+                base_type = re.sub(r"<.*", "", part).strip()
                 if base_type and base_type[0].isupper() and base_type not in stdlib_types:
                     references.add(base_type)
 
         # Pattern 6: Type casting - as TypeName, as? TypeName, as! TypeName
-        cast_pattern = r'\bas[?!]?\s+([A-Z]\w+)'
+        cast_pattern = r"\bas[?!]?\s+([A-Z]\w+)"
         for match in re.finditer(cast_pattern, content):
             type_name = match.group(1)
             if type_name not in stdlib_types:
@@ -982,10 +1056,10 @@ class SwiftLanguage(BaseLanguage):
 
         # Pattern 7: Generic type parameters in angle brackets
         # e.g., Array<MyType>, Result<Success, Failure>
-        generic_pattern = r'<([^>]+)>'
+        generic_pattern = r"<([^>]+)>"
         for match in re.finditer(generic_pattern, content):
             generic_content = match.group(1)
-            for part in re.split(r'[,:]', generic_content):
+            for part in re.split(r"[,:]", generic_content):
                 part = part.strip()
                 if part and part[0].isupper() and part not in stdlib_types:
                     references.add(part)
@@ -1007,9 +1081,9 @@ class SwiftLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # Pattern 1: @main attribute
-        main_attr_pattern = r'@main\s+(?:public\s+|internal\s+|private\s+|fileprivate\s+)*(?:struct|class|enum)\s+(\w+)'
+        main_attr_pattern = r"@main\s+(?:public\s+|internal\s+|private\s+|fileprivate\s+)*(?:struct|class|enum)\s+(\w+)"
         for match in re.finditer(main_attr_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -1020,9 +1094,9 @@ class SwiftLanguage(BaseLanguage):
             )
 
         # Pattern 2: @UIApplicationMain / @NSApplicationMain (deprecated)
-        app_main_pattern = r'@(?:UIApplicationMain|NSApplicationMain)\s+(?:public\s+|internal\s+|private\s+)*class\s+(\w+)'
+        app_main_pattern = r"@(?:UIApplicationMain|NSApplicationMain)\s+(?:public\s+|internal\s+|private\s+)*class\s+(\w+)"
         for match in re.finditer(app_main_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -1033,7 +1107,7 @@ class SwiftLanguage(BaseLanguage):
             )
 
         # Pattern 3: main.swift file (SPM entry point)
-        if filename == 'main.swift':
+        if filename == "main.swift":
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -1044,9 +1118,11 @@ class SwiftLanguage(BaseLanguage):
             )
 
         # Pattern 4: AppDelegate class
-        app_delegate_pattern = r'class\s+(AppDelegate|ApplicationDelegate)\s*:\s*(?:\w+,\s*)*(?:UIResponder|NSObject)'
+        app_delegate_pattern = (
+            r"class\s+(AppDelegate|ApplicationDelegate)\s*:\s*(?:\w+,\s*)*(?:UIResponder|NSObject)"
+        )
         for match in re.finditer(app_delegate_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -1058,9 +1134,9 @@ class SwiftLanguage(BaseLanguage):
 
         # Pattern 5: SwiftUI App protocol conformance
         # struct MyApp: App { ... }
-        swiftui_app_pattern = r'(?:struct|class)\s+(\w+)\s*:\s*(?:\w+,\s*)*App\s*\{'
+        swiftui_app_pattern = r"(?:struct|class)\s+(\w+)\s*:\s*(?:\w+,\s*)*App\s*\{"
         for match in re.finditer(swiftui_app_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             # Check if already detected via @main
             if not any(ep.name == match.group(1) and ep.type == "main_type" for ep in entry_points):
                 entry_points.append(
@@ -1073,9 +1149,11 @@ class SwiftLanguage(BaseLanguage):
                 )
 
         # Pattern 6: SceneDelegate
-        scene_delegate_pattern = r'class\s+(SceneDelegate)\s*:\s*(?:\w+,\s*)*(?:UIResponder|NSObject)'
+        scene_delegate_pattern = (
+            r"class\s+(SceneDelegate)\s*:\s*(?:\w+,\s*)*(?:UIResponder|NSObject)"
+        )
         for match in re.finditer(scene_delegate_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -1086,9 +1164,9 @@ class SwiftLanguage(BaseLanguage):
             )
 
         # Pattern 7: XCTestCase subclasses
-        test_case_pattern = r'class\s+(\w+)\s*:\s*XCTestCase'
+        test_case_pattern = r"class\s+(\w+)\s*:\s*XCTestCase"
         for match in re.finditer(test_case_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -1109,8 +1187,17 @@ class SwiftLanguage(BaseLanguage):
     # resolve to a definition, and init logic belongs in the call graph (hot
     # functions, centrality) like any method.
     _SWIFT_DEF_TYPES = {
-        "class", "struct", "enum", "protocol", "actor", "extension", "typealias",
-        "function", "method", "initializer", "deinitializer",
+        "class",
+        "struct",
+        "enum",
+        "protocol",
+        "actor",
+        "extension",
+        "typealias",
+        "function",
+        "method",
+        "initializer",
+        "deinitializer",
     }
 
     def _structures_to_definitions(
@@ -1292,14 +1379,49 @@ class SwiftLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "else", "guard", "switch", "case", "for", "while",
-        "repeat", "do", "try", "catch", "throw", "return", "break",
-        "continue", "func", "class", "struct", "enum", "protocol",
-        "extension", "init", "deinit", "subscript", "typealias",
-        "import", "let", "var", "where", "as", "is", "self", "Self",
-        "super", "nil", "true", "false", "Any", "AnyObject",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "else",
+            "guard",
+            "switch",
+            "case",
+            "for",
+            "while",
+            "repeat",
+            "do",
+            "try",
+            "catch",
+            "throw",
+            "return",
+            "break",
+            "continue",
+            "func",
+            "class",
+            "struct",
+            "enum",
+            "protocol",
+            "extension",
+            "init",
+            "deinit",
+            "subscript",
+            "typealias",
+            "import",
+            "let",
+            "var",
+            "where",
+            "as",
+            "is",
+            "self",
+            "Self",
+            "super",
+            "nil",
+            "true",
+            "false",
+            "Any",
+            "AnyObject",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Swift)
@@ -1326,17 +1448,17 @@ class SwiftLanguage(BaseLanguage):
                 return "entry_points"
 
             # Check for @main attribute
-            if re.search(r'@main\s+(?:struct|class|enum)', content):
+            if re.search(r"@main\s+(?:struct|class|enum)", content):
                 return "entry_points"
 
             # Check for SwiftUI App
-            if re.search(r'(?:struct|class)\s+\w+\s*:\s*(?:\w+,\s*)*App\s*\{', content):
+            if re.search(r"(?:struct|class)\s+\w+\s*:\s*(?:\w+,\s*)*App\s*\{", content):
                 return "entry_points"
 
             # Test files
-            if name.endswith('tests.swift') or name.endswith('test.swift'):
+            if name.endswith("tests.swift") or name.endswith("test.swift"):
                 return "tests"
-            if 'xctest' in content.lower():
+            if "xctest" in content.lower():
                 return "tests"
 
             # Config files

@@ -82,12 +82,12 @@ class PythonLanguage(BaseLanguage):
     @classmethod
     def should_skip(cls, filename: str) -> bool:
         """Skip compiled Python files."""
-        return bool(filename.endswith(('.pyc', '.pyo', '.pyd')))
+        return bool(filename.endswith((".pyc", ".pyo", ".pyd")))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip compiled Python files."""
         filename = Path(file_path).name
-        return not filename.endswith(('.pyc', '.pyo', '.pyd'))
+        return not filename.endswith((".pyc", ".pyo", ".pyd"))
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Python files for inventory listing.
@@ -149,7 +149,7 @@ class PythonLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -199,7 +199,7 @@ class PythonLanguage(BaseLanguage):
             decorators=decorators,
             docstring=docstring,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_function(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
@@ -226,7 +226,7 @@ class PythonLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_signature(self, node: Node, source_code: bytes) -> str | None:
@@ -275,7 +275,7 @@ class PythonLanguage(BaseLanguage):
                     # Each strip() argument is a quote character set; the chain
                     # peels the docstring's own delimiters. B005 does not apply.
                     docstring = docstring.strip('"""').strip("'''").strip('"').strip("'")  # noqa: B005
-                    lines = [line.strip() for line in docstring.split('\n')]
+                    lines = [line.strip() for line in docstring.split("\n")]
                     for line in lines:
                         if line:
                             return line
@@ -318,33 +318,37 @@ class PythonLanguage(BaseLanguage):
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
+        text = source_code.decode("utf-8", errors="replace")
         structures: list[StructureNode] = []
 
-        for match in re.finditer(r'^class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+        for match in re.finditer(r"^class\s+(\w+)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="class",
+                    name=match.group(1) + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                )
+            )
 
-        for match in re.finditer(r'^(async\s+)?def\s+(\w+)\s*\((.*?)\)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(r"^(async\s+)?def\s+(\w+)\s*\((.*?)\)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
             is_async = match.group(1) is not None
             name = match.group(2)
             params = match.group(3)
             modifiers = ["async"] if is_async else []
 
-            structures.append(StructureNode(
-                type="function",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"({params})",
-                modifiers=modifiers
-            ))
+            structures.append(
+                StructureNode(
+                    type="function",
+                    name=name + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"({params})",
+                    modifiers=modifiers,
+                )
+            )
 
         return structures
 
@@ -367,23 +371,23 @@ class PythonLanguage(BaseLanguage):
         imports = []
 
         # Pattern 1: from X import Y
-        from_import_pattern = r'^\s*from\s+([\w.]+)\s+import\s+(.+?)(?:\s+#.*)?$'
+        from_import_pattern = r"^\s*from\s+([\w.]+)\s+import\s+(.+?)(?:\s+#.*)?$"
         for match in re.finditer(from_import_pattern, content, re.MULTILINE):
             module = match.group(1)
             imported_items_str = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imported_names = []
-            imported_items_str = imported_items_str.strip('()')
-            for item in imported_items_str.split(','):
+            imported_items_str = imported_items_str.strip("()")
+            for item in imported_items_str.split(","):
                 item = item.strip()
-                if ' as ' in item:
-                    name, alias = item.split(' as ')
+                if " as " in item:
+                    name, alias = item.split(" as ")
                     imported_names.append(name.strip())
                 else:
                     imported_names.append(item)
 
-            is_relative = module.startswith('.')
+            is_relative = module.startswith(".")
             import_type = "relative" if is_relative else "from_import"
 
             target_module = module
@@ -403,10 +407,10 @@ class PythonLanguage(BaseLanguage):
             )
 
         # Pattern 2: import X
-        import_pattern = r'^\s*import\s+([\w.]+)(?:\s+as\s+\w+)?(?:\s+#.*)?$'
+        import_pattern = r"^\s*import\s+([\w.]+)(?:\s+as\s+\w+)?(?:\s+#.*)?$"
         for match in re.finditer(import_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -432,9 +436,9 @@ class PythonLanguage(BaseLanguage):
         entry_points = []
 
         # Pattern 1: def main()
-        main_func_pattern = r'^def\s+main\s*\('
+        main_func_pattern = r"^def\s+main\s*\("
         for match in re.finditer(main_func_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -447,17 +451,15 @@ class PythonLanguage(BaseLanguage):
         # Pattern 2: if __name__ == "__main__"
         if_main_pattern = r'if\s+__name__\s*==\s*["\']__main__["\']'
         for match in re.finditer(if_main_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
-                EntryPointInfo(
-                    file=file_path, type="if_main", name="__main__", line=line_num
-                )
+                EntryPointInfo(file=file_path, type="if_main", name="__main__", line=line_num)
             )
 
         # Pattern 3: Flask/FastAPI/FastMCP app instances
-        app_pattern = r'(app|server|mcp)\s*=\s*(Flask|FastAPI|FastMCP|Starlette)\('
+        app_pattern = r"(app|server|mcp)\s*=\s*(Flask|FastAPI|FastMCP|Starlette)\("
         for match in re.finditer(app_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             var_name = match.group(1)
             framework = match.group(2)
             entry_points.append(
@@ -473,13 +475,13 @@ class PythonLanguage(BaseLanguage):
         # Pattern 4: __init__.py exports
         if file_path.endswith("__init__.py"):
             # Look for __all__ = [...]
-            all_pattern = r'__all__\s*=\s*\[(.*?)\]'
+            all_pattern = r"__all__\s*=\s*\[(.*?)\]"
             for match in re.finditer(all_pattern, content, re.MULTILINE | re.DOTALL):
-                line_num = content[:match.start()].count('\n') + 1
+                line_num = content[: match.start()].count("\n") + 1
                 exports_str = match.group(1)
                 exports = [
                     name.strip().strip('"').strip("'")
-                    for name in exports_str.split(',')
+                    for name in exports_str.split(",")
                     if name.strip()
                 ]
                 if exports:
@@ -493,7 +495,7 @@ class PythonLanguage(BaseLanguage):
                     )
 
             # Look for from .X import Y (re-exports)
-            reexport_pattern = r'^from\s+\.\S+\s+import\s+(\w+)'
+            reexport_pattern = r"^from\s+\.\S+\s+import\s+(\w+)"
             reexports = re.findall(reexport_pattern, content, re.MULTILINE)
             if reexports:
                 entry_points.append(
@@ -591,9 +593,17 @@ class PythonLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "for", "while", "def", "class", "return", "print",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "for",
+            "while",
+            "def",
+            "class",
+            "return",
+            "print",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Python)
@@ -691,10 +701,19 @@ class PythonLanguage(BaseLanguage):
 _MAX_EXPR_LEN = 60
 
 _AUG_OP_SYMBOLS = {
-    ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.Div: "/",
-    ast.FloorDiv: "//", ast.Mod: "%", ast.Pow: "**", ast.MatMult: "@",
-    ast.BitOr: "|", ast.BitAnd: "&", ast.BitXor: "^",
-    ast.LShift: "<<", ast.RShift: ">>",
+    ast.Add: "+",
+    ast.Sub: "-",
+    ast.Mult: "*",
+    ast.Div: "/",
+    ast.FloorDiv: "//",
+    ast.Mod: "%",
+    ast.Pow: "**",
+    ast.MatMult: "@",
+    ast.BitOr: "|",
+    ast.BitAnd: "&",
+    ast.BitXor: "^",
+    ast.LShift: "<<",
+    ast.RShift: ">>",
 }
 
 
@@ -759,9 +778,20 @@ def _has_substance(value: ast.AST) -> bool:
     """A statement is kept if its RHS carries method information: calls,
     arithmetic, comparisons, conditional expressions or comprehensions."""
     for sub in ast.walk(value):
-        if isinstance(sub, (ast.Call, ast.BinOp, ast.BoolOp, ast.Compare,
-                            ast.IfExp, ast.ListComp, ast.SetComp,
-                            ast.DictComp, ast.GeneratorExp)):
+        if isinstance(
+            sub,
+            (
+                ast.Call,
+                ast.BinOp,
+                ast.BoolOp,
+                ast.Compare,
+                ast.IfExp,
+                ast.ListComp,
+                ast.SetComp,
+                ast.DictComp,
+                ast.GeneratorExp,
+            ),
+        ):
             return True
     return False
 

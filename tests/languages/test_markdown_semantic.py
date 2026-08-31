@@ -78,7 +78,7 @@ Check [Guide](guide.md#installation).
         assert any(imp.target_module == "api.md" for imp in imports)
         assert any(imp.target_module == "guide.md" for imp in imports)
         # Ensure no anchors remain
-        assert all('#' not in imp.target_module for imp in imports)
+        assert all("#" not in imp.target_module for imp in imports)
 
     def test_extract_imports_markdown_images(self, language):
         """Test extraction of Markdown images ![alt](path)."""
@@ -407,5 +407,5 @@ More content.
 
         # Should strip whitespace from paths
         assert len(imports) == 3
-        assert all(not imp.target_module.startswith(' ') for imp in imports)
-        assert all(not imp.target_module.endswith(' ') for imp in imports)
+        assert all(not imp.target_module.startswith(" ") for imp in imports)
+        assert all(not imp.target_module.endswith(" ") for imp in imports)

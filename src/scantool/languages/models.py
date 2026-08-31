@@ -64,8 +64,7 @@ def is_file_info_stub(structures: list["StructureNode"] | None) -> bool:
     node = structures[0]
     if node.type != "file-info" or node.file_metadata is None:
         return False
-    return bool(node.file_metadata.get("unsupported")
-                or node.file_metadata.get("oversized"))
+    return bool(node.file_metadata.get("unsupported") or node.file_metadata.get("oversized"))
 
 
 # ===========================================================================

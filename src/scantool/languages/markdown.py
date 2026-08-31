@@ -65,7 +65,7 @@ class MarkdownLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # Skip common auto-generated documentation
-        return not filename.endswith(('.generated.md', '.auto.md'))
+        return not filename.endswith((".generated.md", ".auto.md"))
 
     # ===========================================================================
     # Structure Scanning (from MarkdownScanner)
@@ -92,12 +92,11 @@ class MarkdownLanguage(BaseLanguage):
 
         except Exception as e:
             # Return error node instead of crashing
-            return [StructureNode(
-                type="error",
-                name=f"Failed to parse: {str(e)}",
-                start_line=1,
-                end_line=1
-            )]
+            return [
+                StructureNode(
+                    type="error", name=f"Failed to parse: {str(e)}", start_line=1, end_line=1
+                )
+            ]
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract hierarchical structure from Markdown."""
@@ -132,7 +131,7 @@ class MarkdownLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     # Add to current parent or root
                     if heading_stack:
@@ -177,8 +176,7 @@ class MarkdownLanguage(BaseLanguage):
             # generated reports carry pipe tables with hundreds of thousands
             # of cell/delimiter tokens, and descending into them dominated
             # scan time (4MB markdown = 1.3M nodes, 99% table tokens)
-            elif node.type in ("pipe_table", "table", "paragraph",
-                               "html_block", "thematic_break"):
+            elif node.type in ("pipe_table", "table", "paragraph", "html_block", "thematic_break"):
                 return
 
             # Continue traversing for other nodes
@@ -194,7 +192,7 @@ class MarkdownLanguage(BaseLanguage):
 
     def _fix_heading_ranges(self, structures: list[StructureNode], source_code: bytes):
         """Fix end_line for headings to include their content sections."""
-        total_lines = len(source_code.decode('utf-8', errors='replace').split('\n'))
+        total_lines = len(source_code.decode("utf-8", errors="replace").split("\n"))
 
         def fix_node(node: StructureNode, next_sibling_start: int | None = None):
             """Recursively fix end_line for a node and its children."""
@@ -243,7 +241,7 @@ class MarkdownLanguage(BaseLanguage):
             name=text or "(empty heading)",
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
-            children=[]
+            children=[],
         )
 
     def _extract_setext_heading(self, node: Node, source_code: bytes) -> StructureNode:
@@ -258,7 +256,7 @@ class MarkdownLanguage(BaseLanguage):
             name=text or "(empty heading)",
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
-            children=[]
+            children=[],
         )
 
     def _extract_fenced_code_block(self, node: Node, source_code: bytes) -> StructureNode:
@@ -283,7 +281,7 @@ class MarkdownLanguage(BaseLanguage):
             name=name,
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
-            signature=language  # Store language in signature field
+            signature=language,  # Store language in signature field
         )
 
     def _extract_indented_code_block(self, node: Node, source_code: bytes) -> StructureNode:
@@ -292,7 +290,7 @@ class MarkdownLanguage(BaseLanguage):
             type="code-block",
             name="code block (indented)",
             start_line=node.start_point[0] + 1,
-            end_line=node.end_point[0] + 1
+            end_line=node.end_point[0] + 1,
         )
 
     def _get_heading_level(self, node: Node) -> int:
@@ -337,29 +335,36 @@ class MarkdownLanguage(BaseLanguage):
         # Fallback: get all text except underlines and markers
         text_parts = []
         for child in node.children:
-            if child.type not in ("setext_h1_underline", "setext_h2_underline",
-                                 "atx_h1_marker", "atx_h2_marker", "atx_h3_marker",
-                                 "atx_h4_marker", "atx_h5_marker", "atx_h6_marker"):
+            if child.type not in (
+                "setext_h1_underline",
+                "setext_h2_underline",
+                "atx_h1_marker",
+                "atx_h2_marker",
+                "atx_h3_marker",
+                "atx_h4_marker",
+                "atx_h5_marker",
+                "atx_h6_marker",
+            ):
                 text_parts.append(self._get_node_text(child, source_code))
 
         text = "".join(text_parts).strip()
         # Remove any trailing newlines
-        text = text.split('\n')[0].strip()
+        text = text.split("\n")[0].strip()
         return text
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for malformed Markdown files."""
-        text = source_code.decode('utf-8', errors='replace')
+        text = source_code.decode("utf-8", errors="replace")
         structures: list[StructureNode] = []
 
-        lines = text.split('\n')
+        lines = text.split("\n")
         heading_stack: list[tuple[int, StructureNode]] = []
 
         for i, line in enumerate(lines):
             line_num = i + 1
 
             # ATX headings
-            atx_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+            atx_match = re.match(r"^(#{1,6})\s+(.+)$", line)
             if atx_match:
                 level = len(atx_match.group(1))
                 text = atx_match.group(2).strip()
@@ -369,7 +374,7 @@ class MarkdownLanguage(BaseLanguage):
                     name=text + " (fallback)",
                     start_line=line_num,
                     end_line=line_num,
-                    children=[]
+                    children=[],
                 )
 
                 # Handle hierarchy
@@ -385,17 +390,17 @@ class MarkdownLanguage(BaseLanguage):
                 continue
 
             # Setext heading (=== or ---)
-            if i > 0 and re.match(r'^[=\-]{3,}$', line.strip()):
+            if i > 0 and re.match(r"^[=\-]{3,}$", line.strip()):
                 prev_line = lines[i - 1].strip()
                 if prev_line:
-                    level = 1 if '=' in line else 2
+                    level = 1 if "=" in line else 2
 
                     heading = StructureNode(
                         type=f"heading-{level}",
                         name=prev_line + " (fallback)",
                         start_line=i,  # Previous line
                         end_line=line_num,
-                        children=[]
+                        children=[],
                     )
 
                     # Handle hierarchy
@@ -411,7 +416,7 @@ class MarkdownLanguage(BaseLanguage):
                 continue
 
             # Fenced code blocks
-            fence_match = re.match(r'^```(\w+)?', line)
+            fence_match = re.match(r"^```(\w+)?", line)
             if fence_match:
                 language = fence_match.group(1)
                 name = f"code block ({language})" if language else "code block"
@@ -421,7 +426,7 @@ class MarkdownLanguage(BaseLanguage):
                     name=name + " (fallback)",
                     start_line=line_num,
                     end_line=line_num,
-                    signature=language
+                    signature=language,
                 )
 
                 if heading_stack:
@@ -448,55 +453,57 @@ class MarkdownLanguage(BaseLanguage):
 
         # Pattern 1: Markdown images ![alt](path) - Process FIRST to avoid duplicate matches
         # Matches: ![diagram](assets/arch.png), ![logo](../images/logo.svg)
-        image_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+        image_pattern = r"!\[([^\]]*)\]\(([^)]+)\)"
         for match in re.finditer(image_pattern, content):
             image_path = match.group(2).strip()
 
             # Skip URLs and data URIs
-            if '://' in image_path or image_path.startswith('data:'):
+            if "://" in image_path or image_path.startswith("data:"):
                 continue
 
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=image_path,
-                import_type="image",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path, target_module=image_path, import_type="image", line=line
+                )
+            )
 
         # Pattern 2: Markdown links [text](path) - Must NOT match images (![...])
         # Matches: [API Docs](api.md), [Guide](../docs/guide.md)
         # Use negative lookbehind to exclude image syntax
-        link_pattern = r'(?<!!)\[([^\]]+)\]\(([^)]+)\)'
+        link_pattern = r"(?<!!)\[([^\]]+)\]\(([^)]+)\)"
         for match in re.finditer(link_pattern, content):
             link_target = match.group(2).strip()
 
             # Skip URLs (http://, https://, mailto:, etc.)
-            if '://' in link_target or link_target.startswith('mailto:'):
+            if "://" in link_target or link_target.startswith("mailto:"):
                 continue
 
             # Skip anchors only (#section)
-            if link_target.startswith('#'):
+            if link_target.startswith("#"):
                 continue
 
             # Remove anchor part (file.md#section -> file.md)
-            link_target = link_target.split('#')[0].strip()
+            link_target = link_target.split("#")[0].strip()
             if not link_target:
                 continue
 
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             # Determine if it's an image or document link based on extension
-            is_image = link_target.lower().endswith(('.png', '.jpg', '.jpeg', '.gif',
-                                                     '.svg', '.webp', '.bmp', '.ico'))
+            is_image = link_target.lower().endswith(
+                (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp", ".ico")
+            )
             import_type = "image" if is_image else "link"
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=link_target,
-                import_type=import_type,
-                line=line
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=link_target,
+                    import_type=import_type,
+                    line=line,
+                )
+            )
 
         # Pattern 3: HTML img tags <img src="path">
         # Matches: <img src="image.png">, <img src='image.png' alt="text">
@@ -505,41 +512,42 @@ class MarkdownLanguage(BaseLanguage):
             image_path = match.group(1).strip()
 
             # Skip URLs and data URIs
-            if '://' in image_path or image_path.startswith('data:'):
+            if "://" in image_path or image_path.startswith("data:"):
                 continue
 
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=image_path,
-                import_type="image",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path, target_module=image_path, import_type="image", line=line
+                )
+            )
 
         # Pattern 4: Include directives (various formats)
         # Matches: {{include file.md}}, {% include file.md %}, {!file.md!}
         include_patterns = [
-            r'\{\{include\s+([^\}]+)\}\}',  # {{include file.md}}
+            r"\{\{include\s+([^\}]+)\}\}",  # {{include file.md}}
             r'\{%\s*include\s+["\']?([^"\'%]+)["\']?\s*%\}',  # {% include file.md %}
-            r'\{!([^!]+)!\}',  # {!file.md!} (MkDocs)
+            r"\{!([^!]+)!\}",  # {!file.md!} (MkDocs)
         ]
 
         for pattern in include_patterns:
             for match in re.finditer(pattern, content, re.IGNORECASE):
-                include_path = match.group(1).strip().strip('"\'')
-                line = content[:match.start()].count('\n') + 1
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=include_path,
-                    import_type="include",
-                    line=line
-                ))
+                include_path = match.group(1).strip().strip("\"'")
+                line = content[: match.start()].count("\n") + 1
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=include_path,
+                        import_type="include",
+                        line=line,
+                    )
+                )
 
         # Handle relative imports for Markdown (file-system paths)
         for imp in imports:
             # Markdown links are file-system relative paths (not Python-style imports)
             # Resolve them relative to the file's directory
-            if imp.target_module.startswith('../') or imp.target_module.startswith('./'):
+            if imp.target_module.startswith("../") or imp.target_module.startswith("./"):
                 resolved = self._resolve_markdown_path(file_path, imp.target_module)
                 if resolved:
                     imp.target_module = resolved
@@ -558,25 +566,19 @@ class MarkdownLanguage(BaseLanguage):
         filename = Path(file_path).name.upper()
 
         # Pattern 1: Common documentation root files
-        if filename in ('README.MD', 'INDEX.MD', 'HOME.MD'):
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="documentation_root",
-                name=filename,
-                line=1
-            ))
+        if filename in ("README.MD", "INDEX.MD", "HOME.MD"):
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="documentation_root", name=filename, line=1)
+            )
 
         # Pattern 2: Main/Home headings (# Main, # Home, # Getting Started)
-        heading_pattern = r'^#\s+(Main|Home|Getting Started|Introduction|Overview)\s*$'
+        heading_pattern = r"^#\s+(Main|Home|Getting Started|Introduction|Overview)\s*$"
         for match in re.finditer(heading_pattern, content, re.MULTILINE | re.IGNORECASE):
             heading_text = match.group(1)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="entry_heading",
-                name=heading_text,
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="entry_heading", name=heading_text, line=line)
+            )
 
         return entry_points
 
@@ -600,12 +602,12 @@ class MarkdownLanguage(BaseLanguage):
         filename = path.name.upper()
 
         # README files are entry points
-        if filename.startswith('README'):
+        if filename.startswith("README"):
             return "entry_points"
 
         # Documentation directories (check path parts for cross-platform compatibility)
         path_parts_lower = [p.lower() for p in path.parts]
-        if 'docs' in path_parts_lower or 'documentation' in path_parts_lower:
+        if "docs" in path_parts_lower or "documentation" in path_parts_lower:
             return "documentation"
 
         # Fall back to base implementation
@@ -683,21 +685,21 @@ class MarkdownLanguage(BaseLanguage):
             current_dir = PurePosixPath(current_file).parent
 
             # Join and normalize the path (removes .. and .)
-            resolved = (current_dir / relative_path)
+            resolved = current_dir / relative_path
 
             # Normalize by converting to string and back
             # This handles .. and . properly
             parts: list[str] = []
             for part in resolved.parts:
-                if part == '..':
-                    if parts and parts[-1] != '..':
+                if part == "..":
+                    if parts and parts[-1] != "..":
                         parts.pop()
                     else:
                         parts.append(part)
-                elif part != '.':
+                elif part != ".":
                     parts.append(part)
 
             # Join parts back together
-            return '/'.join(parts) if parts else '.'
+            return "/".join(parts) if parts else "."
         except (ValueError, IndexError):
             return None

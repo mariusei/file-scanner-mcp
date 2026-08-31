@@ -8,7 +8,7 @@ from scantool.delta import FULL_DETAIL, GIST_DETAIL, ScanMemory
 from scantool.languages.models import StructureNode
 from scantool.server import scan_directory, scan_file, scan_memory
 
-SOURCE_V1 = '''\
+SOURCE_V1 = """\
 def alpha(items):
     kept = [i for i in items if i.valid]
     return summarize(kept, mode="alpha")
@@ -19,7 +19,7 @@ def beta(items):
     for i in items:
         counts[i.kind] = counts.get(i.kind, 0) + 1
     return counts
-'''
+"""
 
 SOURCE_V2 = SOURCE_V1.replace(
     "counts[i.kind] = counts.get(i.kind, 0) + 1",
@@ -57,8 +57,8 @@ class TestScanFileDelta:
 
         assert "unchanged since last scan" in second
         assert "delta=False" in second
-        assert second.count("\n") == 0          # literally one line
-        assert "alpha" not in second            # no structure is repeated
+        assert second.count("\n") == 0  # literally one line
+        assert "alpha" not in second  # no structure is repeated
 
     def test_modified_node_detailed_others_suppressed(self, tmp_path):
         path = tmp_path / "mod.py"
@@ -72,9 +72,11 @@ class TestScanFileDelta:
         assert "1 changed/new, 1 unchanged" in out
         # changed node shows its body, unchanged node only its header
         assert "i.weight" in out
-        assert "alpha" in out                      # header survives
-        assert "mode=\"alpha\"" not in out.replace("mode='alpha'", 'mode="alpha"') \
-            or "summarize" not in out              # the alpha body is suppressed
+        assert "alpha" in out  # header survives
+        assert (
+            'mode="alpha"' not in out.replace("mode='alpha'", 'mode="alpha"')
+            or "summarize" not in out
+        )  # the alpha body is suppressed
 
     def test_removed_node_listed(self, tmp_path):
         path = tmp_path / "mod.py"
@@ -152,8 +154,7 @@ class TestDetailGating:
 
     @staticmethod
     def _record(memory, path, detail):
-        structures = [StructureNode(type="function", name="foo",
-                                    start_line=1, end_line=2)]
+        structures = [StructureNode(type="function", name="foo", start_line=1, end_line=2)]
         lines = path.read_text().split("\n")
         return memory.diff_and_record(str(path), structures, lines, detail)
 
@@ -224,7 +225,10 @@ class TestCrossToolDelta:
             (tmp_path / name).write_text(SOURCE_V1)
 
         out = scan_directory.fn(
-            str(tmp_path), pattern="**/*.py", max_files=2, delta=False,
+            str(tmp_path),
+            pattern="**/*.py",
+            max_files=2,
+            delta=False,
         )[0].text
 
         assert "Limited to first 2 files" in out
@@ -280,7 +284,7 @@ class TestScanDirectoryDelta:
 
         out = scan_directory.fn(str(tmp_path), pattern="**/*.py")[0].text
 
-        assert "a.py" in out.split("unchanged since")[0]   # changed file shown in full
+        assert "a.py" in out.split("unchanged since")[0]  # changed file shown in full
         assert "unchanged since last scan (1 files): b.py" in out
 
     def test_delta_false_full(self, tmp_path):

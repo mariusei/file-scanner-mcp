@@ -88,30 +88,30 @@ class TypeScriptLanguage(BaseLanguage):
     def should_skip(cls, filename: str) -> bool:
         """Skip common TypeScript/JavaScript files that should be ignored."""
         # Skip minified files (auto-generated, unreadable)
-        if filename.endswith(('.min.js', '.min.mjs', '.min.cjs')):
+        if filename.endswith((".min.js", ".min.mjs", ".min.cjs")):
             return True
 
         # Skip TypeScript declaration files (type-only, no implementation)
-        if filename.endswith('.d.ts'):
+        if filename.endswith(".d.ts"):
             return True
 
         # Skip webpack/rollup bundles (auto-generated)
-        return bool('bundle' in filename.lower() or 'chunk' in filename.lower())
+        return bool("bundle" in filename.lower() or "chunk" in filename.lower())
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip TypeScript/JavaScript files that should not be analyzed."""
         filename = Path(file_path).name.lower()
 
         # Skip minified files
-        if filename.endswith(('.min.js', '.min.mjs', '.min.cjs')):
+        if filename.endswith((".min.js", ".min.mjs", ".min.cjs")):
             return False
 
         # Skip TypeScript declaration files
-        if filename.endswith('.d.ts'):
+        if filename.endswith(".d.ts"):
             return False
 
         # Skip webpack/rollup bundles
-        return not ('bundle' in filename or 'chunk' in filename)
+        return not ("bundle" in filename or "chunk" in filename)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value TypeScript/JavaScript files for inventory listing.
@@ -129,12 +129,20 @@ class TypeScriptLanguage(BaseLanguage):
             return True
 
         # Test setup files
-        if filename in ("setuptests.ts", "setuptests.js", "jest.setup.ts", "jest.setup.js") and size < 300:
+        if (
+            filename in ("setuptests.ts", "setuptests.js", "jest.setup.ts", "jest.setup.js")
+            and size < 300
+        ):
             return True
 
         # Very small config files
-        config_files = ("vite.config.ts", "vitest.config.ts", "jest.config.ts",
-                       "tsconfig.json", "tsconfig.node.json")
+        config_files = (
+            "vite.config.ts",
+            "vitest.config.ts",
+            "jest.config.ts",
+            "tsconfig.json",
+            "tsconfig.node.json",
+        )
         if filename in config_files and size < 500:
             return True
 
@@ -156,7 +164,7 @@ class TypeScriptLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -250,7 +258,7 @@ class TypeScriptLanguage(BaseLanguage):
             docstring=docstring,
             complexity=complexity,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_interface(self, node: Node, source_code: bytes) -> StructureNode:
@@ -272,7 +280,7 @@ class TypeScriptLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=signature,
             docstring=docstring,
-            children=[]
+            children=[],
         )
 
     def _extract_function(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
@@ -301,7 +309,7 @@ class TypeScriptLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -334,7 +342,7 @@ class TypeScriptLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_arrow_function(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -373,7 +381,7 @@ class TypeScriptLanguage(BaseLanguage):
                         docstring=docstring,
                         modifiers=modifiers,
                         complexity=complexity,
-                        children=[]
+                        children=[],
                     )
 
         return None
@@ -444,7 +452,7 @@ class TypeScriptLanguage(BaseLanguage):
                 # Check if it's a JSDoc comment (/** ... */)
                 if comment_text.startswith("/**"):
                     # Extract first meaningful line
-                    lines = comment_text.split('\n')
+                    lines = comment_text.split("\n")
                     for line in lines:
                         line = line.strip()
                         # Remove comment markers
@@ -517,53 +525,71 @@ class TypeScriptLanguage(BaseLanguage):
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
+        text = source_code.decode("utf-8", errors="replace")
         structures: list[StructureNode] = []
 
         # Find class definitions
-        for match in re.finditer(r'^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="class",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+        for match in re.finditer(
+            r"^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)", text, re.MULTILINE
+        ):
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="class",
+                    name=match.group(1) + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                )
+            )
 
         # Find interface definitions
-        for match in re.finditer(r'^\s*(?:export\s+)?interface\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="interface",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+        for match in re.finditer(r"^\s*(?:export\s+)?interface\s+(\w+)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="interface",
+                    name=match.group(1) + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                )
+            )
 
         # Find function definitions
-        for match in re.finditer(r'^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*(<[^>]+>)?\s*\((.*?)\)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(
+            r"^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*(<[^>]+>)?\s*\((.*?)\)",
+            text,
+            re.MULTILINE,
+        ):
+            line_num = text[: match.start()].count("\n") + 1
             name = match.group(1)
             generics = match.group(2) or ""
             params = match.group(3)
 
-            structures.append(StructureNode(
-                type="function",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"{generics}({params})"
-            ))
+            structures.append(
+                StructureNode(
+                    type="function",
+                    name=name + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"{generics}({params})",
+                )
+            )
 
         # Find arrow functions
-        for match in re.finditer(r'^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
-            structures.append(StructureNode(
-                type="function",
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+        for match in re.finditer(
+            r"^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>",
+            text,
+            re.MULTILINE,
+        ):
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="function",
+                    name=match.group(1) + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                )
+            )
 
         return structures
 
@@ -588,10 +614,10 @@ class TypeScriptLanguage(BaseLanguage):
         import_from_pattern = r'^\s*import\s+(?:(?:\{[^}]+\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*\{[^}]+\})?)\s+from\s+[\'"]([^\'"]+)[\'"]'
         for match in re.finditer(import_from_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Determine if relative import
-            is_relative = module.startswith('./')
+            is_relative = module.startswith("./")
             import_type = "relative" if is_relative else "es6_import"
 
             # Resolve relative imports
@@ -614,9 +640,9 @@ class TypeScriptLanguage(BaseLanguage):
         import_pattern = r'^\s*import\s+[\'"]([^\'"]+)[\'"]'
         for match in re.finditer(import_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
-            is_relative = module.startswith('./')
+            is_relative = module.startswith("./")
             import_type = "relative" if is_relative else "es6_import"
 
             target_module = module
@@ -638,9 +664,9 @@ class TypeScriptLanguage(BaseLanguage):
         require_pattern = r'require\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)'
         for match in re.finditer(require_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
-            is_relative = module.startswith('./')
+            is_relative = module.startswith("./")
             import_type = "relative" if is_relative else "require"
 
             target_module = module
@@ -659,12 +685,14 @@ class TypeScriptLanguage(BaseLanguage):
             )
 
         # Pattern 4: export ... from 'module'
-        export_from_pattern = r'^\s*export\s+(?:\{[^}]+\}|\*(?:\s+as\s+\w+)?)\s+from\s+[\'"]([^\'"]+)[\'"]'
+        export_from_pattern = (
+            r'^\s*export\s+(?:\{[^}]+\}|\*(?:\s+as\s+\w+)?)\s+from\s+[\'"]([^\'"]+)[\'"]'
+        )
         for match in re.finditer(export_from_pattern, content, re.MULTILINE):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
-            is_relative = module.startswith('./')
+            is_relative = module.startswith("./")
             import_type = "relative" if is_relative else "export_from"
 
             target_module = module
@@ -695,10 +723,10 @@ class TypeScriptLanguage(BaseLanguage):
         entry_points = []
 
         # Pattern 1: export default
-        default_export_pattern = r'^\s*export\s+default\s+(\w+)'
+        default_export_pattern = r"^\s*export\s+default\s+(\w+)"
         for match in re.finditer(default_export_pattern, content, re.MULTILINE):
             name = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -713,16 +741,16 @@ class TypeScriptLanguage(BaseLanguage):
         # Fastify: const app = fastify()
         # Next.js: export default function App()
         framework_patterns = [
-            (r'const\s+(\w+)\s*=\s*express\s*\(', "Express"),
-            (r'const\s+(\w+)\s*=\s*fastify\s*\(', "Fastify"),
-            (r'const\s+(\w+)\s*=\s*new\s+Hono\s*\(', "Hono"),
-            (r'export\s+default\s+function\s+(\w+)\s*\(', "React/Next.js"),
+            (r"const\s+(\w+)\s*=\s*express\s*\(", "Express"),
+            (r"const\s+(\w+)\s*=\s*fastify\s*\(", "Fastify"),
+            (r"const\s+(\w+)\s*=\s*new\s+Hono\s*\(", "Hono"),
+            (r"export\s+default\s+function\s+(\w+)\s*\(", "React/Next.js"),
         ]
 
         for pattern, framework in framework_patterns:
             for match in re.finditer(pattern, content, re.MULTILINE):
                 name = match.group(1)
-                line_num = content[:match.start()].count('\n') + 1
+                line_num = content[: match.start()].count("\n") + 1
                 entry_points.append(
                     EntryPointInfo(
                         file=file_path,
@@ -842,8 +870,14 @@ class TypeScriptLanguage(BaseLanguage):
                 # const Name = () => … / function expr — name the enclosed callable.
                 name_node = node.child_by_field_name("name")
                 value = node.child_by_field_name("value")
-                if name_node and value and value.type in (
-                    "arrow_function", "function_expression",
+                if (
+                    name_node
+                    and value
+                    and value.type
+                    in (
+                        "arrow_function",
+                        "function_expression",
+                    )
                 ):
                     name = self._get_node_text(name_node, source_bytes)
                     if name in def_names:
@@ -879,10 +913,23 @@ class TypeScriptLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "for", "while", "function", "class", "return", "console",
-        "switch", "catch", "new", "typeof", "import", "export",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "for",
+            "while",
+            "function",
+            "class",
+            "return",
+            "console",
+            "switch",
+            "catch",
+            "new",
+            "typeof",
+            "import",
+            "export",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for TypeScript/JavaScript)

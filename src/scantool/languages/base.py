@@ -55,6 +55,7 @@ def limit_skeleton_depth(skeleton: list[str], max_depth: int) -> list[str]:
     Cut blocks leave a single "…" marker. Measured rationale: shallow
     skeletons are fact-dense — see experiments/entropy_metrics/.
     """
+
     def width(line: str) -> int:
         ws = line[: len(line) - len(line.lstrip())]
         return len(ws.expandtabs(4))
@@ -226,12 +227,11 @@ class BaseLanguage(ABC):
 
         except Exception as e:
             # Return error node instead of crashing
-            return [StructureNode(
-                type="error",
-                name=f"Failed to parse: {str(e)}",
-                start_line=1,
-                end_line=1
-            )]
+            return [
+                StructureNode(
+                    type="error", name=f"Failed to parse: {str(e)}", start_line=1, end_line=1
+                )
+            ]
 
     def _extract_structure(self, root, source_code: bytes) -> list[StructureNode]:
         """Tree-sitter traversal used by the default scan().
@@ -239,8 +239,7 @@ class BaseLanguage(ABC):
         Required for languages that rely on the default scan() pipeline.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} must implement _extract_structure() "
-            "or override scan()"
+            f"{type(self).__name__} must implement _extract_structure() or override scan()"
         )
 
     #: Regex fallback for severely malformed files: list of pattern specs.
@@ -269,13 +268,15 @@ class BaseLanguage(ABC):
             suffix = spec.get("suffix", " (fallback)")
             for match in re.finditer(spec["pattern"], text, flags):
                 line_num = text[: match.start()].count("\n") + 1
-                structures.append(StructureNode(
-                    type=spec["type"],
-                    name=match.group(spec.get("name_group", 1)) + suffix,
-                    start_line=line_num,
-                    end_line=line_num,
-                    modifiers=list(spec.get("modifiers", [])),
-                ))
+                structures.append(
+                    StructureNode(
+                        type=spec["type"],
+                        name=match.group(spec.get("name_group", 1)) + suffix,
+                        start_line=line_num,
+                        end_line=line_num,
+                        modifiers=list(spec.get("modifiers", [])),
+                    )
+                )
                 if spec.get("first_only"):
                     break
         return structures
@@ -489,9 +490,7 @@ class BaseLanguage(ABC):
     #: Empty list → no regex fallback.
     REGEX_DEFINITION_PATTERNS: list[dict] = []
 
-    def _extract_definitions_regex(
-        self, file_path: str, content: str
-    ) -> list[DefinitionInfo]:
+    def _extract_definitions_regex(self, file_path: str, content: str) -> list[DefinitionInfo]:
         """Regex fallback when scan() fails, driven by REGEX_DEFINITION_PATTERNS."""
         definitions = []
         for spec in self.REGEX_DEFINITION_PATTERNS:
@@ -648,9 +647,7 @@ class BaseLanguage(ABC):
         Opted-in languages (CLAIMS_DEAD) override with their real verdict."""
         return True
 
-    def corpus_reachable(
-        self, definitions: list["DefinitionInfo"]
-    ) -> set[tuple[str, str]]:
+    def corpus_reachable(self, definitions: list["DefinitionInfo"]) -> set[tuple[str, str]]:
         """Reachability that needs the WHOLE corpus, not one definition — e.g. a
         method that witnesses a protocol/interface requirement is dispatched through
         that protocol (often by an external framework) and must not be called dead
@@ -687,8 +684,14 @@ class BaseLanguage(ABC):
 
         # Entry points
         entry_names = [
-            "main.py", "server.py", "app.py", "__main__.py",
-            "index.ts", "main.tsx", "app.tsx", "main.go"
+            "main.py",
+            "server.py",
+            "app.py",
+            "__main__.py",
+            "index.ts",
+            "main.tsx",
+            "app.tsx",
+            "main.go",
         ]
         if name in entry_names:
             return "entry_points"
@@ -708,7 +711,12 @@ class BaseLanguage(ABC):
             return "plugins"
 
         # Utilities
-        if "/utils/" in path_lower or "/helpers/" in path_lower or "utils." in name or "helper." in name:
+        if (
+            "/utils/" in path_lower
+            or "/helpers/" in path_lower
+            or "utils." in name
+            or "helper." in name
+        ):
             return "utilities"
 
         # Core logic
@@ -778,9 +786,9 @@ class BaseLanguage(ABC):
     def _get_node_text(self, node, source_code: bytes) -> str:
         """Extract text from a tree-sitter node."""
         try:
-            return source_code[node.start_byte:node.end_byte].decode("utf-8")
+            return source_code[node.start_byte : node.end_byte].decode("utf-8")
         except (UnicodeDecodeError, AttributeError):
-            return source_code[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+            return source_code[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
     def _get_ancestors(self, root, target) -> list:
         """Get all ancestor nodes of a target node (root first, parent last).
@@ -806,7 +814,7 @@ class BaseLanguage(ABC):
                 type="imports",
                 name=self.IMPORT_GROUP_LABEL,
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(import_node)
         else:
@@ -817,8 +825,8 @@ class BaseLanguage(ABC):
         """Normalize a signature to single line for tree formatting."""
         if not signature:
             return signature
-        normalized = signature.replace('\n', ' ').replace('\r', ' ')
-        return ' '.join(normalized.split())
+        normalized = signature.replace("\n", " ").replace("\r", " ")
+        return " ".join(normalized.split())
 
     # Error-ratio sample size for fallback detection. Full trees can run to
     # millions of nodes (a 4MB generated markdown table is 1.3M nodes) and
@@ -859,8 +867,12 @@ class BaseLanguage(ABC):
         def traverse_depth(n, depth: int):
             stats["max_depth"] = max(stats["max_depth"], depth)
             if n.type in (
-                "if_statement", "for_statement", "while_statement",
-                "switch_statement", "case_statement", "match_statement"
+                "if_statement",
+                "for_statement",
+                "while_statement",
+                "switch_statement",
+                "case_statement",
+                "match_statement",
             ):
                 stats["branches"] += 1
             for child in n.children:
@@ -869,9 +881,7 @@ class BaseLanguage(ABC):
         traverse_depth(node, 0)
         return stats
 
-    def _resolve_relative_import(
-        self, current_file: str, relative_import: str
-    ) -> str | None:
+    def _resolve_relative_import(self, current_file: str, relative_import: str) -> str | None:
         """Resolve relative import to absolute file path.
 
         Args:

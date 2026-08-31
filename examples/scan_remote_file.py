@@ -55,11 +55,7 @@ def validate_email(email: str) -> bool:
 
     # Create scanner
     scanner = FileScanner()
-    formatter = TreeFormatter(
-        show_signatures=True,
-        show_decorators=True,
-        show_docstrings=True
-    )
+    formatter = TreeFormatter(show_signatures=True, show_decorators=True, show_docstrings=True)
 
     # Scan the remote content
     print("Scanning remote file: user_repository.py")
@@ -68,7 +64,7 @@ def validate_email(email: str) -> bool:
     structures = scanner.scan_content(
         content=remote_content,
         filename="user_repository.py",  # Filename determines the parser
-        include_metadata=True
+        include_metadata=True,
     )
 
     if structures:

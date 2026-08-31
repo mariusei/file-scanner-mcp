@@ -1,7 +1,6 @@
 """Tests for Zig scanner."""
 
 
-
 def test_basic_parsing(file_scanner):
     """Test basic Zig file parsing."""
     structures = file_scanner.scan_file("tests/zig/samples/basic.zig")
@@ -26,8 +25,9 @@ def test_struct_methods(file_scanner):
     assert len(config.children) > 0, "Struct should have methods"
 
     # Check that methods are extracted
-    assert any(c.type == "method" and c.name == "total" for c in config.children), \
+    assert any(c.type == "method" and c.name == "total" for c in config.children), (
         f"Should find total method, got: {[c.name for c in config.children]}"
+    )
 
 
 def test_signatures(file_scanner):
@@ -50,8 +50,9 @@ def test_doc_comments(file_scanner):
     config = next((s for s in structures if s.type == "struct" and s.name == "Config"), None)
     assert config is not None, "Should find Config struct"
     assert config.docstring is not None, "Should have docstring"
-    assert "Configuration" in config.docstring, \
+    assert "Configuration" in config.docstring, (
         f"Docstring should describe struct, got: {config.docstring}"
+    )
 
 
 def test_modifiers(file_scanner):
@@ -70,7 +71,9 @@ def test_modifiers(file_scanner):
     assert "pub" in fast_add.modifiers, f"Should have pub modifier, got: {fast_add.modifiers}"
 
     # Find export function
-    c_api = next((s for s in structures if s.type == "function" and s.name == "c_api_function"), None)
+    c_api = next(
+        (s for s in structures if s.type == "function" and s.name == "c_api_function"), None
+    )
     assert c_api is not None, "Should find c_api_function"
     assert "export" in c_api.modifiers, f"Should have export modifier, got: {c_api.modifiers}"
 
@@ -94,11 +97,15 @@ def test_edge_cases(file_scanner):
     assert len(structures) > 0, "Should find structures"
 
     # Test generic function
-    generic_list = next((s for s in structures if s.type == "function" and s.name == "GenericList"), None)
+    generic_list = next(
+        (s for s in structures if s.type == "function" and s.name == "GenericList"), None
+    )
     assert generic_list is not None, "Should find GenericList function"
 
     # Test complex union
-    parse_result = next((s for s in structures if s.type == "union" and s.name == "ParseResult"), None)
+    parse_result = next(
+        (s for s in structures if s.type == "union" and s.name == "ParseResult"), None
+    )
     assert parse_result is not None, "Should find ParseResult union"
 
     # Test extern struct
@@ -118,8 +125,9 @@ def test_broken_file(file_scanner):
     assert structures is not None, "Should return structures even for broken file"
 
     # Tree-sitter should still find the valid struct at the end
-    assert any("AnotherStruct" in s.name for s in structures), \
+    assert any("AnotherStruct" in s.name for s in structures), (
         f"Should find AnotherStruct, got: {[s.name for s in structures]}"
+    )
 
 
 def test_complexity(file_scanner):

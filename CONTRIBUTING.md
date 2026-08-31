@@ -43,6 +43,7 @@ from typing import Optional
 from .base import BaseLanguage
 from .models import StructureNode, ImportInfo, EntryPointInfo, DefinitionInfo, CallInfo
 
+
 class YourLanguage(BaseLanguage):
     """Unified language handler for YourLanguage files."""
 
@@ -141,6 +142,7 @@ import re
 try:
     import tree_sitter_ruby
     from tree_sitter import Language, Parser
+
     TREE_SITTER_AVAILABLE = True
 except ImportError:
     TREE_SITTER_AVAILABLE = False
@@ -192,22 +194,26 @@ class RubyLanguage(BaseLanguage):
         imports = []
 
         for match in re.finditer(r"require\s+['\"]([^'\"]+)['\"]", content):
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=match.group(1),
-                line=line,
-                import_type="require"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=match.group(1),
+                    line=line,
+                    import_type="require",
+                )
+            )
 
         for match in re.finditer(r"require_relative\s+['\"]([^'\"]+)['\"]", content):
-            line = content[:match.start()].count('\n') + 1
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=match.group(1),
-                line=line,
-                import_type="require_relative"
-            ))
+            line = content[: match.start()].count("\n") + 1
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=match.group(1),
+                    line=line,
+                    import_type="require_relative",
+                )
+            )
 
         return imports
 
@@ -216,24 +222,18 @@ class RubyLanguage(BaseLanguage):
         entry_points = []
 
         # if __FILE__ == $0
-        if re.search(r'if\s+__FILE__\s*==\s*\$0', content):
-            match = re.search(r'if\s+__FILE__\s*==\s*\$0', content)
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="if_file",
-                name="$0",
-                line=line
-            ))
+        if re.search(r"if\s+__FILE__\s*==\s*\$0", content):
+            match = re.search(r"if\s+__FILE__\s*==\s*\$0", content)
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="if_file", name="$0", line=line)
+            )
 
         # Rails/Sinatra app detection
-        if 'Sinatra::Base' in content or 'Rails.application' in content:
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="app_instance",
-                name="app",
-                line=1
-            ))
+        if "Sinatra::Base" in content or "Rails.application" in content:
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="app_instance", name="app", line=1)
+            )
 
         return entry_points
 ```
@@ -355,9 +355,9 @@ content is test data rather than code:
 - `experiments/` and `tests/golden/fixture_dir/` — frozen inputs. Reformatting
   either would invalidate results already recorded against them.
 
-Formatting is **not** gated. `ruff format` would rewrite 88 of 103 files in one
-sweep, which is a decision worth making on its own rather than as a side effect
-of a lint fix.
+Formatting is gated too. `ruff format` owns quote style and line breaking, so
+it is not worth arguing about in review — run it, or let the pre-commit hook
+run it for you.
 
 Three rules earn their place beyond style. `B023` catches a closure that reads
 a loop variable it does not bind, `B005` a `strip()` call whose multi-character
@@ -386,11 +386,11 @@ def should_analyze(self, file_path: str) -> bool:
     filename = Path(file_path).name.lower()
 
     # Skip minified files
-    if filename.endswith('.min.js'):
+    if filename.endswith(".min.js"):
         return False
 
     # Skip generated files
-    if filename.endswith('.pb.go'):
+    if filename.endswith(".pb.go"):
         return False
 
     return True
@@ -452,6 +452,7 @@ resolver can't index, no synthetic intermediate names.
 ```python
 from scantool.code_map import CodeMap
 from scantool.call_graph import caller_resolution_health
+
 r = CodeMap("tests/LANG/samples").analyze()
 print(caller_resolution_health(r.definitions, r.calls))  # .dropped should be 0
 ```

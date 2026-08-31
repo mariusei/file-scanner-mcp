@@ -62,30 +62,42 @@ class ConfigLanguage(BaseLanguage):
         filename_lower = filename.lower()
 
         # Skip lock files
-        if filename_lower in ('package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'poetry.lock', 'cargo.lock'):
+        if filename_lower in (
+            "package-lock.json",
+            "yarn.lock",
+            "pnpm-lock.yaml",
+            "poetry.lock",
+            "cargo.lock",
+        ):
             return True
 
         # Skip if ends with .lock
-        if filename_lower.endswith('.lock'):
+        if filename_lower.endswith(".lock"):
             return True
 
         # Skip minified
-        return '.min.' in filename_lower
+        return ".min." in filename_lower
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip config files that should not be analyzed."""
         filename = Path(file_path).name.lower()
 
         # Skip lock files
-        if filename in ('package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'poetry.lock', 'cargo.lock'):
+        if filename in (
+            "package-lock.json",
+            "yarn.lock",
+            "pnpm-lock.yaml",
+            "poetry.lock",
+            "cargo.lock",
+        ):
             return False
 
         # Skip if ends with .lock
-        if filename.endswith('.lock'):
+        if filename.endswith(".lock"):
             return False
 
         # Skip minified
-        return '.min.' not in filename
+        return ".min." not in filename
 
     # ===========================================================================
     # Structure Scanning
@@ -117,13 +129,13 @@ class ConfigLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # Detect file type
-        if filename.endswith('.json'):
+        if filename.endswith(".json"):
             imports.extend(self._extract_json_imports(file_path, content))
-        elif filename.endswith(('.yaml', '.yml')):
+        elif filename.endswith((".yaml", ".yml")):
             imports.extend(self._extract_yaml_imports(file_path, content))
-        elif filename.endswith('.toml'):
+        elif filename.endswith(".toml"):
             imports.extend(self._extract_toml_imports(file_path, content))
-        elif filename.endswith('.ini'):
+        elif filename.endswith(".ini"):
             imports.extend(self._extract_ini_imports(file_path, content))
 
         # Generic file path pattern extraction (all config types)
@@ -142,69 +154,81 @@ class ConfigLanguage(BaseLanguage):
             return imports
 
         # tsconfig.json specific
-        if filename == 'tsconfig.json':
+        if filename == "tsconfig.json":
             # "extends": "./base.json"
-            if 'extends' in data and isinstance(data['extends'], str):
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=data['extends'],
-                    line=self._find_line(content, data['extends']),
-                    import_type="extends"
-                ))
+            if "extends" in data and isinstance(data["extends"], str):
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=data["extends"],
+                        line=self._find_line(content, data["extends"]),
+                        import_type="extends",
+                    )
+                )
 
             # "files": ["src/index.ts", ...]
-            if 'files' in data and isinstance(data['files'], list):
-                for file_ref in data['files']:
+            if "files" in data and isinstance(data["files"], list):
+                for file_ref in data["files"]:
                     if isinstance(file_ref, str):
-                        imports.append(ImportInfo(
-                            source_file=file_path,
-                            target_module=file_ref,
-                            line=self._find_line(content, file_ref),
-                            import_type="file_reference"
-                        ))
+                        imports.append(
+                            ImportInfo(
+                                source_file=file_path,
+                                target_module=file_ref,
+                                line=self._find_line(content, file_ref),
+                                import_type="file_reference",
+                            )
+                        )
 
             # "include": ["src/**/*"]
-            if 'include' in data and isinstance(data['include'], list):
-                for pattern in data['include']:
-                    if isinstance(pattern, str) and not pattern.startswith('*'):
-                        imports.append(ImportInfo(
-                            source_file=file_path,
-                            target_module=pattern,
-                            line=self._find_line(content, pattern),
-                            import_type="include_pattern"
-                        ))
+            if "include" in data and isinstance(data["include"], list):
+                for pattern in data["include"]:
+                    if isinstance(pattern, str) and not pattern.startswith("*"):
+                        imports.append(
+                            ImportInfo(
+                                source_file=file_path,
+                                target_module=pattern,
+                                line=self._find_line(content, pattern),
+                                import_type="include_pattern",
+                            )
+                        )
 
             # "paths": {"@/*": ["./src/*"]}
-            if 'compilerOptions' in data and 'paths' in data['compilerOptions']:
-                paths = data['compilerOptions']['paths']
+            if "compilerOptions" in data and "paths" in data["compilerOptions"]:
+                paths = data["compilerOptions"]["paths"]
                 if isinstance(paths, dict):
                     for _alias, path_list in paths.items():
                         if isinstance(path_list, list):
                             for path in path_list:
                                 if isinstance(path, str):
-                                    imports.append(ImportInfo(
-                                        source_file=file_path,
-                                        target_module=path,
-                                        line=self._find_line(content, path),
-                                        import_type="path_mapping"
-                                    ))
+                                    imports.append(
+                                        ImportInfo(
+                                            source_file=file_path,
+                                            target_module=path,
+                                            line=self._find_line(content, path),
+                                            import_type="path_mapping",
+                                        )
+                                    )
 
         # package.json - only extract file paths from scripts, not dependencies
-        elif filename == 'package.json':
+        elif filename == "package.json":
             # Scripts might reference local files
-            if 'scripts' in data and isinstance(data['scripts'], dict):
-                for _script_name, script_cmd in data['scripts'].items():
+            if "scripts" in data and isinstance(data["scripts"], dict):
+                for _script_name, script_cmd in data["scripts"].items():
                     if isinstance(script_cmd, str):
                         # Extract file paths from scripts (e.g., "node build.js", "node ./scripts/test.mjs")
                         # Match files with or without ./ prefix
-                        file_refs = re.findall(r'\b(?:\./)?[\w/.-]+\.(?:js|ts|mjs|cjs|json|jsx|tsx)\b', script_cmd)
+                        file_refs = re.findall(
+                            r"\b(?:\./)?[\w/.-]+\.(?:js|ts|mjs|cjs|json|jsx|tsx)\b", script_cmd
+                        )
                         for ref in file_refs:
-                            imports.append(ImportInfo(
-                                source_file=file_path,
-                                target_module=ref,
-                                line=self._find_line(content, ref),
-                                import_type="script_file"
-                            ))
+                            imports.append(
+                                ImportInfo(
+                                    source_file=file_path,
+                                    target_module=ref,
+                                    line=self._find_line(content, ref),
+                                    import_type="script_file",
+                                )
+                            )
 
         return imports
 
@@ -214,36 +238,42 @@ class ConfigLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # docker-compose.yml patterns
-        if 'docker-compose' in filename:
+        if "docker-compose" in filename:
             # env_file: .env.production or env_file: .env
             env_file_pattern = r'env_file:\s*["\']?(\.env[^\s"\']*)["\']?'
             for match in re.finditer(env_file_pattern, content):
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=match.group(1),
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="env_file"
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=match.group(1),
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="env_file",
+                    )
+                )
 
             # dockerfile: ./Dockerfile.prod
             dockerfile_pattern = r'dockerfile:\s*["\']?([^\s"\']+Dockerfile[^\s"\']*)["\']?'
             for match in re.finditer(dockerfile_pattern, content, re.IGNORECASE):
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=match.group(1),
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="dockerfile"
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=match.group(1),
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="dockerfile",
+                    )
+                )
 
             # volumes: - ./data:/app/data
             volume_pattern = r'[-\s]+["\']?(\.{1,2}/[^:\s"\']+):[^\s"\']+["\']?'
             for match in re.finditer(volume_pattern, content):
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=match.group(1),
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="volume_mount"
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=match.group(1),
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="volume_mount",
+                    )
+                )
 
         return imports
 
@@ -253,28 +283,32 @@ class ConfigLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # pyproject.toml - extract script paths, not package dependencies
-        if filename == 'pyproject.toml':
+        if filename == "pyproject.toml":
             # [tool.mypy] config files
             config_pattern = r'config_file\s*=\s*["\']([^"\']+)["\']'
             for match in re.finditer(config_pattern, content):
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=match.group(1),
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="config_file"
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=match.group(1),
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="config_file",
+                    )
+                )
 
         # Cargo.toml - path dependencies (local crates)
-        elif filename == 'cargo.toml':
+        elif filename == "cargo.toml":
             # my_crate = { path = "../my_crate" }
             path_dep_pattern = r'path\s*=\s*["\']([^"\']+)["\']'
             for match in re.finditer(path_dep_pattern, content):
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=match.group(1),
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="path_dependency"
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=match.group(1),
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="path_dependency",
+                    )
+                )
 
         return imports
 
@@ -286,12 +320,14 @@ class ConfigLanguage(BaseLanguage):
         # key = /path/to/file or key = ./relative/path
         ini_path_pattern = r'^\s*[\w_-]+\s*=\s*(["\']?)([./][^\s"\']+\.[a-zA-Z0-9]+)\1'
         for match in re.finditer(ini_path_pattern, content, re.MULTILINE):
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=match.group(2),
-                line=content[:match.start()].count('\n') + 1,
-                import_type="config_value"
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=match.group(2),
+                    line=content[: match.start()].count("\n") + 1,
+                    import_type="config_value",
+                )
+            )
 
         return imports
 
@@ -311,26 +347,32 @@ class ConfigLanguage(BaseLanguage):
         for match in re.finditer(quoted_path_pattern, content):
             path = match.group(1)
             # Skip if looks like URL
-            if '://' not in path:
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=path,
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="path_reference"
-                ))
+            if "://" not in path:
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=path,
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="path_reference",
+                    )
+                )
 
         # Pattern 2: Unquoted relative paths on their own line (YAML-style)
         # Matches: "  - ./file.ext" or "key: ./file.ext"
-        unquoted_path_pattern = r'(?:^|\s)(\./[^\s:]+\.[a-zA-Z0-9]+|\.\./(?:[^/\s]+/)*[^/\s]+\.[a-zA-Z0-9]+)(?:\s|$)'
+        unquoted_path_pattern = (
+            r"(?:^|\s)(\./[^\s:]+\.[a-zA-Z0-9]+|\.\./(?:[^/\s]+/)*[^/\s]+\.[a-zA-Z0-9]+)(?:\s|$)"
+        )
         for match in re.finditer(unquoted_path_pattern, content, re.MULTILINE):
             path = match.group(1)
-            if '://' not in path:
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=path,
-                    line=content[:match.start()].count('\n') + 1,
-                    import_type="path_reference"
-                ))
+            if "://" not in path:
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=path,
+                        line=content[: match.start()].count("\n") + 1,
+                        import_type="path_reference",
+                    )
+                )
 
         return imports
 
@@ -349,15 +391,15 @@ class ConfigLanguage(BaseLanguage):
 
         try:
             # JSON configs
-            if filename.endswith('.json'):
+            if filename.endswith(".json"):
                 entry_points.extend(self._find_json_entry_points(file_path, content))
 
             # TOML configs
-            elif filename.endswith('.toml'):
+            elif filename.endswith(".toml"):
                 entry_points.extend(self._find_toml_entry_points(file_path, content))
 
             # YAML configs
-            elif filename.endswith(('.yaml', '.yml')):
+            elif filename.endswith((".yaml", ".yml")):
                 entry_points.extend(self._find_yaml_entry_points(file_path, content))
 
         except Exception:
@@ -377,46 +419,54 @@ class ConfigLanguage(BaseLanguage):
             return entry_points
 
         # package.json
-        if filename == 'package.json':
+        if filename == "package.json":
             # Mark as npm/node project
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="project_config",
-                name="npm_project",
-                line=1,
-                framework="npm"
-            ))
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="project_config",
+                    name="npm_project",
+                    line=1,
+                    framework="npm",
+                )
+            )
 
             # main entry point
-            if 'main' in data:
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="main_entry",
-                    name=data['main'],
-                    line=self._find_line(content, data['main']),
-                    framework="npm"
-                ))
+            if "main" in data:
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path,
+                        type="main_entry",
+                        name=data["main"],
+                        line=self._find_line(content, data["main"]),
+                        framework="npm",
+                    )
+                )
 
             # bin scripts
-            if 'bin' in data and isinstance(data['bin'], dict):
-                for bin_name, _bin_path in data['bin'].items():
-                    entry_points.append(EntryPointInfo(
-                        file=file_path,
-                        type="bin_script",
-                        name=bin_name,
-                        line=self._find_line(content, bin_name),
-                        framework="npm"
-                    ))
+            if "bin" in data and isinstance(data["bin"], dict):
+                for bin_name, _bin_path in data["bin"].items():
+                    entry_points.append(
+                        EntryPointInfo(
+                            file=file_path,
+                            type="bin_script",
+                            name=bin_name,
+                            line=self._find_line(content, bin_name),
+                            framework="npm",
+                        )
+                    )
 
         # tsconfig.json
-        elif filename == 'tsconfig.json':
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="project_config",
-                name="typescript_project",
-                line=1,
-                framework="TypeScript"
-            ))
+        elif filename == "tsconfig.json":
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="project_config",
+                    name="typescript_project",
+                    line=1,
+                    framework="TypeScript",
+                )
+            )
 
         return entry_points
 
@@ -426,49 +476,53 @@ class ConfigLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # pyproject.toml
-        if filename == 'pyproject.toml':
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="project_config",
-                name="python_project",
-                line=1,
-                framework="Python"
-            ))
+        if filename == "pyproject.toml":
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="project_config",
+                    name="python_project",
+                    line=1,
+                    framework="Python",
+                )
+            )
 
             # [project.scripts]
-            script_pattern = r'\[project\.scripts\]'
+            script_pattern = r"\[project\.scripts\]"
             match = re.search(script_pattern, content)
             if match:
-                line = content[:match.start()].count('\n') + 1
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="scripts_section",
-                    name="project_scripts",
-                    line=line,
-                    framework="Python"
-                ))
+                line = content[: match.start()].count("\n") + 1
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path,
+                        type="scripts_section",
+                        name="project_scripts",
+                        line=line,
+                        framework="Python",
+                    )
+                )
 
         # Cargo.toml
-        elif filename == 'cargo.toml':
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="project_config",
-                name="rust_project",
-                line=1,
-                framework="Rust"
-            ))
+        elif filename == "cargo.toml":
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="project_config",
+                    name="rust_project",
+                    line=1,
+                    framework="Rust",
+                )
+            )
 
             # [[bin]]
-            bin_pattern = r'\[\[bin\]\]'
+            bin_pattern = r"\[\[bin\]\]"
             for match in re.finditer(bin_pattern, content):
-                line = content[:match.start()].count('\n') + 1
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="bin_target",
-                    name="bin",
-                    line=line,
-                    framework="Rust"
-                ))
+                line = content[: match.start()].count("\n") + 1
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path, type="bin_target", name="bin", line=line, framework="Rust"
+                    )
+                )
 
         return entry_points
 
@@ -478,26 +532,30 @@ class ConfigLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # docker-compose.yml
-        if 'docker-compose' in filename:
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="project_config",
-                name="docker_compose_project",
-                line=1,
-                framework="Docker"
-            ))
+        if "docker-compose" in filename:
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="project_config",
+                    name="docker_compose_project",
+                    line=1,
+                    framework="Docker",
+                )
+            )
 
             # services:
-            services_pattern = r'^services:\s*$'
+            services_pattern = r"^services:\s*$"
             for match in re.finditer(services_pattern, content, re.MULTILINE):
-                line = content[:match.start()].count('\n') + 1
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="services_section",
-                    name="services",
-                    line=line,
-                    framework="Docker"
-                ))
+                line = content[: match.start()].count("\n") + 1
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path,
+                        type="services_section",
+                        name="services",
+                        line=line,
+                        framework="Docker",
+                    )
+                )
 
         return entry_points
 
@@ -579,6 +637,6 @@ class ConfigLanguage(BaseLanguage):
         """Find line number of a string in content."""
         try:
             index = content.index(search_str)
-            return content[:index].count('\n') + 1
+            return content[:index].count("\n") + 1
         except ValueError:
             return 0

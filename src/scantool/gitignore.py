@@ -18,7 +18,7 @@ class GitignoreParser:
         for pattern in patterns:
             pattern = pattern.strip()
             # Skip empty lines and comments
-            if not pattern or pattern.startswith('#'):
+            if not pattern or pattern.startswith("#"):
                 continue
             self.patterns.append(self._compile_pattern(pattern))
 
@@ -29,17 +29,17 @@ class GitignoreParser:
         Returns:
             Tuple of (compiled_regex, is_negation)
         """
-        is_negation = pattern.startswith('!')
+        is_negation = pattern.startswith("!")
         if is_negation:
             pattern = pattern[1:]
 
         # Directory-only pattern: the trailing slash is stripped, but the
         # directory-only restriction itself is not enforced when matching.
-        if pattern.endswith('/'):
+        if pattern.endswith("/"):
             pattern = pattern[:-1]
 
         # Anchored pattern (starts with /)
-        if pattern.startswith('/'):
+        if pattern.startswith("/"):
             pattern = pattern[1:]
             anchored = True
         else:
@@ -50,27 +50,27 @@ class GitignoreParser:
         i = 0
         while i < len(pattern):
             char = pattern[i]
-            if char == '*':
-                if i + 1 < len(pattern) and pattern[i + 1] == '*':
+            if char == "*":
+                if i + 1 < len(pattern) and pattern[i + 1] == "*":
                     # ** matches any number of directories
-                    regex_parts.append('.*')
+                    regex_parts.append(".*")
                     i += 2
                     # Skip following /
-                    if i < len(pattern) and pattern[i] == '/':
+                    if i < len(pattern) and pattern[i] == "/":
                         i += 1
                     continue
                 else:
                     # * matches anything except /
-                    regex_parts.append('[^/]*')
-            elif char == '?':
-                regex_parts.append('[^/]')
-            elif char == '[':
+                    regex_parts.append("[^/]*")
+            elif char == "?":
+                regex_parts.append("[^/]")
+            elif char == "[":
                 # Character class
                 j = i + 1
-                while j < len(pattern) and pattern[j] != ']':
+                while j < len(pattern) and pattern[j] != "]":
                     j += 1
                 if j < len(pattern):
-                    regex_parts.append(pattern[i:j + 1])
+                    regex_parts.append(pattern[i : j + 1])
                     i = j
                 else:
                     regex_parts.append(re.escape(char))
@@ -78,7 +78,7 @@ class GitignoreParser:
                 regex_parts.append(re.escape(char))
             i += 1
 
-        regex_str = ''.join(regex_parts)
+        regex_str = "".join(regex_parts)
 
         # Build final pattern
         # Pattern should match:
@@ -89,11 +89,11 @@ class GitignoreParser:
         if anchored:
             # Must match from start
             # Matches: exact name, or name followed by / and anything
-            final_pattern = f'^{regex_str}(?:/.*)?$'
+            final_pattern = f"^{regex_str}(?:/.*)?$"
         else:
             # Can match anywhere in path
             # Matches at start or after /, then exact name or name/ with anything
-            final_pattern = f'(?:^|/){regex_str}(?:/.*)?$'
+            final_pattern = f"(?:^|/){regex_str}(?:/.*)?$"
 
         return (re.compile(final_pattern), is_negation)
 
@@ -109,7 +109,7 @@ class GitignoreParser:
             True if path should be ignored
         """
         # Normalize path (remove leading ./ if present)
-        if path.startswith('./'):
+        if path.startswith("./"):
             path = path[2:]
 
         ignored = False
@@ -142,7 +142,7 @@ def load_gitignore(directory: Path) -> GitignoreParser | None:
     current = directory
 
     while current != current.parent and current != home:
-        gitignore_path = current / '.gitignore'
+        gitignore_path = current / ".gitignore"
         if gitignore_path.exists():
             gitignore_paths.append(gitignore_path)
         current = current.parent
@@ -150,7 +150,7 @@ def load_gitignore(directory: Path) -> GitignoreParser | None:
     # Load patterns from all .gitignore files (reverse order: root first)
     for gitignore_path in reversed(gitignore_paths):
         try:
-            with open(gitignore_path, encoding='utf-8') as f:
+            with open(gitignore_path, encoding="utf-8") as f:
                 all_patterns.extend(f.readlines())
         except Exception:
             continue

@@ -49,7 +49,9 @@ def test_view_signature(file_scanner):
     view = next((s for s in structures if s.type == "view" and s.name == "active_users"), None)
     assert view is not None, "Should find active_users view"
     assert view.signature is not None, "Should have signature"
-    assert "SELECT" in view.signature.upper(), f"Signature should contain SELECT, got: {view.signature}"
+    assert "SELECT" in view.signature.upper(), (
+        f"Signature should contain SELECT, got: {view.signature}"
+    )
 
 
 def test_function_signature(file_scanner):
@@ -57,12 +59,16 @@ def test_function_signature(file_scanner):
     structures = file_scanner.scan_file("tests/sql/samples/basic.sql")
 
     # Find calculate_discount function
-    func = next((s for s in structures if s.type == "function" and s.name == "calculate_discount"), None)
+    func = next(
+        (s for s in structures if s.type == "function" and s.name == "calculate_discount"), None
+    )
     assert func is not None, "Should find calculate_discount function"
     assert func.signature is not None, "Should have signature"
     # Check for parameters and return type
     sig_upper = func.signature.upper()
-    assert "DECIMAL" in sig_upper or "INT" in sig_upper, f"Should have parameter types, got: {func.signature}"
+    assert "DECIMAL" in sig_upper or "INT" in sig_upper, (
+        f"Should have parameter types, got: {func.signature}"
+    )
     assert "->" in func.signature, f"Should have return type indicator, got: {func.signature}"
 
 
@@ -85,7 +91,9 @@ def test_comments_as_docstrings(file_scanner):
     users_table = next((s for s in structures if s.type == "table" and s.name == "users"), None)
     assert users_table is not None, "Should find users table"
     assert users_table.docstring is not None, "Should have docstring from comment"
-    assert "user" in users_table.docstring.lower(), f"Docstring should mention users, got: {users_table.docstring}"
+    assert "user" in users_table.docstring.lower(), (
+        f"Docstring should mention users, got: {users_table.docstring}"
+    )
 
 
 def test_edge_cases(file_scanner):
@@ -102,16 +110,22 @@ def test_edge_cases(file_scanner):
     assert orders_table.docstring is not None, "Should have docstring from multi-line comment"
 
     # Test table with many data types
-    data_types_table = next((s for s in structures if s.type == "table" and s.name == "data_types_test"), None)
+    data_types_table = next(
+        (s for s in structures if s.type == "table" and s.name == "data_types_test"), None
+    )
     assert data_types_table is not None, "Should find data_types_test table"
     assert len(data_types_table.children) > 10, "Should have many columns with different types"
 
     # Test complex view
-    order_summary = next((s for s in structures if s.type == "view" and s.name == "order_summary"), None)
+    order_summary = next(
+        (s for s in structures if s.type == "view" and s.name == "order_summary"), None
+    )
     assert order_summary is not None, "Should find order_summary view"
 
     # Test function with multiple parameters
-    get_user_total = next((s for s in structures if s.type == "function" and s.name == "get_user_total"), None)
+    get_user_total = next(
+        (s for s in structures if s.type == "function" and s.name == "get_user_total"), None
+    )
     assert get_user_total is not None, "Should find get_user_total function"
     assert get_user_total.signature is not None, "Should have signature"
 
@@ -202,14 +216,18 @@ def test_function_return_types(file_scanner):
     structures = file_scanner.scan_file("tests/sql/samples/edge_cases.sql")
 
     # Find get_user_total function
-    func = next((s for s in structures if s.type == "function" and s.name == "get_user_total"), None)
+    func = next(
+        (s for s in structures if s.type == "function" and s.name == "get_user_total"), None
+    )
     assert func is not None, "Should find get_user_total"
     assert func.signature is not None, "Should have signature"
 
     # Should have return type
     sig_upper = func.signature.upper()
     assert "->" in func.signature, f"Should indicate return type, got: {func.signature}"
-    assert "DECIMAL" in sig_upper or "INT" in sig_upper, f"Should show return type, got: {func.signature}"
+    assert "DECIMAL" in sig_upper or "INT" in sig_upper, (
+        f"Should show return type, got: {func.signature}"
+    )
 
 
 def test_line_range_invariants(file_scanner):
@@ -280,7 +298,9 @@ def test_postgresql_structures(file_scanner):
     assert len(tables) >= 2, "Should find at least 2 tables"
 
     # Check for partitioned table
-    measurements = next((s for s in structures if s.type == "table" and s.name == "measurements"), None)
+    measurements = next(
+        (s for s in structures if s.type == "table" and s.name == "measurements"), None
+    )
     assert measurements is not None, "Should find partitioned table 'measurements'"
 
     # Should find functions

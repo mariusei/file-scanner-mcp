@@ -26,7 +26,9 @@ def test_modules(file_scanner):
 
     # Check for nested class
     assert len(module.children) > 0, "Module should have children"
-    db_class = next((c for c in module.children if c.type == "class" and c.name == "DatabaseManager"), None)
+    db_class = next(
+        (c for c in module.children if c.type == "class" and c.name == "DatabaseManager"), None
+    )
     assert db_class is not None, "Should find DatabaseManager class inside module"
 
 
@@ -39,10 +41,14 @@ def test_classes(file_scanner):
     assert module is not None, "Should find DataAccess module"
 
     # Find DatabaseManager class inside module
-    db_class = next((c for c in module.children if c.type == "class" and c.name == "DatabaseManager"), None)
+    db_class = next(
+        (c for c in module.children if c.type == "class" and c.name == "DatabaseManager"), None
+    )
     assert db_class is not None, "Should find DatabaseManager class"
     assert db_class.docstring is not None, "Should have docstring"
-    assert "database" in db_class.docstring.lower(), f"Docstring should mention database, got: {db_class.docstring}"
+    assert "database" in db_class.docstring.lower(), (
+        f"Docstring should mention database, got: {db_class.docstring}"
+    )
 
 
 def test_class_methods(file_scanner):
@@ -54,13 +60,17 @@ def test_class_methods(file_scanner):
     assert module is not None, "Should find DataAccess module"
 
     # Find DatabaseManager class
-    db_class = next((c for c in module.children if c.type == "class" and c.name == "DatabaseManager"), None)
+    db_class = next(
+        (c for c in module.children if c.type == "class" and c.name == "DatabaseManager"), None
+    )
     assert db_class is not None, "Should find DatabaseManager class"
 
     # Find class method
     class_method = next((m for m in db_class.children if "self.create_default" in m.name), None)
     assert class_method is not None, "Should find self.create_default class method"
-    assert class_method.modifiers and "class" in class_method.modifiers, "Should have 'class' modifier"
+    assert class_method.modifiers and "class" in class_method.modifiers, (
+        "Should have 'class' modifier"
+    )
 
 
 def test_instance_methods(file_scanner):
@@ -68,7 +78,9 @@ def test_instance_methods(file_scanner):
     structures = file_scanner.scan_file("tests/ruby/samples/basic.rb")
 
     # Find UserService class
-    user_class = next((s for s in structures if s.type == "class" and s.name == "UserService"), None)
+    user_class = next(
+        (s for s in structures if s.type == "class" and s.name == "UserService"), None
+    )
     assert user_class is not None, "Should find UserService class"
 
     # Check for instance methods
@@ -99,7 +111,9 @@ def test_comments(file_scanner):
     func = next((s for s in structures if s.type == "method" and s.name == "validate_email"), None)
     assert func is not None, "Should find validate_email"
     assert func.docstring is not None, "Should have docstring from comment"
-    assert "email" in func.docstring.lower(), f"Docstring should mention email, got: {func.docstring}"
+    assert "email" in func.docstring.lower(), (
+        f"Docstring should mention email, got: {func.docstring}"
+    )
 
 
 def test_requires(file_scanner):
@@ -119,15 +133,21 @@ def test_edge_cases(file_scanner):
     assert len(structures) > 0, "Should find structures"
 
     # Test nested classes in modules
-    outer_module = next((s for s in structures if s.type == "module" and s.name == "OuterModule"), None)
+    outer_module = next(
+        (s for s in structures if s.type == "module" and s.name == "OuterModule"), None
+    )
     assert outer_module is not None, "Should find OuterModule"
     assert len(outer_module.children) > 0, "Module should have nested structures"
 
-    outer_class = next((c for c in outer_module.children if c.type == "class" and c.name == "OuterClass"), None)
+    outer_class = next(
+        (c for c in outer_module.children if c.type == "class" and c.name == "OuterClass"), None
+    )
     assert outer_class is not None, "Should find OuterClass"
     assert len(outer_class.children) > 0, "Should have nested classes"
 
-    inner_class = next((c for c in outer_class.children if c.type == "class" and c.name == "InnerClass"), None)
+    inner_class = next(
+        (c for c in outer_class.children if c.type == "class" and c.name == "InnerClass"), None
+    )
     assert inner_class is not None, "Should find InnerClass"
 
 
@@ -139,7 +159,9 @@ def test_inheritance(file_scanner):
     child = next((s for s in structures if s.type == "class" and s.name == "ChildService"), None)
     assert child is not None, "Should find ChildService class"
     assert child.signature is not None, "Should have signature showing inheritance"
-    assert "BaseService" in child.signature, f"Signature should show parent class, got: {child.signature}"
+    assert "BaseService" in child.signature, (
+        f"Signature should show parent class, got: {child.signature}"
+    )
 
 
 def test_singleton_methods(file_scanner):
@@ -147,11 +169,15 @@ def test_singleton_methods(file_scanner):
     structures = file_scanner.scan_file("tests/ruby/samples/edge_cases.rb")
 
     # Find MultiSingleton class
-    multi_singleton = next((s for s in structures if s.type == "class" and s.name == "MultiSingleton"), None)
+    multi_singleton = next(
+        (s for s in structures if s.type == "class" and s.name == "MultiSingleton"), None
+    )
     assert multi_singleton is not None, "Should find MultiSingleton class"
 
     # Check for singleton methods
-    singleton_methods = [m for m in multi_singleton.children if m.modifiers and "class" in m.modifiers]
+    singleton_methods = [
+        m for m in multi_singleton.children if m.modifiers and "class" in m.modifiers
+    ]
     assert len(singleton_methods) >= 2, "Should find multiple singleton methods"
 
     # Verify method names
@@ -165,7 +191,9 @@ def test_attr_accessor(file_scanner):
     structures = file_scanner.scan_file("tests/ruby/samples/edge_cases.rb")
 
     # Find MethodShowcase class
-    showcase = next((s for s in structures if s.type == "class" and s.name == "MethodShowcase"), None)
+    showcase = next(
+        (s for s in structures if s.type == "class" and s.name == "MethodShowcase"), None
+    )
     assert showcase is not None, "Should find MethodShowcase class"
 
     # The class should parse successfully even with attr_accessor
@@ -177,7 +205,9 @@ def test_complex_parameters(file_scanner):
     structures = file_scanner.scan_file("tests/ruby/samples/edge_cases.rb")
 
     # Find complex_params method
-    complex_method = next((s for s in structures if s.type == "method" and s.name == "complex_params"), None)
+    complex_method = next(
+        (s for s in structures if s.type == "method" and s.name == "complex_params"), None
+    )
     assert complex_method is not None, "Should find complex_params method"
     assert complex_method.signature is not None, "Should have signature"
 
@@ -199,7 +229,9 @@ def test_deeply_nested_modules(file_scanner):
     assert module_c is not None, "Should find deeply nested module C"
 
     # Should have DeepClass inside module C
-    deep_class = next((c for c in module_c.children if c.type == "class" and c.name == "DeepClass"), None)
+    deep_class = next(
+        (c for c in module_c.children if c.type == "class" and c.name == "DeepClass"), None
+    )
     assert deep_class is not None, "Should find DeepClass in nested module"
 
 
@@ -234,7 +266,9 @@ def test_multi_line_comments(file_scanner):
     structures = file_scanner.scan_file("tests/ruby/samples/edge_cases.rb")
 
     # Find multi_line_comment function
-    func = next((s for s in structures if s.type == "method" and s.name == "multi_line_comment"), None)
+    func = next(
+        (s for s in structures if s.type == "method" and s.name == "multi_line_comment"), None
+    )
     assert func is not None, "Should find multi_line_comment method"
     # Scanner should extract at least one comment line
 
@@ -244,7 +278,9 @@ def test_method_visibility(file_scanner):
     structures = file_scanner.scan_file("tests/ruby/samples/edge_cases.rb")
 
     # Find MethodShowcase class
-    showcase = next((s for s in structures if s.type == "class" and s.name == "MethodShowcase"), None)
+    showcase = next(
+        (s for s in structures if s.type == "class" and s.name == "MethodShowcase"), None
+    )
     assert showcase is not None, "Should find MethodShowcase class"
 
     # Should find private_method

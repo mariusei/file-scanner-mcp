@@ -17,32 +17,39 @@ def test_basic_parsing(file_scanner):
     assert any(s.type == "imports" for s in structures), "Should find using directives"
 
     # Verify namespace
-    assert any(s.type == "namespace" and "MyApp.Services" in s.name for s in structures), \
+    assert any(s.type == "namespace" and "MyApp.Services" in s.name for s in structures), (
         "Should find namespace declaration"
+    )
 
     # Find namespace to check its children
     namespace = next((s for s in structures if s.type == "namespace"), None)
     assert namespace is not None, "Should have namespace"
 
     # Verify interface
-    assert any(s.type == "interface" and s.name == "IConfig" for s in namespace.children), \
+    assert any(s.type == "interface" and s.name == "IConfig" for s in namespace.children), (
         "Should find IConfig interface"
+    )
 
     # Verify classes
-    assert any(s.type == "class" and s.name == "DatabaseManager" for s in namespace.children), \
+    assert any(s.type == "class" and s.name == "DatabaseManager" for s in namespace.children), (
         "Should find DatabaseManager class"
-    assert any(s.type == "class" and s.name == "UserService" for s in namespace.children), \
+    )
+    assert any(s.type == "class" and s.name == "UserService" for s in namespace.children), (
         "Should find UserService class"
-    assert any(s.type == "class" and s.name == "EmailValidator" for s in namespace.children), \
+    )
+    assert any(s.type == "class" and s.name == "EmailValidator" for s in namespace.children), (
         "Should find EmailValidator class"
+    )
 
     # Verify struct
-    assert any(s.type == "struct" and s.name == "Point" for s in namespace.children), \
+    assert any(s.type == "struct" and s.name == "Point" for s in namespace.children), (
         "Should find Point struct"
+    )
 
     # Verify enum
-    assert any(s.type == "enum" and s.name == "UserRole" for s in namespace.children), \
+    assert any(s.type == "enum" and s.name == "UserRole" for s in namespace.children), (
         "Should find UserRole enum"
+    )
 
 
 def test_signatures(file_scanner):
@@ -55,16 +62,21 @@ def test_signatures(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find DatabaseManager class
-    db_manager = next((s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_manager = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager"
 
     # Find Query method
     query_method = next((c for c in db_manager.children if c.name == "Query"), None)
     assert query_method is not None, "Should find Query method"
     assert query_method.signature is not None, "Should have signature"
-    assert "sql" in query_method.signature, f"Signature should include parameter, got: {query_method.signature}"
-    assert "List" in query_method.signature or "Dictionary" in query_method.signature, \
+    assert "sql" in query_method.signature, (
+        f"Signature should include parameter, got: {query_method.signature}"
+    )
+    assert "List" in query_method.signature or "Dictionary" in query_method.signature, (
         f"Signature should include return type, got: {query_method.signature}"
+    )
 
 
 def test_properties(file_scanner):
@@ -77,14 +89,21 @@ def test_properties(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find DatabaseManager class
-    db_manager = next((s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_manager = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager"
 
     # Find ConnectionString property
-    conn_string = next((c for c in db_manager.children if c.type == "property" and c.name == "ConnectionString"), None)
+    conn_string = next(
+        (c for c in db_manager.children if c.type == "property" and c.name == "ConnectionString"),
+        None,
+    )
     assert conn_string is not None, "Should find ConnectionString property"
     assert conn_string.signature is not None, "Property should have type signature"
-    assert "string" in conn_string.signature, f"Property signature should include type, got: {conn_string.signature}"
+    assert "string" in conn_string.signature, (
+        f"Property signature should include type, got: {conn_string.signature}"
+    )
 
 
 def test_interfaces(file_scanner):
@@ -97,7 +116,9 @@ def test_interfaces(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find IConfig interface
-    config = next((s for s in namespace.children if s.type == "interface" and s.name == "IConfig"), None)
+    config = next(
+        (s for s in namespace.children if s.type == "interface" and s.name == "IConfig"), None
+    )
     assert config is not None, "Should find IConfig interface"
 
     # Check for interface properties
@@ -124,7 +145,9 @@ def test_structs(file_scanner):
     assert len(point.children) > 0, "Struct should have members"
     assert any(c.name == "X" for c in point.children), "Should find X property"
     assert any(c.name == "Y" for c in point.children), "Should find Y property"
-    assert any(c.name == "DistanceFromOrigin" for c in point.children), "Should find DistanceFromOrigin method"
+    assert any(c.name == "DistanceFromOrigin" for c in point.children), (
+        "Should find DistanceFromOrigin method"
+    )
 
 
 def test_xml_docs(file_scanner):
@@ -137,17 +160,22 @@ def test_xml_docs(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find IConfig interface
-    config = next((s for s in namespace.children if s.type == "interface" and s.name == "IConfig"), None)
+    config = next(
+        (s for s in namespace.children if s.type == "interface" and s.name == "IConfig"), None
+    )
     assert config is not None, "Should find IConfig interface"
     assert config.docstring is not None, "Should have XML doc comment"
     assert len(config.docstring) > 0, "XML doc should not be empty"
 
     # Find DatabaseManager class
-    db_manager = next((s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_manager = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager class"
     assert db_manager.docstring is not None, "Should have XML doc comment"
-    assert "database" in db_manager.docstring.lower(), \
+    assert "database" in db_manager.docstring.lower(), (
         f"XML doc should mention database, got: {db_manager.docstring}"
+    )
 
 
 def test_attributes(file_scanner):
@@ -160,18 +188,23 @@ def test_attributes(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find AnnotationShowcase class
-    showcase = next((s for s in namespace.children if s.type == "class" and s.name == "AnnotationShowcase"), None)
+    showcase = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "AnnotationShowcase"),
+        None,
+    )
     assert showcase is not None, "Should find AnnotationShowcase class"
     assert len(showcase.decorators) > 0, "Class should have attributes"
-    assert any("Serializable" in dec for dec in showcase.decorators), \
+    assert any("Serializable" in dec for dec in showcase.decorators), (
         f"Should have Serializable attribute, got: {showcase.decorators}"
+    )
 
     # Find OldMethod
     old_method = next((c for c in showcase.children if c.name == "OldMethod"), None)
     assert old_method is not None, "Should find OldMethod"
     assert len(old_method.decorators) > 0, "Method should have attributes"
-    assert any("Obsolete" in dec or "Deprecated" in dec for dec in old_method.decorators), \
+    assert any("Obsolete" in dec or "Deprecated" in dec for dec in old_method.decorators), (
         f"Should have Obsolete or Deprecated attribute, got: {old_method.decorators}"
+    )
 
 
 def test_modifiers(file_scanner):
@@ -184,7 +217,9 @@ def test_modifiers(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find EmailValidator class
-    validator = next((s for s in namespace.children if s.type == "class" and s.name == "EmailValidator"), None)
+    validator = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "EmailValidator"), None
+    )
     assert validator is not None, "Should find EmailValidator"
     assert "public" in validator.modifiers, "Class should be public"
     assert "static" in validator.modifiers, "Class should be static"
@@ -206,17 +241,24 @@ def test_generics(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find GenericContainer class
-    generic = next((s for s in namespace.children if s.type == "class" and s.name == "GenericContainer"), None)
+    generic = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "GenericContainer"), None
+    )
     assert generic is not None, "Should find GenericContainer"
     assert generic.signature is not None, "Should have signature with type parameter"
-    assert "<T>" in generic.signature, f"Should have generic type parameter, got: {generic.signature}"
+    assert "<T>" in generic.signature, (
+        f"Should have generic type parameter, got: {generic.signature}"
+    )
 
     # Find KeyValueStore class
-    kvstore = next((s for s in namespace.children if s.type == "class" and s.name == "KeyValueStore"), None)
+    kvstore = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "KeyValueStore"), None
+    )
     assert kvstore is not None, "Should find KeyValueStore"
     assert kvstore.signature is not None, "Should have signature"
-    assert "TKey" in kvstore.signature or "TValue" in kvstore.signature, \
+    assert "TKey" in kvstore.signature or "TValue" in kvstore.signature, (
         f"Should have generic type parameters, got: {kvstore.signature}"
+    )
 
 
 def test_async_methods(file_scanner):
@@ -229,7 +271,9 @@ def test_async_methods(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find AsyncExample class
-    async_example = next((s for s in namespace.children if s.type == "class" and s.name == "AsyncExample"), None)
+    async_example = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "AsyncExample"), None
+    )
     assert async_example is not None, "Should find AsyncExample"
 
     # Find async method
@@ -248,7 +292,9 @@ def test_abstract_classes(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find AbstractService class
-    abstract_service = next((s for s in namespace.children if s.type == "class" and s.name == "AbstractService"), None)
+    abstract_service = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "AbstractService"), None
+    )
     assert abstract_service is not None, "Should find AbstractService"
     assert "abstract" in abstract_service.modifiers, "Class should be abstract"
 
@@ -268,7 +314,9 @@ def test_nested_classes(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find OuterClass
-    outer = next((s for s in namespace.children if s.type == "class" and s.name == "OuterClass"), None)
+    outer = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "OuterClass"), None
+    )
     assert outer is not None, "Should find OuterClass"
     assert len(outer.children) > 0, "Should have nested structures"
 
@@ -277,7 +325,9 @@ def test_nested_classes(file_scanner):
     assert inner is not None, "Should find InnerClass"
 
     # Find StaticNestedClass
-    static_nested = next((c for c in outer.children if c.type == "class" and c.name == "StaticNestedClass"), None)
+    static_nested = next(
+        (c for c in outer.children if c.type == "class" and c.name == "StaticNestedClass"), None
+    )
     assert static_nested is not None, "Should find StaticNestedClass"
     assert "static" in static_nested.modifiers, "StaticNestedClass should be static"
 
@@ -295,7 +345,9 @@ def test_enum_with_base_type(file_scanner):
     status = next((s for s in namespace.children if s.type == "enum" and s.name == "Status"), None)
     assert status is not None, "Should find Status enum"
     assert status.signature is not None, "Enum should have base type signature"
-    assert "byte" in status.signature, f"Enum signature should include base type, got: {status.signature}"
+    assert "byte" in status.signature, (
+        f"Enum signature should include base type, got: {status.signature}"
+    )
 
 
 def test_virtual_override(file_scanner):
@@ -308,7 +360,9 @@ def test_virtual_override(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find AbstractService class
-    abstract_service = next((s for s in namespace.children if s.type == "class" and s.name == "AbstractService"), None)
+    abstract_service = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "AbstractService"), None
+    )
     assert abstract_service is not None, "Should find AbstractService"
 
     # Find virtual method
@@ -317,7 +371,9 @@ def test_virtual_override(file_scanner):
     assert "virtual" in initialize.modifiers, "Method should be virtual"
 
     # Find ConcreteService class
-    concrete = next((s for s in namespace.children if s.type == "class" and s.name == "ConcreteService"), None)
+    concrete = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "ConcreteService"), None
+    )
     assert concrete is not None, "Should find ConcreteService"
 
     # Find override method
@@ -336,7 +392,9 @@ def test_sealed_class(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find SealedService class
-    sealed_service = next((s for s in namespace.children if s.type == "class" and s.name == "SealedService"), None)
+    sealed_service = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "SealedService"), None
+    )
     assert sealed_service is not None, "Should find SealedService"
     assert "sealed" in sealed_service.modifiers, "Class should be sealed"
 
@@ -351,7 +409,9 @@ def test_readonly_struct(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find Vector3 struct
-    vector3 = next((s for s in namespace.children if s.type == "struct" and s.name == "Vector3"), None)
+    vector3 = next(
+        (s for s in namespace.children if s.type == "struct" and s.name == "Vector3"), None
+    )
     assert vector3 is not None, "Should find Vector3 struct"
     assert "readonly" in vector3.modifiers, "Struct should be readonly"
 
@@ -368,7 +428,10 @@ def test_error_handling():
 
     # Should show parse errors or valid structures
     has_error = any(s.type in ("parse-error", "error") for s in structures)
-    has_valid = any(s.type in ("class", "interface", "method", "struct", "enum", "namespace") for s in structures)
+    has_valid = any(
+        s.type in ("class", "interface", "method", "struct", "enum", "namespace")
+        for s in structures
+    )
 
     assert has_error or has_valid, "Should have either errors or valid structures"
 
@@ -383,7 +446,9 @@ def test_constructors(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find DatabaseManager class
-    db_manager = next((s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_manager = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_manager is not None, "Should find DatabaseManager"
 
     # Find constructor
@@ -391,8 +456,9 @@ def test_constructors(file_scanner):
     assert constructor is not None, "Should find constructor"
     assert constructor.name == "DatabaseManager", "Constructor should have class name"
     assert constructor.signature is not None, "Constructor should have signature"
-    assert "connectionString" in constructor.signature, \
+    assert "connectionString" in constructor.signature, (
         f"Constructor signature should include parameter, got: {constructor.signature}"
+    )
 
 
 def test_complex_method_signatures(file_scanner):
@@ -405,7 +471,9 @@ def test_complex_method_signatures(file_scanner):
     assert namespace is not None, "Should have namespace"
 
     # Find GenericContainer class
-    generic = next((s for s in namespace.children if s.type == "class" and s.name == "GenericContainer"), None)
+    generic = next(
+        (s for s in namespace.children if s.type == "class" and s.name == "GenericContainer"), None
+    )
     assert generic is not None, "Should find GenericContainer"
 
     # Find ProcessAsync method with complex signature
@@ -415,5 +483,6 @@ def test_complex_method_signatures(file_scanner):
 
     # Check that complex types are preserved
     sig = process.signature
-    assert "Task" in sig or "IEnumerable" in sig or "Func" in sig or "Predicate" in sig, \
+    assert "Task" in sig or "IEnumerable" in sig or "Func" in sig or "Predicate" in sig, (
         f"Should preserve complex types in: {sig}"
+    )

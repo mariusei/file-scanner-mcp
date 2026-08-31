@@ -5,7 +5,6 @@ sections (headers) and paragraphs. Since plain text files don't have
 imports or entry points, those methods return empty lists.
 """
 
-
 from .base import BaseLanguage
 from .models import (
     EntryPointInfo,
@@ -73,7 +72,7 @@ class TextLanguage(BaseLanguage):
                     name=stripped[:50],  # Limit length
                     start_line=i,
                     end_line=i,
-                    children=[]
+                    children=[],
                 )
                 section_start = i
                 in_paragraph = False
@@ -91,7 +90,7 @@ class TextLanguage(BaseLanguage):
                         name=prev_line[:50],
                         start_line=i - 1,
                         end_line=i,
-                        children=[]
+                        children=[],
                     )
                     section_start = i - 1
                     in_paragraph = False
@@ -106,9 +105,9 @@ class TextLanguage(BaseLanguage):
                 if in_paragraph and paragraph_start:
                     para_node = StructureNode(
                         type="paragraph",
-                        name=f"paragraph ({paragraph_start}-{i-1})",
+                        name=f"paragraph ({paragraph_start}-{i - 1})",
                         start_line=paragraph_start,
-                        end_line=i - 1
+                        end_line=i - 1,
                     )
                     if current_section:
                         current_section.children.append(para_node)
@@ -126,7 +125,7 @@ class TextLanguage(BaseLanguage):
                 type="paragraph",
                 name=f"paragraph ({paragraph_start}-{len(lines)})",
                 start_line=paragraph_start,
-                end_line=len(lines)
+                end_line=len(lines),
             )
             structures.append(para_node)
 

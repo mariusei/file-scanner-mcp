@@ -30,12 +30,46 @@ from .languages import get_registry
 # a handler wired by NAME in any of these is reachable, never dead. Spans code +
 # the config/markup that loaders use to name handlers (DI beans, build scripts,
 # property files), so a cross-language binding that names the symbol protects it.
-_DEAD_EXTS = (".py", ".js", ".ts", ".tsx", ".jsx", ".mjs", ".cjs", ".html",
-              ".j2", ".jinja", ".vue", ".svelte",
-              ".yaml", ".yml", ".toml", ".json", ".xml", ".ini", ".cfg",
-              ".env", ".properties", ".gradle", ".go", ".rs", ".java", ".kt",
-              ".kts", ".scala", ".cs", ".rb", ".php", ".swift", ".zig",
-              ".c", ".cc", ".cpp", ".h", ".hpp")
+_DEAD_EXTS = (
+    ".py",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".html",
+    ".j2",
+    ".jinja",
+    ".vue",
+    ".svelte",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".json",
+    ".xml",
+    ".ini",
+    ".cfg",
+    ".env",
+    ".properties",
+    ".gradle",
+    ".go",
+    ".rs",
+    ".java",
+    ".kt",
+    ".kts",
+    ".scala",
+    ".cs",
+    ".rb",
+    ".php",
+    ".swift",
+    ".zig",
+    ".c",
+    ".cc",
+    ".cpp",
+    ".h",
+    ".hpp",
+)
 _MEMO_MAX_DIRS = 8
 # Above this corpus size the dead/orphan whole-repo scans are skipped (drift only).
 _MAX_HEAVY_FILES = 6000
@@ -140,18 +174,18 @@ def _compute_dead(directory: str, result) -> "tuple[set, bool]":
         if n.callers or n.type not in ("function", "method"):
             continue
         analyzer = analyzer_for(n.file)
-        if analyzer is None or not analyzer.CLAIMS_DEAD:   # conservative: opted-in only
+        if analyzer is None or not analyzer.CLAIMS_DEAD:  # conservative: opted-in only
             continue
         qual = _short(n.name)
         bare = qual.split(".")[-1]
         if bare in entry or _is_test_path(n.file):
             continue
         if word_counts.get(bare, 0) - call_counts.get(bare, 0) >= 1:
-            continue                                       # referenced as a bare name
-        if (n.file, qual) in corpus_reachable:             # protocol/interface witness
+            continue  # referenced as a bare name
+        if (n.file, qual) in corpus_reachable:  # protocol/interface witness
             continue
         defn = def_by_key.get((n.file, qual))
-        if defn is None or defn.decorators:                # framework-registered
+        if defn is None or defn.decorators:  # framework-registered
             continue
         if analyzer.is_offgraph_reachable(defn, content_for(n.file)):
             continue
@@ -195,8 +229,12 @@ def warm(directory: str, result=None) -> None:
             orphans = _compute_orphans(directory)
         try:
             fc = {f: c for c, fs in result.clusters.items() for f in fs}
-            drift = find_divergences(result.definitions, result.calls,
-                                     config=DivergenceConfig(TOP_N=50), file_clusters=fc)
+            drift = find_divergences(
+                result.definitions,
+                result.calls,
+                config=DivergenceConfig(TOP_N=50),
+                file_clusters=fc,
+            )
         except Exception:
             drift = []
         with _LOCK:

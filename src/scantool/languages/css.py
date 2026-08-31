@@ -69,7 +69,12 @@ class CSSLanguage(BaseLanguage):
         if filename.endswith(".css.map"):
             return True
         # Skip common generated patterns
-        return bool(any(pattern in filename.lower() for pattern in [".generated.", ".compiled.", "bundle.", "chunk."]))
+        return bool(
+            any(
+                pattern in filename.lower()
+                for pattern in [".generated.", ".compiled.", "bundle.", "chunk."]
+            )
+        )
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip CSS files that should not be analyzed.
@@ -89,7 +94,9 @@ class CSSLanguage(BaseLanguage):
             return False
 
         # Skip common generated patterns
-        return not any(pattern in filename for pattern in [".generated.", ".compiled.", "bundle.", "chunk."])
+        return not any(
+            pattern in filename for pattern in [".generated.", ".compiled.", "bundle.", "chunk."]
+        )
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value CSS files for inventory listing.
@@ -105,9 +112,9 @@ class CSSLanguage(BaseLanguage):
             return True
 
         # Vendor/third-party files
-        if any(pattern in filename for pattern in [
-            "vendor", "normalize", "reset", "bootstrap.min"
-        ]):
+        if any(
+            pattern in filename for pattern in ["vendor", "normalize", "reset", "bootstrap.min"]
+        ):
             return True
 
         return super().is_low_value_for_inventory(file_path, size)
@@ -116,9 +123,7 @@ class CSSLanguage(BaseLanguage):
     # Structure Scanning (from CSSScanner)
     # ===========================================================================
 
-    def _extract_structure(
-        self, root: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure from CSS stylesheet."""
         structures: list[StructureNode] = []
 
@@ -154,8 +159,13 @@ class CSSLanguage(BaseLanguage):
                     structures.append(supports_node)
 
             # @font-face, @charset, @namespace, @layer, etc.
-            elif node.type in ("at_rule", "font_face_statement", "charset_statement",
-                               "namespace_statement", "layer_statement"):
+            elif node.type in (
+                "at_rule",
+                "font_face_statement",
+                "charset_statement",
+                "namespace_statement",
+                "layer_statement",
+            ):
                 at_rule_node = self._extract_at_rule(node, source_code)
                 if at_rule_node:
                     structures.append(at_rule_node)
@@ -170,19 +180,19 @@ class CSSLanguage(BaseLanguage):
             elif node.type == "comment":
                 comment_text = self._get_node_text(node, source_code)
                 if comment_text.startswith("/*!"):
-                    structures.append(StructureNode(
-                        type="comment",
-                        name=self._extract_comment_title(comment_text),
-                        start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1,
-                        docstring=comment_text[:100]
-                    ))
+                    structures.append(
+                        StructureNode(
+                            type="comment",
+                            name=self._extract_comment_title(comment_text),
+                            start_line=node.start_point[0] + 1,
+                            end_line=node.end_point[0] + 1,
+                            docstring=comment_text[:100],
+                        )
+                    )
 
         return structures
 
-    def _extract_from_error_node(
-        self, error_node: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_from_error_node(self, error_node: Node, source_code: bytes) -> list[StructureNode]:
         """Extract valid CSS structures from within an ERROR node."""
         structures: list[StructureNode] = []
 
@@ -211,8 +221,13 @@ class CSSLanguage(BaseLanguage):
                 if supports_node:
                     structures.append(supports_node)
 
-            elif child.type in ("at_rule", "font_face_statement", "charset_statement",
-                               "namespace_statement", "layer_statement"):
+            elif child.type in (
+                "at_rule",
+                "font_face_statement",
+                "charset_statement",
+                "namespace_statement",
+                "layer_statement",
+            ):
                 at_rule_node = self._extract_at_rule(child, source_code)
                 if at_rule_node:
                     structures.append(at_rule_node)
@@ -225,19 +240,19 @@ class CSSLanguage(BaseLanguage):
             elif child.type == "comment":
                 comment_text = self._get_node_text(child, source_code)
                 if comment_text.startswith("/*!"):
-                    structures.append(StructureNode(
-                        type="comment",
-                        name=self._extract_comment_title(comment_text),
-                        start_line=child.start_point[0] + 1,
-                        end_line=child.end_point[0] + 1,
-                        docstring=comment_text[:100]
-                    ))
+                    structures.append(
+                        StructureNode(
+                            type="comment",
+                            name=self._extract_comment_title(comment_text),
+                            start_line=child.start_point[0] + 1,
+                            end_line=child.end_point[0] + 1,
+                            docstring=comment_text[:100],
+                        )
+                    )
 
         return structures
 
-    def _extract_import_node(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_import_node(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @import statement as StructureNode."""
         url = None
         for child in node.children:
@@ -247,10 +262,10 @@ class CSSLanguage(BaseLanguage):
                     if arg.type == "arguments":
                         for string_node in arg.children:
                             if string_node.type == "string_value":
-                                url = self._get_node_text(string_node, source_code).strip('"\'')
+                                url = self._get_node_text(string_node, source_code).strip("\"'")
                                 break
             elif child.type == "string_value":
-                url = self._get_node_text(child, source_code).strip('"\'')
+                url = self._get_node_text(child, source_code).strip("\"'")
 
         if not url:
             return None
@@ -261,22 +276,24 @@ class CSSLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=url,
-            modifiers=["import"]
+            modifiers=["import"],
         )
 
-    def _extract_media(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_media(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @media statement."""
         query = None
         children = []
 
         for child in node.children:
-            if child.type in ("keyword_query", "feature_query", "media_query_list",
-                              "binary_query", "unary_query", "parenthesized_query"):
-                query = self._normalize_signature(
-                    self._get_node_text(child, source_code)
-                )
+            if child.type in (
+                "keyword_query",
+                "feature_query",
+                "media_query_list",
+                "binary_query",
+                "unary_query",
+                "parenthesized_query",
+            ):
+                query = self._normalize_signature(self._get_node_text(child, source_code))
             elif child.type == "block":
                 children = self._extract_nested_rules(child, source_code)
 
@@ -288,12 +305,10 @@ class CSSLanguage(BaseLanguage):
             signature=query,
             modifiers=["media"],
             children=children,
-            complexity={"rules": len(children)} if children else None
+            complexity={"rules": len(children)} if children else None,
         )
 
-    def _extract_keyframes(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_keyframes(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @keyframes statement."""
         name = None
         for child in node.children:
@@ -306,21 +321,17 @@ class CSSLanguage(BaseLanguage):
             name=name or "animation",
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
-            modifiers=["keyframes"]
+            modifiers=["keyframes"],
         )
 
-    def _extract_supports(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_supports(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @supports statement."""
         query = None
         children = []
 
         for child in node.children:
             if child.type in ("feature_query", "parenthesized_query"):
-                query = self._normalize_signature(
-                    self._get_node_text(child, source_code)
-                )
+                query = self._normalize_signature(self._get_node_text(child, source_code))
             elif child.type == "block":
                 children = self._extract_nested_rules(child, source_code)
 
@@ -331,12 +342,10 @@ class CSSLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=query,
             modifiers=["supports"],
-            children=children
+            children=children,
         )
 
-    def _extract_at_rule(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_at_rule(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract at-rule (@media, @keyframes, @import, etc.)."""
         keyword = None
         query = None
@@ -346,15 +355,13 @@ class CSSLanguage(BaseLanguage):
             if child.type == "at_keyword":
                 keyword = self._get_node_text(child, source_code)
             elif child.type in ("keyword_query", "feature_query", "media_query"):
-                query = self._normalize_signature(
-                    self._get_node_text(child, source_code)
-                )
+                query = self._normalize_signature(self._get_node_text(child, source_code))
             elif child.type == "keyframes_name":
                 query = self._get_node_text(child, source_code)
             elif child.type == "block":
                 children = self._extract_nested_rules(child, source_code)
             elif child.type in ("string_value", "call_expression"):
-                query = self._get_node_text(child, source_code).strip('"\'')
+                query = self._get_node_text(child, source_code).strip("\"'")
 
         if not keyword:
             return None
@@ -389,12 +396,10 @@ class CSSLanguage(BaseLanguage):
             signature=query,
             modifiers=[at_type],
             children=children,
-            complexity={"rules": len(children)} if children else None
+            complexity={"rules": len(children)} if children else None,
         )
 
-    def _extract_nested_rules(
-        self, block_node: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_nested_rules(self, block_node: Node, source_code: bytes) -> list[StructureNode]:
         """Extract rules nested inside a block (e.g., @media)."""
         rules = []
         for child in block_node.children:
@@ -408,9 +413,7 @@ class CSSLanguage(BaseLanguage):
                     rules.append(at_rule)
         return rules
 
-    def _extract_rule_set(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_rule_set(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract a CSS rule set (selector + declarations)."""
         selectors = []
         declaration_count = 0
@@ -421,9 +424,7 @@ class CSSLanguage(BaseLanguage):
             if child.type == "selectors":
                 selectors = self._extract_selectors(child, source_code)
             elif child.type == "block":
-                declaration_count, has_variables = self._count_declarations(
-                    child, source_code
-                )
+                declaration_count, has_variables = self._count_declarations(child, source_code)
 
         if not selectors:
             return None
@@ -461,12 +462,10 @@ class CSSLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=f"{len(selectors)} sel, {declaration_count} decl",
             modifiers=modifiers,
-            complexity={"selectors": len(selectors), "declarations": declaration_count}
+            complexity={"selectors": len(selectors), "declarations": declaration_count},
         )
 
-    def _extract_selectors(
-        self, selectors_node: Node, source_code: bytes
-    ) -> list[str]:
+    def _extract_selectors(self, selectors_node: Node, source_code: bytes) -> list[str]:
         """Extract individual selectors from a selectors node."""
         selectors = []
         current: list[str] = []
@@ -486,9 +485,7 @@ class CSSLanguage(BaseLanguage):
 
         return selectors
 
-    def _count_declarations(
-        self, block_node: Node, source_code: bytes
-    ) -> tuple[int, bool]:
+    def _count_declarations(self, block_node: Node, source_code: bytes) -> tuple[int, bool]:
         """Count declarations and check for CSS variables."""
         count = 0
         has_variables = False
@@ -524,95 +521,109 @@ class CSSLanguage(BaseLanguage):
         import_pattern = r'@import\s+(?:url\(["\']?([^"\')\s]+)["\']?\)|["\']([^"\']+)["\'])'
         for match in re.finditer(import_pattern, text, re.IGNORECASE):
             url = match.group(1) or match.group(2)
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="import",
-                name=url,
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["import"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="import",
+                    name=url,
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=["import"],
+                )
+            )
 
         # Find @media queries
-        media_pattern = r'@media\s+([^{]+)\s*\{'
+        media_pattern = r"@media\s+([^{]+)\s*\{"
         for match in re.finditer(media_pattern, text, re.IGNORECASE):
             query = match.group(1).strip()
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="media_query",
-                name=query[:50] + "..." if len(query) > 50 else query,
-                start_line=line_num,
-                end_line=line_num,
-                signature=query,
-                modifiers=["media"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="media_query",
+                    name=query[:50] + "..." if len(query) > 50 else query,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=query,
+                    modifiers=["media"],
+                )
+            )
 
         # Find @keyframes
-        keyframes_pattern = r'@keyframes\s+([^\s{]+)\s*\{'
+        keyframes_pattern = r"@keyframes\s+([^\s{]+)\s*\{"
         for match in re.finditer(keyframes_pattern, text, re.IGNORECASE):
             name = match.group(1)
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="keyframes",
-                name=name,
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["keyframes"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="keyframes",
+                    name=name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=["keyframes"],
+                )
+            )
 
         # Find @font-face
-        fontface_pattern = r'@font-face\s*\{'
+        fontface_pattern = r"@font-face\s*\{"
         for match in re.finditer(fontface_pattern, text, re.IGNORECASE):
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="font_face",
-                name="@font-face",
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["font-face"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="font_face",
+                    name="@font-face",
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=["font-face"],
+                )
+            )
 
         # Find :root rule (CSS variables)
-        root_pattern = r':root\s*\{'
+        root_pattern = r":root\s*\{"
         for match in re.finditer(root_pattern, text):
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="rule_set",
-                name=":root",
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["root", "has-variables"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="rule_set",
+                    name=":root",
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=["root", "has-variables"],
+                )
+            )
 
         # Find class selectors (common patterns)
-        class_pattern = r'^\s*(\.[a-zA-Z_][\w-]*(?:\s*[,>+~]\s*[^{]+)?)\s*\{'
+        class_pattern = r"^\s*(\.[a-zA-Z_][\w-]*(?:\s*[,>+~]\s*[^{]+)?)\s*\{"
         for match in re.finditer(class_pattern, text, re.MULTILINE):
             selector = match.group(1).strip()
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
             if len(selector) > 50:
                 selector = selector[:47] + "..."
-            structures.append(StructureNode(
-                type="rule_set",
-                name=selector,
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["class"]
-            ))
+            structures.append(
+                StructureNode(
+                    type="rule_set",
+                    name=selector,
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=["class"],
+                )
+            )
 
         # Find ID selectors
-        id_pattern = r'^\s*(#[a-zA-Z_][\w-]*(?:\s*[,>+~]\s*[^{]+)?)\s*\{'
+        id_pattern = r"^\s*(#[a-zA-Z_][\w-]*(?:\s*[,>+~]\s*[^{]+)?)\s*\{"
         for match in re.finditer(id_pattern, text, re.MULTILINE):
             selector = match.group(1).strip()
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
             if len(selector) > 50:
                 selector = selector[:47] + "..."
-            structures.append(StructureNode(
-                type="rule_set",
-                name=selector,
-                start_line=line_num,
-                end_line=line_num,
-                modifiers=["id"]
-            ))
+            structures.append(
+                StructureNode(
+                    type="rule_set",
+                    name=selector,
+                    start_line=line_num,
+                    end_line=line_num,
+                    modifiers=["id"],
+                )
+            )
 
         return structures
 
@@ -634,24 +645,26 @@ class CSSLanguage(BaseLanguage):
         import_pattern = r'@import\s+(?:url\(["\']?([^"\')\s]+)["\']?\)|["\']([^"\']+)["\'])'
         for match in re.finditer(import_pattern, content, re.IGNORECASE):
             url = match.group(1) or match.group(2)
-            line_num = content[:match.start()].count("\n") + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             if self._is_external_url(url):
                 continue
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=url,
-                line=line_num,
-                import_type="css_import",
-                imported_names=[],
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=url,
+                    line=line_num,
+                    import_type="css_import",
+                    imported_names=[],
+                )
+            )
 
         # Pattern 2: url() references in properties (fonts, images, etc.)
         url_pattern = r'url\(["\']?([^"\')\s]+)["\']?\)'
         for match in re.finditer(url_pattern, content, re.IGNORECASE):
             url = match.group(1)
-            line_num = content[:match.start()].count("\n") + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Skip data URIs and external URLs
             if url.startswith("data:") or self._is_external_url(url):
@@ -661,18 +674,22 @@ class CSSLanguage(BaseLanguage):
             url_lower = url.lower()
             if any(ext in url_lower for ext in [".woff", ".woff2", ".ttf", ".otf", ".eot"]):
                 import_type = "font"
-            elif any(ext in url_lower for ext in [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"]):
+            elif any(
+                ext in url_lower for ext in [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"]
+            ):
                 import_type = "image"
             else:
                 import_type = "asset"
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=url,
-                line=line_num,
-                import_type=import_type,
-                imported_names=[],
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=url,
+                    line=line_num,
+                    import_type=import_type,
+                    imported_names=[],
+                )
+            )
 
         return imports
 
@@ -689,28 +706,32 @@ class CSSLanguage(BaseLanguage):
         # Check for main stylesheet files
         main_patterns = ["main.css", "styles.css", "style.css", "app.css", "global.css"]
         if filename in main_patterns:
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="main_stylesheet",
-                name=filename,
-                line=1,
-                framework="CSS",
-            ))
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="main_stylesheet",
+                    name=filename,
+                    line=1,
+                    framework="CSS",
+                )
+            )
 
         # Check for :root with CSS variables
-        root_pattern = r':root\s*\{([^}]+)\}'
+        root_pattern = r":root\s*\{([^}]+)\}"
         root_match = re.search(root_pattern, content, re.DOTALL)
         if root_match:
-            line_num = content[:root_match.start()].count("\n") + 1
+            line_num = content[: root_match.start()].count("\n") + 1
             # Count CSS variables
             var_count = root_match.group(1).count("--")
             if var_count > 0:
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="css_variables",
-                    name=f":root ({var_count} variables)",
-                    line=line_num,
-                ))
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path,
+                        type="css_variables",
+                        name=f":root ({var_count} variables)",
+                        line=line_num,
+                    )
+                )
 
         return entry_points
 
@@ -740,15 +761,16 @@ class CSSLanguage(BaseLanguage):
                 return "entry_points"
 
             # Check for utility/helper stylesheets
-            if any(pattern in filename for pattern in [
-                "utils", "utility", "helpers", "mixins", "variables"
-            ]):
+            if any(
+                pattern in filename
+                for pattern in ["utils", "utility", "helpers", "mixins", "variables"]
+            ):
                 return "utilities"
 
             # Check for component stylesheets
-            if any(pattern in filename for pattern in [
-                "component", "button", "card", "modal", "form"
-            ]):
+            if any(
+                pattern in filename for pattern in ["component", "button", "card", "modal", "form"]
+            ):
                 return "core_logic"
 
             # Check for reset/normalize

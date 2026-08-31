@@ -53,7 +53,7 @@ def format_age(seconds: float) -> str:
 class NodeDiff:
     """Node-level changes for a re-scanned, modified file."""
 
-    new: set[str] = field(default_factory=set)        # node keys
+    new: set[str] = field(default_factory=set)  # node keys
     changed: set[str] = field(default_factory=set)
     removed: list[str] = field(default_factory=list)  # display names
     unchanged: set[str] = field(default_factory=set)
@@ -76,7 +76,7 @@ def node_hashes(structures, source_lines: list[str]) -> dict[str, str]:
                 # not structural changes
                 block = "\n".join(
                     line.rstrip()
-                    for line in source_lines[node.start_line - 1:node.end_line]
+                    for line in source_lines[node.start_line - 1 : node.end_line]
                     if line.strip()
                 )
                 hashes[key] = hashlib.sha1(block.encode()).hexdigest()
@@ -98,9 +98,7 @@ def diff_nodes(previous: dict[str, str], current: dict[str, str]) -> NodeDiff:
             diff.changed.add(key)
         else:
             diff.unchanged.add(key)
-    diff.removed = sorted(
-        key.rsplit(":", 1)[-1] for key in previous if key not in current
-    )
+    diff.removed = sorted(key.rsplit(":", 1)[-1] for key in previous if key not in current)
     return diff
 
 
@@ -125,8 +123,7 @@ class ScanMemory:
     def clear(self) -> None:
         self._files.clear()
 
-    def file_unchanged(self, path: str,
-                       detail: float = FULL_DETAIL) -> float | None:
+    def file_unchanged(self, path: str, detail: float = FULL_DETAIL) -> float | None:
         """Age in seconds of the previous identical scan — None if changed,
         unseen, expired (TTL), or previously shown at LESS detail than this
         request: "identical to the previous response" must refer to a
@@ -145,8 +142,9 @@ class ScanMemory:
             return age
         return None
 
-    def diff_and_record(self, path: str, structures, source_lines: list[str],
-                        detail: float = FULL_DETAIL) -> NodeDiff | None:
+    def diff_and_record(
+        self, path: str, structures, source_lines: list[str], detail: float = FULL_DETAIL
+    ) -> NodeDiff | None:
         """Node-diff against the previous scan (None on first scan), then
         record the current state. A previous record at less detail counts
         as a first scan — node-level suppression must never point at
@@ -157,9 +155,11 @@ class ScanMemory:
 
         self._files[path] = (fingerprint, current, time.time(), detail)
 
-        if (previous is None
-                or time.time() - previous[2] > _MEMORY_TTL_SECONDS
-                or previous[3] < detail):
+        if (
+            previous is None
+            or time.time() - previous[2] > _MEMORY_TTL_SECONDS
+            or previous[3] < detail
+        ):
             return None  # expired or shallower memory = first scan, never a ghost diff
         return diff_nodes(previous[1], current)
 

@@ -128,14 +128,14 @@ def _annotate_churn(results: dict, directory: str) -> None:
 
 @mcp.tool(
     tags={"exploration", "overview", "analysis", "primary"},
-    description="Deep architecture analysis - entry points, hot functions, call graph, git activity (RICH output ~3-5k tokens; for first-time orientation of an unknown codebase. For targeted questions, search_structures or scan_directory are cheaper first calls)"
+    description="Deep architecture analysis - entry points, hot functions, call graph, git activity (RICH output ~3-5k tokens; for first-time orientation of an unknown codebase. For targeted questions, search_structures or scan_directory are cheaper first calls)",
 )
 def preview_directory(
     directory: str,
     depth: str = "deep",
     max_files: int = 10000,
     max_entries: int = 20,
-    respect_gitignore: bool = True
+    respect_gitignore: bool = True,
 ) -> list[TextContent]:
     """
     Intelligent directory preview - analyzes all file types including code, markdown, text, HTML, CSS, SQL, and config files.
@@ -218,19 +218,19 @@ def preview_directory(
                 max_depth=5,
                 max_files_hint=max_files,
                 show_top_n=max_entries,
-                respect_gitignore=respect_gitignore
+                respect_gitignore=respect_gitignore,
             )
             return [TextContent(type="text", text=result + _git_activity_section(directory))]
 
         elif depth in ("normal", "deep"):
             # Code analysis (Layer 1 for normal, Layer 1+2 for deep)
-            enable_layer2 = (depth == "deep")
+            enable_layer2 = depth == "deep"
 
             cm = CodeMap(
                 directory=directory,
                 respect_gitignore=respect_gitignore,
                 max_files=max_files,
-                enable_layer2=enable_layer2
+                enable_layer2=enable_layer2,
             )
 
             code_map = cm.analyze()
@@ -239,7 +239,12 @@ def preview_directory(
             return [TextContent(type="text", text=output + _git_activity_section(directory))]
 
         else:
-            return [TextContent(type="text", text=f"Error: Invalid depth '{depth}'. Use 'quick', 'normal', or 'deep'.")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error: Invalid depth '{depth}'. Use 'quick', 'normal', or 'deep'.",
+                )
+            ]
 
     except FileNotFoundError:
         return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
@@ -278,12 +283,10 @@ def preview_directory(
 
 @mcp.tool(
     tags={"exploration", "navigation", "directories"},
-    description="List directory tree structure (folders only, no files) - USE THIS to see folder hierarchy"
+    description="List directory tree structure (folders only, no files) - USE THIS to see folder hierarchy",
 )
 def list_directories(
-    directory: str,
-    max_depth: int | None = 3,
-    respect_gitignore: bool = True
+    directory: str, max_depth: int | None = 3, respect_gitignore: bool = True
 ) -> list[TextContent]:
     """
     List directory tree showing only folders (no files).
@@ -344,7 +347,7 @@ def list_directories(
                 entries = sorted(entries, key=lambda x: x.name.lower())
 
                 for i, entry in enumerate(entries):
-                    is_last = (i == len(entries) - 1)
+                    is_last = i == len(entries) - 1
                     connector = "└─ " if is_last else "├─ "
                     extension = "   " if is_last else "│  "
 
@@ -371,7 +374,7 @@ def list_directories(
 
 @mcp.tool(
     tags={"remote", "http", "content"},
-    description="Scan file content directly - USE THIS for remote files, GitHub, APIs instead of saving to disk first"
+    description="Scan file content directly - USE THIS for remote files, GitHub, APIs instead of saving to disk first",
 )
 def scan_file_content(
     content: str,
@@ -380,7 +383,7 @@ def scan_file_content(
     show_decorators: bool = True,
     show_docstrings: bool = True,
     show_complexity: bool = False,
-    output_format: str = "tree"
+    output_format: str = "tree",
 ) -> list[TextContent]:
     """
     Scan file content directly without requiring a file path.
@@ -423,18 +426,16 @@ def scan_file_content(
         )
     """
     try:
-        structures = scanner.scan_content(
-            content=content,
-            filename=filename,
-            include_metadata=True
-        )
+        structures = scanner.scan_content(content=content, filename=filename, include_metadata=True)
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
-            return [TextContent(
-                type="text",
-                text=f"Error: Unsupported file type. Supported extensions: {supported}"
-            )]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error: Unsupported file type. Supported extensions: {supported}",
+                )
+            ]
 
         if not structures:
             return [TextContent(type="text", text=f"{filename} (empty file or no structure found)")]
@@ -448,7 +449,7 @@ def scan_file_content(
                 show_signatures=show_signatures,
                 show_decorators=show_decorators,
                 show_docstrings=show_docstrings,
-                show_complexity=show_complexity
+                show_complexity=show_complexity,
             )
             result = custom_formatter.format(filename, structures)
             return [TextContent(type="text", text=result)]
@@ -459,7 +460,7 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges. May append a self-levelling CONNECTIVITY note - candidate dead/orphan/drift across the whole corpus, silent when clean; candidates to look at, not verdicts"
+    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges. May append a self-levelling CONNECTIVITY note - candidate dead/orphan/drift across the whole corpus, silent when clean; candidates to look at, not verdicts",
 )
 def scan_file(
     file_path: str,
@@ -473,7 +474,7 @@ def scan_file(
     depth: str | None = None,
     delta: bool = True,
     mode: str = "balanced",
-    output_format: str = "tree"
+    output_format: str = "tree",
 ) -> list[TextContent]:
     """
     Scan any file and return its structure — works on code, markdown, text, HTML, CSS, SQL, config, and 20+ file types.
@@ -574,10 +575,16 @@ def scan_file(
         if delta and focus is None and output_format != "json":
             age = scan_memory.file_unchanged(file_path, detail)
             if age is not None:
-                return [TextContent(type="text", text=(
-                    f"{file_path}: unchanged since last scan "
-                    f"({format_age(age)} ago) — structure is identical "
-                    f"to the previous response (delta=False for full output)"))]
+                return [
+                    TextContent(
+                        type="text",
+                        text=(
+                            f"{file_path}: unchanged since last scan "
+                            f"({format_age(age)} ago) — structure is identical "
+                            f"to the previous response (delta=False for full output)"
+                        ),
+                    )
+                ]
 
         # Git activity first — recent line edits feed saliency selection
         # (weight 0.15 toward actively-worked nodes) and "[N edits/90d]"
@@ -586,40 +593,53 @@ def scan_file(
         churn = file_churn(file_path)
         line_edits = recent_line_edits(file_path) if churn else None
 
-        structures = scanner.scan_file(file_path, budget=budget,
-                                       line_edits=line_edits, mode=mode)
+        structures = scanner.scan_file(file_path, budget=budget, line_edits=line_edits, mode=mode)
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
-            return [TextContent(type="text", text=f"Unsupported file type. Supported extensions: {supported}")]
+            return [
+                TextContent(
+                    type="text", text=f"Unsupported file type. Supported extensions: {supported}"
+                )
+            ]
 
         if not structures:
-            return [TextContent(type="text", text=f"{file_path} (empty file or no structure found)")]
+            return [
+                TextContent(type="text", text=f"{file_path} (empty file or no structure found)")
+            ]
 
         if churn and structures[0].type == "file-info" and structures[0].file_metadata is not None:
             structures[0].file_metadata["churn_90d"] = churn
 
         if focus is not None:
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
-            return [TextContent(type="text", text=format_focus(
-                file_path, structures, source_lines, focus))]
+            return [
+                TextContent(
+                    type="text", text=format_focus(file_path, structures, source_lines, focus)
+                )
+            ]
 
         delta_note = ""
         if delta and output_format != "json":
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
-            diff = scan_memory.diff_and_record(file_path, structures,
-                                               source_lines, detail)
+            diff = scan_memory.diff_and_record(file_path, structures, source_lines, detail)
             if diff is not None:
                 changed, unchanged = apply_node_delta(structures, diff)
                 removed = f"; removed: {', '.join(diff.removed)}" if diff.removed else ""
                 delta_note = (
                     f"(delta since last scan: {changed} changed/new, "
                     f"{unchanged} unchanged — code detail only for changed"
-                    f"{removed}; delta=False for everything)\n")
+                    f"{removed}; delta=False for everything)\n"
+                )
 
         # Format output
         if output_format == "json":
-            return [TextContent(type="text", text=json.dumps(_structures_to_json(structures, file_path), indent=2))]
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(_structures_to_json(structures, file_path), indent=2),
+                )
+            ]
         else:
             # Use custom formatter with options
             custom_formatter = TreeFormatter(
@@ -627,7 +647,7 @@ def scan_file(
                 show_decorators=show_decorators,
                 show_docstrings=show_docstrings,
                 show_complexity=show_complexity,
-                condense=condense
+                condense=condense,
             )
             result = delta_note + custom_formatter.format(file_path, structures)
             result += _connectivity_note(file_path)
@@ -641,7 +661,7 @@ def scan_file(
 
 @mcp.tool(
     tags={"local", "directory", "exploration"},
-    description="Scan directory - file tree with one-line gists per file, code health and churn labels (cheap overview, good first call). Replaces Glob/ls for ALL file types"
+    description="Scan directory - file tree with one-line gists per file, code health and churn labels (cheap overview, good first call). Replaces Glob/ls for ALL file types",
 )
 def scan_directory(
     directory: str,
@@ -652,7 +672,7 @@ def scan_directory(
     delta: bool = True,
     mode: str = "balanced",
     depth: str | None = None,
-    output_format: str = "tree"
+    output_format: str = "tree",
 ) -> list[TextContent]:
     """
     Scan directory and show compact overview of all file structures (code, docs, markdown, config, text).
@@ -741,7 +761,8 @@ def scan_directory(
                 "shallow bird's-eye tier (one-line gists, no deep analysis), so "
                 "'depth' was ignored. Narrow breadth with pattern (e.g. '*/*' = "
                 "one level); for deeper per-file detail use scan_file(budget=) "
-                "or preview_directory(depth=).\n\n")
+                "or preview_directory(depth=).\n\n"
+            )
 
         results = scanner.scan_directory(
             directory=directory,
@@ -753,20 +774,26 @@ def scan_directory(
         )
 
         if not results:
-            return [TextContent(type="text", text=depth_note + f"No supported files found in {directory} matching {pattern}")]
+            return [
+                TextContent(
+                    type="text",
+                    text=depth_note + f"No supported files found in {directory} matching {pattern}",
+                )
+            ]
 
         warning = depth_note
         if max_files is not None and len(results) >= max_files:
             warning += (
-                f"Note: Limited to first {max_files} files; scanning stopped "
-                "at the limit\n\n"
+                f"Note: Limited to first {max_files} files; scanning stopped at the limit\n\n"
             )
 
         if output_format == "json":
             json_results = {}
             for file_path, structures in results.items():
                 if structures:
-                    json_results[file_path] = _structures_to_json(structures, file_path, return_dict=True)
+                    json_results[file_path] = _structures_to_json(
+                        structures, file_path, return_dict=True
+                    )
             return [TextContent(type="text", text=warning + json.dumps(json_results, indent=2))]
         else:
             _annotate_churn(results, directory)
@@ -786,31 +813,40 @@ def scan_directory(
                     elif results[path] and not is_file_info_stub(results[path]):
                         try:
                             lines = Path(path).read_text(errors="replace").split("\n")
-                            scan_memory.diff_and_record(path, results[path],
-                                                        lines, GIST_DETAIL)
+                            scan_memory.diff_and_record(path, results[path], lines, GIST_DETAIL)
                         except OSError:
                             pass
                 if unchanged_paths:
-                    display_results = {p: s for p, s in results.items()
-                                       if p not in set(unchanged_paths)}
+                    display_results = {
+                        p: s for p, s in results.items() if p not in set(unchanged_paths)
+                    }
 
             if delta and not display_results:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
-                return [TextContent(type="text", text=depth_note + (
-                    f"{directory}: all {len(unchanged_paths)} files unchanged "
-                    f"since last scan in this session ({names}) — "
-                    f"delta=False for full output"))]
+                return [
+                    TextContent(
+                        type="text",
+                        text=depth_note
+                        + (
+                            f"{directory}: all {len(unchanged_paths)} files unchanged "
+                            f"since last scan in this session ({names}) — "
+                            f"delta=False for full output"
+                        ),
+                    )
+                ]
 
             # ALWAYS use compact inline format for directory scans
             custom_formatter = DirectoryFormatter(
                 include_structures=True,
-                flatten_structures=True  # Always flat for directory overview
+                flatten_structures=True,  # Always flat for directory overview
             )
             result = warning + custom_formatter.format(directory, display_results)
             if unchanged_paths:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
-                result += (f"\nunchanged since last scan ({len(unchanged_paths)} "
-                           f"files): {names} (delta=False for everything)")
+                result += (
+                    f"\nunchanged since last scan ({len(unchanged_paths)} "
+                    f"files): {names} (delta=False for everything)"
+                )
             result += analyze_health(results)
             return [TextContent(type="text", text=result)]
 
@@ -822,13 +858,9 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "diff", "review"},
-    description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions"
+    description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions",
 )
-def scan_diff(
-    directory: str,
-    ref: str = "HEAD",
-    budget: int | None = 1500
-) -> list[TextContent]:
+def scan_diff(directory: str, ref: str = "HEAD", budget: int | None = 1500) -> list[TextContent]:
     """
     Structural diff of the working tree against a git ref.
 
@@ -869,7 +901,7 @@ def scan_diff(
 
 @mcp.tool(
     tags={"local", "analysis", "review", "divergence"},
-    description="Audit a directory for peer divergence - functions that break a call pattern their siblings across the codebase follow (peers calling X also call Y, this one doesn't). A REVIEW HINT to look at, not a verified bug list. Silent on a consistent codebase. Use to hunt drift, dead/missing connectivity, or misaligned implementations - cheaper and more focused than preview_directory when divergence is all you want"
+    description="Audit a directory for peer divergence - functions that break a call pattern their siblings across the codebase follow (peers calling X also call Y, this one doesn't). A REVIEW HINT to look at, not a verified bug list. Silent on a consistent codebase. Use to hunt drift, dead/missing connectivity, or misaligned implementations - cheaper and more focused than preview_directory when divergence is all you want",
 )
 def find_divergence(
     directory: str,
@@ -898,12 +930,16 @@ def find_divergence(
         cm = CodeMap(directory, respect_gitignore=respect_gitignore)
         result = cm.analyze()
         if not result.definitions or not result.calls:
-            return [TextContent(type="text", text=(
-                f"{directory}: no call graph to analyze "
-                f"(peer divergence needs code with cross-function calls)"))]
-        file_clusters = {
-            f: cluster for cluster, files in result.clusters.items() for f in files
-        }
+            return [
+                TextContent(
+                    type="text",
+                    text=(
+                        f"{directory}: no call graph to analyze "
+                        f"(peer divergence needs code with cross-function calls)"
+                    ),
+                )
+            ]
+        file_clusters = {f: cluster for cluster, files in result.clusters.items() for f in files}
         findings = find_divergences(
             result.definitions,
             result.calls,
@@ -921,7 +957,7 @@ def find_divergence(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search across all file types - BEST FIRST CALL for targeted questions, USE INSTEAD of Grep: content_pattern finds text WITH structural context (enclosing function/class/section) plus leads to definitions; name/type/decorator find structures"
+    description="Search across all file types - BEST FIRST CALL for targeted questions, USE INSTEAD of Grep: content_pattern finds text WITH structural context (enclosing function/class/section) plus leads to definitions; name/type/decorator find structures",
 )
 def search_structures(
     directory: str,
@@ -930,7 +966,7 @@ def search_structures(
     has_decorator: str | None = None,
     min_complexity: int | None = None,
     content_pattern: str | None = None,
-    output_format: str = "tree"
+    output_format: str = "tree",
 ) -> list[TextContent]:
     """
     Search for structures — or for text in its structural context — across a directory.
@@ -987,8 +1023,7 @@ def search_structures(
                 name_re = re.compile(name_pattern)
                 found = [h for h in found if h.node_name and name_re.search(h.node_name)]
             leads = find_leads(found, results)
-            return [TextContent(type="text",
-                                text=format_hits(found, content_pattern, leads))]
+            return [TextContent(type="text", text=format_hits(found, content_pattern, leads))]
 
         # Filter structures
         matching = {}
@@ -1001,7 +1036,7 @@ def search_structures(
                 type_filter=type_filter,
                 name_pattern=name_pattern,
                 has_decorator=has_decorator,
-                min_complexity=min_complexity
+                min_complexity=min_complexity,
             )
 
             if filtered:
@@ -1014,7 +1049,9 @@ def search_structures(
         if output_format == "json":
             json_results = {}
             for file_path, structures in matching.items():
-                json_results[file_path] = _structures_to_json(structures, file_path, return_dict=True)
+                json_results[file_path] = _structures_to_json(
+                    structures, file_path, return_dict=True
+                )
             return [TextContent(type="text", text=json.dumps(json_results, indent=2))]
         else:
             outputs = []
@@ -1032,7 +1069,7 @@ def _filter_structures(
     type_filter: str | None = None,
     name_pattern: str | None = None,
     has_decorator: str | None = None,
-    min_complexity: int | None = None
+    min_complexity: int | None = None,
 ) -> list[StructureNode]:
     """Filter structures based on criteria."""
     results = []
@@ -1047,11 +1084,12 @@ def _filter_structures(
         if name_pattern and not re.search(name_pattern, node.name):
             match = False
 
-        if has_decorator and (not node.decorators or not any(has_decorator in d for d in node.decorators)):
+        if has_decorator and (
+            not node.decorators or not any(has_decorator in d for d in node.decorators)
+        ):
             match = False
 
-        if (min_complexity and node.complexity
-                and node.complexity.get("lines", 0) < min_complexity):
+        if min_complexity and node.complexity and node.complexity.get("lines", 0) < min_complexity:
             match = False
 
         if match:
@@ -1064,7 +1102,7 @@ def _filter_structures(
                 type_filter=type_filter,
                 name_pattern=name_pattern,
                 has_decorator=has_decorator,
-                min_complexity=min_complexity
+                min_complexity=min_complexity,
             )
             results.extend(filtered_children)
 
@@ -1098,10 +1136,7 @@ def _structures_to_json(structures: list[StructureNode], file_path: str, return_
 
         return result
 
-    data = {
-        "file": file_path,
-        "structures": [node_to_dict(s) for s in structures]
-    }
+    data = {"file": file_path, "structures": [node_to_dict(s) for s in structures]}
 
     return data if return_dict else json.dumps(data, indent=2)
 

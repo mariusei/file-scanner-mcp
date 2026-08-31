@@ -38,11 +38,13 @@ def test_git_subprocess_does_not_inherit_mcp_stdin(monkeypatch, tmp_path):
 def _git(cwd, *args, date=None):
     env = None
     if date:
-        env = {**os.environ,
-               "GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date}
+        env = {**os.environ, "GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date}
     subprocess.run(
         ["git", "-c", "user.name=test", "-c", "user.email=test@test", *args],
-        cwd=cwd, check=True, capture_output=True, env=env,
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        env=env,
     )
 
 
@@ -168,11 +170,13 @@ class TestPerNodeChurn:
 
         _git(tmp_path, "init", "-q")
         (tmp_path / "mod.py").write_text(
-            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
+            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n"
+        )
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
         # change only beta — the alpha lines keep commit 1, beta gets commit 2
         (tmp_path / "mod.py").write_text(
-            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2 + 2\n")
+            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2 + 2\n"
+        )
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
 
         line_map = recent_line_edits(str(tmp_path / "mod.py"))
@@ -187,17 +191,17 @@ class TestPerNodeChurn:
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "mod.py"
-        path.write_text(
-            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
+        path.write_text("def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "first")
         path.write_text(
-            "def alpha():\n    return 1\n\n\ndef beta():\n    x = 2\n    return x + 2\n")
+            "def alpha():\n    return 1\n\n\ndef beta():\n    x = 2\n    return x + 2\n"
+        )
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "second")
 
         structures = FileScanner().scan_file(str(path), line_edits=recent_line_edits(str(path)))
 
         by_name = {n.name: n.recent_edits for n in structures if n.name in ("alpha", "beta")}
-        assert by_name["beta"] == 2      # def line from c1, body from c2
+        assert by_name["beta"] == 2  # def line from c1, body from c2
         assert by_name["alpha"] == 1
 
     def test_uniform_counts_suppressed(self, tmp_path):
@@ -208,8 +212,7 @@ class TestPerNodeChurn:
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "fresh.py"
-        path.write_text(
-            "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
+        path.write_text("def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n")
         _git(tmp_path, "add", "."), _git(tmp_path, "commit", "-qm", "only")
 
         structures = FileScanner().scan_file(str(path), line_edits=recent_line_edits(str(path)))
@@ -250,8 +253,9 @@ class TestFormatterIntegration:
 
         results = FileScanner().scan_directory(str(repo), pattern="**/*.py")
         _annotate_churn(results, str(repo))
-        output = DirectoryFormatter(include_structures=True,
-                                    flatten_structures=True).format(str(repo), results)
+        output = DirectoryFormatter(include_structures=True, flatten_structures=True).format(
+            str(repo), results
+        )
 
         assert "2x/90d" in output
 
@@ -263,8 +267,9 @@ class TestFormatterIntegration:
         (tmp_path / "f.py").write_text("def fn():\n    return call_something()\n")
         results = FileScanner().scan_directory(str(tmp_path), pattern="**/*.py")
         _annotate_churn(results, str(tmp_path))
-        output = DirectoryFormatter(include_structures=True,
-                                    flatten_structures=True).format(str(tmp_path), results)
+        output = DirectoryFormatter(include_structures=True, flatten_structures=True).format(
+            str(tmp_path), results
+        )
 
         assert "/90d" not in output
         assert _git_activity_section(str(tmp_path)) == ""

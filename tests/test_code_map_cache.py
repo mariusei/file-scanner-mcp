@@ -3,6 +3,7 @@
 The cache must be invisible in the output (same result, just faster) and only
 re-extract files whose stat-fingerprint changed.
 """
+
 from scantool.code_map import _EXTRACT_CACHE, CodeMap, clear_corpus_cache
 
 
@@ -12,16 +13,16 @@ def _result_tuple(r):
         len(r.definitions),
         len(r.calls),
         sorted(r.clusters),
-        sorted((n.name, round(n.in_weight, 6), round(n.out_weight, 6))
-               for n in r.call_graph.values()),
+        sorted(
+            (n.name, round(n.in_weight, 6), round(n.out_weight, 6)) for n in r.call_graph.values()
+        ),
         [f.name for f in r.hot_functions],
     )
 
 
 def _write_repo(root):
     (root / "a.py").write_text("def helper():\n    return 1\n")
-    (root / "b.py").write_text(
-        "from a import helper\n\ndef use():\n    return helper()\n")
+    (root / "b.py").write_text("from a import helper\n\ndef use():\n    return helper()\n")
 
 
 def test_cache_is_transparent(tmp_path):
@@ -31,7 +32,7 @@ def test_cache_is_transparent(tmp_path):
     cold = _result_tuple(CodeMap(str(tmp_path), use_cache=False).analyze())
     clear_corpus_cache()
     warm_build = _result_tuple(CodeMap(str(tmp_path)).analyze())  # populates cache
-    warm_hit = _result_tuple(CodeMap(str(tmp_path)).analyze())    # reuses cache
+    warm_hit = _result_tuple(CodeMap(str(tmp_path)).analyze())  # reuses cache
     assert cold == warm_build == warm_hit
 
 
@@ -46,11 +47,12 @@ def test_only_changed_file_re_extracts(tmp_path):
 
     # edit b.py — different size guarantees a different fingerprint; a.py untouched
     (tmp_path / "b.py").write_text(
-        "from a import helper\n\ndef use():\n    return helper() + 2  # changed\n")
+        "from a import helper\n\ndef use():\n    return helper() + 2  # changed\n"
+    )
     CodeMap(str(tmp_path)).analyze()
 
     assert cache["a.py"][1] is a_extraction  # reused, not re-extracted
-    assert cache["b.py"][1] is not None      # re-extracted
+    assert cache["b.py"][1] is not None  # re-extracted
 
     # transparency holds on the new state
     clear_corpus_cache()

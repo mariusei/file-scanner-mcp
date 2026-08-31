@@ -54,7 +54,9 @@ def test_scanner_registry():
 
     # Verify expected extensions are supported
     assert ".py" in supported_extensions, "Should support Python"
-    assert ".ts" in supported_extensions or ".tsx" in supported_extensions, "Should support TypeScript"
+    assert ".ts" in supported_extensions or ".tsx" in supported_extensions, (
+        "Should support TypeScript"
+    )
     assert ".txt" in supported_extensions, "Should support text"
 
     scanner_info = scanner.get_scanner_info()
@@ -89,7 +91,7 @@ def test_unix_timestamp_in_output():
     assert "]" in result, "Unix timestamp should be properly closed"
 
     # Verify we can extract the timestamp
-    match = re.search(r'\[ts:(\d+)\]', result)
+    match = re.search(r"\[ts:(\d+)\]", result)
     assert match is not None, "Should be able to extract unix timestamp with regex"
 
     unix_ts = int(match.group(1))
@@ -110,7 +112,7 @@ def test_unix_timestamp_in_output():
     # Check if file-info node has unix timestamp in modified field
     if "file-info:" in output and "modified:" in output:
         # Extract the line with modified timestamp
-        for line in output.split('\n'):
+        for line in output.split("\n"):
             if "modified:" in line:
                 assert "[ts:" in line, "File metadata should include unix timestamp"
                 break
@@ -188,6 +190,6 @@ def test_scan_directory_stubs_oversized_by_size_not_type(tmp_path, monkeypatch):
 
     huge = results[str(tmp_path / "huge.py")]
     small = results[str(tmp_path / "small.py")]
-    assert is_file_info_stub(huge)          # supported type, stubbed on size
-    assert not is_file_info_stub(small)     # under the cap, parsed
+    assert is_file_info_stub(huge)  # supported type, stubbed on size
+    assert not is_file_info_stub(small)  # under the cap, parsed
     assert any(n.name == "small" for n in small)

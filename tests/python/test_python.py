@@ -31,8 +31,9 @@ def test_nested_closure_call_attribution():
     helper_calls = [c for c in calls if c.callee_name == "helper"]
     assert helper_calls, "self.helper(...) call was not captured at all"
     # attributed to the method, not the closure
-    assert all(c.caller_name == "outer" for c in helper_calls), \
-        [c.caller_name for c in helper_calls]
+    assert all(c.caller_name == "outer" for c in helper_calls), [
+        c.caller_name for c in helper_calls
+    ]
 
 
 def test_basic_parsing(file_scanner):
@@ -52,10 +53,14 @@ def test_signatures(file_scanner):
     structures = file_scanner.scan_file("tests/python/samples/basic.py")
 
     # Find validate_email function
-    func = next((s for s in structures if s.type == "function" and s.name == "validate_email"), None)
+    func = next(
+        (s for s in structures if s.type == "function" and s.name == "validate_email"), None
+    )
     assert func is not None, "Should find validate_email"
     assert func.signature is not None, "Should have signature"
-    assert "(email: str) -> bool" in func.signature, f"Signature should match, got: {func.signature}"
+    assert "(email: str) -> bool" in func.signature, (
+        f"Signature should match, got: {func.signature}"
+    )
 
 
 def test_docstrings(file_scanner):
@@ -63,10 +68,14 @@ def test_docstrings(file_scanner):
     structures = file_scanner.scan_file("tests/python/samples/basic.py")
 
     # Find DatabaseManager class
-    db_class = next((s for s in structures if s.type == "class" and s.name == "DatabaseManager"), None)
+    db_class = next(
+        (s for s in structures if s.type == "class" and s.name == "DatabaseManager"), None
+    )
     assert db_class is not None, "Should find DatabaseManager"
     assert db_class.docstring is not None, "Should have docstring"
-    assert "database" in db_class.docstring.lower(), f"Docstring should mention database, got: {db_class.docstring}"
+    assert "database" in db_class.docstring.lower(), (
+        f"Docstring should mention database, got: {db_class.docstring}"
+    )
 
 
 def test_edge_cases(file_scanner):
@@ -80,10 +89,14 @@ def test_edge_cases(file_scanner):
     outer = next((s for s in structures if s.type == "class" and s.name == "OuterClass"), None)
     assert outer is not None, "Should find OuterClass"
     assert len(outer.children) > 0, "Should have nested classes"
-    assert any(c.type == "class" and c.name == "InnerClass" for c in outer.children), "Should find InnerClass"
+    assert any(c.type == "class" and c.name == "InnerClass" for c in outer.children), (
+        "Should find InnerClass"
+    )
 
     # Test decorators
-    showcase = next((s for s in structures if s.type == "class" and s.name == "DecoratorShowcase"), None)
+    showcase = next(
+        (s for s in structures if s.type == "class" and s.name == "DecoratorShowcase"), None
+    )
     assert showcase is not None, "Should find DecoratorShowcase"
 
     # Find property method
@@ -93,7 +106,9 @@ def test_edge_cases(file_scanner):
     assert "property" in prop_method.modifiers, "Should have property modifier"
 
     # Test async functions
-    async_service = next((s for s in structures if s.type == "class" and s.name == "AsyncService"), None)
+    async_service = next(
+        (s for s in structures if s.type == "class" and s.name == "AsyncService"), None
+    )
     assert async_service is not None, "Should find AsyncService"
 
     fetch_method = next((c for c in async_service.children if c.name == "fetch_data"), None)
@@ -122,7 +137,9 @@ def test_multi_line_docstrings(file_scanner):
     structures = file_scanner.scan_file("tests/python/samples/edge_cases.py")
 
     # Find multi_line_doc function
-    func = next((s for s in structures if s.type == "function" and s.name == "multi_line_doc"), None)
+    func = next(
+        (s for s in structures if s.type == "function" and s.name == "multi_line_doc"), None
+    )
     assert func is not None, "Should find multi_line_doc"
 
 
@@ -131,7 +148,9 @@ def test_complex_signatures(file_scanner):
     structures = file_scanner.scan_file("tests/python/samples/edge_cases.py")
 
     # Find GenericContainer class
-    generic = next((s for s in structures if s.type == "class" and s.name == "GenericContainer"), None)
+    generic = next(
+        (s for s in structures if s.type == "class" and s.name == "GenericContainer"), None
+    )
     assert generic is not None, "Should find GenericContainer"
 
     # Find process method with complex signature
@@ -141,7 +160,9 @@ def test_complex_signatures(file_scanner):
 
     # Check that complex types are preserved
     sig = process.signature
-    assert "List" in sig or "Dict" in sig or "Union" in sig, f"Should preserve complex types in: {sig}"
+    assert "List" in sig or "Dict" in sig or "Union" in sig, (
+        f"Should preserve complex types in: {sig}"
+    )
 
 
 def test_line_range_invariants(file_scanner):

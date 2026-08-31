@@ -86,7 +86,7 @@ class TestJinjaTagExtraction:
         assert '"base.html"' in meta_tags[0].expression
 
     def test_extracts_block_pair(self):
-        source = '{% block content %}hello{% endblock %}'
+        source = "{% block content %}hello{% endblock %}"
         tags = _extract_jinja_tags(source)
         opens = [t for t in tags if t.kind == "open" and t.construct == "block"]
         closes = [t for t in tags if t.kind == "close" and t.construct == "block"]
@@ -94,7 +94,7 @@ class TestJinjaTagExtraction:
         assert len(closes) == 1
 
     def test_extracts_if_elif_else(self):
-        source = '{% if x %}a{% elif y %}b{% else %}c{% endif %}'
+        source = "{% if x %}a{% elif y %}b{% else %}c{% endif %}"
         tags = _extract_jinja_tags(source)
         opens = [t for t in tags if t.kind == "open" and t.construct == "if"]
         mids = [t for t in tags if t.kind == "mid"]
@@ -104,7 +104,7 @@ class TestJinjaTagExtraction:
         assert len(closes) == 1
 
     def test_extracts_for_with_empty(self):
-        source = '{% for x in items %}{{ x }}{% empty %}none{% endfor %}'
+        source = "{% for x in items %}{{ x }}{% empty %}none{% endfor %}"
         tags = _extract_jinja_tags(source)
         opens = [t for t in tags if t.kind == "open" and t.construct == "for"]
         empties = [t for t in tags if t.kind == "mid" and t.construct == "empty"]
@@ -124,12 +124,12 @@ class TestJinjaTagExtraction:
         assert endif_tag.line == 4
 
     def test_whitespace_control(self):
-        tags = _extract_jinja_tags('{%- if x -%}hello{%- endif -%}')
+        tags = _extract_jinja_tags("{%- if x -%}hello{%- endif -%}")
         assert len([t for t in tags if t.kind == "open"]) == 1
         assert len([t for t in tags if t.kind == "close"]) == 1
 
     def test_comments(self):
-        tags = _extract_jinja_tags('{# This is a comment #}')
+        tags = _extract_jinja_tags("{# This is a comment #}")
         comments = [t for t in tags if t.kind == "comment"]
         assert len(comments) == 1
 
@@ -146,21 +146,21 @@ class TestJinjaTagExtraction:
 
 class TestSvelteTagExtraction:
     def test_if_else(self):
-        source = '{#if show}<p>Hello</p>{:else}<p>Bye</p>{/if}'
+        source = "{#if show}<p>Hello</p>{:else}<p>Bye</p>{/if}"
         tags = _extract_svelte_tags(source)
         assert len([t for t in tags if t.kind == "open"]) == 1
         assert len([t for t in tags if t.kind == "mid"]) == 1
         assert len([t for t in tags if t.kind == "close"]) == 1
 
     def test_each(self):
-        source = '{#each items as item}<li>{item.name}</li>{/each}'
+        source = "{#each items as item}<li>{item.name}</li>{/each}"
         tags = _extract_svelte_tags(source)
         opens = [t for t in tags if t.kind == "open" and t.construct == "each"]
         assert len(opens) == 1
         assert "items as item" in opens[0].expression
 
     def test_nested_if_in_each(self):
-        source = '{#each items as item}{#if item.show}<span/>{/if}{/each}'
+        source = "{#each items as item}{#if item.show}<span/>{/if}{/each}"
         tags = _extract_svelte_tags(source)
         opens = [t for t in tags if t.kind == "open"]
         closes = [t for t in tags if t.kind == "close"]
@@ -272,7 +272,7 @@ class TestBuildTemplateTree:
 
 class TestNeutralize:
     def test_preserves_length(self):
-        source = '<div>{% if x %}<span>{% endif %}</div>'
+        source = "<div>{% if x %}<span>{% endif %}</div>"
         tags = _extract_jinja_tags(source)
         result = _neutralize(source, tags)
         assert len(result) == len(source)
@@ -284,21 +284,21 @@ class TestNeutralize:
         assert result.count("\n") == source.count("\n")
 
     def test_replaces_tags_with_spaces(self):
-        source = '<div>{% if x %}<span></span>{% endif %}</div>'
+        source = "<div>{% if x %}<span></span>{% endif %}</div>"
         tags = _extract_jinja_tags(source)
         result = _neutralize(source, tags)
-        assert '{%' not in result
-        assert '%}' not in result
-        assert '<div>' in result
-        assert '<span>' in result
+        assert "{%" not in result
+        assert "%}" not in result
+        assert "<div>" in result
+        assert "<span>" in result
 
     def test_neutralizes_value_tags(self):
-        source = '<p>{{ name }}</p>'
+        source = "<p>{{ name }}</p>"
         tags = _extract_jinja_tags(source)
         result = _neutralize(source, tags)
-        assert '{{' not in result
-        assert '<p>' in result
-        assert '</p>' in result
+        assert "{{" not in result
+        assert "<p>" in result
+        assert "</p>" in result
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -309,8 +309,7 @@ class TestNeutralize:
 class TestMergeTrees:
     def test_template_wraps_html(self):
         template_nodes = [
-            StructureNode(type="template-block", name="block: content",
-                          start_line=1, end_line=10),
+            StructureNode(type="template-block", name="block: content", start_line=1, end_line=10),
         ]
         html_nodes = [
             StructureNode(type="section", name="main", start_line=3, end_line=8),
@@ -323,8 +322,7 @@ class TestMergeTrees:
 
     def test_sibling_nodes(self):
         template_nodes = [
-            StructureNode(type="template-extends", name="extends: base",
-                          start_line=1, end_line=1),
+            StructureNode(type="template-extends", name="extends: base", start_line=1, end_line=1),
         ]
         html_nodes = [
             StructureNode(type="section", name="main", start_line=5, end_line=10),
@@ -373,10 +371,12 @@ class TestPreprocess:
 
         # Should have if and each blocks
         types = set()
+
         def collect_types(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect_types(n.children)
+
         collect_types(result.template_nodes)
 
         assert "template-if" in types
@@ -410,10 +410,12 @@ class TestHTMLLanguageScanWithTemplates:
         assert len(structures) > 1  # More than just file-info would give
 
         types = set()
+
         def collect_types(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect_types(n.children)
+
         collect_types(structures)
 
         assert "template-extends" in types
@@ -426,10 +428,12 @@ class TestHTMLLanguageScanWithTemplates:
         assert structures is not None
 
         types = set()
+
         def collect_types(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect_types(n.children)
+
         collect_types(structures)
 
         # HTML structural elements should also be present
@@ -440,24 +444,30 @@ class TestHTMLLanguageScanWithTemplates:
         assert structures is not None
 
         types = set()
+
         def collect_types(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect_types(n.children)
+
         collect_types(structures)
 
         assert "template-if" in types or "template-each" in types
 
     def test_plain_html_unchanged(self, html_language):
-        source = b"<!DOCTYPE html><html><body><section id='main'><h1>Hello</h1></section></body></html>"
+        source = (
+            b"<!DOCTYPE html><html><body><section id='main'><h1>Hello</h1></section></body></html>"
+        )
         structures = html_language.scan(source)
         assert structures is not None
         # Should still work normally for plain HTML
         types = set()
+
         def collect_types(nodes):
             for n in nodes:
                 types.add(n.type)
                 collect_types(n.children)
+
         collect_types(structures)
         assert "template-if" not in types
         assert "template-block" not in types

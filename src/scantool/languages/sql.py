@@ -28,6 +28,7 @@ from .models import (
 # Optional PostgreSQL-specific parser
 try:
     from pglast import parse_sql
+
     HAS_PGLAST = True
 except ImportError:
     HAS_PGLAST = False
@@ -98,35 +99,46 @@ class SQLLanguage(BaseLanguage):
             'postgresql', 'mysql', 'sqlite', or 'generic'
         """
         try:
-            text = source_code.decode('utf-8', errors='replace').upper()
+            text = source_code.decode("utf-8", errors="replace").upper()
         except Exception:
-            return 'generic'
+            return "generic"
 
         # PostgreSQL markers (DO blocks, PL/pgSQL, system catalogs)
         postgres_markers = [
-            'DO $$', 'DO $', '$$;',  # DO blocks
-            'PLPGSQL', 'PL/PGSQL',  # PL/pgSQL
-            'RAISE NOTICE', 'RAISE EXCEPTION', 'RAISE WARNING',  # PL/pgSQL raise
-            'PARTITION BY LIST', 'PARTITION BY RANGE',  # PostgreSQL partitioning
-            'PG_CLASS', 'PG_NAMESPACE', 'PG_CATALOG',  # PostgreSQL system catalogs
-            'UNLOGGED TABLE', 'DEFERRABLE INITIALLY',  # PostgreSQL-specific syntax
-            'EXECUTE FORMAT(',  # Dynamic SQL in PL/pgSQL
+            "DO $$",
+            "DO $",
+            "$$;",  # DO blocks
+            "PLPGSQL",
+            "PL/PGSQL",  # PL/pgSQL
+            "RAISE NOTICE",
+            "RAISE EXCEPTION",
+            "RAISE WARNING",  # PL/pgSQL raise
+            "PARTITION BY LIST",
+            "PARTITION BY RANGE",  # PostgreSQL partitioning
+            "PG_CLASS",
+            "PG_NAMESPACE",
+            "PG_CATALOG",  # PostgreSQL system catalogs
+            "UNLOGGED TABLE",
+            "DEFERRABLE INITIALLY",  # PostgreSQL-specific syntax
+            "EXECUTE FORMAT(",  # Dynamic SQL in PL/pgSQL
         ]
 
         # MySQL markers
         mysql_markers = [
-            'ENGINE=INNODB', 'ENGINE=MYISAM',  # MySQL storage engines
-            'AUTO_INCREMENT',  # MySQL auto increment (different from PostgreSQL SERIAL)
-            'UNSIGNED',  # MySQL unsigned types
-            '`',  # Backtick identifiers (very common in MySQL)
-            'TINYINT', 'MEDIUMINT',  # MySQL-specific types
+            "ENGINE=INNODB",
+            "ENGINE=MYISAM",  # MySQL storage engines
+            "AUTO_INCREMENT",  # MySQL auto increment (different from PostgreSQL SERIAL)
+            "UNSIGNED",  # MySQL unsigned types
+            "`",  # Backtick identifiers (very common in MySQL)
+            "TINYINT",
+            "MEDIUMINT",  # MySQL-specific types
         ]
 
         # SQLite markers
         sqlite_markers = [
-            'AUTOINCREMENT',  # SQLite (vs AUTO_INCREMENT)
-            'WITHOUT ROWID',  # SQLite-specific
-            'PRAGMA',  # SQLite pragma statements
+            "AUTOINCREMENT",  # SQLite (vs AUTO_INCREMENT)
+            "WITHOUT ROWID",  # SQLite-specific
+            "PRAGMA",  # SQLite pragma statements
         ]
 
         # Count markers
@@ -136,13 +148,13 @@ class SQLLanguage(BaseLanguage):
 
         # Determine dialect based on markers
         if postgres_count > 0 and postgres_count >= mysql_count and postgres_count >= sqlite_count:
-            return 'postgresql'
+            return "postgresql"
         elif mysql_count > 0 and mysql_count > sqlite_count:
-            return 'mysql'
+            return "mysql"
         elif sqlite_count > 0:
-            return 'sqlite'
+            return "sqlite"
         else:
-            return 'generic'
+            return "generic"
 
     def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Scan SQL source code and extract structure."""
@@ -151,7 +163,7 @@ class SQLLanguage(BaseLanguage):
             self.detected_dialect = self._detect_dialect(source_code)
 
             # Use PostgreSQL-specific parser if available and dialect is PostgreSQL
-            if self.detected_dialect == 'postgresql' and HAS_PGLAST:
+            if self.detected_dialect == "postgresql" and HAS_PGLAST:
                 return self._scan_postgresql(source_code)
 
             # Use tree-sitter for other dialects
@@ -165,12 +177,11 @@ class SQLLanguage(BaseLanguage):
 
         except Exception as e:
             # Return error node instead of crashing
-            return [StructureNode(
-                type="error",
-                name=f"Failed to parse: {str(e)}",
-                start_line=1,
-                end_line=1
-            )]
+            return [
+                StructureNode(
+                    type="error", name=f"Failed to parse: {str(e)}", start_line=1, end_line=1
+                )
+            ]
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
@@ -184,7 +195,7 @@ class SQLLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -230,7 +241,9 @@ class SQLLanguage(BaseLanguage):
         traverse(root, structures)
         return structures
 
-    def _extract_table(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
+    def _extract_table(
+        self, node: Node, source_code: bytes, parent_node: Node | None = None
+    ) -> StructureNode:
         """Extract CREATE TABLE with columns."""
         # Get table name
         name_node = self._find_object_reference(node)
@@ -247,7 +260,9 @@ class SQLLanguage(BaseLanguage):
                         columns.append(col_info)
 
         # Get doc comment (preceding comment) - check parent's sibling first
-        docstring = self._extract_preceding_comment(parent_node if parent_node else node, source_code)
+        docstring = self._extract_preceding_comment(
+            parent_node if parent_node else node, source_code
+        )
 
         return StructureNode(
             type="table",
@@ -255,7 +270,7 @@ class SQLLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             docstring=docstring,
-            children=columns
+            children=columns,
         )
 
     def _extract_column(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -268,14 +283,36 @@ class SQLLanguage(BaseLanguage):
         for child in node.children:
             if child.type == "identifier" and col_name is None:
                 col_name = self._get_node_text(child, source_code)
-            elif child.type in ("int", "varchar", "text", "decimal", "timestamp",
-                               "date", "boolean", "bigint", "smallint", "float",
-                               "double", "char", "blob", "json"):
+            elif child.type in (
+                "int",
+                "varchar",
+                "text",
+                "decimal",
+                "timestamp",
+                "date",
+                "boolean",
+                "bigint",
+                "smallint",
+                "float",
+                "double",
+                "char",
+                "blob",
+                "json",
+            ):
                 col_type = self._get_node_text(child, source_code).upper()
             elif child.type.startswith("keyword_"):
                 keyword = self._get_node_text(child, source_code).upper()
-                if keyword in ("PRIMARY", "NOT", "NULL", "UNIQUE", "AUTO_INCREMENT",
-                              "DEFAULT", "KEY", "REFERENCES", "FOREIGN"):
+                if keyword in (
+                    "PRIMARY",
+                    "NOT",
+                    "NULL",
+                    "UNIQUE",
+                    "AUTO_INCREMENT",
+                    "DEFAULT",
+                    "KEY",
+                    "REFERENCES",
+                    "FOREIGN",
+                ):
                     constraints.append(keyword)
 
         if not col_name:
@@ -295,10 +332,12 @@ class SQLLanguage(BaseLanguage):
             name=col_name,
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
-            signature=signature
+            signature=signature,
         )
 
-    def _extract_view(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
+    def _extract_view(
+        self, node: Node, source_code: bytes, parent_node: Node | None = None
+    ) -> StructureNode:
         """Extract CREATE VIEW."""
         # Get view name
         name_node = self._find_object_reference(node)
@@ -316,7 +355,9 @@ class SQLLanguage(BaseLanguage):
                 signature = query_text
 
         # Get doc comment
-        docstring = self._extract_preceding_comment(parent_node if parent_node else node, source_code)
+        docstring = self._extract_preceding_comment(
+            parent_node if parent_node else node, source_code
+        )
 
         return StructureNode(
             type="view",
@@ -324,10 +365,12 @@ class SQLLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            docstring=docstring
+            docstring=docstring,
         )
 
-    def _extract_function(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
+    def _extract_function(
+        self, node: Node, source_code: bytes, parent_node: Node | None = None
+    ) -> StructureNode:
         """Extract CREATE FUNCTION."""
         # Get function name
         name_node = self._find_object_reference(node)
@@ -362,7 +405,9 @@ class SQLLanguage(BaseLanguage):
         signature = self._normalize_signature(signature) if signature else None
 
         # Get doc comment
-        docstring = self._extract_preceding_comment(parent_node if parent_node else node, source_code)
+        docstring = self._extract_preceding_comment(
+            parent_node if parent_node else node, source_code
+        )
 
         return StructureNode(
             type="function",
@@ -370,10 +415,12 @@ class SQLLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            docstring=docstring
+            docstring=docstring,
         )
 
-    def _extract_procedure(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
+    def _extract_procedure(
+        self, node: Node, source_code: bytes, parent_node: Node | None = None
+    ) -> StructureNode:
         """Extract CREATE PROCEDURE."""
         # Get procedure name
         name_node = self._find_object_reference(node)
@@ -387,7 +434,9 @@ class SQLLanguage(BaseLanguage):
             signature = self._normalize_signature(signature) if signature else None
 
         # Get doc comment
-        docstring = self._extract_preceding_comment(parent_node if parent_node else node, source_code)
+        docstring = self._extract_preceding_comment(
+            parent_node if parent_node else node, source_code
+        )
 
         return StructureNode(
             type="procedure",
@@ -395,10 +444,12 @@ class SQLLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            docstring=docstring
+            docstring=docstring,
         )
 
-    def _extract_trigger(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
+    def _extract_trigger(
+        self, node: Node, source_code: bytes, parent_node: Node | None = None
+    ) -> StructureNode:
         """Extract CREATE TRIGGER."""
         # Get trigger name
         name_node = self._find_object_reference(node)
@@ -434,7 +485,9 @@ class SQLLanguage(BaseLanguage):
         signature = " ".join(signature_parts) if signature_parts else None
 
         # Get doc comment
-        docstring = self._extract_preceding_comment(parent_node if parent_node else node, source_code)
+        docstring = self._extract_preceding_comment(
+            parent_node if parent_node else node, source_code
+        )
 
         return StructureNode(
             type="trigger",
@@ -442,10 +495,12 @@ class SQLLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            docstring=docstring
+            docstring=docstring,
         )
 
-    def _extract_index(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
+    def _extract_index(
+        self, node: Node, source_code: bytes, parent_node: Node | None = None
+    ) -> StructureNode:
         """Extract CREATE INDEX."""
         # Get index name
         index_name = None
@@ -472,7 +527,9 @@ class SQLLanguage(BaseLanguage):
         signature = " ".join(signature_parts) if signature_parts else None
 
         # Get doc comment
-        docstring = self._extract_preceding_comment(parent_node if parent_node else node, source_code)
+        docstring = self._extract_preceding_comment(
+            parent_node if parent_node else node, source_code
+        )
 
         return StructureNode(
             type="index",
@@ -480,7 +537,7 @@ class SQLLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            docstring=docstring
+            docstring=docstring,
         )
 
     def _find_object_reference(self, node: Node) -> Node | None:
@@ -519,7 +576,7 @@ class SQLLanguage(BaseLanguage):
                 elif comment_text.startswith("/*") and comment_text.endswith("*/"):
                     doc_text = comment_text[2:-2].strip()
                     # Get first non-empty line
-                    lines = [line.strip().lstrip('*').strip() for line in doc_text.split('\n')]
+                    lines = [line.strip().lstrip("*").strip() for line in doc_text.split("\n")]
                     for line in lines:
                         if line:
                             return line
@@ -561,14 +618,14 @@ class SQLLanguage(BaseLanguage):
             return self._extract_structure(tree.root_node, source_code)
 
         try:
-            text = source_code.decode('utf-8', errors='replace')
+            text = source_code.decode("utf-8", errors="replace")
             structures: list[StructureNode] = []
 
             # Parse with pglast
             statements = parse_sql(text)
 
             for stmt in statements:
-                if not hasattr(stmt, 'stmt'):
+                if not hasattr(stmt, "stmt"):
                     continue
 
                 stmt_obj = stmt.stmt
@@ -576,36 +633,36 @@ class SQLLanguage(BaseLanguage):
 
                 # Get statement location from byte offset
                 start_line = 1
-                if hasattr(stmt, 'stmt_location') and stmt.stmt_location >= 0:
-                    start_line = text[:stmt.stmt_location].count('\n') + 1
+                if hasattr(stmt, "stmt_location") and stmt.stmt_location >= 0:
+                    start_line = text[: stmt.stmt_location].count("\n") + 1
 
                 # Extract different PostgreSQL statement types
-                if stmt_type == 'CreateStmt':  # CREATE TABLE
+                if stmt_type == "CreateStmt":  # CREATE TABLE
                     node = self._extract_pgsql_table(stmt_obj, text, start_line)
                     if node:
                         structures.append(node)
 
-                elif stmt_type == 'ViewStmt':  # CREATE VIEW
+                elif stmt_type == "ViewStmt":  # CREATE VIEW
                     node = self._extract_pgsql_view(stmt_obj, text, start_line)
                     if node:
                         structures.append(node)
 
-                elif stmt_type == 'CreateFunctionStmt':  # CREATE FUNCTION
+                elif stmt_type == "CreateFunctionStmt":  # CREATE FUNCTION
                     node = self._extract_pgsql_function(stmt_obj, text, start_line)
                     if node:
                         structures.append(node)
 
-                elif stmt_type == 'IndexStmt':  # CREATE INDEX
+                elif stmt_type == "IndexStmt":  # CREATE INDEX
                     node = self._extract_pgsql_index(stmt_obj, text, start_line)
                     if node:
                         structures.append(node)
 
-                elif stmt_type == 'DoStmt':  # DO blocks (PL/pgSQL)
+                elif stmt_type == "DoStmt":  # DO blocks (PL/pgSQL)
                     node = self._extract_pgsql_do_block(stmt_obj, text, start_line)
                     if node:
                         structures.append(node)
 
-                elif stmt_type in ('AlterTableStmt', 'RenameStmt'):
+                elif stmt_type in ("AlterTableStmt", "RenameStmt"):
                     # ALTER TABLE, RENAME - show as metadata
                     node = self._extract_pgsql_alter(stmt_obj, stmt_type, text, start_line)
                     if node:
@@ -616,109 +673,114 @@ class SQLLanguage(BaseLanguage):
         except Exception as e:
             # If pglast fails, fallback to tree-sitter
             if self.show_errors:
-                return [StructureNode(
-                    type="error",
-                    name=f"PostgreSQL parse error: {str(e)}",
-                    start_line=1,
-                    end_line=1
-                )]
+                return [
+                    StructureNode(
+                        type="error",
+                        name=f"PostgreSQL parse error: {str(e)}",
+                        start_line=1,
+                        end_line=1,
+                    )
+                ]
             tree = self.parser.parse(source_code)
             return self._extract_structure(tree.root_node, source_code)
 
     def _extract_pgsql_table(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE TABLE from pglast AST."""
-        if not hasattr(stmt, 'relation') or not stmt.relation:
+        if not hasattr(stmt, "relation") or not stmt.relation:
             return None
 
-        table_name = stmt.relation.relname if hasattr(stmt.relation, 'relname') else 'unnamed'
+        table_name = stmt.relation.relname if hasattr(stmt.relation, "relname") else "unnamed"
 
         # Find actual line number
-        start_line, end_line = self._find_statement_lines(text, f'CREATE.*TABLE.*{table_name}', approx_line)
+        start_line, end_line = self._find_statement_lines(
+            text, f"CREATE.*TABLE.*{table_name}", approx_line
+        )
 
         # Extract columns if present
         children = []
-        if hasattr(stmt, 'tableElts') and stmt.tableElts:
+        if hasattr(stmt, "tableElts") and stmt.tableElts:
             for elt in stmt.tableElts:
-                if hasattr(elt, 'ColumnDef'):
+                if hasattr(elt, "ColumnDef"):
                     col_def = elt.ColumnDef
-                    col_name = col_def.colname if hasattr(col_def, 'colname') else 'unknown'
+                    col_name = col_def.colname if hasattr(col_def, "colname") else "unknown"
                     col_type = None
-                    if hasattr(col_def, 'typeName') and col_def.typeName:
-                        type_names = col_def.typeName.names if hasattr(col_def.typeName, 'names') else []
+                    if hasattr(col_def, "typeName") and col_def.typeName:
+                        type_names = (
+                            col_def.typeName.names if hasattr(col_def.typeName, "names") else []
+                        )
                         if type_names:
-                            col_type = str(type_names[-1].sval if hasattr(type_names[-1], 'sval') else '')
+                            col_type = str(
+                                type_names[-1].sval if hasattr(type_names[-1], "sval") else ""
+                            )
 
-                    children.append(StructureNode(
-                        type="column",
-                        name=col_name,
-                        start_line=start_line,
-                        end_line=start_line,
-                        signature=col_type
-                    ))
+                    children.append(
+                        StructureNode(
+                            type="column",
+                            name=col_name,
+                            start_line=start_line,
+                            end_line=start_line,
+                            signature=col_type,
+                        )
+                    )
 
         return StructureNode(
             type="table",
             name=table_name,
             start_line=start_line,
             end_line=end_line,
-            children=children
+            children=children,
         )
 
     def _extract_pgsql_view(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE VIEW from pglast AST."""
-        if not hasattr(stmt, 'view') or not stmt.view:
+        if not hasattr(stmt, "view") or not stmt.view:
             return None
 
-        view_name = stmt.view.relname if hasattr(stmt.view, 'relname') else 'unnamed'
-        start_line, end_line = self._find_statement_lines(text, f'CREATE.*VIEW.*{view_name}', approx_line)
-
-        return StructureNode(
-            type="view",
-            name=view_name,
-            start_line=start_line,
-            end_line=end_line
+        view_name = stmt.view.relname if hasattr(stmt.view, "relname") else "unnamed"
+        start_line, end_line = self._find_statement_lines(
+            text, f"CREATE.*VIEW.*{view_name}", approx_line
         )
+
+        return StructureNode(type="view", name=view_name, start_line=start_line, end_line=end_line)
 
     def _extract_pgsql_function(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE FUNCTION from pglast AST."""
-        if not hasattr(stmt, 'funcname') or not stmt.funcname:
+        if not hasattr(stmt, "funcname") or not stmt.funcname:
             return None
 
         # Get function name from list of identifiers
-        func_name = stmt.funcname[-1].sval if hasattr(stmt.funcname[-1], 'sval') else 'unnamed'
-        start_line, end_line = self._find_statement_lines(text, f'CREATE.*FUNCTION.*{func_name}', approx_line)
+        func_name = stmt.funcname[-1].sval if hasattr(stmt.funcname[-1], "sval") else "unnamed"
+        start_line, end_line = self._find_statement_lines(
+            text, f"CREATE.*FUNCTION.*{func_name}", approx_line
+        )
 
         return StructureNode(
-            type="function",
-            name=func_name,
-            start_line=start_line,
-            end_line=end_line
+            type="function", name=func_name, start_line=start_line, end_line=end_line
         )
 
     def _extract_pgsql_index(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE INDEX from pglast AST."""
-        if not hasattr(stmt, 'idxname'):
+        if not hasattr(stmt, "idxname"):
             return None
 
-        index_name = stmt.idxname if stmt.idxname else 'unnamed'
-        start_line, end_line = self._find_statement_lines(text, f'CREATE.*INDEX.*{index_name}', approx_line)
+        index_name = stmt.idxname if stmt.idxname else "unnamed"
+        start_line, end_line = self._find_statement_lines(
+            text, f"CREATE.*INDEX.*{index_name}", approx_line
+        )
 
         return StructureNode(
-            type="index",
-            name=index_name,
-            start_line=start_line,
-            end_line=end_line
+            type="index", name=index_name, start_line=start_line, end_line=end_line
         )
 
     def _extract_pgsql_do_block(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract DO block (PL/pgSQL anonymous block) from pglast AST."""
         # Find the actual DO $$ start from the approximate line
-        lines = text.split('\n')
+        lines = text.split("\n")
         start_line = approx_line
 
         # Search forward from approx_line for "DO $$" or "DO $"
         for i in range(max(0, approx_line - 1), min(len(lines), approx_line + 10)):
-            if re.search(r'\bDO\s+\$', lines[i], re.IGNORECASE):
+            if re.search(r"\bDO\s+\$", lines[i], re.IGNORECASE):
                 start_line = i + 1
                 break
 
@@ -726,67 +788,63 @@ class SQLLanguage(BaseLanguage):
 
         # Try to extract a meaningful name from the block
         name = "anonymous block"
-        if hasattr(stmt, 'args') and stmt.args:
+        if hasattr(stmt, "args") and stmt.args:
             # Look for comments or identifiers in the DO block
-            block_text = text[text.find('DO', (start_line-1) * 80):text.find('$$;', (start_line-1) * 80) + 3]
-            if 'DECLARE' in block_text.upper():
+            block_text = text[
+                text.find("DO", (start_line - 1) * 80) : text.find("$$;", (start_line - 1) * 80) + 3
+            ]
+            if "DECLARE" in block_text.upper():
                 name = "DO block (with declarations)"
-            elif 'RAISE NOTICE' in block_text.upper():
+            elif "RAISE NOTICE" in block_text.upper():
                 # Extract the notice message as the name
                 notice_match = re.search(r"RAISE NOTICE\s+'([^']+)'", block_text, re.IGNORECASE)
                 if notice_match:
                     notice_text = notice_match.group(1)[:50]
                     name = f"DO: {notice_text}"
 
-        return StructureNode(
-            type="do-block",
-            name=name,
-            start_line=start_line,
-            end_line=end_line
-        )
+        return StructureNode(type="do-block", name=name, start_line=start_line, end_line=end_line)
 
-    def _extract_pgsql_alter(self, stmt, stmt_type: str, text: str, approx_line: int) -> StructureNode | None:
+    def _extract_pgsql_alter(
+        self, stmt, stmt_type: str, text: str, approx_line: int
+    ) -> StructureNode | None:
         """Extract ALTER/RENAME statements from pglast AST."""
         start_line = approx_line
         end_line = approx_line
 
-        name = stmt_type.replace('Stmt', '').lower()
+        name = stmt_type.replace("Stmt", "").lower()
 
         # Try to get more specific info
-        if stmt_type == 'AlterTableStmt' and hasattr(stmt, 'relation'):
-            table_name = stmt.relation.relname if hasattr(stmt.relation, 'relname') else 'unknown'
+        if stmt_type == "AlterTableStmt" and hasattr(stmt, "relation"):
+            table_name = stmt.relation.relname if hasattr(stmt.relation, "relname") else "unknown"
             name = f"ALTER TABLE {table_name}"
-            start_line, end_line = self._find_statement_lines(text, f'ALTER.*TABLE.*{table_name}', approx_line)
-        elif stmt_type == 'RenameStmt':
+            start_line, end_line = self._find_statement_lines(
+                text, f"ALTER.*TABLE.*{table_name}", approx_line
+            )
+        elif stmt_type == "RenameStmt":
             name = "RENAME statement"
-            start_line, end_line = self._find_statement_lines(text, r'ALTER.*RENAME', approx_line)
+            start_line, end_line = self._find_statement_lines(text, r"ALTER.*RENAME", approx_line)
 
-        return StructureNode(
-            type="alter",
-            name=name,
-            start_line=start_line,
-            end_line=end_line
-        )
+        return StructureNode(type="alter", name=name, start_line=start_line, end_line=end_line)
 
     def _find_do_block_end(self, text: str, start_line: int) -> int:
         """Find the end line of a DO block starting at start_line."""
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # Look for $$; which ends a DO block
         for i in range(start_line - 1, min(len(lines), start_line + 100)):
-            if '$$;' in lines[i]:
+            if "$$;" in lines[i]:
                 return i + 1
 
         # Fallback: look for just semicolon
         for i in range(start_line - 1, min(len(lines), start_line + 100)):
-            if lines[i].strip().endswith(';'):
+            if lines[i].strip().endswith(";"):
                 return i + 1
 
         return start_line
 
     def _find_statement_lines(self, text: str, pattern: str, approx_line: int) -> tuple[int, int]:
         """Find the actual start and end line of a statement using regex."""
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # Search around the approximate line (prefer looking forward slightly)
         search_start = max(0, approx_line - 2)
@@ -798,7 +856,7 @@ class SQLLanguage(BaseLanguage):
                 # Find end line (look for semicolon or $$;)
                 end_line = start_line
                 for j in range(i, min(len(lines), i + 50)):
-                    if ';' in lines[j] or '$$;' in lines[j]:
+                    if ";" in lines[j] or "$$;" in lines[j]:
                         end_line = j + 1
                         break
                 return start_line, end_line
@@ -834,17 +892,19 @@ class SQLLanguage(BaseLanguage):
             if not target_file:
                 continue
 
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             # \ir is relative, others can be absolute or relative
             import_type = "relative" if command == "ir" else "file"
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=target_file,
-                import_type=import_type,
-                line=line
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=target_file,
+                    import_type=import_type,
+                    line=line,
+                )
+            )
 
         # MySQL: SOURCE file.sql (case-insensitive)
         # Support quoted paths: SOURCE "path with spaces.sql" or SOURCE 'path.sql'
@@ -855,14 +915,16 @@ class SQLLanguage(BaseLanguage):
             if not target_file:
                 continue
 
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=target_file,
-                import_type="source",
-                line=line
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=target_file,
+                    import_type="source",
+                    line=line,
+                )
+            )
 
         # MSSQL: :r file.sql
         # Support quoted paths: :r "path with spaces.sql" or :r 'path.sql'
@@ -873,59 +935,66 @@ class SQLLanguage(BaseLanguage):
             if not target_file:
                 continue
 
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=target_file,
-                import_type="file",
-                line=line
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path, target_module=target_file, import_type="file", line=line
+                )
+            )
 
         # Database switching: USE database_name
-        use_pattern = r'^\s*USE\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+        use_pattern = r"^\s*USE\s+([a-zA-Z_][a-zA-Z0-9_]*)"
         for match in re.finditer(use_pattern, content, re.MULTILINE | re.IGNORECASE):
             database_name = match.group(1).strip()
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=database_name,
-                import_type="database",
-                line=line
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=database_name,
+                    import_type="database",
+                    line=line,
+                )
+            )
 
         # Cross-database references: database.table or database.schema.table
         # Match database.table but only in SQL contexts (SELECT, FROM, JOIN, INSERT, UPDATE, etc.)
         # Use lookahead/lookbehind to ensure we're in a SQL statement context
-        cross_db_pattern = r'(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)'
+        cross_db_pattern = (
+            r"(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)"
+        )
         seen_refs = set()  # Avoid duplicates (per database name)
         for match in re.finditer(cross_db_pattern, content, re.IGNORECASE):
             database = match.group(1)
 
             # Skip common SQL keywords that might match (e.g., information_schema.tables)
-            skip_keywords = {'information_schema', 'performance_schema', 'mysql', 'sys'}
+            skip_keywords = {"information_schema", "performance_schema", "mysql", "sys"}
             if database.lower() in skip_keywords:
                 continue
 
             # Avoid duplicate database references (not full match, just database name)
             if database not in seen_refs:
                 seen_refs.add(database)
-                line = content[:match.start()].count('\n') + 1
+                line = content[: match.start()].count("\n") + 1
 
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=database,
-                    import_type="cross_database",
-                    line=line
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=database,
+                        import_type="cross_database",
+                        line=line,
+                    )
+                )
 
         # Handle relative imports for file-based imports
         for imp in imports:
             # Only resolve file-based imports that look like a path
-            if (imp.import_type in ("relative", "file", "source")
-                    and ('/' in imp.target_module or '\\' in imp.target_module
-                         or imp.target_module.endswith('.sql'))):
+            if imp.import_type in ("relative", "file", "source") and (
+                "/" in imp.target_module
+                or "\\" in imp.target_module
+                or imp.target_module.endswith(".sql")
+            ):
                 resolved = self._resolve_relative_import(file_path, imp.target_module)
                 if resolved:
                     imp.target_module = resolved
@@ -946,66 +1015,62 @@ class SQLLanguage(BaseLanguage):
         # Migration file detection by filename pattern
         # Patterns: YYYYMMDD_*.sql, *_up.sql, *_down.sql, V1_*.sql (Flyway), etc.
         migration_patterns = [
-            r'^\d{8}_',           # YYYYMMDD_
-            r'^\d{14}_',          # YYYYMMDDHHmmss_
-            r'_up\.sql$',         # *_up.sql
-            r'_down\.sql$',       # *_down.sql
-            r'^[Vv]\d+_',         # V1_*, v1_*, V2_* (Flyway)
-            r'^[0-9]+_',          # 001_*, 002_* (numbered migrations)
+            r"^\d{8}_",  # YYYYMMDD_
+            r"^\d{14}_",  # YYYYMMDDHHmmss_
+            r"_up\.sql$",  # *_up.sql
+            r"_down\.sql$",  # *_down.sql
+            r"^[Vv]\d+_",  # V1_*, v1_*, V2_* (Flyway)
+            r"^[0-9]+_",  # 001_*, 002_* (numbered migrations)
         ]
 
         for pattern in migration_patterns:
             if re.search(pattern, filename):
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="migration",
-                    name=Path(file_path).stem,
-                    line=1
-                ))
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path, type="migration", name=Path(file_path).stem, line=1
+                    )
+                )
                 break  # Only mark once as migration
 
         # Seed file detection by filename or directory
         seed_patterns = [
-            r'seed',              # *seed*.sql, seeds/*.sql
-            r'fixture',           # *fixture*.sql
-            r'sample',            # *sample*.sql
+            r"seed",  # *seed*.sql, seeds/*.sql
+            r"fixture",  # *fixture*.sql
+            r"sample",  # *sample*.sql
         ]
 
         for pattern in seed_patterns:
-            if re.search(pattern, filename, re.IGNORECASE) or re.search(pattern, file_path, re.IGNORECASE):
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="seed",
-                    name=Path(file_path).stem,
-                    line=1
-                ))
+            if re.search(pattern, filename, re.IGNORECASE) or re.search(
+                pattern, file_path, re.IGNORECASE
+            ):
+                entry_points.append(
+                    EntryPointInfo(file=file_path, type="seed", name=Path(file_path).stem, line=1)
+                )
                 break  # Only mark once as seed
 
         # CREATE DATABASE statements
-        create_db_pattern = r'^\s*CREATE\s+DATABASE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)'
+        create_db_pattern = (
+            r"^\s*CREATE\s+DATABASE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)"
+        )
         for match in re.finditer(create_db_pattern, content, re.MULTILINE | re.IGNORECASE):
             db_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="database_creation",
-                name=db_name,
-                line=line
-            ))
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="database_creation", name=db_name, line=line)
+            )
 
         # CREATE SCHEMA statements
-        create_schema_pattern = r'^\s*CREATE\s+SCHEMA\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)'
+        create_schema_pattern = (
+            r"^\s*CREATE\s+SCHEMA\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)"
+        )
         for match in re.finditer(create_schema_pattern, content, re.MULTILINE | re.IGNORECASE):
             schema_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="schema_creation",
-                name=schema_name,
-                line=line
-            ))
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="schema_creation", name=schema_name, line=line)
+            )
 
         return entry_points
 
@@ -1027,9 +1092,7 @@ class SQLLanguage(BaseLanguage):
         definitions = []
 
         # SQL-specific types that should be treated as definitions
-        sql_definition_types = {
-            "table", "view", "function", "procedure", "trigger", "index"
-        }
+        sql_definition_types = {"table", "view", "function", "procedure", "trigger", "index"}
 
         for node in structures:
             if node.type in sql_definition_types or node.type in ("class", "function", "method"):
@@ -1052,7 +1115,8 @@ class SQLLanguage(BaseLanguage):
                 child_kind = node.type if is_table else parent_kind
                 definitions.extend(
                     self._structures_to_definitions(
-                        file_path, node.children, child_parent, child_kind)
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions
@@ -1075,10 +1139,10 @@ class SQLLanguage(BaseLanguage):
         calls = []
 
         # CALL procedure_name(...)
-        call_pattern = r'\bCALL\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
+        call_pattern = r"\bCALL\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\("
         for match in re.finditer(call_pattern, content, re.IGNORECASE):
             callee_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             calls.append(
                 CallInfo(
@@ -1091,10 +1155,10 @@ class SQLLanguage(BaseLanguage):
             )
 
         # EXECUTE procedure_name(...)
-        exec_pattern = r'\bEXECUTE\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\('
+        exec_pattern = r"\bEXECUTE\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\("
         for match in re.finditer(exec_pattern, content, re.IGNORECASE):
             callee_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             calls.append(
                 CallInfo(
@@ -1126,21 +1190,21 @@ class SQLLanguage(BaseLanguage):
             filename = Path(file_path).name.lower()
 
             # Migrations
-            if any(pattern in filename for pattern in ['migration', 'migrate']):
+            if any(pattern in filename for pattern in ["migration", "migrate"]):
                 return "migrations"
-            if re.search(r'^\d{8}_', filename) or re.search(r'^[Vv]\d+_', filename):
+            if re.search(r"^\d{8}_", filename) or re.search(r"^[Vv]\d+_", filename):
                 return "migrations"
 
             # Schema files
-            if 'schema' in filename or 'CREATE DATABASE' in content.upper():
+            if "schema" in filename or "CREATE DATABASE" in content.upper():
                 return "schema"
 
             # Seed/fixture files
-            if any(pattern in filename for pattern in ['seed', 'fixture', 'sample']):
+            if any(pattern in filename for pattern in ["seed", "fixture", "sample"]):
                 return "seeds"
 
             # Stored procedures
-            if 'CREATE PROCEDURE' in content.upper() or 'CREATE FUNCTION' in content.upper():
+            if "CREATE PROCEDURE" in content.upper() or "CREATE FUNCTION" in content.upper():
                 return "procedures"
 
         return cluster

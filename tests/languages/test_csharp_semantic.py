@@ -59,7 +59,9 @@ using Dict = System.Collections.Generic.Dictionary<string, object>;
         alias_imports = [imp for imp in imports if imp.import_type == "alias_using"]
         assert len(alias_imports) == 2
 
-        mylist_import = next((imp for imp in alias_imports if "MyList" in (imp.imported_names or [])), None)
+        mylist_import = next(
+            (imp for imp in alias_imports if "MyList" in (imp.imported_names or [])), None
+        )
         assert mylist_import is not None
         assert "System.Collections.Generic.List" in mylist_import.target_module
 
@@ -337,7 +339,9 @@ using System.Linq;
         assert system_import.line == 1
 
         # Line 2: blank line, Line 3: using System.Collections; (but content string starts with newline, so it's actually line 2)
-        collections_import = next(imp for imp in imports if imp.target_module == "System.Collections")
+        collections_import = next(
+            imp for imp in imports if imp.target_module == "System.Collections"
+        )
         # Since the content starts with a newline, line numbers are shifted by 1
         assert collections_import.line == 2
 

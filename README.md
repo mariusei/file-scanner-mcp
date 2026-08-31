@@ -195,10 +195,10 @@ Analyzes codebase structure including entry points, import graph, call graph, an
 ```python
 preview_directory(
     directory=".",
-    depth="deep",             # "quick", "normal", or "deep" (default: "deep")
-    max_files=10000,          # Safety limit (default: 10000)
-    max_entries=20,           # Entries per section (default: 20)
-    respect_gitignore=True    # Honor .gitignore (default: True)
+    depth="deep",  # "quick", "normal", or "deep" (default: "deep")
+    max_files=10000,  # Safety limit (default: 10000)
+    max_entries=20,  # Entries per section (default: 20)
+    respect_gitignore=True,  # Honor .gitignore (default: True)
 )
 ```
 
@@ -247,17 +247,17 @@ Analysis: 486 files in 4.82s (layer1+layer2)
 ```python
 scan_file(
     file_path="path/to/file.py",
-    focus=None,                # Read ONE node verbatim by name ("query",
-                               # "DatabaseManager.query", a markdown heading)
-                               # instead of guessing line ranges — see below
-    show_signatures=True,      # Include function signatures with types
-    show_decorators=True,      # Include @decorator annotations
-    show_docstrings=True,      # Include first line of docstrings
-    show_complexity=False,     # Show complexity metrics
-    condense=True,             # Condensed skeletons (set False for verbatim lines)
-    budget=None,               # Approx token cap for skeletons — least salient
-                               # functions degrade first, output stays predictable
-    output_format="tree"       # "tree" or "json"
+    focus=None,  # Read ONE node verbatim by name ("query",
+    # "DatabaseManager.query", a markdown heading)
+    # instead of guessing line ranges — see below
+    show_signatures=True,  # Include function signatures with types
+    show_decorators=True,  # Include @decorator annotations
+    show_docstrings=True,  # Include first line of docstrings
+    show_complexity=False,  # Show complexity metrics
+    condense=True,  # Condensed skeletons (set False for verbatim lines)
+    budget=None,  # Approx token cap for skeletons — least salient
+    # functions degrade first, output stays predictable
+    output_format="tree",  # "tree" or "json"
 )
 ```
 
@@ -337,12 +337,12 @@ Scan content without requiring a file path. Works with remote files, APIs, or in
 ```python
 scan_file_content(
     content="def hello(): pass\n\nclass MyClass:\n    pass",
-    filename="example.py",     # Extension determines parser
+    filename="example.py",  # Extension determines parser
     show_signatures=True,
     show_decorators=True,
     show_docstrings=True,
     show_complexity=False,
-    output_format="tree"
+    output_format="tree",
 )
 ```
 
@@ -353,11 +353,11 @@ Shows directory tree with inline class/function names.
 ```python
 scan_directory(
     directory="./src",
-    pattern="**/*",                 # Glob pattern
-    max_files=None,                 # File limit
-    respect_gitignore=True,         # Honor .gitignore
-    exclude_patterns=None,          # Additional exclusions
-    output_format="tree"            # "tree" or "json"
+    pattern="**/*",  # Glob pattern
+    max_files=None,  # File limit
+    respect_gitignore=True,  # Honor .gitignore
+    exclude_patterns=None,  # Additional exclusions
+    output_format="tree",  # "tree" or "json"
 )
 ```
 
@@ -393,31 +393,16 @@ scan_directory(".", exclude_patterns=["tests/**", "docs/**"])
 
 ```python
 # Find test functions
-search_structures(
-    directory="./tests",
-    type_filter="function",
-    name_pattern="^test_"
-)
+search_structures(directory="./tests", type_filter="function", name_pattern="^test_")
 
 # Find classes ending in "Manager"
-search_structures(
-    directory="./src",
-    type_filter="class",
-    name_pattern=".*Manager$"
-)
+search_structures(directory="./src", type_filter="class", name_pattern=".*Manager$")
 
 # Find functions with @staticmethod
-search_structures(
-    directory="./src",
-    has_decorator="@staticmethod"
-)
+search_structures(directory="./src", has_decorator="@staticmethod")
 
 # Find complex functions (>100 lines)
-search_structures(
-    directory="./src",
-    type_filter="function",
-    min_complexity=100
-)
+search_structures(directory="./src", type_filter="function", min_complexity=100)
 ```
 
 ### list_directories - Folder structure
@@ -427,8 +412,8 @@ Shows directory tree without files.
 ```python
 list_directories(
     directory=".",
-    max_depth=3,              # Maximum depth (default: 3)
-    respect_gitignore=True    # Honor .gitignore (default: True)
+    max_depth=3,  # Maximum depth (default: 3)
+    respect_gitignore=True,  # Honor .gitignore (default: True)
 )
 ```
 

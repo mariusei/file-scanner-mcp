@@ -30,7 +30,7 @@ class DirectoryStats:
     def format_size(self) -> str:
         """Format size as human-readable string."""
         size: float = self.total_size
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        for unit in ["B", "KB", "MB", "GB"]:
             if size < 1024.0:
                 return f"{size:.1f}{unit}" if size >= 10 else f"{size:.0f}{unit}"
             size /= 1024.0
@@ -64,7 +64,7 @@ class DirectoryPreview:
         max_depth: int | None = 5,
         max_files_hint: int = 100000,
         show_top_n: int = 8,
-        respect_gitignore: bool = True
+        respect_gitignore: bool = True,
     ):
         """
         Initialize directory preview scanner.
@@ -230,8 +230,11 @@ class DirectoryPreview:
 
         while True:
             # Get children of current path
-            children = [p for p in self.dir_stats
-                       if p.startswith(current + "/") and p.count("/") == current.count("/") + 1]
+            children = [
+                p
+                for p in self.dir_stats
+                if p.startswith(current + "/") and p.count("/") == current.count("/") + 1
+            ]
 
             # Stop if not exactly 1 child
             if len(children) != 1:
@@ -314,13 +317,13 @@ class DirectoryPreview:
         if top_level_dirs:
             lines.append("Top dirs:        files   types          size")
 
-            for i, (path, stats) in enumerate(top_level_dirs[:self.show_top_n]):
+            for i, (path, stats) in enumerate(top_level_dirs[: self.show_top_n]):
                 dir_name = path.split("/")[-1] if "/" in path else path
 
                 # Format counts
                 file_count = f"{stats.file_count}".rjust(4)
                 if stats.file_count >= 1000:
-                    file_count = f"{stats.file_count/1000:.1f}k"
+                    file_count = f"{stats.file_count / 1000:.1f}k"
 
                 ext_str = stats.format_extensions()
                 size_str = stats.format_size()
@@ -341,7 +344,7 @@ class DirectoryPreview:
                     for j, (subdir_display, subdir_stats) in enumerate(subdirs_stats[:3]):
                         sub_count = f"{subdir_stats.file_count}"
                         if subdir_stats.file_count >= 1000:
-                            sub_count = f"{subdir_stats.file_count/1000:.1f}k"
+                            sub_count = f"{subdir_stats.file_count / 1000:.1f}k"
 
                         sub_ext = subdir_stats.format_extensions()
                         sub_size = subdir_stats.format_size()
@@ -352,12 +355,16 @@ class DirectoryPreview:
                             annotation = " ← high density"
 
                         prefix = "│  ├─ " if j < len(subdirs_stats[:3]) - 1 else "│  └─ "
-                        if i == len(top_level_dirs[:self.show_top_n]) - 1:
+                        if i == len(top_level_dirs[: self.show_top_n]) - 1:
                             prefix = "   ├─ " if j < len(subdirs_stats[:3]) - 1 else "   └─ "
 
                         # Ensure trailing slash for directory display
                         # subdir_display may be collapsed like "a/b/c" - we want "a/b/c/"
-                        display_name = subdir_display + "/" if not subdir_display.endswith("/") else subdir_display
+                        display_name = (
+                            subdir_display + "/"
+                            if not subdir_display.endswith("/")
+                            else subdir_display
+                        )
                         subline = f"{prefix}{display_name:<12} {sub_count.rjust(4)}    {sub_ext:<14} {sub_size:<8} {annotation}"
                         lines.append(subline)
 
@@ -385,9 +392,13 @@ class DirectoryPreview:
             lines.append("💡 Next: See WHAT'S INSIDE files (structure + metadata):")
             lines.extend(recommendations)
             lines.append("")
-            lines.append("  Why? scan_directory shows: 'auth.py (1-128) [3KB, 1mo ago] - login(), verify_token()'")
+            lines.append(
+                "  Why? scan_directory shows: 'auth.py (1-128) [3KB, 1mo ago] - login(), verify_token()'"
+            )
             lines.append("       vs ls/find shows: 'auth.py' (just filename)")
-            lines.append("       Then: scan_file('auth.py') for per-function line numbers → Read specific code.")
+            lines.append(
+                "       Then: scan_file('auth.py') for per-function line numbers → Read specific code."
+            )
 
         return "\n".join(lines)
 
@@ -409,8 +420,7 @@ class DirectoryPreview:
 
         # Filter out noise and hidden files
         noise_files = {".DS_Store", "Thumbs.db", ".gitkeep"}
-        files = [f for f in files
-                 if f not in noise_files and not f.startswith(".")]
+        files = [f for f in files if f not in noise_files and not f.startswith(".")]
 
         if not files:
             return ""
@@ -442,19 +452,38 @@ class DirectoryPreview:
 
         # Subtle boost for "code-like" files (has extension, not binary/archive)
         # Not prescriptive about which code is "better"
-        binary_exts = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "ico",
-                       "zip", "tar", "gz", "bz2", "7z", "rar",
-                       "pyc", "pyo", "class", "o", "so", "dylib", "dll", "exe"}
+        binary_exts = {
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "webp",
+            "bmp",
+            "ico",
+            "zip",
+            "tar",
+            "gz",
+            "bz2",
+            "7z",
+            "rar",
+            "pyc",
+            "pyo",
+            "class",
+            "o",
+            "so",
+            "dylib",
+            "dll",
+            "exe",
+        }
 
         code_like_files = sum(
-            count for ext, count in stats.extensions.items()
-            if ext and ext not in binary_exts
+            count for ext, count in stats.extensions.items() if ext and ext not in binary_exts
         )
 
         code_ratio = code_like_files / stats.file_count if stats.file_count > 0 else 0
 
         # Gentle boost: max 30% increase for pure code directories
-        score *= (1 + code_ratio * 0.3)
+        score *= 1 + code_ratio * 0.3
 
         return score
 
@@ -473,7 +502,7 @@ class DirectoryPreview:
             if not path.startswith(parent_path + "/"):
                 continue
 
-            relative = path[len(parent_path)+1:]
+            relative = path[len(parent_path) + 1 :]
             if "/" in relative:  # Not immediate child
                 continue
 
@@ -512,7 +541,9 @@ class DirectoryPreview:
         subdirs.sort(key=lambda x: x[1].file_count, reverse=True)
         return subdirs
 
-    def _generate_recommendations(self, top_level_dirs: list[tuple[str, DirectoryStats]]) -> list[str]:
+    def _generate_recommendations(
+        self, top_level_dirs: list[tuple[str, DirectoryStats]]
+    ) -> list[str]:
         """Generate actionable scan recommendations."""
         recommendations = []
 
@@ -537,7 +568,7 @@ class DirectoryPreview:
                 # Format file count
                 count_str = f"{stats.file_count} files"
                 if stats.file_count >= 1000:
-                    count_str = f"{stats.file_count/1000:.1f}k files"
+                    count_str = f"{stats.file_count / 1000:.1f}k files"
 
                 # Generate command
                 cmd = f'  scan_directory("{dir_name}", {pattern})'
@@ -549,7 +580,9 @@ class DirectoryPreview:
         for path, stats in top_level_dirs:
             dir_name = path.split("/")[-1] if "/" in path else path
             if not dir_name.startswith(".") and stats.file_count > 10:
-                recommendations.append(f'  preview_directory("{dir_name}")' + " " * 27 + " → deep dive")
+                recommendations.append(
+                    f'  preview_directory("{dir_name}")' + " " * 27 + " → deep dive"
+                )
                 break
 
         return recommendations[:4]  # Max 4 suggestions
@@ -558,7 +591,7 @@ class DirectoryPreview:
     def _format_size(size: int) -> str:
         """Format bytes as human-readable string."""
         value = float(size)
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        for unit in ["B", "KB", "MB", "GB"]:
             if value < 1024.0:
                 return f"{value:.0f}{unit}" if value < 10 else f"{value:.1f}{unit}"
             value /= 1024.0
@@ -568,7 +601,7 @@ class DirectoryPreview:
     def _format_count(count: int) -> str:
         """Format file count as human-readable string."""
         if count >= 1000:
-            return f"{count/1000:.1f}k"
+            return f"{count / 1000:.1f}k"
         return str(count)
 
 
@@ -577,7 +610,7 @@ def preview_directory(
     max_depth: int | None = 5,
     max_files_hint: int = 100000,
     show_top_n: int = 8,
-    respect_gitignore: bool = True
+    respect_gitignore: bool = True,
 ) -> str:
     """
     Fast directory preview for codebase reconnaissance.
@@ -622,7 +655,7 @@ def preview_directory(
         max_depth=max_depth,
         max_files_hint=max_files_hint,
         show_top_n=show_top_n,
-        respect_gitignore=respect_gitignore
+        respect_gitignore=respect_gitignore,
     )
 
     scanner.scan()

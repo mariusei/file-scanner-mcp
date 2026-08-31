@@ -36,8 +36,8 @@ _COMMIT_SEP = "\x01"
 class GitSignals:
     """File-level git activity, paths relative to the queried directory."""
 
-    churn: dict[str, int]                    # path -> commits in window
-    co_change: list[tuple[str, str, int]]    # (path_a, path_b, count), descending
+    churn: dict[str, int]  # path -> commits in window
+    co_change: list[tuple[str, str, int]]  # (path_a, path_b, count), descending
     window_days: int
 
 
@@ -119,11 +119,13 @@ def collect_git_signals(
         return None
 
     log = _run_git(
-        directory, "log",
+        directory,
+        "log",
         f"--since=@{int(since)}",
         "--name-only",
         f"--pretty=format:{_COMMIT_SEP}",
-        "--", ".",
+        "--",
+        ".",
     )
     if log is None:
         return None
@@ -151,14 +153,10 @@ def collect_git_signals(
             churn[rel] += 1
         if 2 <= len(files) <= _MASS_COMMIT_LIMIT:
             for i, a in enumerate(files):
-                for b in files[i + 1:]:
+                for b in files[i + 1 :]:
                     pairs[tuple(sorted((a, b)))] += 1
 
-    co_change = [
-        (a, b, count)
-        for (a, b), count in pairs.most_common(co_change_top)
-        if count >= 2
-    ]
+    co_change = [(a, b, count) for (a, b), count in pairs.most_common(co_change_top) if count >= 2]
     return GitSignals(churn=dict(churn), co_change=co_change, window_days=window_days)
 
 
@@ -174,12 +172,12 @@ def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
     if hot:
         lines.append("  hot: " + ", ".join(f"{p} {c}x" for p, c in hot))
     if signals.co_change:
-        lines.append("  co-change: " + ", ".join(
-            f"{a} <-> {b} {c}x" for a, b, c in signals.co_change))
+        lines.append(
+            "  co-change: " + ", ".join(f"{a} <-> {b} {c}x" for a, b, c in signals.co_change)
+        )
     if not lines:
         return ""
-    return (f"\n━━━ GIT ACTIVITY (last {signals.window_days}d of activity) ━━━\n"
-            + "\n".join(lines))
+    return f"\n━━━ GIT ACTIVITY (last {signals.window_days}d of activity) ━━━\n" + "\n".join(lines)
 
 
 def recent_line_edits(file_path: str, window_days: int = 90) -> dict[int, str] | None:
@@ -197,8 +195,7 @@ def recent_line_edits(file_path: str, window_days: int = 90) -> dict[int, str] |
     cutoff = _window_start(parent, window_days)
     if cutoff is None:
         return None
-    out = _run_git(parent, "blame", "--line-porcelain", "--",
-                   os.path.abspath(file_path))
+    out = _run_git(parent, "blame", "--line-porcelain", "--", os.path.abspath(file_path))
     if out is None:
         return None
     edits: dict[int, str] = {}
@@ -213,8 +210,11 @@ def recent_line_edits(file_path: str, window_days: int = 90) -> dict[int, str] |
                 edits[current_line] = current_sha
             continue
         parts = line.split()
-        if len(parts) >= 3 and len(parts[0]) == 40 and all(
-                c in "0123456789abcdef" for c in parts[0]):
+        if (
+            len(parts) >= 3
+            and len(parts[0]) == 40
+            and all(c in "0123456789abcdef" for c in parts[0])
+        ):
             current_sha = parts[0]
             current_line = int(parts[2])
             current_ts = known_ts.get(current_sha, 0.0)
@@ -232,9 +232,13 @@ def file_churn(file_path: str, window_days: int = 90) -> int | None:
     if since is None:
         return None
     out = _run_git(
-        parent, "rev-list", "--count",
+        parent,
+        "rev-list",
+        "--count",
         f"--since=@{int(since)}",
-        "HEAD", "--", os.path.abspath(file_path),
+        "HEAD",
+        "--",
+        os.path.abspath(file_path),
     )
     if out is None:
         return None

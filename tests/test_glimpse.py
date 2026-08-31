@@ -12,21 +12,22 @@ def fmt(tmp_path, files: dict[str, str], **formatter_kwargs):
     for name, content in files.items():
         (tmp_path / name).write_text(content)
     results = FileScanner().scan_directory(str(tmp_path), pattern="**/*")
-    formatter = DirectoryFormatter(include_structures=True,
-                                   flatten_structures=True, **formatter_kwargs)
+    formatter = DirectoryFormatter(
+        include_structures=True, flatten_structures=True, **formatter_kwargs
+    )
     return formatter.format(str(tmp_path), results)
 
 
-PY_FILE = '''\
+PY_FILE = """\
 def reconcile(ledger, txns, fx_rates):
     drift = sum(t.amount * fx_rates[t.ccy] for t in txns) - ledger.total
     buckets = {}
     for t in sorted(txns, key=lambda t: abs(t.amount), reverse=True):
         buckets.setdefault(t.ccy, []).append(t)
     return drift, buckets
-'''
+"""
 
-GO_FILE = '''\
+GO_FILE = """\
 package main
 
 func ClampValue(value, low, high int) int {
@@ -38,7 +39,7 @@ func ClampValue(value, low, high int) int {
 \t}
 \treturn value
 }
-'''
+"""
 
 
 class TestGlimpse:

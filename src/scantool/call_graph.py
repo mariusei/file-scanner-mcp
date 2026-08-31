@@ -48,7 +48,9 @@ def caller_resolution_health(
             dropped += 1
             drops[call.caller_name] += 1
     return CallerResolution(
-        total=total, resolved=total - dropped, dropped=dropped,
+        total=total,
+        resolved=total - dropped,
+        dropped=dropped,
         top_dropped=drops.most_common(5),
     )
 
@@ -75,9 +77,7 @@ def build_call_graph(
         else:
             fqn = f"{defn.file}:{defn.name}"
 
-        graph[fqn] = CallGraphNode(
-            name=fqn, file=defn.file, type=defn.type, callers=[], callees=[]
-        )
+        graph[fqn] = CallGraphNode(name=fqn, file=defn.file, type=defn.type, callers=[], callees=[])
 
     # Build lookup index for O(1) name resolution (instead of O(n) search)
     # Maps name suffix -> list of matching FQNs
@@ -152,9 +152,7 @@ def calculate_centrality(graph: dict[str, CallGraphNode]) -> None:
         node.centrality_score = node.in_weight * 2 + node.out_weight
 
 
-def find_hot_functions(
-    graph: dict[str, CallGraphNode], top_n: int = 10
-) -> list[CallGraphNode]:
+def find_hot_functions(graph: dict[str, CallGraphNode], top_n: int = 10) -> list[CallGraphNode]:
     """
     Find the most central (hot) functions in the call graph.
 
@@ -170,8 +168,6 @@ def find_hot_functions(
         calculate_centrality(graph)
 
     # Sort by centrality
-    sorted_nodes = sorted(
-        graph.values(), key=lambda n: n.centrality_score, reverse=True
-    )
+    sorted_nodes = sorted(graph.values(), key=lambda n: n.centrality_score, reverse=True)
 
     return sorted_nodes[:top_n]

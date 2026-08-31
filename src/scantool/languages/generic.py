@@ -8,7 +8,6 @@ get_extensions() returns an empty list. It should be instantiated directly
 by code_map.py as a fallback when no other language handler is available.
 """
 
-
 from .base import BaseLanguage
 from .models import (
     CallInfo,

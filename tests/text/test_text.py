@@ -25,7 +25,9 @@ def test_section_detection(file_scanner):
     structures = file_scanner.scan_file(str(test_dir / "samples" / "edge_cases.txt"))
 
     # All-caps sections
-    assert any(s.type == "section" and s.name.isupper() for s in structures), "Should find all-caps sections"
+    assert any(s.type == "section" and s.name.isupper() for s in structures), (
+        "Should find all-caps sections"
+    )
 
     # Underlined sections
     underlined = [s for s in structures if "underline" in s.name.lower()]
@@ -57,7 +59,9 @@ def test_edge_cases(file_scanner):
     # Test long name truncation
     long_section = next((s for s in structures if "EXCEED" in s.name), None)
     assert long_section is not None, "Should find long section name"
-    assert len(long_section.name) <= 50, f"Section name should be truncated to 50 chars, got {len(long_section.name)}"
+    assert len(long_section.name) <= 50, (
+        f"Section name should be truncated to 50 chars, got {len(long_section.name)}"
+    )
 
     # Test Unicode handling
     unicode_section = next((s for s in structures if "UNICODE" in s.name), None)

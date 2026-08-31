@@ -19,73 +19,75 @@ from .models import StructureNode
 # Template dialect detection and tag patterns
 # ═══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class TemplateTag:
     """A single parsed template tag with position info."""
-    kind: str         # "open", "close", "mid", "value", "comment", "meta"
-    construct: str    # "if", "for", "block", "extends", "include", etc.
-    expression: str   # The condition/variable/argument
-    start: int        # Byte offset in source
-    end: int          # Byte offset end
-    line: int         # 1-based line number
+
+    kind: str  # "open", "close", "mid", "value", "comment", "meta"
+    construct: str  # "if", "for", "block", "extends", "include", etc.
+    expression: str  # The condition/variable/argument
+    start: int  # Byte offset in source
+    end: int  # Byte offset end
+    line: int  # 1-based line number
 
 
 # Dialect: Jinja2 / Django / Twig / Nunjucks / Liquid
 # Syntax: {% tag %}, {{ expr }}, {# comment #}
 _JINJA_BLOCK_TAG = re.compile(
-    r'\{%-?\s*'
-    r'(if|elif|else|endif|'
-    r'for|empty|endfor|'
-    r'block|endblock|'
-    r'macro|endmacro|'
-    r'call|endcall|'
-    r'filter|endfilter|'
-    r'with|endwith|'
-    r'autoescape|endautoescape|'
-    r'spaceless|endspaceless|'
-    r'verbatim|endverbatim|'
-    r'raw|endraw|'
-    r'cache|endcache|'
-    r'set|extends|include|import|from|load|url|static|trans|blocktrans|endblocktrans)'
-    r'(?:\s+(.*?))?'
-    r'\s*-?%\}',
+    r"\{%-?\s*"
+    r"(if|elif|else|endif|"
+    r"for|empty|endfor|"
+    r"block|endblock|"
+    r"macro|endmacro|"
+    r"call|endcall|"
+    r"filter|endfilter|"
+    r"with|endwith|"
+    r"autoescape|endautoescape|"
+    r"spaceless|endspaceless|"
+    r"verbatim|endverbatim|"
+    r"raw|endraw|"
+    r"cache|endcache|"
+    r"set|extends|include|import|from|load|url|static|trans|blocktrans|endblocktrans)"
+    r"(?:\s+(.*?))?"
+    r"\s*-?%\}",
     re.DOTALL,
 )
-_JINJA_VALUE = re.compile(r'\{\{-?\s*(.*?)\s*-?\}\}', re.DOTALL)
-_JINJA_COMMENT = re.compile(r'\{#.*?#\}', re.DOTALL)
+_JINJA_VALUE = re.compile(r"\{\{-?\s*(.*?)\s*-?\}\}", re.DOTALL)
+_JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.DOTALL)
 
 # Dialect: Svelte
 # Syntax: {#if expr}, {:else}, {/if}, {#each expr}, {/each}
 _SVELTE_BLOCK = re.compile(
-    r'\{([#:/])'
-    r'(if|else|each|await|then|catch|key|snippet)'
-    r'(?:\s+(.*?))?'
-    r'\}',
+    r"\{([#:/])"
+    r"(if|else|each|await|then|catch|key|snippet)"
+    r"(?:\s+(.*?))?"
+    r"\}",
     re.DOTALL,
 )
 
 # Dialect: ERB / EJS / ASP
 # Syntax: <% code %>, <%= expr %>, <%# comment %>
-_ERB_TAG = re.compile(r'<%[=#-]?\s*(.*?)\s*-?%>', re.DOTALL)
+_ERB_TAG = re.compile(r"<%[=#-]?\s*(.*?)\s*-?%>", re.DOTALL)
 
 # Dialect: Blade (Laravel)
 # Syntax: @if(expr), @foreach(expr), @endif, @endforeach, etc.
 _BLADE_BLOCK = re.compile(
-    r'@(if|elseif|else|endif|'
-    r'foreach|endforeach|'
-    r'for|endfor|'
-    r'while|endwhile|'
-    r'forelse|empty|endforelse|'
-    r'switch|case|break|default|endswitch|'
-    r'unless|endunless|'
-    r'isset|endisset|'
-    r'section|endsection|show|'
-    r'extends|include|yield|component|endcomponent|slot|endslot)'
-    r'(?:\s*\((.*?)\))?',
+    r"@(if|elseif|else|endif|"
+    r"foreach|endforeach|"
+    r"for|endfor|"
+    r"while|endwhile|"
+    r"forelse|empty|endforelse|"
+    r"switch|case|break|default|endswitch|"
+    r"unless|endunless|"
+    r"isset|endisset|"
+    r"section|endsection|show|"
+    r"extends|include|yield|component|endcomponent|slot|endslot)"
+    r"(?:\s*\((.*?)\))?",
     re.DOTALL,
 )
-_BLADE_VALUE = re.compile(r'\{\{\s*(.*?)\s*\}\}', re.DOTALL)
-_BLADE_RAW_VALUE = re.compile(r'\{!!\s*(.*?)\s*!!\}', re.DOTALL)
+_BLADE_VALUE = re.compile(r"\{\{\s*(.*?)\s*\}\}", re.DOTALL)
+_BLADE_RAW_VALUE = re.compile(r"\{!!\s*(.*?)\s*!!\}", re.DOTALL)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -109,8 +111,7 @@ _JINJA_OPEN_CLOSE = {
 }
 _JINJA_CLOSE_TO_OPEN = {v: k for k, v in _JINJA_OPEN_CLOSE.items()}
 _JINJA_MID = {"elif", "else", "empty"}
-_JINJA_META = {"extends", "include", "import", "from", "load", "url", "static",
-               "trans", "set"}
+_JINJA_META = {"extends", "include", "import", "from", "load", "url", "static", "trans", "set"}
 
 _BLADE_OPEN_CLOSE = {
     "if": "endif",
@@ -142,16 +143,15 @@ def detect_dialect(source: str) -> str:
     """Detect which template dialect is present in the source."""
     sample = source[:4000]
     jinja_score = (
-        len(re.findall(r'\{%', sample)) * 2
-        + len(re.findall(r'\{\{', sample))
-        + len(re.findall(r'\{#', sample))
+        len(re.findall(r"\{%", sample)) * 2
+        + len(re.findall(r"\{\{", sample))
+        + len(re.findall(r"\{#", sample))
     )
-    svelte_score = len(re.findall(r'\{[#:/](?:if|each|await|key|snippet)', sample)) * 2
-    erb_score = len(re.findall(r'<%', sample)) * 2
-    blade_score = (
-        len(re.findall(r'@(?:if|foreach|for|section|extends|include|yield)\b', sample)) * 2
-        + len(re.findall(r'\{!!', sample))
-    )
+    svelte_score = len(re.findall(r"\{[#:/](?:if|each|await|key|snippet)", sample)) * 2
+    erb_score = len(re.findall(r"<%", sample)) * 2
+    blade_score = len(
+        re.findall(r"@(?:if|foreach|for|section|extends|include|yield)\b", sample)
+    ) * 2 + len(re.findall(r"\{!!", sample))
 
     # {{ }} alone is ambiguous (could be Handlebars, Blade, etc.)
     # Require at least score 2 to avoid false positives on JS objects
@@ -171,6 +171,7 @@ def detect_dialect(source: str) -> str:
 # Tag extraction per dialect
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def _line_at(source: str, offset: int) -> int:
     """1-based line number at byte offset."""
     return source[:offset].count("\n") + 1
@@ -188,20 +189,30 @@ def _extract_jinja_tags(source: str) -> list[TemplateTag]:
         if keyword in _JINJA_OPEN_CLOSE:
             tags.append(TemplateTag("open", keyword, expr, m.start(), m.end(), line))
         elif keyword in _JINJA_CLOSE_TO_OPEN:
-            tags.append(TemplateTag("close", _JINJA_CLOSE_TO_OPEN[keyword], expr,
-                                    m.start(), m.end(), line))
+            tags.append(
+                TemplateTag("close", _JINJA_CLOSE_TO_OPEN[keyword], expr, m.start(), m.end(), line)
+            )
         elif keyword in _JINJA_MID:
             tags.append(TemplateTag("mid", keyword, expr, m.start(), m.end(), line))
         elif keyword in _JINJA_META:
             tags.append(TemplateTag("meta", keyword, expr, m.start(), m.end(), line))
 
     for m in _JINJA_COMMENT.finditer(source):
-        tags.append(TemplateTag("comment", "comment", "",
-                                m.start(), m.end(), _line_at(source, m.start())))
+        tags.append(
+            TemplateTag("comment", "comment", "", m.start(), m.end(), _line_at(source, m.start()))
+        )
 
     for m in _JINJA_VALUE.finditer(source):
-        tags.append(TemplateTag("value", "expression", m.group(1).strip(),
-                                m.start(), m.end(), _line_at(source, m.start())))
+        tags.append(
+            TemplateTag(
+                "value",
+                "expression",
+                m.group(1).strip(),
+                m.start(),
+                m.end(),
+                _line_at(source, m.start()),
+            )
+        )
 
     tags.sort(key=lambda t: t.start)
     return tags
@@ -212,7 +223,7 @@ def _extract_svelte_tags(source: str) -> list[TemplateTag]:
     tags = []
 
     for m in _SVELTE_BLOCK.finditer(source):
-        prefix = m.group(1)   # '#', ':', '/'
+        prefix = m.group(1)  # '#', ':', '/'
         keyword = m.group(2)
         expr = (m.group(3) or "").strip()
         line = _line_at(source, m.start())
@@ -235,18 +246,14 @@ def _extract_erb_tags(source: str) -> list[TemplateTag]:
         content = m.group(1).strip()
         line = _line_at(source, m.start())
 
-        if re.match(r'(?:if|unless|case|while|for|do)\b', content):
-            tags.append(TemplateTag("open", "erb-block", content,
-                                    m.start(), m.end(), line))
-        elif re.match(r'end\b', content):
-            tags.append(TemplateTag("close", "erb-block", content,
-                                    m.start(), m.end(), line))
-        elif re.match(r'(?:elsif|else|when)\b', content):
-            tags.append(TemplateTag("mid", content.split()[0], content,
-                                    m.start(), m.end(), line))
+        if re.match(r"(?:if|unless|case|while|for|do)\b", content):
+            tags.append(TemplateTag("open", "erb-block", content, m.start(), m.end(), line))
+        elif re.match(r"end\b", content):
+            tags.append(TemplateTag("close", "erb-block", content, m.start(), m.end(), line))
+        elif re.match(r"(?:elsif|else|when)\b", content):
+            tags.append(TemplateTag("mid", content.split()[0], content, m.start(), m.end(), line))
         else:
-            tags.append(TemplateTag("value", "erb-expr", content,
-                                    m.start(), m.end(), line))
+            tags.append(TemplateTag("value", "erb-expr", content, m.start(), m.end(), line))
 
     tags.sort(key=lambda t: t.start)
     return tags
@@ -264,19 +271,36 @@ def _extract_blade_tags(source: str) -> list[TemplateTag]:
         if keyword in _BLADE_OPEN_CLOSE:
             tags.append(TemplateTag("open", keyword, expr, m.start(), m.end(), line))
         elif keyword in _BLADE_CLOSE_TO_OPEN:
-            tags.append(TemplateTag("close", _BLADE_CLOSE_TO_OPEN[keyword], expr,
-                                    m.start(), m.end(), line))
+            tags.append(
+                TemplateTag("close", _BLADE_CLOSE_TO_OPEN[keyword], expr, m.start(), m.end(), line)
+            )
         elif keyword in _BLADE_MID:
             tags.append(TemplateTag("mid", keyword, expr, m.start(), m.end(), line))
         elif keyword in _BLADE_META:
             tags.append(TemplateTag("meta", keyword, expr, m.start(), m.end(), line))
 
     for m in _BLADE_VALUE.finditer(source):
-        tags.append(TemplateTag("value", "expression", m.group(1).strip(),
-                                m.start(), m.end(), _line_at(source, m.start())))
+        tags.append(
+            TemplateTag(
+                "value",
+                "expression",
+                m.group(1).strip(),
+                m.start(),
+                m.end(),
+                _line_at(source, m.start()),
+            )
+        )
     for m in _BLADE_RAW_VALUE.finditer(source):
-        tags.append(TemplateTag("value", "raw-expression", m.group(1).strip(),
-                                m.start(), m.end(), _line_at(source, m.start())))
+        tags.append(
+            TemplateTag(
+                "value",
+                "raw-expression",
+                m.group(1).strip(),
+                m.start(),
+                m.end(),
+                _line_at(source, m.start()),
+            )
+        )
 
     tags.sort(key=lambda t: t.start)
     return tags
@@ -389,22 +413,38 @@ def _build_template_tree(tags: list[TemplateTag], total_lines: int = 0) -> list[
 
 # Structural types — always keep
 _KEEP_TYPES = {
-    "template-extends", "template-from", "template-import",
-    "template-include", "template-block", "template-macro",
-    "template-component", "template-slot", "template-section",
+    "template-extends",
+    "template-from",
+    "template-import",
+    "template-include",
+    "template-block",
+    "template-macro",
+    "template-component",
+    "template-slot",
+    "template-section",
 }
 
 # Conditional/loop types — keep only if they span multiple lines
 _KEEP_IF_MULTILINE = {
-    "template-if", "template-for", "template-each",
-    "template-unless", "template-await", "template-with",
-    "template-filter", "template-switch", "template-forelse",
-    "template-isset", "template-key", "template-snippet",
+    "template-if",
+    "template-for",
+    "template-each",
+    "template-unless",
+    "template-await",
+    "template-with",
+    "template-filter",
+    "template-switch",
+    "template-forelse",
+    "template-isset",
+    "template-key",
+    "template-snippet",
 }
 
 # Mid-tags — keep as children of kept parents
 _MID_TYPES = {
-    "template-elif", "template-else", "template-empty",
+    "template-elif",
+    "template-else",
+    "template-empty",
 }
 
 # Everything else (set, url, static, load, trans, etc.) is noise
@@ -434,7 +474,9 @@ def _filter_noise(nodes: list[StructureNode]) -> list[StructureNode]:
         if node.type in _KEEP_TYPES:
             result.append(node)
         elif node.type in _KEEP_IF_MULTILINE:
-            if not _is_single_line_block(node) and (node.end_line > node.start_line or node.children):
+            if not _is_single_line_block(node) and (
+                node.end_line > node.start_line or node.children
+            ):
                 result.append(node)
             # Single-line block: drop entirely (don't promote mid-tag orphans)
         elif node.type in _MID_TYPES:
@@ -448,6 +490,7 @@ def _filter_noise(nodes: list[StructureNode]) -> list[StructureNode]:
 # ═══════════════════════════════════════════════════════════════════════
 # Neutralization: replace template syntax with same-length whitespace
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def _neutralize(source: str, tags: list[TemplateTag]) -> str:
     """Replace all template tags with whitespace of identical length.
@@ -465,6 +508,7 @@ def _neutralize(source: str, tags: list[TemplateTag]) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 # Merge: interleave template and HTML structure trees
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def merge_trees(
     template_nodes: list[StructureNode],
@@ -525,7 +569,6 @@ def _nest_by_span(tagged_nodes: list[tuple[str, StructureNode]]) -> list[Structu
             all_children.sort(key=lambda x: (x[1].start_line, -x[1].end_line))
             node.children = _nest_by_span(all_children)
 
-
     return result
 
 
@@ -533,9 +576,11 @@ def _nest_by_span(tagged_nodes: list[tuple[str, StructureNode]]) -> list[Structu
 # Public API
 # ═══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class PreprocessResult:
     """Result of template preprocessing."""
+
     cleaned_source: bytes
     template_nodes: list[StructureNode]
     dialect: str

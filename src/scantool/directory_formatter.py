@@ -62,10 +62,16 @@ class DirectoryFormatter:
     # fact-dense representation in the pipeline (experiments/entropy_metrics/)
     GLIMPSE_MAX_CHARS = 100
 
-    def __init__(self, show_signatures: bool = True, show_decorators: bool = True,
-                 show_docstrings: bool = True, show_complexity: bool = False,
-                 include_structures: bool = True, flatten_structures: bool = False,
-                 include_glimpse: bool = True):
+    def __init__(
+        self,
+        show_signatures: bool = True,
+        show_decorators: bool = True,
+        show_docstrings: bool = True,
+        show_complexity: bool = False,
+        include_structures: bool = True,
+        flatten_structures: bool = False,
+        include_glimpse: bool = True,
+    ):
         """
         Initialize directory formatter with display options.
 
@@ -91,14 +97,19 @@ class DirectoryFormatter:
         from .languages.base import limit_skeleton_depth
 
         best = None
+
         def walk(nodes):
             nonlocal best
             for node in nodes:
-                if (node.code_skeleton and node.saliency is not None
-                        and (best is None or node.saliency > best.saliency)):
+                if (
+                    node.code_skeleton
+                    and node.saliency is not None
+                    and (best is None or node.saliency > best.saliency)
+                ):
                     best = node
                 if node.children:
                     walk(node.children)
+
         walk(structures or [])
         if best is None:
             return None
@@ -106,8 +117,9 @@ class DirectoryFormatter:
         # depth 2, not 1: generic skeletons carry the declaration as level 0,
         # so their body starts one level deeper than Python's body-only
         # skeletons — the char cap bounds the cost either way
-        lines = [line for line in limit_skeleton_depth(best.code_skeleton, 2)
-                 if line.strip() != "…"]
+        lines = [
+            line for line in limit_skeleton_depth(best.code_skeleton, 2) if line.strip() != "…"
+        ]
         if lines and best.name and best.name.split("(")[0].strip() in lines[0]:
             lines = lines[1:]  # declaration line repeats what the tree shows
         if not lines:
@@ -115,12 +127,10 @@ class DirectoryFormatter:
 
         text = f"> {best.name}: " + " ; ".join(line.strip() for line in lines)
         if len(text) > cls.GLIMPSE_MAX_CHARS:
-            text = text[:cls.GLIMPSE_MAX_CHARS - 1] + "…"
+            text = text[: cls.GLIMPSE_MAX_CHARS - 1] + "…"
         return text
 
-    def format(
-        self, base_dir: str, file_structures: dict[str, list[StructureNode] | None]
-    ) -> str:
+    def format(self, base_dir: str, file_structures: dict[str, list[StructureNode] | None]) -> str:
         """
         Format directory scan as hierarchical tree.
 
@@ -152,7 +162,7 @@ class DirectoryFormatter:
             "path": base_path,
             "children": {},
             "files": {},
-            "stats": {"files": 0, "classes": 0, "functions": 0, "methods": 0}
+            "stats": {"files": 0, "classes": 0, "functions": 0, "methods": 0},
         }
 
         for file_path_str, structures in file_structures.items():
@@ -179,7 +189,7 @@ class DirectoryFormatter:
                         "name": part,
                         "children": {},
                         "files": {},
-                        "stats": {"files": 0, "classes": 0, "functions": 0, "methods": 0}
+                        "stats": {"files": 0, "classes": 0, "functions": 0, "methods": 0},
                     }
                 current = current["children"][part]
 
@@ -189,7 +199,7 @@ class DirectoryFormatter:
                 "type": "file",
                 "name": filename,
                 "path": file_path,
-                "structures": structures
+                "structures": structures,
             }
 
             # Update stats recursively up the tree
@@ -239,8 +249,9 @@ class DirectoryFormatter:
         dirs = sorted(node["children"].items())
         files = sorted(node["files"].items())
 
-        all_items = [(name, child, True) for name, child in dirs] + \
-                    [(name, child, False) for name, child in files]
+        all_items = [(name, child, True) for name, child in dirs] + [
+            (name, child, False) for name, child in files
+        ]
 
         for i, (name, child, is_dir) in enumerate(all_items):
             is_last = i == len(all_items) - 1
@@ -267,18 +278,23 @@ class DirectoryFormatter:
 
                     # Format modified time as relative (e.g., "2 mins ago")
                     modified_iso = metadata.get("modified", "")
-                    modified_relative = self._format_relative_time(modified_iso) if modified_iso else ""
+                    modified_relative = (
+                        self._format_relative_time(modified_iso) if modified_iso else ""
+                    )
 
                     # Build metadata string: size, relative time, git churn
                     churn = metadata.get("churn_90d")
-                    meta_parts = [size, modified_relative,
-                                  f"{churn}x/90d" if churn else ""]
+                    meta_parts = [size, modified_relative, f"{churn}x/90d" if churn else ""]
                     meta_str = ", ".join(p for p in meta_parts if p)
                     lines.append(f"{prefix}{connector} {name} [{meta_str}]")
                 else:
                     # Supported file - show structures with metadata
-                    min_line = min(s.start_line for s in self._flatten(structures)) if structures else 1
-                    max_line = max(s.end_line for s in self._flatten(structures)) if structures else 1
+                    min_line = (
+                        min(s.start_line for s in self._flatten(structures)) if structures else 1
+                    )
+                    max_line = (
+                        max(s.end_line for s in self._flatten(structures)) if structures else 1
+                    )
 
                     # Extract metadata from file-info node if present
                     file_metadata = None
@@ -290,11 +306,12 @@ class DirectoryFormatter:
                     if file_metadata:
                         size = file_metadata.get("size_formatted", "")
                         modified_iso = file_metadata.get("modified", "")
-                        modified_relative = self._format_relative_time(modified_iso) if modified_iso else ""
+                        modified_relative = (
+                            self._format_relative_time(modified_iso) if modified_iso else ""
+                        )
                         churn = file_metadata.get("churn_90d")
 
-                        meta_parts = [size, modified_relative,
-                                      f"{churn}x/90d" if churn else ""]
+                        meta_parts = [size, modified_relative, f"{churn}x/90d" if churn else ""]
                         metadata_str = " [" + ", ".join(p for p in meta_parts if p) + "]"
 
                     # Format file line
@@ -306,24 +323,36 @@ class DirectoryFormatter:
                             names = [s.name for s in display_structures]
                             if len(names) > 5:
                                 # Truncate if too many
-                                structure_list = ", ".join(names[:5]) + f", ... ({len(names)} total)"
+                                structure_list = (
+                                    ", ".join(names[:5]) + f", ... ({len(names)} total)"
+                                )
                             else:
                                 structure_list = ", ".join(names)
-                            lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str} - {structure_list}")
+                            lines.append(
+                                f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str} - {structure_list}"
+                            )
                         else:
-                            lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}")
+                            lines.append(
+                                f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}"
+                            )
                         if self.include_glimpse:
                             glimpse = self._glimpse_line(structures)
                             if glimpse:
-                                lines.append(f"{prefix}{self.SPACE if is_last else self.VERTICAL} {glimpse}")
+                                lines.append(
+                                    f"{prefix}{self.SPACE if is_last else self.VERTICAL} {glimpse}"
+                                )
                     elif self.include_structures:
                         # Normal mode: show structures in tree below file
-                        lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}")
+                        lines.append(
+                            f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}"
+                        )
                         child_prefix = prefix + (self.SPACE if is_last else self.VERTICAL)
                         lines.extend(self._format_structures(structures, child_prefix))
                     else:
                         # No structures mode
-                        lines.append(f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}")
+                        lines.append(
+                            f"{prefix}{connector} {name} ({min_line}-{max_line}){metadata_str}"
+                        )
 
         return lines
 
@@ -398,7 +427,7 @@ class DirectoryFormatter:
         flattened = []
         for node in structures:
             # Skip non-code structures (file-info, imports)
-            if node.type in ('file-info', 'imports'):
+            if node.type in ("file-info", "imports"):
                 continue
 
             # Create shallow copy with no children
@@ -408,11 +437,11 @@ class DirectoryFormatter:
                 start_line=node.start_line,
                 end_line=node.end_line,
                 signature=None,  # Strip signatures for compactness
-                decorators=[],   # Strip decorators
+                decorators=[],  # Strip decorators
                 docstring=None,  # Strip docstrings
                 complexity=None,
                 modifiers=[],
-                children=[]  # No children - flattened!
+                children=[],  # No children - flattened!
             )
             flattened.append(shallow)
         return flattened

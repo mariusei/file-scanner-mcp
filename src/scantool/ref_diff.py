@@ -63,7 +63,7 @@ def diff_against_ref(
     scanner = FileScanner()
     formatter = TreeFormatter()
     sections: list[str] = []
-    unstructured: list[str] = []   # changed, but no structural change
+    unstructured: list[str] = []  # changed, but no structural change
     deleted: list[str] = []
     changed_files: set[str] = set()  # structured files touched — divergence suspects
     n_changed_files = 0
@@ -88,19 +88,20 @@ def diff_against_ref(
         changed_files.add(rel_path)
 
         if status.startswith("A"):
-            sections.append(f"\n{rel_path} [new file]\n"
-                            + formatter.format(abs_path, structures))
+            sections.append(f"\n{rel_path} [new file]\n" + formatter.format(abs_path, structures))
             continue
 
         renamed = f" [renamed from {parts[1]}]" if status.startswith("R") else ""
-        old_content = _run_git(directory, "show", f"{ref}:{parts[1] if status.startswith('R') else rel_path}")
+        old_content = _run_git(
+            directory, "show", f"{ref}:{parts[1] if status.startswith('R') else rel_path}"
+        )
         if old_content is None:
-            sections.append(f"\n{rel_path} [changed{renamed}]\n"
-                            + formatter.format(abs_path, structures))
+            sections.append(
+                f"\n{rel_path} [changed{renamed}]\n" + formatter.format(abs_path, structures)
+            )
             continue
 
-        old_structures = scanner.scan_content(old_content, rel_path,
-                                              include_metadata=False) or []
+        old_structures = scanner.scan_content(old_content, rel_path, include_metadata=False) or []
         new_lines = Path(abs_path).read_text(errors="replace").split("\n")
         diff = diff_nodes(
             node_hashes(old_structures, old_content.split("\n")),
@@ -113,8 +114,10 @@ def diff_against_ref(
             continue
 
         removed = f"\n  removed: {', '.join(diff.removed)}" if diff.removed else ""
-        header = (f"\n{rel_path} [changed{renamed}: {changed} new/changed, "
-                  f"{unchanged} unchanged]{removed}")
+        header = (
+            f"\n{rel_path} [changed{renamed}: {changed} new/changed, "
+            f"{unchanged} unchanged]{removed}"
+        )
         sections.append(header + "\n" + formatter.format(abs_path, structures))
 
     summary = [f"Structural diff against {ref}: {n_changed_files} files with changes"]
@@ -172,7 +175,9 @@ def _connectivity_section(toplevel: str, changed_files: set[str]) -> str:
                 f: cluster for cluster, files in result.clusters.items() for f in files
             }
             findings = find_divergences(
-                result.definitions, result.calls, suspects=suspects,
+                result.definitions,
+                result.calls,
+                suspects=suspects,
                 file_clusters=file_clusters,
             )
             if findings:

@@ -75,10 +75,10 @@ class GoLanguage(BaseLanguage):
         """Skip generated Go files."""
         filename_lower = filename.lower()
         # Skip generated protobuf files
-        if filename_lower.endswith('.pb.go'):
+        if filename_lower.endswith(".pb.go"):
             return True
         # Skip other generated files
-        return bool(filename_lower.endswith('.gen.go') or 'generated' in filename_lower)
+        return bool(filename_lower.endswith(".gen.go") or "generated" in filename_lower)
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -92,15 +92,15 @@ class GoLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip generated protobuf files
-        if filename.endswith('.pb.go'):
+        if filename.endswith(".pb.go"):
             return False
 
         # Skip other generated files
-        if filename.endswith('.gen.go') or 'generated' in filename:
+        if filename.endswith(".gen.go") or "generated" in filename:
             return False
 
         # Skip vendor (should be caught by COMMON_SKIP_DIRS, but double-check)
-        return '/vendor/' not in path_lower
+        return "/vendor/" not in path_lower
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Go files for inventory listing.
@@ -112,7 +112,7 @@ class GoLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # Generated files (double-check)
-        if filename.endswith('.pb.go') or filename.endswith('.gen.go'):
+        if filename.endswith(".pb.go") or filename.endswith(".gen.go"):
             return True
 
         return super().is_low_value_for_inventory(file_path, size)
@@ -133,7 +133,7 @@ class GoLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -215,7 +215,7 @@ class GoLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_function(self, node: Node, source_code: bytes) -> StructureNode:
@@ -244,7 +244,7 @@ class GoLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode:
@@ -279,7 +279,7 @@ class GoLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_signature(
@@ -345,9 +345,7 @@ class GoLanguage(BaseLanguage):
             modifiers.append("public")
         return modifiers
 
-    def _extract_function_modifiers(
-        self, name: str, node: Node, source_code: bytes
-    ) -> list[str]:
+    def _extract_function_modifiers(self, name: str, node: Node, source_code: bytes) -> list[str]:
         """Extract modifiers for functions/methods."""
         modifiers = []
 
@@ -359,50 +357,56 @@ class GoLanguage(BaseLanguage):
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
+        text = source_code.decode("utf-8", errors="replace")
         structures: list[StructureNode] = []
 
         # Find type declarations
-        for match in re.finditer(r'^type\s+(\w+)\s+(struct|interface)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(r"^type\s+(\w+)\s+(struct|interface)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
             type_kind = match.group(2)
-            structures.append(StructureNode(
-                type=type_kind,
-                name=match.group(1) + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+            structures.append(
+                StructureNode(
+                    type=type_kind,
+                    name=match.group(1) + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                )
+            )
 
         # Find function declarations
-        for match in re.finditer(r'^func\s+(\w+)\s*\((.*?)\)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(r"^func\s+(\w+)\s*\((.*?)\)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
             name = match.group(1)
             params = match.group(2)
 
-            structures.append(StructureNode(
-                type="function",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"({params})"
-            ))
+            structures.append(
+                StructureNode(
+                    type="function",
+                    name=name + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"({params})",
+                )
+            )
 
         # Find method declarations (with receivers)
         for match in re.finditer(
-            r'^func\s+\((\w+\s+\*?\w+)\)\s+(\w+)\s*\((.*?)\)', text, re.MULTILINE
+            r"^func\s+\((\w+\s+\*?\w+)\)\s+(\w+)\s*\((.*?)\)", text, re.MULTILINE
         ):
-            line_num = text[:match.start()].count('\n') + 1
+            line_num = text[: match.start()].count("\n") + 1
             receiver = match.group(1)
             name = match.group(2)
             params = match.group(3)
 
-            structures.append(StructureNode(
-                type="method",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"({receiver}) ({params})"
-            ))
+            structures.append(
+                StructureNode(
+                    type="method",
+                    name=name + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"({receiver}) ({params})",
+                )
+            )
 
         return structures
 
@@ -426,7 +430,7 @@ class GoLanguage(BaseLanguage):
         for match in re.finditer(single_import_pattern, content, re.MULTILINE):
             alias = match.group(1)  # Optional alias
             package = match.group(2)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -443,15 +447,15 @@ class GoLanguage(BaseLanguage):
         #     "fmt"
         #     alias "package"
         # )
-        grouped_pattern = r'import\s*\(\s*((?:[^)]+))\s*\)'
+        grouped_pattern = r"import\s*\(\s*((?:[^)]+))\s*\)"
         for match in re.finditer(grouped_pattern, content, re.DOTALL):
             import_block = match.group(1)
-            block_start_line = content[:match.start()].count('\n') + 1
+            block_start_line = content[: match.start()].count("\n") + 1
 
             # Parse each line in the import block
-            for line in import_block.split('\n'):
+            for line in import_block.split("\n"):
                 line = line.strip()
-                if not line or line.startswith('//'):
+                if not line or line.startswith("//"):
                     continue
 
                 # Match: alias "package" OR "package"
@@ -485,12 +489,12 @@ class GoLanguage(BaseLanguage):
         entry_points = []
 
         # Check if this is package main
-        is_main_package = bool(re.search(r'^\s*package\s+main', content, re.MULTILINE))
+        is_main_package = bool(re.search(r"^\s*package\s+main", content, re.MULTILINE))
 
         # Pattern 1: func main()
-        main_func_pattern = r'^\s*func\s+main\s*\(\s*\)'
+        main_func_pattern = r"^\s*func\s+main\s*\(\s*\)"
         for match in re.finditer(main_func_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             if is_main_package:
                 entry_points.append(
                     EntryPointInfo(
@@ -502,9 +506,9 @@ class GoLanguage(BaseLanguage):
                 )
 
         # Pattern 2: init() functions (run before main)
-        init_func_pattern = r'^\s*func\s+init\s*\(\s*\)'
+        init_func_pattern = r"^\s*func\s+init\s*\(\s*\)"
         for match in re.finditer(init_func_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -516,9 +520,9 @@ class GoLanguage(BaseLanguage):
 
         # Pattern 3: HTTP handlers (common pattern)
         # func (s *Server) HandleXyz(w http.ResponseWriter, r *http.Request)
-        handler_pattern = r'func\s+(?:\([^)]+\)\s+)?(\w+)\s*\([^)]*http\.ResponseWriter[^)]*\)'
+        handler_pattern = r"func\s+(?:\([^)]+\)\s+)?(\w+)\s*\([^)]*http\.ResponseWriter[^)]*\)"
         for match in re.finditer(handler_pattern, content):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             handler_name = match.group(1)
             entry_points.append(
                 EntryPointInfo(
@@ -571,7 +575,8 @@ class GoLanguage(BaseLanguage):
                 child_kind = node.type if is_container else parent_kind
                 definitions.extend(
                     self._structures_to_definitions(
-                        file_path, node.children, child_parent, child_kind)
+                        file_path, node.children, child_parent, child_kind
+                    )
                 )
 
         return definitions
@@ -650,12 +655,35 @@ class GoLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "for", "switch", "select", "go", "defer", "return",
-        "func", "type", "struct", "interface", "map", "chan",
-        "make", "new", "len", "cap", "append", "copy", "delete",
-        "close", "panic", "recover", "print", "println",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "for",
+            "switch",
+            "select",
+            "go",
+            "defer",
+            "return",
+            "func",
+            "type",
+            "struct",
+            "interface",
+            "map",
+            "chan",
+            "make",
+            "new",
+            "len",
+            "cap",
+            "append",
+            "copy",
+            "delete",
+            "close",
+            "panic",
+            "recover",
+            "print",
+            "println",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Go)
@@ -680,7 +708,7 @@ class GoLanguage(BaseLanguage):
                 return "entry_points"
 
             # Check package declaration
-            is_main_package = bool(re.search(r'^\s*package\s+main', content, re.MULTILINE))
+            is_main_package = bool(re.search(r"^\s*package\s+main", content, re.MULTILINE))
             if is_main_package:
                 return "entry_points"
 
@@ -733,9 +761,26 @@ class GoLanguage(BaseLanguage):
         """
         # Skip stdlib and common external packages
         stdlib_prefixes = (
-            "fmt", "os", "io", "net", "http", "time", "sync", "context",
-            "strings", "bytes", "encoding", "crypto", "runtime", "reflect",
-            "database", "log", "testing", "path", "regexp", "sort",
+            "fmt",
+            "os",
+            "io",
+            "net",
+            "http",
+            "time",
+            "sync",
+            "context",
+            "strings",
+            "bytes",
+            "encoding",
+            "crypto",
+            "runtime",
+            "reflect",
+            "database",
+            "log",
+            "testing",
+            "path",
+            "regexp",
+            "sort",
         )
         if module.split("/")[0] in stdlib_prefixes:
             return None

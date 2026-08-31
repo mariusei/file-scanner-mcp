@@ -43,8 +43,13 @@ require 'rails/all'
 
         assert len(imports) == 3
         assert any(imp.target_module == "json" and imp.import_type == "require" for imp in imports)
-        assert any(imp.target_module == "active_support" and imp.import_type == "require" for imp in imports)
-        assert any(imp.target_module == "rails/all" and imp.import_type == "require" for imp in imports)
+        assert any(
+            imp.target_module == "active_support" and imp.import_type == "require"
+            for imp in imports
+        )
+        assert any(
+            imp.target_module == "rails/all" and imp.import_type == "require" for imp in imports
+        )
 
     def test_extract_imports_require_relative(self, language):
         """Test extraction of require_relative statements."""
@@ -81,8 +86,13 @@ load "lib/tasks/custom.rake"
         imports = language.extract_imports("test.rb", content)
 
         assert len(imports) == 2
-        assert any(imp.target_module == "config.rb" and imp.import_type == "load" for imp in imports)
-        assert any(imp.target_module == "lib/tasks/custom.rake" and imp.import_type == "load" for imp in imports)
+        assert any(
+            imp.target_module == "config.rb" and imp.import_type == "load" for imp in imports
+        )
+        assert any(
+            imp.target_module == "lib/tasks/custom.rake" and imp.import_type == "load"
+            for imp in imports
+        )
 
     def test_extract_imports_autoload(self, language):
         """Test extraction of autoload statements."""
@@ -177,7 +187,9 @@ class Api::V1::UsersController < ActionController::API
   end
 end
 """
-        entry_points = language.find_entry_points("app/controllers/api/v1/users_controller.rb", content)
+        entry_points = language.find_entry_points(
+            "app/controllers/api/v1/users_controller.rb", content
+        )
 
         controller_entries = [ep for ep in entry_points if ep.type == "controller"]
         assert len(controller_entries) == 1
@@ -233,8 +245,12 @@ end
         route_entries = [ep for ep in entry_points if ep.type == "route"]
         assert len(route_entries) == 3
         assert any(ep.name == "GET /hello" and ep.framework == "Sinatra" for ep in route_entries)
-        assert any(ep.name == "POST /api/users" and ep.framework == "Sinatra" for ep in route_entries)
-        assert any(ep.name == "PUT /resource/:id" and ep.framework == "Sinatra" for ep in route_entries)
+        assert any(
+            ep.name == "POST /api/users" and ep.framework == "Sinatra" for ep in route_entries
+        )
+        assert any(
+            ep.name == "PUT /resource/:id" and ep.framework == "Sinatra" for ep in route_entries
+        )
 
     def test_find_entry_points_rack_app(self, language):
         """Test detection of Rack run statements."""
@@ -285,7 +301,9 @@ end
         test_entries = [ep for ep in entry_points if ep.type == "test"]
         assert len(test_entries) == 2
         assert any(ep.name == "describe User" and ep.framework == "RSpec" for ep in test_entries)
-        assert any(ep.name == "describe AdminUser" and ep.framework == "RSpec" for ep in test_entries)
+        assert any(
+            ep.name == "describe AdminUser" and ep.framework == "RSpec" for ep in test_entries
+        )
 
     def test_find_entry_points_rake_tasks(self, language):
         """Test detection of Rake tasks."""

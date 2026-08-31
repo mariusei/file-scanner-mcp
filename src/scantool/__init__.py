@@ -8,11 +8,11 @@ from importlib.metadata import PackageNotFoundError, version
 # Prevents deadlocks when Claude Code sends parallel MCP requests over stdio.
 # Without this, stdout buffering on Windows can cause responses to get stuck.
 # See: https://github.com/jlowin/fastmcp/issues/1625
-os.environ.setdefault('PYTHONUNBUFFERED', '1')
+os.environ.setdefault("PYTHONUNBUFFERED", "1")
 
-if hasattr(sys.stdout, 'reconfigure'):
+if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(write_through=True)
-if hasattr(sys.stderr, 'reconfigure'):
+if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(write_through=True)
 
 # The version is owned by pyproject.toml; the metadata lookup keeps them from

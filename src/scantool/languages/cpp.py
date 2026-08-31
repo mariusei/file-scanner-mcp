@@ -94,19 +94,25 @@ class CCppLanguage(BaseLanguage):
         filename_lower = filename.lower()
 
         # Skip protobuf generated files
-        if filename_lower.endswith('.pb.h') or filename_lower.endswith('.pb.cc') or filename_lower.endswith('.pb.cpp'):
+        if (
+            filename_lower.endswith(".pb.h")
+            or filename_lower.endswith(".pb.cc")
+            or filename_lower.endswith(".pb.cpp")
+        ):
             return True
 
         # Skip Qt generated files
-        if filename_lower.startswith('moc_') and (filename_lower.endswith('.cpp') or filename_lower.endswith('.h')):
+        if filename_lower.startswith("moc_") and (
+            filename_lower.endswith(".cpp") or filename_lower.endswith(".h")
+        ):
             return True
-        if filename_lower.startswith('ui_') and filename_lower.endswith('.h'):
+        if filename_lower.startswith("ui_") and filename_lower.endswith(".h"):
             return True
-        if filename_lower.startswith('qrc_') and filename_lower.endswith('.cpp'):
+        if filename_lower.startswith("qrc_") and filename_lower.endswith(".cpp"):
             return True
 
         # Skip other generated files
-        return bool(filename_lower.endswith('.gen.h') or filename_lower.endswith('.gen.cpp'))
+        return bool(filename_lower.endswith(".gen.h") or filename_lower.endswith(".gen.cpp"))
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -121,31 +127,35 @@ class CCppLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip protobuf generated files
-        if filename.endswith('.pb.h') or filename.endswith('.pb.cc') or filename.endswith('.pb.cpp'):
+        if (
+            filename.endswith(".pb.h")
+            or filename.endswith(".pb.cc")
+            or filename.endswith(".pb.cpp")
+        ):
             return False
 
         # Skip Qt meta-object compiler generated files
-        if filename.startswith('moc_') and (filename.endswith('.cpp') or filename.endswith('.h')):
+        if filename.startswith("moc_") and (filename.endswith(".cpp") or filename.endswith(".h")):
             return False
 
         # Skip Qt UI generated files
-        if filename.startswith('ui_') and filename.endswith('.h'):
+        if filename.startswith("ui_") and filename.endswith(".h"):
             return False
 
         # Skip Qt resource compiler generated files
-        if filename.startswith('qrc_') and filename.endswith('.cpp'):
+        if filename.startswith("qrc_") and filename.endswith(".cpp"):
             return False
 
         # Skip other generated files
-        if filename.endswith('.gen.h') or filename.endswith('.gen.cpp'):
+        if filename.endswith(".gen.h") or filename.endswith(".gen.cpp"):
             return False
 
         # Skip if "generated" is in filename
-        if 'generated' in filename and 'generator' not in filename:
+        if "generated" in filename and "generator" not in filename:
             return False
 
         # Skip build directories (should be caught by tier 1, but double-check)
-        return not ('/build/' in path_lower or '/cmake-build-' in path_lower)
+        return not ("/build/" in path_lower or "/cmake-build-" in path_lower)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value C/C++ files for inventory listing.
@@ -157,7 +167,7 @@ class CCppLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # Small header-only forward declarations
-        if filename.endswith(('.h', '.hpp', '.hh', '.hxx')) and size < 100:
+        if filename.endswith((".h", ".hpp", ".hh", ".hxx")) and size < 100:
             return True
 
         return super().is_low_value_for_inventory(file_path, size)
@@ -198,7 +208,7 @@ class CCppLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -289,7 +299,7 @@ class CCppLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             docstring=comment,
-            children=[]
+            children=[],
         )
 
     def _extract_class(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -319,7 +329,7 @@ class CCppLanguage(BaseLanguage):
             signature=signature,
             docstring=comment,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_enum(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -340,7 +350,7 @@ class CCppLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             docstring=comment,
-            children=[]
+            children=[],
         )
 
     def _extract_namespace(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -361,7 +371,7 @@ class CCppLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             docstring=comment,
-            children=[]
+            children=[],
         )
 
     def _extract_function(self, node: Node, source_code: bytes, root: Node) -> StructureNode | None:
@@ -376,7 +386,10 @@ class CCppLanguage(BaseLanguage):
             return None
 
         # Determine if it's a method or function
-        is_method = any(p.type in ("class_specifier", "struct_specifier") for p in self._get_ancestors(root, node))
+        is_method = any(
+            p.type in ("class_specifier", "struct_specifier")
+            for p in self._get_ancestors(root, node)
+        )
         type_name = "method" if is_method else "function"
 
         # Get signature
@@ -410,10 +423,12 @@ class CCppLanguage(BaseLanguage):
             docstring=comment,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
-    def _extract_function_declaration(self, node: Node, source_code: bytes, root: Node) -> StructureNode | None:
+    def _extract_function_declaration(
+        self, node: Node, source_code: bytes, root: Node
+    ) -> StructureNode | None:
         """Extract function declaration (not definition)."""
         # Find declarator in the declaration
         declarator = None
@@ -437,7 +452,10 @@ class CCppLanguage(BaseLanguage):
             return None
 
         # Determine if it's a method or function
-        is_method = any(p.type in ("class_specifier", "struct_specifier") for p in self._get_ancestors(root, node))
+        is_method = any(
+            p.type in ("class_specifier", "struct_specifier")
+            for p in self._get_ancestors(root, node)
+        )
         type_name = "method" if is_method else "function"
 
         # Get signature
@@ -462,7 +480,7 @@ class CCppLanguage(BaseLanguage):
             signature=self._normalize_signature(signature) if signature else None,
             docstring=comment,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode | None:
@@ -504,7 +522,7 @@ class CCppLanguage(BaseLanguage):
             signature=self._normalize_signature(signature) if signature else None,
             docstring=comment,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_function_name(self, declarator: Node, source_code: bytes) -> str | None:
@@ -571,7 +589,7 @@ class CCppLanguage(BaseLanguage):
                     return comment_text[2:].strip()
                 elif comment_text.startswith("/*"):
                     # Extract first line of block comment
-                    lines = comment_text[2:-2].strip().split('\n')
+                    lines = comment_text[2:-2].strip().split("\n")
                     for line in lines:
                         line = line.strip()
                         # Remove leading asterisks
@@ -614,9 +632,11 @@ class CCppLanguage(BaseLanguage):
         declarator = node.child_by_field_name("declarator")
         if declarator:
             for child in declarator.children:
-                if (child.type == "type_qualifier"
-                        and "const" in self._get_node_text(child, source_code)
-                        and "const" not in modifiers):
+                if (
+                    child.type == "type_qualifier"
+                    and "const" in self._get_node_text(child, source_code)
+                    and "const" not in modifiers
+                ):
                     modifiers.append("const")
 
         return modifiers
@@ -657,7 +677,7 @@ class CCppLanguage(BaseLanguage):
                 type="includes",
                 name="#include directives",
                 start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1
+                end_line=node.end_point[0] + 1,
             )
             parent_structures.append(include_node)
         else:
@@ -698,7 +718,7 @@ class CCppLanguage(BaseLanguage):
         local_include_pattern = r'^\s*#\s*include\s+"([^"]+)"'
         for match in re.finditer(local_include_pattern, content, re.MULTILINE):
             header = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -710,10 +730,10 @@ class CCppLanguage(BaseLanguage):
             )
 
         # Pattern 2: System includes - #include <file.h>
-        system_include_pattern = r'^\s*#\s*include\s+<([^>]+)>'
+        system_include_pattern = r"^\s*#\s*include\s+<([^>]+)>"
         for match in re.finditer(system_include_pattern, content, re.MULTILINE):
             header = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -743,9 +763,9 @@ class CCppLanguage(BaseLanguage):
 
         # Pattern 1: Standard main function
         # Matches: int main(), int main(void), int main(int argc, char** argv), etc.
-        main_pattern = r'^\s*(?:extern\s+)?(?:int|void)\s+main\s*\('
+        main_pattern = r"^\s*(?:extern\s+)?(?:int|void)\s+main\s*\("
         for match in re.finditer(main_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -757,9 +777,9 @@ class CCppLanguage(BaseLanguage):
 
         # Pattern 2: WinMain (Windows entry point)
         # int WINAPI WinMain(HINSTANCE hInstance, ...)
-        winmain_pattern = r'^\s*(?:int|DWORD)\s+(?:WINAPI|APIENTRY)\s+WinMain\s*\('
+        winmain_pattern = r"^\s*(?:int|DWORD)\s+(?:WINAPI|APIENTRY)\s+WinMain\s*\("
         for match in re.finditer(winmain_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -770,9 +790,9 @@ class CCppLanguage(BaseLanguage):
             )
 
         # Pattern 3: wWinMain (Unicode Windows entry point)
-        wwmain_pattern = r'^\s*(?:int|DWORD)\s+(?:WINAPI|APIENTRY)\s+wWinMain\s*\('
+        wwmain_pattern = r"^\s*(?:int|DWORD)\s+(?:WINAPI|APIENTRY)\s+wWinMain\s*\("
         for match in re.finditer(wwmain_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -783,9 +803,9 @@ class CCppLanguage(BaseLanguage):
             )
 
         # Pattern 4: DllMain (Windows DLL entry point)
-        dllmain_pattern = r'^\s*BOOL\s+(?:WINAPI|APIENTRY)\s+DllMain\s*\('
+        dllmain_pattern = r"^\s*BOOL\s+(?:WINAPI|APIENTRY)\s+DllMain\s*\("
         for match in re.finditer(dllmain_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             entry_points.append(
                 EntryPointInfo(
                     file=file_path,
@@ -797,9 +817,9 @@ class CCppLanguage(BaseLanguage):
 
         # Pattern 5: TEST macros (Google Test, Catch2, etc.)
         # TEST(TestSuite, TestName) or TEST_F(Fixture, TestName)
-        test_macro_pattern = r'^\s*TEST(?:_F|_P)?\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)'
+        test_macro_pattern = r"^\s*TEST(?:_F|_P)?\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)"
         for match in re.finditer(test_macro_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             suite_name = match.group(1)
             test_name = match.group(2)
             entry_points.append(
@@ -815,7 +835,7 @@ class CCppLanguage(BaseLanguage):
         # TEST_CASE("description", "[tag]")
         catch_test_pattern = r'^\s*TEST_CASE\s*\(\s*"([^"]+)"'
         for match in re.finditer(catch_test_pattern, content, re.MULTILINE):
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
             test_desc = match.group(1)
             entry_points.append(
                 EntryPointInfo(
@@ -859,7 +879,9 @@ class CCppLanguage(BaseLanguage):
             if node.type == "function_definition":
                 # Find the function name from the declarator
                 declarator = node.child_by_field_name("declarator")
-                func_name = self._extract_function_name(declarator, source_bytes) if declarator else None
+                func_name = (
+                    self._extract_function_name(declarator, source_bytes) if declarator else None
+                )
                 if func_name:
                     # Traverse children with this function as context
                     for child in node.children:
@@ -921,17 +943,56 @@ class CCppLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "else", "for", "while", "do", "switch", "case",
-        "return", "break", "continue", "goto", "sizeof", "alignof",
-        "typeof", "decltype", "static_cast", "dynamic_cast",
-        "const_cast", "reinterpret_cast", "new", "delete",
-        "throw", "catch", "try", "class", "struct", "union",
-        "enum", "namespace", "template", "typename", "typedef",
-        "using", "virtual", "override", "final", "inline",
-        "constexpr", "noexcept", "explicit", "static", "extern",
-        "register", "volatile", "mutable", "thread_local",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "else",
+            "for",
+            "while",
+            "do",
+            "switch",
+            "case",
+            "return",
+            "break",
+            "continue",
+            "goto",
+            "sizeof",
+            "alignof",
+            "typeof",
+            "decltype",
+            "static_cast",
+            "dynamic_cast",
+            "const_cast",
+            "reinterpret_cast",
+            "new",
+            "delete",
+            "throw",
+            "catch",
+            "try",
+            "class",
+            "struct",
+            "union",
+            "enum",
+            "namespace",
+            "template",
+            "typename",
+            "typedef",
+            "using",
+            "virtual",
+            "override",
+            "final",
+            "inline",
+            "constexpr",
+            "noexcept",
+            "explicit",
+            "static",
+            "extern",
+            "register",
+            "volatile",
+            "mutable",
+            "thread_local",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for C/C++)
@@ -949,7 +1010,7 @@ class CCppLanguage(BaseLanguage):
         # C/C++-specific patterns that override base classification
 
         # Third-party/vendor code (check first, before base class)
-        if '/third_party/' in path_lower or '/vendor/' in path_lower or '/external/' in path_lower:
+        if "/third_party/" in path_lower or "/vendor/" in path_lower or "/external/" in path_lower:
             return "infrastructure"
 
         # Entry points (main files)
@@ -957,16 +1018,16 @@ class CCppLanguage(BaseLanguage):
             return "entry_points"
 
         # Check for main function in content
-        if re.search(r'^\s*(?:int|void)\s+main\s*\(', content, re.MULTILINE):
+        if re.search(r"^\s*(?:int|void)\s+main\s*\(", content, re.MULTILINE):
             return "entry_points"
 
         # Headers in public API directories
-        if name.endswith(('.h', '.hpp', '.hh', '.hxx')):
+        if name.endswith((".h", ".hpp", ".hh", ".hxx")):
             # Public API headers
-            if '/include/' in path_lower:
+            if "/include/" in path_lower:
                 return "infrastructure"
             # Check if it's a config header
-            if 'config' in name or 'version' in name:
+            if "config" in name or "version" in name:
                 return "config"
 
         # Config files
@@ -974,19 +1035,19 @@ class CCppLanguage(BaseLanguage):
             return "config"
 
         # Test files
-        if any(x in name for x in ['test_', '_test.', 'unittest', 'test.cpp', 'test.c']):
+        if any(x in name for x in ["test_", "_test.", "unittest", "test.cpp", "test.c"]):
             return "tests"
 
         # Check for test macros in content
-        if re.search(r'^\s*TEST(?:_F|_P|_CASE)?\s*\(', content, re.MULTILINE):
+        if re.search(r"^\s*TEST(?:_F|_P|_CASE)?\s*\(", content, re.MULTILINE):
             return "tests"
 
         # API directories contain core logic
-        if '/api/' in path_lower:
+        if "/api/" in path_lower:
             return "core_logic"
 
         # Source directories often contain core logic
-        if '/src/' in path_lower:
+        if "/src/" in path_lower:
             return "core_logic"
 
         # Use base class classification for remaining cases
@@ -1015,9 +1076,22 @@ class CCppLanguage(BaseLanguage):
         # System includes are skipped (angle brackets were removed before module)
         # but we still check for common system patterns
         system_headers = (
-            "iostream", "string", "vector", "map", "set", "algorithm",
-            "cstdio", "cstdlib", "cstring", "cmath", "memory", "utility",
-            "stdio.h", "stdlib.h", "string.h", "math.h",
+            "iostream",
+            "string",
+            "vector",
+            "map",
+            "set",
+            "algorithm",
+            "cstdio",
+            "cstdlib",
+            "cstring",
+            "cmath",
+            "memory",
+            "utility",
+            "stdio.h",
+            "stdlib.h",
+            "string.h",
+            "math.h",
         )
         if module in system_headers or module.startswith("sys/"):
             return None

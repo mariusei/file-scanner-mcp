@@ -36,9 +36,21 @@ from .languages import get_language, is_file_info_stub
 
 # Structural node types that are never definitions worth flagging
 _SKIP_TYPES = {
-    "file-info", "imports", "error", "parse-error", "section", "paragraph",
-    "heading", "heading-1", "heading-2", "heading-3", "heading-4",
-    "heading-5", "heading-6", "code-block", "comment",
+    "file-info",
+    "imports",
+    "error",
+    "parse-error",
+    "section",
+    "paragraph",
+    "heading",
+    "heading-1",
+    "heading-2",
+    "heading-3",
+    "heading-4",
+    "heading-5",
+    "heading-6",
+    "code-block",
+    "comment",
 }
 
 # Names that frameworks/runtimes call without any textual reference
@@ -51,10 +63,10 @@ _MIN_DUPLICATE_LINES = 4
 
 @dataclass
 class Definition:
-    file: str       # path as given by the scan results
+    file: str  # path as given by the scan results
     name: str
     line: int
-    block: str      # normalized source block (for duplicate grouping)
+    block: str  # normalized source block (for duplicate grouping)
     flaggable: bool  # eligible for [unreferenced] (duplicates use all)
 
 
@@ -95,13 +107,15 @@ def analyze_health(
         rest = f", +{len(unreferenced) - len(shown)} more" if len(unreferenced) > len(shown) else ""
         lines.append(
             "UNREFERENCED (no mention elsewhere in this scan): "
-            + ", ".join(f"{_short(d.file)}:{d.name}@{d.line}" for d in shown) + rest
+            + ", ".join(f"{_short(d.file)}:{d.name}@{d.line}" for d in shown)
+            + rest
         )
     for group in duplicates[:max_duplicate_groups]:
         n_lines = group[0].block.count("\n") + 1
         locations = ", ".join(f"{_short(d.file)}:{d.line}" for d in group)
-        lines.append(f"DUPLICATE ({len(group)}x identical, {n_lines} lines): "
-                     f"{group[0].name} — {locations}")
+        lines.append(
+            f"DUPLICATE ({len(group)}x identical, {n_lines} lines): {group[0].name} — {locations}"
+        )
 
     if not lines:
         return ""
@@ -120,23 +134,27 @@ def _collect_definitions(results, contents) -> tuple[list[Definition], set[str]]
 
     def walk(nodes, file_path, source_lines, parent=None):
         for node in nodes:
-            if (node.type not in _SKIP_TYPES and node.name
-                    and node.end_line >= node.start_line):
-                block_lines = source_lines[node.start_line - 1:node.end_line]
+            if node.type not in _SKIP_TYPES and node.name and node.end_line >= node.start_line:
+                block_lines = source_lines[node.start_line - 1 : node.end_line]
                 block = "\n".join(
-                    line.rstrip() for line in dedent("\n".join(block_lines)).split("\n")
+                    line.rstrip()
+                    for line in dedent("\n".join(block_lines)).split("\n")
                     if line.strip()
                 )
                 # Containers (classes/structs with members) are often
                 # instantiated dynamically (registries, DI, reflection);
                 # methods in subclasses are dispatch targets (visitors,
                 # overrides, framework hooks). Neither may be flagged.
-                in_subclass = (parent is not None and parent.signature)
-                definitions.append(Definition(
-                    file=file_path, name=node.name,
-                    line=node.start_line, block=block,
-                    flaggable=not node.children and not in_subclass,
-                ))
+                in_subclass = parent is not None and parent.signature
+                definitions.append(
+                    Definition(
+                        file=file_path,
+                        name=node.name,
+                        line=node.start_line,
+                        block=block,
+                        flaggable=not node.children and not in_subclass,
+                    )
+                )
                 if node.decorators or "override" in (node.modifiers or []):
                     rooted.add(node.name)
             if node.children:
@@ -176,12 +194,14 @@ def _find_unreferenced(definitions, rooted, results, contents) -> list[Definitio
     flagged = []
     for d in definitions:
         name = d.name
-        if (not d.flaggable
-                or len(name) < _MIN_NAME_LENGTH
-                or name in roots
-                or name.startswith("__")
-                or name.lower().startswith("test")
-                or def_counts[name] > 1):  # overrides/impls share names
+        if (
+            not d.flaggable
+            or len(name) < _MIN_NAME_LENGTH
+            or name in roots
+            or name.startswith("__")
+            or name.lower().startswith("test")
+            or def_counts[name] > 1
+        ):  # overrides/impls share names
             continue
         # the definition itself accounts for exactly one occurrence;
         # anything beyond that is a reference (call, string, comment, doc)

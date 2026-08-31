@@ -117,8 +117,9 @@ def test_unused_alpha_detection(file_scanner):
     assert optimization is not None, "Should have optimization hints"
 
     hints = [h.name for h in optimization.children]
-    assert any("alpha" in h.lower() and "unused" in h.lower() for h in hints), \
+    assert any("alpha" in h.lower() and "unused" in h.lower() for h in hints), (
         "Should detect unused alpha channel"
+    )
 
 
 def test_file_metadata_included(file_scanner):
@@ -145,7 +146,7 @@ def test_error_handling():
     import os
     import tempfile
 
-    with tempfile.NamedTemporaryFile(mode='wb', suffix='.png', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=".png", delete=False) as f:
         f.write(b"not a valid image")
         temp_path = f.name
 
@@ -156,8 +157,9 @@ def test_error_handling():
 
         # Should have error node (after file-info)
         image_structures = [s for s in structures if s.type != "file-info"]
-        assert any(s.type == "error" for s in image_structures), \
+        assert any(s.type == "error" for s in image_structures), (
             "Should include error node for corrupted file"
+        )
     finally:
         os.unlink(temp_path)
 
@@ -182,11 +184,11 @@ def test_scanner_registry(file_scanner):
     extensions = file_scanner.get_supported_extensions()
 
     # Check for image extensions
-    image_exts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico']
+    image_exts = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico"]
     for ext in image_exts:
         assert ext in extensions, f"{ext} should be supported"
 
     # Check scanner info
     scanner_info = file_scanner.get_scanner_info()
-    assert '.png' in scanner_info, "PNG should be in scanner info"
-    assert scanner_info['.png'] == 'Image', "PNG should map to Image scanner"
+    assert ".png" in scanner_info, "PNG should be in scanner info"
+    assert scanner_info[".png"] == "Image", "PNG should map to Image scanner"

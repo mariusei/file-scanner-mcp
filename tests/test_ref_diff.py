@@ -12,7 +12,7 @@ from scantool.ref_diff import diff_against_ref
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 
-V1 = '''\
+V1 = """\
 def alpha(items):
     kept = [i for i in items if i.valid]
     return summarize(kept, mode="alpha")
@@ -27,9 +27,9 @@ def beta(items):
 
 def doomed():
     return legacy_call()
-'''
+"""
 
-V2 = '''\
+V2 = """\
 def alpha(items):
     kept = [i for i in items if i.valid]
     return summarize(kept, mode="alpha")
@@ -44,13 +44,15 @@ def beta(items):
 
 def fresh(payload):
     return validate(payload) and persist(payload)
-'''
+"""
 
 
 def _git(cwd, *args):
     subprocess.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
-        cwd=cwd, check=True, capture_output=True,
+        cwd=cwd,
+        check=True,
+        capture_output=True,
     )
 
 
@@ -75,8 +77,8 @@ class TestRefDiff:
         out = diff_against_ref(str(repo))
 
         assert "[changed]" in out
-        assert "i.weight" in out                 # changed body visible
-        assert "mode=\"alpha\"" not in out       # unchanged body suppressed
+        assert "i.weight" in out  # changed body visible
+        assert 'mode="alpha"' not in out  # unchanged body suppressed
 
     def test_new_and_removed_nodes(self, repo):
         out = diff_against_ref(str(repo))
@@ -98,11 +100,9 @@ class TestRefDiff:
         assert "notes.md" in out
 
     def test_whitespace_only_change_reported_as_non_structural(self, repo):
-        (repo / "mod.py").write_text(V2.replace("    return counts",
-                                                "    return counts  "))
+        (repo / "mod.py").write_text(V2.replace("    return counts", "    return counts  "))
         _git(repo, "add", "."), _git(repo, "commit", "-qm", "v2")
-        (repo / "mod.py").write_text(V2.replace("    return counts",
-                                                "    return counts   "))
+        (repo / "mod.py").write_text(V2.replace("    return counts", "    return counts   "))
 
         out = diff_against_ref(str(repo))
 
@@ -125,8 +125,7 @@ class TestRefDiff:
 def _init_connectivity_repo(tmp_path):
     _git(tmp_path, "init", "-q")
     (tmp_path / "core.py").write_text("def used():\n    return 1\n")
-    (tmp_path / "main.py").write_text(
-        "from core import used\n\ndef main():\n    return used()\n")
+    (tmp_path / "main.py").write_text("from core import used\n\ndef main():\n    return used()\n")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-qm", "base")
     clear_corpus_cache()
@@ -140,7 +139,8 @@ class TestRefDiffConnectivity:
     def test_flags_introduced_dead(self, tmp_path):
         _init_connectivity_repo(tmp_path)
         (tmp_path / "core.py").write_text(  # add a function nothing calls
-            "def used():\n    return 1\n\ndef just_added():\n    return 2\n")
+            "def used():\n    return 1\n\ndef just_added():\n    return 2\n"
+        )
         clear_corpus_cache()
         clear_connectivity_cache()
         out = diff_against_ref(str(tmp_path))
@@ -151,8 +151,9 @@ class TestRefDiffConnectivity:
         _init_connectivity_repo(tmp_path)
         (tmp_path / "app.py").write_text(  # a route referenced by no URL
             '@router.get("/konto-hint")\n'
-            'def hent_konto_hint():\n    return 1\n\n'
-            'def main():\n    return hent_konto_hint()\n')
+            "def hent_konto_hint():\n    return 1\n\n"
+            "def main():\n    return hent_konto_hint()\n"
+        )
         clear_corpus_cache()
         clear_connectivity_cache()
         out = diff_against_ref(str(tmp_path))
@@ -162,7 +163,8 @@ class TestRefDiffConnectivity:
     def test_clean_change_has_no_loose_ends(self, tmp_path):
         _init_connectivity_repo(tmp_path)
         (tmp_path / "main.py").write_text(  # body tweak, nothing dead/orphan
-            "from core import used\n\ndef main():\n    return used() + 0\n")
+            "from core import used\n\ndef main():\n    return used() + 0\n"
+        )
         clear_corpus_cache()
         clear_connectivity_cache()
         out = diff_against_ref(str(tmp_path))

@@ -22,7 +22,19 @@ _TESTS_DIR = Path(__file__).resolve().parents[1]
 # Python closure-attribution fix, and the Swift/Zig/Ruby/Java transparency fixes).
 # Every code language now honours the caller-resolution contract (the per-language
 # fixes are documented in CONTRIBUTING "Caller-resolution contract").
-_CONTRACT_CLEAN = ["python", "typescript", "go", "rust", "csharp", "php", "c_cpp", "swift", "zig", "ruby", "java"]
+_CONTRACT_CLEAN = [
+    "python",
+    "typescript",
+    "go",
+    "rust",
+    "csharp",
+    "php",
+    "c_cpp",
+    "swift",
+    "zig",
+    "ruby",
+    "java",
+]
 
 
 @pytest.mark.parametrize("lang", _CONTRACT_CLEAN)

@@ -15,11 +15,16 @@ class TreeFormatter:
     BRANCH = "-"
     LAST_BRANCH = "-"
     VERTICAL = "  "  # 2-space indent
-    SPACE = "  "     # 2-space indent
+    SPACE = "  "  # 2-space indent
 
-    def __init__(self, show_signatures: bool = True, show_decorators: bool = True,
-                 show_docstrings: bool = True, show_complexity: bool = False,
-                 condense: bool = True):
+    def __init__(
+        self,
+        show_signatures: bool = True,
+        show_decorators: bool = True,
+        show_docstrings: bool = True,
+        show_complexity: bool = False,
+        condense: bool = True,
+    ):
         """
         Initialize formatter with display options.
 
@@ -69,26 +74,26 @@ class TreeFormatter:
             meta = node.file_metadata
 
             # Format timestamp as readable datetime with unix timestamp
-            modified_iso = meta.get('modified', '')
+            modified_iso = meta.get("modified", "")
             if modified_iso:
                 try:
                     dt = datetime.fromisoformat(modified_iso)
                     # Format as: 2025-10-17 14:30 with unix timestamp for LLM processing
-                    readable = dt.strftime('%Y-%m-%d %H:%M')
+                    readable = dt.strftime("%Y-%m-%d %H:%M")
                     unix_ts = int(dt.timestamp())
                     modified_str = f"{readable} [ts:{unix_ts}]"
                 except Exception:
                     # Fallback to just date if parsing fails
-                    modified_str = modified_iso.split('T')[0]
+                    modified_str = modified_iso.split("T")[0]
             else:
                 modified_str = ""
 
             churn = meta.get("churn_90d")
             parts = [
                 f"{prefix}{connector} {node.type}:",
-                meta['size_formatted'],
+                meta["size_formatted"],
                 f"modified: {modified_str}" if modified_str else "",
-                f"churn: {churn} commits/90d" if churn else ""
+                f"churn: {churn} commits/90d" if churn else "",
             ]
             lines.append(" ".join(p for p in parts if p))
             return lines
@@ -141,11 +146,15 @@ class TreeFormatter:
         if node.code_skeleton and self.condense:
             # Plain pseudocode lines, no line numbers — that absence is what
             # distinguishes condensed skeletons from verbatim excerpts
-            code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
+            code_prefix = (
+                prefix + (self.SPACE if is_last else self.VERTICAL) + " "
+            )  # 2-space indent
             for line in node.code_skeleton:
                 lines.append(f"{code_prefix}{line}")
         elif node.code_excerpt:
-            code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space indent
+            code_prefix = (
+                prefix + (self.SPACE if is_last else self.VERTICAL) + " "
+            )  # 2-space indent
 
             # No blank line (token-optimized)
             # Compact line number format: {i} | instead of {i:4d} |

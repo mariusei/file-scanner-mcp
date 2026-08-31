@@ -53,26 +53,91 @@ from .languages.models import CallInfo, DefinitionInfo, DivergenceFinding
 # methods that bare-name call extraction cannot distinguish from a same-named
 # user definition (we have no receiver type). Same rationale as the language
 # REGEX tables in CONTRIBUTING: declarative, language-level, not domain-tuned.
-_COMMON_METHODS = frozenset({
-    "append", "add", "extend", "insert", "remove", "pop", "get", "set", "update",
-    "keys", "values", "items", "setdefault", "copy", "clear", "sort", "reverse",
-    "join", "split", "rsplit", "strip", "lstrip", "rstrip", "replace", "format",
-    "lower", "upper", "startswith", "endswith", "find", "rfind", "count", "index",
-    "encode", "decode", "read", "write", "close", "open", "seek", "flush",
-    "group", "groups", "match", "search", "finditer", "sub", "compile", "span",
-    "start", "end", "exists", "is_file", "is_dir", "read_text", "write_text",
-    "isdigit", "isalpha", "isspace", "title", "splitlines",
-})
+_COMMON_METHODS = frozenset(
+    {
+        "append",
+        "add",
+        "extend",
+        "insert",
+        "remove",
+        "pop",
+        "get",
+        "set",
+        "update",
+        "keys",
+        "values",
+        "items",
+        "setdefault",
+        "copy",
+        "clear",
+        "sort",
+        "reverse",
+        "join",
+        "split",
+        "rsplit",
+        "strip",
+        "lstrip",
+        "rstrip",
+        "replace",
+        "format",
+        "lower",
+        "upper",
+        "startswith",
+        "endswith",
+        "find",
+        "rfind",
+        "count",
+        "index",
+        "encode",
+        "decode",
+        "read",
+        "write",
+        "close",
+        "open",
+        "seek",
+        "flush",
+        "group",
+        "groups",
+        "match",
+        "search",
+        "finditer",
+        "sub",
+        "compile",
+        "span",
+        "start",
+        "end",
+        "exists",
+        "is_file",
+        "is_dir",
+        "read_text",
+        "write_text",
+        "isdigit",
+        "isalpha",
+        "isspace",
+        "title",
+        "splitlines",
+    }
+)
 _NOISE_NAMES = frozenset(dir(builtins)) | _COMMON_METHODS
 
 # Directories whose code is not a sibling family of the product: test fixtures
 # build objects directly, throwaway scripts follow no shared contract. Including
 # them pollutes the peer statistics (a test constructing DefinitionInfo looks
 # like a "violation" of a product pattern). Matched as a path segment.
-_NONSOURCE_DIRS = frozenset({
-    "tests", "test", "experiments", "experiment", "examples", "benchmarks",
-    "node_modules", "vendor", "third_party", "__pycache__",
-})
+_NONSOURCE_DIRS = frozenset(
+    {
+        "tests",
+        "test",
+        "experiments",
+        "experiment",
+        "examples",
+        "benchmarks",
+        "node_modules",
+        "vendor",
+        "third_party",
+        "__pycache__",
+    }
+)
 
 
 def _is_source(path: str) -> bool:
@@ -144,9 +209,7 @@ def _log10_upper_tail(k: int, n: int, p: float) -> float:
     log_q = math.log1p(-p)
     log_terms = []
     for i in range(k, n + 1):
-        log_coeff = (
-            math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)
-        )
+        log_coeff = math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)
         log_terms.append(log_coeff + i * log_p + (n - i) * log_q)
     m = max(log_terms)
     if m == -math.inf:
@@ -155,9 +218,7 @@ def _log10_upper_tail(k: int, n: int, p: float) -> float:
     return log_tail / math.log(10.0)
 
 
-def _build_usage_bags(
-    calls: list[CallInfo], internal: set[str]
-) -> dict[tuple[str, str], set[str]]:
+def _build_usage_bags(calls: list[CallInfo], internal: set[str]) -> dict[tuple[str, str], set[str]]:
     """caller (file, name) -> set of INTERNAL callee names.
 
     Module-level calls (caller_name=None) are dropped — they have no enclosing
@@ -218,12 +279,12 @@ def _role_conditioner(bags, file_clusters, lenses=("name", "cluster", "graph")):
     def same_role(site, conformers, anchor, missing):
         if not conformers:
             return True
-        if "name" in lenses and name_role(site) != modal(
-            name_role(c) for c in conformers
-        ):
+        if "name" in lenses and name_role(site) != modal(name_role(c) for c in conformers):
             return False
-        if "cluster" in lenses and file_clusters is not None and cl(site) != modal(
-            cl(c) for c in conformers
+        if (
+            "cluster" in lenses
+            and file_clusters is not None
+            and cl(site) != modal(cl(c) for c in conformers)
         ):
             return False
         return not (
@@ -350,9 +411,7 @@ def find_divergences(
     # (precision_review.py). The fence above stays audit-only.
     lenses = cfg.audit_lenses if suspects is None else cfg.review_lenses
     same_role = (
-        _role_conditioner(bags, file_clusters, lenses)
-        if role_conditioning and lenses
-        else None
+        _role_conditioner(bags, file_clusters, lenses) if role_conditioning and lenses else None
     )
 
     findings: list[DivergenceFinding] = []
@@ -392,10 +451,7 @@ def format_divergences(findings: list[DivergenceFinding]) -> str:
     Framing is deliberate: this is a review signal, not a bug list. The header
     and footer keep an LLM consumer from treating low-confidence hints as facts
     (see HANDOVER / the network_consensus arc: director, not oracle)."""
-    header = (
-        "━━━ PEER DIVERGENCE ━━━  "
-        "(sites breaking a sibling pattern — review, not bugs)"
-    )
+    header = "━━━ PEER DIVERGENCE ━━━  (sites breaking a sibling pattern — review, not bugs)"
     if not findings:
         return header + "\n  none above the codebase's own noise floor\n"
 
@@ -404,9 +460,7 @@ def format_divergences(findings: list[DivergenceFinding]) -> str:
         by_site[f.site].append(f)
 
     lines = [header]
-    for site in sorted(
-        by_site, key=lambda s: -max(f.surprise for f in by_site[s])
-    ):
+    for site in sorted(by_site, key=lambda s: -max(f.surprise for f in by_site[s])):
         group = by_site[site]
         for f in group:
             ratio = f"{f.conform_count}/{f.peer_count} peers"
@@ -419,7 +473,6 @@ def format_divergences(findings: list[DivergenceFinding]) -> str:
             shown = ", ".join(peers)
             lines.append(f"      e.g. siblings that conform: {shown}")
     lines.append(
-        "  Note: peers may legitimately differ — treat as \"look here\", "
-        "adjudicate by reading."
+        '  Note: peers may legitimately differ — treat as "look here", adjudicate by reading.'
     )
     return "\n".join(lines) + "\n"

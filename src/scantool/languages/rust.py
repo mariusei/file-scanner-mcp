@@ -85,7 +85,7 @@ class RustLanguage(BaseLanguage):
     @classmethod
     def should_skip(cls, filename: str) -> bool:
         """Skip generated protobuf files."""
-        return bool(filename.endswith('.pb.rs'))
+        return bool(filename.endswith(".pb.rs"))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip files that should not be analyzed.
@@ -99,11 +99,11 @@ class RustLanguage(BaseLanguage):
         filename = path.name.lower()
 
         # Skip generated protobuf files
-        if filename.endswith('.pb.rs'):
+        if filename.endswith(".pb.rs"):
             return False
 
         # Skip files in target/ directory
-        return 'target' not in path.parts
+        return "target" not in path.parts
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Rust files for inventory listing.
@@ -140,7 +140,7 @@ class RustLanguage(BaseLanguage):
                         type="parse-error",
                         name="invalid syntax",
                         start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1
+                        end_line=node.end_point[0] + 1,
                     )
                     parent_structures.append(error_node)
                 return
@@ -220,7 +220,7 @@ class RustLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_enum(self, node: Node, source_code: bytes) -> StructureNode:
@@ -254,7 +254,7 @@ class RustLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_trait(self, node: Node, source_code: bytes) -> StructureNode:
@@ -284,7 +284,7 @@ class RustLanguage(BaseLanguage):
             decorators=attributes,
             docstring=docstring,
             modifiers=modifiers,
-            children=[]
+            children=[],
         )
 
     def _extract_impl(self, node: Node, source_code: bytes) -> StructureNode:
@@ -319,7 +319,7 @@ class RustLanguage(BaseLanguage):
             signature=signature,
             decorators=attributes,
             docstring=docstring,
-            children=[]
+            children=[],
         )
 
     def _extract_function(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
@@ -328,7 +328,9 @@ class RustLanguage(BaseLanguage):
         name = self._get_node_text(name_node, source_code) if name_node else "unnamed"
 
         # Determine if it's a method or function
-        is_method = any(p.type in ("impl_item", "trait_item") for p in self._get_ancestors(root, node))
+        is_method = any(
+            p.type in ("impl_item", "trait_item") for p in self._get_ancestors(root, node)
+        )
         type_name = "method" if is_method else "function"
 
         # Get signature (parameters and return type)
@@ -356,7 +358,7 @@ class RustLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             complexity=complexity,
-            children=[]
+            children=[],
         )
 
     def _extract_signature(self, node: Node, source_code: bytes) -> str | None:
@@ -439,7 +441,7 @@ class RustLanguage(BaseLanguage):
                 if comment_text.startswith("/**") and not comment_text.startswith("/***"):
                     # Remove /** and */ and extract first line
                     doc_text = comment_text[3:-2].strip()
-                    lines = [line.strip().lstrip('*').strip() for line in doc_text.split('\n')]
+                    lines = [line.strip().lstrip("*").strip() for line in doc_text.split("\n")]
                     for line in lines:
                         if line:
                             return line
@@ -484,52 +486,57 @@ class RustLanguage(BaseLanguage):
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
-        text = source_code.decode('utf-8', errors='replace')
+        text = source_code.decode("utf-8", errors="replace")
         structures: list[StructureNode] = []
 
         # Find struct definitions
-        for match in re.finditer(r'^\s*pub\s+struct\s+(\w+)|^\s*struct\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(
+            r"^\s*pub\s+struct\s+(\w+)|^\s*struct\s+(\w+)", text, re.MULTILINE
+        ):
+            line_num = text[: match.start()].count("\n") + 1
             name = match.group(1) or match.group(2)
-            structures.append(StructureNode(
-                type="struct",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+            structures.append(
+                StructureNode(
+                    type="struct", name=name + " (fallback)", start_line=line_num, end_line=line_num
+                )
+            )
 
         # Find enum definitions
-        for match in re.finditer(r'^\s*pub\s+enum\s+(\w+)|^\s*enum\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(r"^\s*pub\s+enum\s+(\w+)|^\s*enum\s+(\w+)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
             name = match.group(1) or match.group(2)
-            structures.append(StructureNode(
-                type="enum",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+            structures.append(
+                StructureNode(
+                    type="enum", name=name + " (fallback)", start_line=line_num, end_line=line_num
+                )
+            )
 
         # Find trait definitions
-        for match in re.finditer(r'^\s*pub\s+trait\s+(\w+)|^\s*trait\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(r"^\s*pub\s+trait\s+(\w+)|^\s*trait\s+(\w+)", text, re.MULTILINE):
+            line_num = text[: match.start()].count("\n") + 1
             name = match.group(1) or match.group(2)
-            structures.append(StructureNode(
-                type="trait",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+            structures.append(
+                StructureNode(
+                    type="trait", name=name + " (fallback)", start_line=line_num, end_line=line_num
+                )
+            )
 
         # Find function definitions
-        for match in re.finditer(r'^\s*pub\s+(?:async\s+)?(?:unsafe\s+)?(?:const\s+)?fn\s+(\w+)|^\s*(?:async\s+)?(?:unsafe\s+)?(?:const\s+)?fn\s+(\w+)', text, re.MULTILINE):
-            line_num = text[:match.start()].count('\n') + 1
+        for match in re.finditer(
+            r"^\s*pub\s+(?:async\s+)?(?:unsafe\s+)?(?:const\s+)?fn\s+(\w+)|^\s*(?:async\s+)?(?:unsafe\s+)?(?:const\s+)?fn\s+(\w+)",
+            text,
+            re.MULTILINE,
+        ):
+            line_num = text[: match.start()].count("\n") + 1
             name = match.group(1) or match.group(2)
-            structures.append(StructureNode(
-                type="function",
-                name=name + " (fallback)",
-                start_line=line_num,
-                end_line=line_num
-            ))
+            structures.append(
+                StructureNode(
+                    type="function",
+                    name=name + " (fallback)",
+                    start_line=line_num,
+                    end_line=line_num,
+                )
+            )
 
         return structures
 
@@ -554,71 +561,77 @@ class RustLanguage(BaseLanguage):
         # Matches: use path::to::module;
         #          use path::{item1, item2};
         #          use path::item as alias;
-        use_pattern = r'^\s*(?:pub\s+)?use\s+((?:std|crate|super|self|::)?[\w:]+(?:::\{[^}]+\})?(?:\s+as\s+\w+)?)\s*;'
+        use_pattern = r"^\s*(?:pub\s+)?use\s+((?:std|crate|super|self|::)?[\w:]+(?:::\{[^}]+\})?(?:\s+as\s+\w+)?)\s*;"
 
         for match in re.finditer(use_pattern, content, re.MULTILINE):
             use_path = match.group(1).strip()
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             # Handle grouped imports: use foo::{bar, baz}
-            if '::{}' in use_path or '::{' in use_path:
+            if "::{}" in use_path or "::{" in use_path:
                 # Extract base path and items
-                brace_match = re.match(r'([\w:]+)::\{([^}]+)\}', use_path)
+                brace_match = re.match(r"([\w:]+)::\{([^}]+)\}", use_path)
                 if brace_match:
                     base_path = brace_match.group(1)
                     items_str = brace_match.group(2)
 
                     # Parse individual items
                     imported_names = []
-                    for item in items_str.split(','):
+                    for item in items_str.split(","):
                         item = item.strip()
-                        if ' as ' in item:
-                            name, _ = item.split(' as ')
+                        if " as " in item:
+                            name, _ = item.split(" as ")
                             imported_names.append(name.strip())
                         else:
                             imported_names.append(item)
 
-                    imports.append(ImportInfo(
-                        source_file=file_path,
-                        target_module=base_path,
-                        import_type="use",
-                        line=line,
-                        imported_names=imported_names
-                    ))
+                    imports.append(
+                        ImportInfo(
+                            source_file=file_path,
+                            target_module=base_path,
+                            import_type="use",
+                            line=line,
+                            imported_names=imported_names,
+                        )
+                    )
                     continue
 
             # Handle aliased imports: use foo::bar as baz
-            if ' as ' in use_path:
-                module_part, alias = use_path.split(' as ')
+            if " as " in use_path:
+                module_part, alias = use_path.split(" as ")
                 module_part = module_part.strip()
 
-                imports.append(ImportInfo(
-                    source_file=file_path,
-                    target_module=module_part,
-                    import_type="use_as",
-                    line=line,
-                    imported_names=[alias.strip()]
-                ))
+                imports.append(
+                    ImportInfo(
+                        source_file=file_path,
+                        target_module=module_part,
+                        import_type="use_as",
+                        line=line,
+                        imported_names=[alias.strip()],
+                    )
+                )
                 continue
 
             # Simple use statement
             import_type = "use"
-            if use_path.startswith('super::') or use_path.startswith('self::'):
+            if use_path.startswith("super::") or use_path.startswith("self::"):
                 import_type = "relative"
-            elif use_path.startswith('crate::'):
+            elif use_path.startswith("crate::"):
                 import_type = "crate"
-            elif use_path.startswith('::'):
+            elif use_path.startswith("::"):
                 import_type = "absolute"
-            elif use_path.startswith('std::'):
+            elif use_path.startswith("std::"):
                 import_type = "std"
 
-            imports.append(ImportInfo(
-                source_file=file_path,
-                target_module=use_path,
-                import_type=import_type,
-                line=line,
-                imported_names=[]
-            ))
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=use_path,
+                    import_type=import_type,
+                    line=line,
+                    imported_names=[],
+                )
+            )
 
         return imports
 
@@ -636,87 +649,78 @@ class RustLanguage(BaseLanguage):
         entry_points = []
 
         # Pattern 1: Standard fn main()
-        main_pattern = r'^\s*(?:pub\s+)?fn\s+main\s*\('
+        main_pattern = r"^\s*(?:pub\s+)?fn\s+main\s*\("
         for match in re.finditer(main_pattern, content, re.MULTILINE):
-            line = content[:match.start()].count('\n') + 1
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="main_function",
-                name="main",
-                line=line
-            ))
+            line = content[: match.start()].count("\n") + 1
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="main_function", name="main", line=line)
+            )
 
         # Pattern 2: Async framework entry points
         # Look for #[framework::main] followed by fn main() or async fn main()
-        async_main_pattern = r'#\[(tokio|async_std|actix_web)::(main|test)\]\s*(?:async\s+)?fn\s+(\w+)'
+        async_main_pattern = (
+            r"#\[(tokio|async_std|actix_web)::(main|test)\]\s*(?:async\s+)?fn\s+(\w+)"
+        )
         for match in re.finditer(async_main_pattern, content, re.MULTILINE):
             framework = match.group(1)
             decorator_type = match.group(2)
             func_name = match.group(3)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="async_main" if decorator_type == "main" else "async_test",
-                name=func_name,
-                line=line,
-                framework=framework
-            ))
+            entry_points.append(
+                EntryPointInfo(
+                    file=file_path,
+                    type="async_main" if decorator_type == "main" else "async_test",
+                    name=func_name,
+                    line=line,
+                    framework=framework,
+                )
+            )
 
         # Pattern 3: Test functions
         # #[test] or #[cfg(test)]
-        test_pattern = r'#\[(?:cfg\(test\)|test)\]\s*(?:async\s+)?fn\s+(\w+)'
+        test_pattern = r"#\[(?:cfg\(test\)|test)\]\s*(?:async\s+)?fn\s+(\w+)"
         for match in re.finditer(test_pattern, content, re.MULTILINE):
             func_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="test",
-                name=func_name,
-                line=line
-            ))
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="test", name=func_name, line=line)
+            )
 
         # Pattern 4: Benchmark functions
-        bench_pattern = r'#\[bench\]\s*fn\s+(\w+)'
+        bench_pattern = r"#\[bench\]\s*fn\s+(\w+)"
         for match in re.finditer(bench_pattern, content):
             func_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
-            entry_points.append(EntryPointInfo(
-                file=file_path,
-                type="benchmark",
-                name=func_name,
-                line=line
-            ))
+            entry_points.append(
+                EntryPointInfo(file=file_path, type="benchmark", name=func_name, line=line)
+            )
 
         # Pattern 5: lib.rs public API exports (if file is lib.rs)
-        if file_path.endswith('lib.rs'):
+        if file_path.endswith("lib.rs"):
             # Look for pub mod statements
-            pub_mod_pattern = r'^\s*pub\s+mod\s+(\w+)\s*;'
+            pub_mod_pattern = r"^\s*pub\s+mod\s+(\w+)\s*;"
             for match in re.finditer(pub_mod_pattern, content, re.MULTILINE):
                 mod_name = match.group(1)
-                line = content[:match.start()].count('\n') + 1
+                line = content[: match.start()].count("\n") + 1
 
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="export",
-                    name=f"mod {mod_name}",
-                    line=line
-                ))
+                entry_points.append(
+                    EntryPointInfo(file=file_path, type="export", name=f"mod {mod_name}", line=line)
+                )
 
             # Look for pub use re-exports
-            pub_use_pattern = r'^\s*pub\s+use\s+([\w:]+)'
+            pub_use_pattern = r"^\s*pub\s+use\s+([\w:]+)"
             for match in re.finditer(pub_use_pattern, content, re.MULTILINE):
                 use_path = match.group(1)
-                line = content[:match.start()].count('\n') + 1
+                line = content[: match.start()].count("\n") + 1
 
-                entry_points.append(EntryPointInfo(
-                    file=file_path,
-                    type="export",
-                    name=f"pub use {use_path}",
-                    line=line
-                ))
+                entry_points.append(
+                    EntryPointInfo(
+                        file=file_path, type="export", name=f"pub use {use_path}", line=line
+                    )
+                )
 
         return entry_points
 
@@ -879,10 +883,24 @@ class RustLanguage(BaseLanguage):
 
         return calls
 
-    REGEX_CALL_KEYWORDS = frozenset({
-        "if", "for", "while", "match", "fn", "struct", "enum",
-        "impl", "trait", "use", "pub", "let", "mut", "return",
-    })
+    REGEX_CALL_KEYWORDS = frozenset(
+        {
+            "if",
+            "for",
+            "while",
+            "match",
+            "fn",
+            "struct",
+            "enum",
+            "impl",
+            "trait",
+            "use",
+            "pub",
+            "let",
+            "mut",
+            "return",
+        }
+    )
 
     # ===========================================================================
     # Classification (enhanced for Rust)
@@ -902,27 +920,27 @@ class RustLanguage(BaseLanguage):
         filename = path.name
 
         # Check for standard Rust entry points
-        if filename in ('main.rs', 'lib.rs'):
+        if filename in ("main.rs", "lib.rs"):
             return "entry_points"
 
         # Check directory structure
-        if 'tests' in path.parts or filename.startswith('test_'):
+        if "tests" in path.parts or filename.startswith("test_"):
             return "tests"
 
-        if 'benches' in path.parts or filename.startswith('bench_'):
+        if "benches" in path.parts or filename.startswith("bench_"):
             return "tests"
 
-        if filename == 'mod.rs':
+        if filename == "mod.rs":
             return "infrastructure"
 
         # Check content patterns
-        if '#[test]' in content or '#[cfg(test)]' in content:
+        if "#[test]" in content or "#[cfg(test)]" in content:
             return "tests"
 
-        if '#[bench]' in content:
+        if "#[bench]" in content:
             return "tests"
 
-        if 'fn main(' in content:
+        if "fn main(" in content:
             return "entry_points"
 
         # Fall back to base implementation
@@ -956,7 +974,11 @@ class RustLanguage(BaseLanguage):
         if module.startswith("crate::"):
             path_parts = module.replace("crate::", "").split("::")
             # Try src/module.rs
-            candidate = "src/" + "/".join(path_parts[:-1]) + ".rs" if len(path_parts) > 1 else f"src/{path_parts[0]}.rs"
+            candidate = (
+                "src/" + "/".join(path_parts[:-1]) + ".rs"
+                if len(path_parts) > 1
+                else f"src/{path_parts[0]}.rs"
+            )
             if candidate in all_files:
                 return candidate
             # Try src/module/mod.rs

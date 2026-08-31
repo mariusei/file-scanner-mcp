@@ -139,10 +139,7 @@ class TestSCSSScanner:
         assert structures is not None
 
         # Find .btn rule
-        btn_rule = next(
-            (s for s in structures if s.type == "rule_set" and ".btn" in s.name),
-            None
-        )
+        btn_rule = next((s for s in structures if s.type == "rule_set" and ".btn" in s.name), None)
         assert btn_rule is not None
         # Should have nested children (modifiers)
         assert btn_rule.children is not None or "nested" in btn_rule.modifiers
@@ -161,9 +158,7 @@ class TestSCSSScanner:
         assert structures is not None
 
         mixins = [s for s in structures if s.type == "mixin"]
-        complex_mixin = next(
-            (m for m in mixins if m.name == "complex-mixin"), None
-        )
+        complex_mixin = next((m for m in mixins if m.name == "complex-mixin"), None)
         assert complex_mixin is not None
         assert "$color" in (complex_mixin.signature or "")
 
@@ -173,9 +168,7 @@ class TestSCSSScanner:
         assert structures is not None
 
         functions = [s for s in structures if s.type == "function"]
-        calc_rem = next(
-            (f for f in functions if f.name == "calculate-rem"), None
-        )
+        calc_rem = next((f for f in functions if f.name == "calculate-rem"), None)
         assert calc_rem is not None
 
     def test_scan_edge_cases_deep_nesting(self, scss_language, edge_cases_scss):
@@ -184,10 +177,7 @@ class TestSCSSScanner:
         assert structures is not None
 
         # Find .level-1 rule
-        level1 = next(
-            (s for s in structures if s.type == "rule_set" and "level-1" in s.name),
-            None
-        )
+        level1 = next((s for s in structures if s.type == "rule_set" and "level-1" in s.name), None)
         assert level1 is not None
 
     def test_scan_edge_cases_bem_nesting(self, scss_language, edge_cases_scss):
@@ -196,10 +186,7 @@ class TestSCSSScanner:
         assert structures is not None
 
         # Find .block rule
-        block = next(
-            (s for s in structures if s.type == "rule_set" and s.name == ".block"),
-            None
-        )
+        block = next((s for s in structures if s.type == "rule_set" and s.name == ".block"), None)
         assert block is not None
 
     def test_scan_edge_cases_multiple_imports(self, scss_language, edge_cases_scss):
@@ -207,8 +194,7 @@ class TestSCSSScanner:
         structures = scss_language.scan(edge_cases_scss)
         assert structures is not None
 
-        use_imports = [s for s in structures
-                       if s.type == "import" and "use" in s.modifiers]
+        use_imports = [s for s in structures if s.type == "import" and "use" in s.modifiers]
         assert len(use_imports) >= 3  # sass:math, sass:color, sass:list
 
     def test_scan_important_comments(self, scss_language, basic_scss):

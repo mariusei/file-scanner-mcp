@@ -17,7 +17,7 @@ def scan(source: str, ext: str = ".py"):
     return lang.scan(source.encode())
 
 
-UNIQUE_LOGIC = '''\
+UNIQUE_LOGIC = """\
 def reconcile(ledger, txns, fx_rates):
     drift = sum(t.amount * fx_rates[t.ccy] for t in txns) - ledger.total
     buckets = {}
@@ -27,18 +27,18 @@ def reconcile(ledger, txns, fx_rates):
             break
         drift -= t.amount * (fx_rates[t.ccy] - 1.0)
     return drift, buckets
-'''
+"""
 
 
 class TestSelection:
     def test_unique_logic_beats_duplicated_boilerplate(self):
         boiler = "\n".join(
-            f'''\
+            f"""\
 def get_field_{i}(self):
     if self._field_{i} is None:
         self._field_{i} = load_default({i})
     return self._field_{i}
-'''
+"""
             for i in range(5)
         )
         source = boiler + "\n" + UNIQUE_LOGIC
@@ -53,8 +53,7 @@ def get_field_{i}(self):
 
     def test_top_percent_controls_count(self):
         source = "\n".join(
-            f"def fn_{i}(x):\n    return transform_{i}(x) + {i}\n"
-            for i in range(10)
+            f"def fn_{i}(x):\n    return transform_{i}(x) + {i}\n" for i in range(10)
         )
         data = source.encode()
 
@@ -64,7 +63,7 @@ def get_field_{i}(self):
         assert len(select_salient_nodes(data, scan(source), top_percent=0.01)) == 1
 
     def test_leaf_preference_class_defers_to_methods(self):
-        source = '''\
+        source = """\
 class Manager:
     def process(self, items):
         return [normalize(i) for i in items if i.valid]
@@ -74,7 +73,7 @@ class Manager:
         for i in items:
             counts[i.kind] = counts.get(i.kind, 0) + 1
         return counts
-'''
+"""
         data = source.encode()
         selected = select_salient_nodes(data, scan(source), top_percent=1.0)
 
@@ -118,9 +117,11 @@ class Manager:
         assert all(node.name.startswith("Transform") for node, _ in selected)
 
     def test_results_sorted_by_saliency(self):
-        source = "\n".join(
-            f"def fn_{i}(x):\n    return x + {i}\n" for i in range(6)
-        ) + "\n" + UNIQUE_LOGIC
+        source = (
+            "\n".join(f"def fn_{i}(x):\n    return x + {i}\n" for i in range(6))
+            + "\n"
+            + UNIQUE_LOGIC
+        )
         data = source.encode()
 
         selected = select_salient_nodes(data, scan(source), top_percent=1.0)
@@ -133,19 +134,20 @@ class TestChurnWeighting:
     """line_edits boosts actively-worked nodes in selection (weight 0.15)."""
 
     TWINS = "\n".join(
-        f'''\
+        f"""\
 def processor_{i}(items, threshold):
     kept = [x for x in items if x.score > threshold * {i}]
     return summarize(kept, mode="variant_{i}")
 
-'''
+"""
         for i in range(6)
     )
 
     def _rank_of(self, name, line_edits):
         data = self.TWINS.encode()
-        ranked = select_salient_nodes(data, scan(self.TWINS), top_percent=1.0,
-                                      line_edits=line_edits)
+        ranked = select_salient_nodes(
+            data, scan(self.TWINS), top_percent=1.0, line_edits=line_edits
+        )
         return [n.name for n, _ in ranked].index(name)
 
     def test_edits_improve_rank(self):
@@ -153,8 +155,7 @@ def processor_{i}(items, threshold):
         data = self.TWINS.encode()
         ranked = select_salient_nodes(data, scan(self.TWINS), top_percent=1.0)
         last_node = ranked[-1][0]
-        edits = {line: f"c{line}" for line in
-                 range(last_node.start_line, last_node.end_line + 1)}
+        edits = {line: f"c{line}" for line in range(last_node.start_line, last_node.end_line + 1)}
 
         base_rank = self._rank_of(last_node.name, None)
         boosted_rank = self._rank_of(last_node.name, edits)
@@ -167,8 +168,10 @@ def processor_{i}(items, threshold):
 
         base = [n.name for n, _ in select_salient_nodes(data, structures, top_percent=1.0)]
         uniform = {line: "c1" for line in range(1, self.TWINS.count("\n") + 2)}
-        boosted = [n.name for n, _ in select_salient_nodes(
-            data, structures, top_percent=1.0, line_edits=uniform)]
+        boosted = [
+            n.name
+            for n, _ in select_salient_nodes(data, structures, top_percent=1.0, line_edits=uniform)
+        ]
 
         assert base == boosted
 
@@ -176,9 +179,10 @@ def processor_{i}(items, threshold):
         data = self.TWINS.encode()
         structures = scan(self.TWINS)
 
-        assert ([n.name for n, _ in select_salient_nodes(data, structures, top_percent=1.0)]
-                == [n.name for n, _ in select_salient_nodes(
-                    data, structures, top_percent=1.0, line_edits=None)])
+        assert [n.name for n, _ in select_salient_nodes(data, structures, top_percent=1.0)] == [
+            n.name
+            for n, _ in select_salient_nodes(data, structures, top_percent=1.0, line_edits=None)
+        ]
 
 
 class TestModes:
@@ -188,7 +192,9 @@ class TestModes:
 
     # wide base spread: complex logic at the top, trivial helper at the bottom —
     # the 0.15 boost (balanced) does not move the helper, 0.45 (active) should
-    SOURCE = UNIQUE_LOGIC + '''
+    SOURCE = (
+        UNIQUE_LOGIC
+        + """
 
 def transform_pipeline(rows, schema):
     validated = [validate_row(r, schema) for r in rows]
@@ -202,19 +208,23 @@ def tiny_helper(x):
 
 def small_format(value):
     return f"<{value}>"
-'''
+"""
+    )
 
     def test_active_outranks_balanced_for_edited_node(self):
         data = self.SOURCE.encode()
         structures = scan(self.SOURCE)
         ranked = select_salient_nodes(data, structures, top_percent=1.0)
         last = ranked[-1][0]
-        edits = {line: f"c{line}" for line in
-                 range(last.start_line, last.end_line + 1)}
+        edits = {line: f"c{line}" for line in range(last.start_line, last.end_line + 1)}
 
         def rank(mode):
-            names = [n.name for n, _ in select_salient_nodes(
-                data, structures, top_percent=1.0, line_edits=edits, mode=mode)]
+            names = [
+                n.name
+                for n, _ in select_salient_nodes(
+                    data, structures, top_percent=1.0, line_edits=edits, mode=mode
+                )
+            ]
             return names.index(last.name)
 
         assert rank("active") < rank("balanced")
@@ -223,17 +233,22 @@ def small_format(value):
         data = self.SOURCE.encode()
         structures = scan(self.SOURCE)
 
-        balanced = [n.name for n, _ in select_salient_nodes(
-            data, structures, top_percent=1.0, mode="balanced")]
-        active = [n.name for n, _ in select_salient_nodes(
-            data, structures, top_percent=1.0, mode="active")]
+        balanced = [
+            n.name
+            for n, _ in select_salient_nodes(data, structures, top_percent=1.0, mode="balanced")
+        ]
+        active = [
+            n.name
+            for n, _ in select_salient_nodes(data, structures, top_percent=1.0, mode="active")
+        ]
 
         assert balanced == active
 
     def test_unknown_mode_raises(self):
         with pytest.raises(ValueError, match="Unknown mode"):
-            select_salient_nodes(b"def f():\n    pass\n", scan("def f():\n    pass\n"),
-                                 mode="arkitektur")
+            select_salient_nodes(
+                b"def f():\n    pass\n", scan("def f():\n    pass\n"), mode="arkitektur"
+            )
 
 
 class TestLimitSkeletonDepth:
@@ -291,7 +306,7 @@ class TestBudgetAllocation:
         from scantool.scanner import FileScanner
 
         source = "\n".join(
-            f'''\
+            f"""\
 def transform_{i}(items, threshold):
     results = []
     for item in items:
@@ -299,7 +314,7 @@ def transform_{i}(items, threshold):
             if item.kind == "strict_{i}":
                 results.append(normalize(item, mode="strict_{i}"))
     return aggregate(results, weights=[0.{i}1, 0.{i}2])
-'''
+"""
             for i in range(12)
         )
         path = tmp_path / "sample.py"
@@ -309,8 +324,8 @@ def transform_{i}(items, threshold):
     @staticmethod
     def _skeleton_cost(structures):
         from scantool.scanner import _estimate_tokens
-        return sum(_estimate_tokens(n.code_skeleton) for n in structures
-                   if n.code_skeleton)
+
+        return sum(_estimate_tokens(n.code_skeleton) for n in structures if n.code_skeleton)
 
     def test_no_budget_is_unchanged_s6(self, tmp_path):
         structures = self._scan(tmp_path, budget=None)
@@ -328,8 +343,7 @@ def transform_{i}(items, threshold):
         structures = self._scan(tmp_path, budget=120)
 
         with_skeleton = [n for n in structures if n.code_skeleton]
-        without = [n for n in structures
-                   if n.code_skeleton is None and n.type == "function"]
+        without = [n for n in structures if n.code_skeleton is None and n.type == "function"]
         assert with_skeleton, "something must survive a small budget"
         assert without, "something must be degraded away"
         # those that keep a skeleton are more salient than those that lost it
@@ -341,8 +355,7 @@ def transform_{i}(items, threshold):
         unlimited = self._scan(tmp_path, budget=None)
         huge = self._scan(tmp_path, budget=10**9)
 
-        assert ([n.code_skeleton for n in unlimited]
-                == [n.code_skeleton for n in huge])
+        assert [n.code_skeleton for n in unlimited] == [n.code_skeleton for n in huge]
 
     def test_zero_budget_yields_pure_structure(self, tmp_path):
         structures = self._scan(tmp_path, budget=0)
@@ -356,7 +369,7 @@ class TestTwoTierAnnotation:
         from scantool.scanner import FileScanner
 
         source = "\n".join(
-            f'''\
+            f"""\
 def transform_{i}(items, threshold):
     results = []
     for item in items:
@@ -364,7 +377,7 @@ def transform_{i}(items, threshold):
             if item.kind == "strict_{i}":
                 results.append(normalize(item, mode="strict_{i}"))
     return aggregate(results, weights=[0.{i}1, 0.{i}2])
-'''
+"""
             for i in range(10)
         )
         path = tmp_path / "sample.py"
@@ -373,8 +386,9 @@ def transform_{i}(items, threshold):
         structures = FileScanner().scan_file(str(path))
 
         full_tier = [n for n in structures if n.code_excerpt is not None]
-        broad_tier = [n for n in structures
-                      if n.code_excerpt is None and n.code_skeleton is not None]
+        broad_tier = [
+            n for n in structures if n.code_excerpt is None and n.code_skeleton is not None
+        ]
 
         # 10 kandidater → topp 20 % = 2 i full tier, resten i bred tier
         assert len(full_tier) == 2
@@ -386,6 +400,5 @@ def transform_{i}(items, threshold):
                 assert indent <= 2, f"{node.name}: '{line}' is deeper than level 2"
         # the full tier keeps full depth (the sources have depth-3 logic)
         assert any(
-            len(line) - len(line.lstrip()) >= 3
-            for node in full_tier for line in node.code_skeleton
+            len(line) - len(line.lstrip()) >= 3 for node in full_tier for line in node.code_skeleton
         )

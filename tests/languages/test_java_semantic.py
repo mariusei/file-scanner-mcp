@@ -52,16 +52,13 @@ import org.springframework.web.*;
 
     assert len(imports) == 3
     assert any(
-        imp.target_module == "java.util.*" and imp.import_type == "wildcard"
-        for imp in imports
+        imp.target_module == "java.util.*" and imp.import_type == "wildcard" for imp in imports
     )
     assert any(
-        imp.target_module == "java.io.*" and imp.import_type == "wildcard"
-        for imp in imports
+        imp.target_module == "java.io.*" and imp.import_type == "wildcard" for imp in imports
     )
     assert any(
-        imp.target_module == "org.springframework.web.*"
-        and imp.import_type == "wildcard"
+        imp.target_module == "org.springframework.web.*" and imp.import_type == "wildcard"
         for imp in imports
     )
 
@@ -380,9 +377,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     User findByEmail(String email);
 }
 """
-    cluster = language.classify_file(
-        "src/main/java/repositories/UserRepository.java", content
-    )
+    cluster = language.classify_file("src/main/java/repositories/UserRepository.java", content)
     assert cluster == "core_logic"
 
 
@@ -448,9 +443,7 @@ public class DatabaseConfiguration {
     // Database configuration
 }
 """
-    cluster = language.classify_file(
-        "src/main/java/DatabaseConfiguration.java", content
-    )
+    cluster = language.classify_file("src/main/java/DatabaseConfiguration.java", content)
     assert cluster == "config"
 
 
@@ -554,12 +547,8 @@ import com.example.services.*;
     # Check static imports
     static_imports = [imp for imp in imports if imp.import_type == "static"]
     assert len(static_imports) == 1
-    assert any(
-        "Collections.emptyList" in imp.target_module for imp in static_imports
-    )
-    assert any(
-        imp.target_module == "java.util.Collections.emptyList" for imp in static_imports
-    )
+    assert any("Collections.emptyList" in imp.target_module for imp in static_imports)
+    assert any(imp.target_module == "java.util.Collections.emptyList" for imp in static_imports)
 
 
 def test_find_entry_points_comprehensive(language):

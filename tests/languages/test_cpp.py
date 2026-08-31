@@ -41,8 +41,12 @@ def test_extract_imports_local_headers(language):
 
     assert len(imports) == 3
     assert any(imp.target_module == "utils.h" and imp.import_type == "local" for imp in imports)
-    assert any(imp.target_module == "parser/lexer.h" and imp.import_type == "local" for imp in imports)
-    assert any(imp.target_module == "core/engine.hpp" and imp.import_type == "local" for imp in imports)
+    assert any(
+        imp.target_module == "parser/lexer.h" and imp.import_type == "local" for imp in imports
+    )
+    assert any(
+        imp.target_module == "core/engine.hpp" and imp.import_type == "local" for imp in imports
+    )
 
 
 def test_extract_imports_system_headers(language):

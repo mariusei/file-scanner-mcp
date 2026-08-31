@@ -68,8 +68,7 @@ class TestCSSScanner:
         structures = css_language.scan(basic_css)
         assert structures is not None
 
-        root_rules = [s for s in structures
-                      if s.type == "rule_set" and "root" in s.modifiers]
+        root_rules = [s for s in structures if s.type == "rule_set" and "root" in s.modifiers]
         assert len(root_rules) >= 1
         assert "has-variables" in root_rules[0].modifiers
 
@@ -78,8 +77,7 @@ class TestCSSScanner:
         structures = css_language.scan(basic_css)
         assert structures is not None
 
-        class_rules = [s for s in structures
-                       if s.type == "rule_set" and "class" in s.modifiers]
+        class_rules = [s for s in structures if s.type == "rule_set" and "class" in s.modifiers]
         assert len(class_rules) >= 5
 
     def test_scan_basic_id_selectors(self, css_language, basic_css):
@@ -87,8 +85,7 @@ class TestCSSScanner:
         structures = css_language.scan(basic_css)
         assert structures is not None
 
-        id_rules = [s for s in structures
-                    if s.type == "rule_set" and "id" in s.modifiers]
+        id_rules = [s for s in structures if s.type == "rule_set" and "id" in s.modifiers]
         assert len(id_rules) >= 1
 
     def test_scan_basic_media_queries(self, css_language, basic_css):
@@ -137,8 +134,7 @@ class TestCSSScanner:
         assert structures is not None
 
         # Find a rule with truncated name
-        long_rules = [s for s in structures
-                      if s.type == "rule_set" and "..." in s.name]
+        long_rules = [s for s in structures if s.type == "rule_set" and "..." in s.name]
         assert len(long_rules) >= 1
 
     def test_scan_edge_cases_multiple_selectors(self, css_language, edge_cases_css):
@@ -147,8 +143,7 @@ class TestCSSScanner:
         assert structures is not None
 
         # Find rule with multiple selectors
-        multi = [s for s in structures
-                 if s.type == "rule_set" and "(+" in s.name]
+        multi = [s for s in structures if s.type == "rule_set" and "(+" in s.name]
         assert len(multi) >= 1
 
     def test_scan_edge_cases_pseudo_selectors(self, css_language, edge_cases_css):
@@ -156,8 +151,9 @@ class TestCSSScanner:
         structures = css_language.scan(edge_cases_css)
         assert structures is not None
 
-        pseudo_rules = [s for s in structures
-                        if s.type == "rule_set" and "has-pseudo" in s.modifiers]
+        pseudo_rules = [
+            s for s in structures if s.type == "rule_set" and "has-pseudo" in s.modifiers
+        ]
         assert len(pseudo_rules) >= 1
 
     def test_scan_edge_cases_nested_media(self, css_language, edge_cases_css):

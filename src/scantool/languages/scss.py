@@ -105,9 +105,7 @@ class SCSSLanguage(BaseLanguage):
     # Structure Scanning (from SCSSScanner)
     # ===========================================================================
 
-    def _extract_structure(
-        self, root: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure from SCSS stylesheet."""
         structures: list[StructureNode] = []
 
@@ -164,19 +162,19 @@ class SCSSLanguage(BaseLanguage):
             elif node.type == "comment":
                 comment_text = self._get_node_text(node, source_code)
                 if comment_text.startswith("/*!") or comment_text.startswith("//!"):
-                    structures.append(StructureNode(
-                        type="comment",
-                        name=self._extract_comment_title(comment_text),
-                        start_line=node.start_point[0] + 1,
-                        end_line=node.end_point[0] + 1,
-                        docstring=comment_text[:100]
-                    ))
+                    structures.append(
+                        StructureNode(
+                            type="comment",
+                            name=self._extract_comment_title(comment_text),
+                            start_line=node.start_point[0] + 1,
+                            end_line=node.end_point[0] + 1,
+                            docstring=comment_text[:100],
+                        )
+                    )
 
         return structures
 
-    def _extract_from_error_node(
-        self, error_node: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_from_error_node(self, error_node: Node, source_code: bytes) -> list[StructureNode]:
         """Extract valid SCSS structures from within an ERROR node.
 
         Tree-sitter often wraps valid SCSS in ERROR nodes when there's a syntax
@@ -230,19 +228,19 @@ class SCSSLanguage(BaseLanguage):
             elif child.type == "comment":
                 comment_text = self._get_node_text(child, source_code)
                 if comment_text.startswith("/*!") or comment_text.startswith("//!"):
-                    structures.append(StructureNode(
-                        type="comment",
-                        name=self._extract_comment_title(comment_text),
-                        start_line=child.start_point[0] + 1,
-                        end_line=child.end_point[0] + 1,
-                        docstring=comment_text[:100]
-                    ))
+                    structures.append(
+                        StructureNode(
+                            type="comment",
+                            name=self._extract_comment_title(comment_text),
+                            start_line=child.start_point[0] + 1,
+                            end_line=child.end_point[0] + 1,
+                            docstring=comment_text[:100],
+                        )
+                    )
 
         return structures
 
-    def _extract_variable(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_variable(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract SCSS variable ($name: value)."""
         var_name = None
 
@@ -264,7 +262,7 @@ class SCSSLanguage(BaseLanguage):
         var_value = None
         if value_start:
             # Find the end (before semicolon)
-            value_text = source_code[value_start:node.end_byte].decode("utf-8", errors="replace")
+            value_text = source_code[value_start : node.end_byte].decode("utf-8", errors="replace")
             var_value = value_text.strip().rstrip(";").strip()
             if len(var_value) > 50:
                 var_value = var_value[:47] + "..."
@@ -275,12 +273,10 @@ class SCSSLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=var_value,
-            modifiers=["scss-variable"]
+            modifiers=["scss-variable"],
         )
 
-    def _extract_mixin(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_mixin(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @mixin definition."""
         name = None
         params = None
@@ -302,12 +298,10 @@ class SCSSLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            modifiers=["mixin"]
+            modifiers=["mixin"],
         )
 
-    def _extract_function(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_function(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @function definition."""
         name = None
         params = None
@@ -329,12 +323,10 @@ class SCSSLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=signature,
-            modifiers=["scss-function"]
+            modifiers=["scss-function"],
         )
 
-    def _extract_import_structure(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_import_structure(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @import/@use/@forward statement as structure node."""
         import_type = "import"
         if node.type == "use_statement":
@@ -345,7 +337,7 @@ class SCSSLanguage(BaseLanguage):
         url = None
         for child in node.children:
             if child.type in ("string_value", "call_expression"):
-                url = self._get_node_text(child, source_code).strip('"\'')
+                url = self._get_node_text(child, source_code).strip("\"'")
                 break
 
         if not url:
@@ -357,22 +349,23 @@ class SCSSLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=f"@{import_type}",
-            modifiers=[import_type]
+            modifiers=[import_type],
         )
 
-    def _extract_media(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_media(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract @media statement."""
         query = None
         children: list[StructureNode] = []
 
         for child in node.children:
-            if child.type in ("keyword_query", "feature_query", "binary_query",
-                              "unary_query", "parenthesized_query"):
-                query = self._normalize_signature(
-                    self._get_node_text(child, source_code)
-                )
+            if child.type in (
+                "keyword_query",
+                "feature_query",
+                "binary_query",
+                "unary_query",
+                "parenthesized_query",
+            ):
+                query = self._normalize_signature(self._get_node_text(child, source_code))
             elif child.type == "block":
                 children = self._extract_nested_rules(child, source_code)
 
@@ -383,7 +376,7 @@ class SCSSLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=query,
             modifiers=["media"],
-            children=children
+            children=children,
         )
 
     # @keyframes is plain CSS — share CSSLanguage's implementation
@@ -392,9 +385,7 @@ class SCSSLanguage(BaseLanguage):
         CSSLanguage._extract_keyframes,
     )
 
-    def _extract_rule_set(
-        self, node: Node, source_code: bytes
-    ) -> StructureNode | None:
+    def _extract_rule_set(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract a SCSS rule set with possible nested rules."""
         selectors = []
         children: list[StructureNode] = []
@@ -406,8 +397,9 @@ class SCSSLanguage(BaseLanguage):
             if child.type == "selectors":
                 selectors = self._extract_selectors(child, source_code)
             elif child.type == "block":
-                declaration_count, children, has_include, has_extend = \
-                    self._process_scss_block(child, source_code)
+                declaration_count, children, has_include, has_extend = self._process_scss_block(
+                    child, source_code
+                )
 
         if not selectors:
             return None
@@ -442,12 +434,10 @@ class SCSSLanguage(BaseLanguage):
             signature=f"{len(selectors)} sel, {declaration_count} decl",
             modifiers=modifiers,
             children=children,
-            complexity={"selectors": len(selectors), "declarations": declaration_count}
+            complexity={"selectors": len(selectors), "declarations": declaration_count},
         )
 
-    def _extract_selectors(
-        self, selectors_node: Node, source_code: bytes
-    ) -> list[str]:
+    def _extract_selectors(self, selectors_node: Node, source_code: bytes) -> list[str]:
         """Extract individual selectors."""
         selectors = []
         current: list[str] = []
@@ -490,9 +480,7 @@ class SCSSLanguage(BaseLanguage):
 
         return declaration_count, children, has_include, has_extend
 
-    def _extract_nested_rules(
-        self, block_node: Node, source_code: bytes
-    ) -> list[StructureNode]:
+    def _extract_nested_rules(self, block_node: Node, source_code: bytes) -> list[StructureNode]:
         """Extract rules nested inside a block."""
         rules = []
         for child in block_node.children:
@@ -518,82 +506,92 @@ class SCSSLanguage(BaseLanguage):
         structures: list[StructureNode] = []
 
         # Find SCSS variables
-        var_pattern = r'^\s*(\$[\w-]+)\s*:\s*([^;]+);'
+        var_pattern = r"^\s*(\$[\w-]+)\s*:\s*([^;]+);"
         for match in re.finditer(var_pattern, text, re.MULTILINE):
             var_name = match.group(1)
             var_value = match.group(2).strip()
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
             if len(var_value) > 50:
                 var_value = var_value[:47] + "..."
-            structures.append(StructureNode(
-                type="variable",
-                name=var_name,
-                start_line=line_num,
-                end_line=line_num,
-                signature=var_value,
-                modifiers=["scss-variable"]
-            ))
+            structures.append(
+                StructureNode(
+                    type="variable",
+                    name=var_name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=var_value,
+                    modifiers=["scss-variable"],
+                )
+            )
 
         # Find @mixin definitions
-        mixin_pattern = r'@mixin\s+([\w-]+)\s*(\([^)]*\))?'
+        mixin_pattern = r"@mixin\s+([\w-]+)\s*(\([^)]*\))?"
         for match in re.finditer(mixin_pattern, text):
             name = match.group(1)
             params = match.group(2) or "()"
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="mixin",
-                name=name,
-                start_line=line_num,
-                end_line=line_num,
-                signature=params,
-                modifiers=["mixin"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="mixin",
+                    name=name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=params,
+                    modifiers=["mixin"],
+                )
+            )
 
         # Find @function definitions
-        func_pattern = r'@function\s+([\w-]+)\s*(\([^)]*\))?'
+        func_pattern = r"@function\s+([\w-]+)\s*(\([^)]*\))?"
         for match in re.finditer(func_pattern, text):
             name = match.group(1)
             params = match.group(2) or "()"
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="function",
-                name=name,
-                start_line=line_num,
-                end_line=line_num,
-                signature=params,
-                modifiers=["scss-function"]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="function",
+                    name=name,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=params,
+                    modifiers=["scss-function"],
+                )
+            )
 
         # Find @import/@use/@forward statements
         import_pattern = r'@(import|use|forward)\s+["\']([^"\']+)["\']'
         for match in re.finditer(import_pattern, text):
             import_type = match.group(1)
             url = match.group(2)
-            line_num = text[:match.start()].count("\n") + 1
-            structures.append(StructureNode(
-                type="import",
-                name=url,
-                start_line=line_num,
-                end_line=line_num,
-                signature=f"@{import_type}",
-                modifiers=[import_type]
-            ))
+            line_num = text[: match.start()].count("\n") + 1
+            structures.append(
+                StructureNode(
+                    type="import",
+                    name=url,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=f"@{import_type}",
+                    modifiers=[import_type],
+                )
+            )
 
         # Find @media queries
-        media_pattern = r'@media\s+([^{]+)\s*\{'
+        media_pattern = r"@media\s+([^{]+)\s*\{"
         for match in re.finditer(media_pattern, text):
             query = match.group(1).strip()
-            line_num = text[:match.start()].count("\n") + 1
+            line_num = text[: match.start()].count("\n") + 1
             if len(query) > 50:
                 query = query[:47] + "..."
-            structures.append(StructureNode(
-                type="media_query",
-                name=query,
-                start_line=line_num,
-                end_line=line_num,
-                signature=query,
-                modifiers=["media"]
-            ))
+            structures.append(
+                StructureNode(
+                    type="media_query",
+                    name=query,
+                    start_line=line_num,
+                    end_line=line_num,
+                    signature=query,
+                    modifiers=["media"],
+                )
+            )
 
         return structures
 
@@ -614,10 +612,10 @@ class SCSSLanguage(BaseLanguage):
         imports = []
 
         # Pattern 1: @import "file" or @import "file1", "file2"
-        import_pattern = r'@import\s+([^;]+);'
+        import_pattern = r"@import\s+([^;]+);"
         for match in re.finditer(import_pattern, content):
             files_str = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             # Parse multiple imports
             for file_match in re.finditer(r'"([^"]+)"|\'([^\']+)\'', files_str):
@@ -640,7 +638,7 @@ class SCSSLanguage(BaseLanguage):
         use_pattern = r'@use\s+"([^"]+)"'
         for match in re.finditer(use_pattern, content):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -655,7 +653,7 @@ class SCSSLanguage(BaseLanguage):
         forward_pattern = r'@forward\s+"([^"]+)"'
         for match in re.finditer(forward_pattern, content):
             module = match.group(1)
-            line_num = content[:match.start()].count('\n') + 1
+            line_num = content[: match.start()].count("\n") + 1
 
             imports.append(
                 ImportInfo(
@@ -725,8 +723,7 @@ class SCSSLanguage(BaseLanguage):
             # Recurse into children (e.g., nested rules)
             if node.children:
                 definitions.extend(
-                    self._structures_to_definitions(
-                        file_path, node.children, node.name, node.type)
+                    self._structures_to_definitions(file_path, node.children, node.name, node.type)
                 )
 
         return definitions
@@ -749,10 +746,10 @@ class SCSSLanguage(BaseLanguage):
         calls = []
 
         # Find @include statements (mixin calls)
-        include_pattern = r'@include\s+([\w-]+)'
+        include_pattern = r"@include\s+([\w-]+)"
         for match in re.finditer(include_pattern, content):
             callee_name = match.group(1)
-            line = content[:match.start()].count('\n') + 1
+            line = content[: match.start()].count("\n") + 1
 
             calls.append(
                 CallInfo(
@@ -766,20 +763,52 @@ class SCSSLanguage(BaseLanguage):
 
         # Find SCSS function calls (excluding CSS functions like url(), rgb(), etc.)
         css_functions = {
-            'url', 'rgb', 'rgba', 'hsl', 'hsla', 'calc', 'var', 'min', 'max',
-            'clamp', 'linear-gradient', 'radial-gradient', 'conic-gradient',
-            'repeat', 'minmax', 'fit-content', 'attr', 'counter', 'counters',
-            'env', 'format', 'local', 'rotate', 'scale', 'translate', 'skew',
-            'matrix', 'perspective', 'blur', 'brightness', 'contrast', 'drop-shadow',
-            'grayscale', 'hue-rotate', 'invert', 'opacity', 'saturate', 'sepia'
+            "url",
+            "rgb",
+            "rgba",
+            "hsl",
+            "hsla",
+            "calc",
+            "var",
+            "min",
+            "max",
+            "clamp",
+            "linear-gradient",
+            "radial-gradient",
+            "conic-gradient",
+            "repeat",
+            "minmax",
+            "fit-content",
+            "attr",
+            "counter",
+            "counters",
+            "env",
+            "format",
+            "local",
+            "rotate",
+            "scale",
+            "translate",
+            "skew",
+            "matrix",
+            "perspective",
+            "blur",
+            "brightness",
+            "contrast",
+            "drop-shadow",
+            "grayscale",
+            "hue-rotate",
+            "invert",
+            "opacity",
+            "saturate",
+            "sepia",
         }
 
         # Look for function calls that are likely SCSS functions
-        func_pattern = r'\b([\w-]+)\s*\('
+        func_pattern = r"\b([\w-]+)\s*\("
         for match in re.finditer(func_pattern, content):
             func_name = match.group(1)
             if func_name.lower() not in css_functions:
-                line = content[:match.start()].count('\n') + 1
+                line = content[: match.start()].count("\n") + 1
                 calls.append(
                     CallInfo(
                         caller_file=file_path,
@@ -853,7 +882,11 @@ class SCSSLanguage(BaseLanguage):
         # Try various extensions
         for candidate_base in [module, partial]:
             for ext in [".scss", ".sass", ""]:
-                candidate = f"{candidate_base}{ext}" if not candidate_base.endswith((".scss", ".sass")) else candidate_base
+                candidate = (
+                    f"{candidate_base}{ext}"
+                    if not candidate_base.endswith((".scss", ".sass"))
+                    else candidate_base
+                )
                 if candidate in all_files:
                     return candidate
 
@@ -862,7 +895,11 @@ class SCSSLanguage(BaseLanguage):
         if source_dir != ".":
             for candidate_base in [module, partial]:
                 for ext in [".scss", ".sass", ""]:
-                    candidate = f"{source_dir}/{candidate_base}{ext}" if not candidate_base.endswith((".scss", ".sass")) else f"{source_dir}/{candidate_base}"
+                    candidate = (
+                        f"{source_dir}/{candidate_base}{ext}"
+                        if not candidate_base.endswith((".scss", ".sass"))
+                        else f"{source_dir}/{candidate_base}"
+                    )
                     if candidate in all_files:
                         return candidate
 
