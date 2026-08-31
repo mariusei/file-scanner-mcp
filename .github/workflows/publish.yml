@@ -16,7 +16,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        # Pinned exactly: astral-sh publishes no floating v10 tag (their last
+        # floating major is v7, while releases are at v10.x). Dependabot bumps it.
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
           python-version: '3.13'
@@ -61,7 +63,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        # Pinned exactly: astral-sh publishes no floating v10 tag (their last
+        # floating major is v7, while releases are at v10.x). Dependabot bumps it.
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           python-version: '3.11'
 
