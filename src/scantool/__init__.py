@@ -11,9 +11,9 @@ from importlib.metadata import PackageNotFoundError, version
 os.environ.setdefault('PYTHONUNBUFFERED', '1')
 
 if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(write_through=True)  # type: ignore[union-attr]
+    sys.stdout.reconfigure(write_through=True)
 if hasattr(sys.stderr, 'reconfigure'):
-    sys.stderr.reconfigure(write_through=True)  # type: ignore[union-attr]
+    sys.stderr.reconfigure(write_through=True)
 
 # The version is owned by pyproject.toml; the metadata lookup keeps them from
 # drifting apart (0.14 vs 0.15 happened with two hand-synced fields)

@@ -9,19 +9,16 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path, PurePosixPath
 
 import tree_sitter_markdown
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
     EntryPointInfo,
-    DefinitionInfo,
-    CallInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -68,10 +65,7 @@ class MarkdownLanguage(BaseLanguage):
         filename = Path(file_path).name.lower()
 
         # Skip common auto-generated documentation
-        if filename.endswith(('.generated.md', '.auto.md')):
-            return False
-
-        return True
+        return not filename.endswith(('.generated.md', '.auto.md'))
 
     # ===========================================================================
     # Structure Scanning (from MarkdownScanner)
@@ -82,7 +76,7 @@ class MarkdownLanguage(BaseLanguage):
     # fallback finds the same headings in a fraction of the time
     _TREE_SITTER_BYTE_LIMIT = 1_000_000
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Scan Markdown source and extract structure with metadata."""
         try:
             if len(source_code) > self._TREE_SITTER_BYTE_LIMIT:
@@ -107,7 +101,7 @@ class MarkdownLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract hierarchical structure from Markdown."""
-        structures = []
+        structures: list[StructureNode] = []
 
         # Build hierarchy based on heading levels
         heading_stack: list[tuple[int, StructureNode]] = []  # (level, node)
@@ -202,13 +196,14 @@ class MarkdownLanguage(BaseLanguage):
         """Fix end_line for headings to include their content sections."""
         total_lines = len(source_code.decode('utf-8', errors='replace').split('\n'))
 
-        def fix_node(node: StructureNode, next_sibling_start: Optional[int] = None):
+        def fix_node(node: StructureNode, next_sibling_start: int | None = None):
             """Recursively fix end_line for a node and its children."""
             if not node.type.startswith("heading"):
                 return
 
             # Process children first
             if node.children:
+                next_start: int | None
                 for i, child in enumerate(node.children):
                     # Next sibling's start line (or parent's end if no next sibling)
                     if i + 1 < len(node.children):
@@ -355,7 +350,7 @@ class MarkdownLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for malformed Markdown files."""
         text = source_code.decode('utf-8', errors='replace')
-        structures = []
+        structures: list[StructureNode] = []
 
         lines = text.split('\n')
         heading_stack: list[tuple[int, StructureNode]] = []
@@ -626,7 +621,7 @@ class MarkdownLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve Markdown link to file path.
 
         Markdown links to other docs or assets.
@@ -673,7 +668,7 @@ class MarkdownLanguage(BaseLanguage):
     # Helper methods (Markdown-specific)
     # ===========================================================================
 
-    def _resolve_markdown_path(self, current_file: str, relative_path: str) -> Optional[str]:
+    def _resolve_markdown_path(self, current_file: str, relative_path: str) -> str | None:
         """Resolve relative file-system path in Markdown.
 
         Args:
@@ -692,7 +687,7 @@ class MarkdownLanguage(BaseLanguage):
 
             # Normalize by converting to string and back
             # This handles .. and . properly
-            parts = []
+            parts: list[str] = []
             for part in resolved.parts:
                 if part == '..':
                     if parts and parts[-1] != '..':

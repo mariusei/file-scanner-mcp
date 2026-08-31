@@ -12,7 +12,10 @@ import subprocess
 import pytest
 
 from scantool.git_signals import (
-    _run_git, collect_git_signals, file_churn, format_activity,
+    _run_git,
+    collect_git_signals,
+    file_churn,
+    format_activity,
 )
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
@@ -179,8 +182,8 @@ class TestPerNodeChurn:
         assert line_map[6] != line_map[2]
 
     def test_node_labels_differentiate_edited_function(self, tmp_path):
-        from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
+        from scantool.scanner import FileScanner
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "mod.py"
@@ -200,8 +203,8 @@ class TestPerNodeChurn:
     def test_uniform_counts_suppressed(self, tmp_path):
         """Newly created file: all nodes share the same count — labels without
         differentiation repeat the file churn and are suppressed."""
-        from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
+        from scantool.scanner import FileScanner
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "fresh.py"
@@ -215,8 +218,8 @@ class TestPerNodeChurn:
 
     def test_language_agnostic_markdown(self, tmp_path):
         """Blame is line-based — markdown sections get the same treatment."""
-        from scantool.scanner import FileScanner
         from scantool.git_signals import recent_line_edits
+        from scantool.scanner import FileScanner
 
         _git(tmp_path, "init", "-q")
         path = tmp_path / "doc.md"
@@ -241,8 +244,8 @@ class TestPerNodeChurn:
 @requires_git
 class TestFormatterIntegration:
     def test_directory_scan_shows_churn_label(self, repo):
-        from scantool.scanner import FileScanner
         from scantool.directory_formatter import DirectoryFormatter
+        from scantool.scanner import FileScanner
         from scantool.server import _annotate_churn
 
         results = FileScanner().scan_directory(str(repo), pattern="**/*.py")
@@ -253,8 +256,8 @@ class TestFormatterIntegration:
         assert "2x/90d" in output
 
     def test_non_git_directory_has_no_labels(self, tmp_path):
-        from scantool.scanner import FileScanner
         from scantool.directory_formatter import DirectoryFormatter
+        from scantool.scanner import FileScanner
         from scantool.server import _annotate_churn, _git_activity_section
 
         (tmp_path / "f.py").write_text("def fn():\n    return call_something()\n")

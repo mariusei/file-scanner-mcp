@@ -1,8 +1,8 @@
 """Tests for Rust language."""
 
 import pytest
+
 from scantool.languages.rust import RustLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

@@ -5,13 +5,12 @@ sections (headers) and paragraphs. Since plain text files don't have
 imports or entry points, those methods return empty lists.
 """
 
-from typing import Optional
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
     EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -44,7 +43,7 @@ class TextLanguage(BaseLanguage):
     # Structure Scanning
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Extract structure from plain text files.
 
         Detects:
@@ -54,7 +53,7 @@ class TextLanguage(BaseLanguage):
         text = source_code.decode("utf-8", errors="ignore")
         lines = text.split("\n")
 
-        structures = []
+        structures: list[StructureNode] = []
         current_section = None
         section_start = None
         paragraph_start = None

@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_ruby
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -88,7 +87,7 @@ class RubyLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -258,7 +257,7 @@ class RubyLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_method_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract method signature with parameters."""
         params_node = node.child_by_field_name("parameters")
 
@@ -269,7 +268,7 @@ class RubyLanguage(BaseLanguage):
 
         return "()"
 
-    def _extract_comment(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_comment(self, node: Node, source_code: bytes) -> str | None:
         """Extract comment above or near a declaration."""
         # Strategy 1: Look for comment as previous sibling
         # This finds comments directly above the declaration
@@ -304,7 +303,7 @@ class RubyLanguage(BaseLanguage):
 
     def _extract_visibility_modifiers(self, node: Node, source_code: bytes) -> list[str]:
         """Extract visibility modifiers (public, private, protected)."""
-        modifiers = []
+        modifiers: list[str] = []
 
         # In Ruby, visibility is typically determined by context
         # We could check for explicit visibility declarations, but for simplicity
@@ -584,7 +583,7 @@ class RubyLanguage(BaseLanguage):
         # a name that resolves to nothing (which would silently drop the edge).
         def_names = {d.name for d in definitions}
 
-        def traverse(node: Node, current_method: Optional[str] = None, in_statement: bool = False):
+        def traverse(node: Node, current_method: str | None = None, in_statement: bool = False):
             # Track method context
             if node.type in ("method", "singleton_method"):
                 name_node = node.child_by_field_name("name")
@@ -705,10 +704,10 @@ class RubyLanguage(BaseLanguage):
         if 'ApplicationRecord' in content or 'ActiveRecord::Base' in content:
             return "core"
 
-        if any(keyword in content for keyword in ['get ', 'post ', 'put ', 'patch ', 'delete ']):
-            # Likely a route definition
-            if 'do' in content and ("'" in content or '"' in content):
-                return "entry_points"
+        # Likely a route definition: an HTTP verb with a block and a quoted path
+        if (any(keyword in content for keyword in ['get ', 'post ', 'put ', 'patch ', 'delete '])
+                and 'do' in content and ("'" in content or '"' in content)):
+            return "entry_points"
 
         # Fall back to base implementation
         return super().classify_file(file_path, content)
@@ -723,7 +722,7 @@ class RubyLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve Ruby require to file path.
 
         Ruby import patterns:

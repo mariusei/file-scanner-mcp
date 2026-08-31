@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_cpp
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -107,10 +106,7 @@ class CCppLanguage(BaseLanguage):
             return True
 
         # Skip other generated files
-        if filename_lower.endswith('.gen.h') or filename_lower.endswith('.gen.cpp'):
-            return True
-
-        return False
+        return bool(filename_lower.endswith('.gen.h') or filename_lower.endswith('.gen.cpp'))
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -149,10 +145,7 @@ class CCppLanguage(BaseLanguage):
             return False
 
         # Skip build directories (should be caught by tier 1, but double-check)
-        if '/build/' in path_lower or '/cmake-build-' in path_lower:
-            return False
-
-        return True
+        return not ('/build/' in path_lower or '/cmake-build-' in path_lower)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value C/C++ files for inventory listing.
@@ -175,7 +168,7 @@ class CCppLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse_members(body: Node, target: list, default_access: str) -> None:
             # Walk a class/struct body tracking the running access label (C++
@@ -278,7 +271,7 @@ class CCppLanguage(BaseLanguage):
         traverse(root, structures)
         return structures
 
-    def _extract_struct(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_struct(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract struct declaration."""
         name_node = node.child_by_field_name("name")
         if not name_node:
@@ -299,7 +292,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_class(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_class(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract C++ class declaration."""
         name_node = node.child_by_field_name("name")
         if not name_node:
@@ -329,7 +322,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_enum(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_enum(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract enum declaration."""
         name_node = node.child_by_field_name("name")
         if not name_node:
@@ -350,7 +343,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_namespace(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_namespace(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract C++ namespace declaration."""
         name_node = node.child_by_field_name("name")
         if not name_node:
@@ -371,7 +364,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_function(self, node: Node, source_code: bytes, root: Node) -> Optional[StructureNode]:
+    def _extract_function(self, node: Node, source_code: bytes, root: Node) -> StructureNode | None:
         """Extract function definition."""
         declarator = node.child_by_field_name("declarator")
         if not declarator:
@@ -420,7 +413,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_function_declaration(self, node: Node, source_code: bytes, root: Node) -> Optional[StructureNode]:
+    def _extract_function_declaration(self, node: Node, source_code: bytes, root: Node) -> StructureNode | None:
         """Extract function declaration (not definition)."""
         # Find declarator in the declaration
         declarator = None
@@ -472,7 +465,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_method(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_method(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract method from field declaration."""
         # Check if this field declaration is actually a method
         declarator = None
@@ -514,7 +507,7 @@ class CCppLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_function_name(self, declarator: Node, source_code: bytes) -> Optional[str]:
+    def _extract_function_name(self, declarator: Node, source_code: bytes) -> str | None:
         """Extract function name from declarator."""
         # The declarator can have different structures
         # Look for identifier or field_identifier
@@ -534,7 +527,7 @@ class CCppLanguage(BaseLanguage):
 
         return None
 
-    def _extract_function_signature(self, declarator: Node, source_code: bytes) -> Optional[str]:
+    def _extract_function_signature(self, declarator: Node, source_code: bytes) -> str | None:
         """Extract function signature (parameters)."""
         params_node = declarator.child_by_field_name("parameters")
         if params_node:
@@ -542,7 +535,7 @@ class CCppLanguage(BaseLanguage):
             return params_text
         return None
 
-    def _extract_return_type(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_return_type(self, node: Node, source_code: bytes) -> str | None:
         """Extract return type from function node."""
         type_node = node.child_by_field_name("type")
         if type_node:
@@ -550,7 +543,7 @@ class CCppLanguage(BaseLanguage):
             return return_type
         return None
 
-    def _extract_base_classes(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_base_classes(self, node: Node, source_code: bytes) -> str | None:
         """Extract base classes from class declaration."""
         parts = []
 
@@ -565,7 +558,7 @@ class CCppLanguage(BaseLanguage):
 
         return ": " + ", ".join(parts) if parts else None
 
-    def _extract_comment(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_comment(self, node: Node, source_code: bytes) -> str | None:
         """Extract comment before node."""
         prev = node.prev_sibling
 
@@ -621,9 +614,10 @@ class CCppLanguage(BaseLanguage):
         declarator = node.child_by_field_name("declarator")
         if declarator:
             for child in declarator.children:
-                if child.type == "type_qualifier" and "const" in self._get_node_text(child, source_code):
-                    if "const" not in modifiers:
-                        modifiers.append("const")
+                if (child.type == "type_qualifier"
+                        and "const" in self._get_node_text(child, source_code)
+                        and "const" not in modifiers):
+                    modifiers.append("const")
 
         return modifiers
 
@@ -640,9 +634,7 @@ class CCppLanguage(BaseLanguage):
             elif child.type == "type_qualifier":
                 qualifier_text = self._get_node_text(child, source_code)
                 modifiers.append(qualifier_text)
-            elif child.type == "virtual_specifier":
-                modifiers.append("virtual")
-            elif child.type == "virtual":
+            elif child.type == "virtual_specifier" or child.type == "virtual":
                 modifiers.append("virtual")
 
         return modifiers
@@ -652,10 +644,7 @@ class CCppLanguage(BaseLanguage):
         attributes = []
 
         for child in node.children:
-            if child.type == "attribute_declaration":
-                attr_text = self._get_node_text(child, source_code).strip()
-                attributes.append(attr_text)
-            elif child.type == "attribute_specifier":
+            if child.type == "attribute_declaration" or child.type == "attribute_specifier":
                 attr_text = self._get_node_text(child, source_code).strip()
                 attributes.append(attr_text)
 
@@ -865,7 +854,7 @@ class CCppLanguage(BaseLanguage):
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
 
-        def traverse(node: Node, current_func: Optional[str] = None):
+        def traverse(node: Node, current_func: str | None = None):
             # Track function context
             if node.type == "function_definition":
                 # Find the function name from the declarator
@@ -1013,7 +1002,7 @@ class CCppLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Resolve C/C++ #include to file path.
 

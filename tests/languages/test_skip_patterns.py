@@ -1,13 +1,13 @@
 """Tests for skip patterns and noise filtering."""
 
-import pytest
 import tempfile
 from pathlib import Path
-from scantool.languages.skip_patterns import should_skip_directory, should_skip_file
+
 from scantool.code_map import CodeMap
-from scantool.languages.python import PythonLanguage
-from scantool.languages.typescript import TypeScriptLanguage
 from scantool.languages.go import GoLanguage
+from scantool.languages.python import PythonLanguage
+from scantool.languages.skip_patterns import should_skip_directory, should_skip_file
+from scantool.languages.typescript import TypeScriptLanguage
 
 
 class TestSkipPatterns:

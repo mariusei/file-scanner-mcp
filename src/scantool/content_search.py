@@ -22,7 +22,6 @@ SCOPE:
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .languages import is_file_info_stub
 
@@ -40,9 +39,9 @@ class NodeHits:
 
     file: str
     chain: str                       # e.g. "CodeMap > analyze"
-    node_type: Optional[str]         # containing node's type, None at module level
-    node_name: Optional[str]
-    signature: Optional[str]
+    node_type: str | None         # containing node's type, None at module level
+    node_name: str | None
+    signature: str | None
     start_line: int
     end_line: int
     hits: list[tuple[int, str]]      # (line number, line text)
@@ -142,14 +141,15 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, list[tup
     (the order-dependent candidates[0] trap, see experiments/bucket_entropy/).
     """
     definitions: dict[str, list[tuple[str, int]]] = {}
+    def walk(nodes, file_path):
+        for node in nodes or []:
+            if node.name and node.type != "file-info":
+                definitions.setdefault(node.name, []).append(
+                    (file_path, node.start_line))
+            walk(node.children, file_path)
+
     for file_path, structures in results.items():
-        def walk(nodes):
-            for node in nodes or []:
-                if node.name and node.type != "file-info":
-                    definitions.setdefault(node.name, []).append(
-                        (file_path, node.start_line))
-                walk(node.children)
-        walk(structures)
+        walk(structures, file_path)
 
     # calls are taken from the whole containing node, not just the hit lines —
     # the hop to the neighboring file often sits on the line next to the hit.
@@ -173,7 +173,7 @@ def find_leads(found: list[NodeHits], results: dict) -> list[tuple[str, list[tup
             hit_files.setdefault(name, set()).add(node_hits.file)
 
     leads = []
-    for name, count in sorted(call_counts.items(), key=lambda kv: -kv[1]):
+    for name, _count in sorted(call_counts.items(), key=lambda kv: -kv[1]):
         defined_in = definitions.get(name, [])
         if not 1 <= len(defined_in) <= _LEAD_MAX_DEFINITIONS:
             continue
@@ -209,7 +209,7 @@ def _containing_node(structures, line_no: int):
 
 
 def format_hits(found: list[NodeHits], pattern: str,
-                leads: Optional[list[tuple[str, list[tuple[str, int]]]]] = None) -> str:
+                leads: list[tuple[str, list[tuple[str, int]]]] | None = None) -> str:
     """Compact structural rendering: node chain + line-numbered hits,
     plus one-hop leads to definitions in other files."""
     if not found:

@@ -9,20 +9,21 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
+from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import tree_sitter_scss
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .css import CSSLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -69,11 +70,7 @@ class SCSSLanguage(BaseLanguage):
         """Skip minified and generated SCSS files."""
         if filename.endswith(".min.scss"):
             return True
-        if any(pattern in filename.lower() for pattern in [
-            ".generated.", ".compiled."
-        ]):
-            return True
-        return False
+        return bool(any(pattern in filename.lower() for pattern in [".generated.", ".compiled."]))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip SCSS files that should not be analyzed.
@@ -88,12 +85,7 @@ class SCSSLanguage(BaseLanguage):
             return False
 
         # Skip common generated patterns
-        if any(pattern in filename for pattern in [
-            ".compiled.", ".generated.", "bundle."
-        ]):
-            return False
-
-        return True
+        return not any(pattern in filename for pattern in [".compiled.", ".generated.", "bundle."])
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value SCSS files for inventory listing.
@@ -117,7 +109,7 @@ class SCSSLanguage(BaseLanguage):
         self, root: Node, source_code: bytes
     ) -> list[StructureNode]:
         """Extract structure from SCSS stylesheet."""
-        structures = []
+        structures: list[StructureNode] = []
 
         for node in root.children:
             if node.type == "ERROR":
@@ -191,7 +183,7 @@ class SCSSLanguage(BaseLanguage):
         issue earlier in the file. This method recursively searches for valid
         structures within ERROR nodes so we can still show useful information.
         """
-        structures = []
+        structures: list[StructureNode] = []
 
         for child in error_node.children:
             # Recurse into nested ERROR nodes
@@ -250,7 +242,7 @@ class SCSSLanguage(BaseLanguage):
 
     def _extract_variable(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract SCSS variable ($name: value)."""
         var_name = None
 
@@ -288,7 +280,7 @@ class SCSSLanguage(BaseLanguage):
 
     def _extract_mixin(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @mixin definition."""
         name = None
         params = None
@@ -315,7 +307,7 @@ class SCSSLanguage(BaseLanguage):
 
     def _extract_function(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @function definition."""
         name = None
         params = None
@@ -342,7 +334,7 @@ class SCSSLanguage(BaseLanguage):
 
     def _extract_import_structure(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @import/@use/@forward statement as structure node."""
         import_type = "import"
         if node.type == "use_statement":
@@ -370,10 +362,10 @@ class SCSSLanguage(BaseLanguage):
 
     def _extract_media(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @media statement."""
         query = None
-        children = []
+        children: list[StructureNode] = []
 
         for child in node.children:
             if child.type in ("keyword_query", "feature_query", "binary_query",
@@ -395,14 +387,17 @@ class SCSSLanguage(BaseLanguage):
         )
 
     # @keyframes is plain CSS — share CSSLanguage's implementation
-    _extract_keyframes = CSSLanguage._extract_keyframes
+    _extract_keyframes = cast(
+        "Callable[[SCSSLanguage, Node, bytes], StructureNode | None]",
+        CSSLanguage._extract_keyframes,
+    )
 
     def _extract_rule_set(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract a SCSS rule set with possible nested rules."""
         selectors = []
-        children = []
+        children: list[StructureNode] = []
         declaration_count = 0
         has_include = False
         has_extend = False
@@ -446,7 +441,7 @@ class SCSSLanguage(BaseLanguage):
             end_line=node.end_point[0] + 1,
             signature=f"{len(selectors)} sel, {declaration_count} decl",
             modifiers=modifiers,
-            children=children if children else None,
+            children=children,
             complexity={"selectors": len(selectors), "declarations": declaration_count}
         )
 
@@ -455,7 +450,7 @@ class SCSSLanguage(BaseLanguage):
     ) -> list[str]:
         """Extract individual selectors."""
         selectors = []
-        current = []
+        current: list[str] = []
 
         for child in selectors_node.children:
             if child.type == ",":
@@ -477,7 +472,7 @@ class SCSSLanguage(BaseLanguage):
     ) -> tuple[int, list[StructureNode], bool, bool]:
         """Process SCSS block and extract nested rules."""
         declaration_count = 0
-        children = []
+        children: list[StructureNode] = []
         has_include = False
         has_extend = False
 
@@ -509,7 +504,9 @@ class SCSSLanguage(BaseLanguage):
 
     def _extract_comment_title(self, comment: str) -> str:
         """Extract a title from a comment."""
-        text = comment.strip("/*! \n\r\t*/").lstrip("/!")
+        # noqa argument is a character set (comment delimiters + whitespace),
+        # not a prefix — B005 does not apply.
+        text = comment.strip("/*! \n\r\t*/").lstrip("/!")  # noqa: B005
         first_line = text.split("\n")[0].strip()
         if len(first_line) > 50:
             first_line = first_line[:47] + "..."
@@ -518,7 +515,7 @@ class SCSSLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for malformed SCSS files."""
         text = source_code.decode("utf-8", errors="replace")
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find SCSS variables
         var_pattern = r'^\s*(\$[\w-]+)\s*:\s*([^;]+);'
@@ -699,7 +696,11 @@ class SCSSLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -717,13 +718,15 @@ class SCSSLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children (e.g., nested rules)
             if node.children:
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, node.name)
+                    self._structures_to_definitions(
+                        file_path, node.children, node.name, node.type)
                 )
 
         return definitions
@@ -832,7 +835,7 @@ class SCSSLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve SCSS @import/@use to file path.
 
         SCSS imports:

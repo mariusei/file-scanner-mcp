@@ -10,18 +10,17 @@ Key functionality:
 - classify_file(): All config files go to "config" cluster
 """
 
-import re
 import json
-from typing import Optional
+import re
 from pathlib import Path
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -71,10 +70,7 @@ class ConfigLanguage(BaseLanguage):
             return True
 
         # Skip minified
-        if '.min.' in filename_lower:
-            return True
-
-        return False
+        return '.min.' in filename_lower
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip config files that should not be analyzed."""
@@ -89,16 +85,13 @@ class ConfigLanguage(BaseLanguage):
             return False
 
         # Skip minified
-        if '.min.' in filename:
-            return False
-
-        return True
+        return '.min.' not in filename
 
     # ===========================================================================
     # Structure Scanning
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Scan config file - returns empty list as configs don't have code structure."""
         # Config files don't have traditional code structure (classes, functions)
         # Return empty list rather than None to indicate successful parse
@@ -120,7 +113,7 @@ class ConfigLanguage(BaseLanguage):
         Does NOT extract:
         - Package names (npm, cargo, pip - these are registry names, not file imports)
         """
-        imports = []
+        imports: list[ImportInfo] = []
         filename = Path(file_path).name.lower()
 
         # Detect file type
@@ -140,7 +133,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _extract_json_imports(self, file_path: str, content: str) -> list[ImportInfo]:
         """Extract imports from JSON config files."""
-        imports = []
+        imports: list[ImportInfo] = []
         filename = Path(file_path).name.lower()
 
         try:
@@ -185,7 +178,7 @@ class ConfigLanguage(BaseLanguage):
             if 'compilerOptions' in data and 'paths' in data['compilerOptions']:
                 paths = data['compilerOptions']['paths']
                 if isinstance(paths, dict):
-                    for alias, path_list in paths.items():
+                    for _alias, path_list in paths.items():
                         if isinstance(path_list, list):
                             for path in path_list:
                                 if isinstance(path, str):
@@ -200,7 +193,7 @@ class ConfigLanguage(BaseLanguage):
         elif filename == 'package.json':
             # Scripts might reference local files
             if 'scripts' in data and isinstance(data['scripts'], dict):
-                for script_name, script_cmd in data['scripts'].items():
+                for _script_name, script_cmd in data['scripts'].items():
                     if isinstance(script_cmd, str):
                         # Extract file paths from scripts (e.g., "node build.js", "node ./scripts/test.mjs")
                         # Match files with or without ./ prefix
@@ -217,7 +210,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _extract_yaml_imports(self, file_path: str, content: str) -> list[ImportInfo]:
         """Extract imports from YAML config files."""
-        imports = []
+        imports: list[ImportInfo] = []
         filename = Path(file_path).name.lower()
 
         # docker-compose.yml patterns
@@ -256,7 +249,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _extract_toml_imports(self, file_path: str, content: str) -> list[ImportInfo]:
         """Extract imports from TOML config files."""
-        imports = []
+        imports: list[ImportInfo] = []
         filename = Path(file_path).name.lower()
 
         # pyproject.toml - extract script paths, not package dependencies
@@ -287,7 +280,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _extract_ini_imports(self, file_path: str, content: str) -> list[ImportInfo]:
         """Extract imports from INI config files."""
-        imports = []
+        imports: list[ImportInfo] = []
 
         # INI files may have file path values
         # key = /path/to/file or key = ./relative/path
@@ -310,7 +303,7 @@ class ConfigLanguage(BaseLanguage):
         - Quoted paths with extensions
         - Avoid matching URLs, version numbers, or package names
         """
-        imports = []
+        imports: list[ImportInfo] = []
 
         # Pattern 1: Relative paths with common extensions (in quotes)
         # Matches: "./config.json", "../utils/helper.ts", "./templates/base.html", etc.
@@ -351,7 +344,7 @@ class ConfigLanguage(BaseLanguage):
         - docker-compose.yml: services
         - tsconfig.json: project config
         """
-        entry_points = []
+        entry_points: list[EntryPointInfo] = []
         filename = Path(file_path).name.lower()
 
         try:
@@ -375,7 +368,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _find_json_entry_points(self, file_path: str, content: str) -> list[EntryPointInfo]:
         """Find entry points in JSON config files."""
-        entry_points = []
+        entry_points: list[EntryPointInfo] = []
         filename = Path(file_path).name.lower()
 
         try:
@@ -405,16 +398,15 @@ class ConfigLanguage(BaseLanguage):
                 ))
 
             # bin scripts
-            if 'bin' in data:
-                if isinstance(data['bin'], dict):
-                    for bin_name, bin_path in data['bin'].items():
-                        entry_points.append(EntryPointInfo(
-                            file=file_path,
-                            type="bin_script",
-                            name=bin_name,
-                            line=self._find_line(content, bin_name),
-                            framework="npm"
-                        ))
+            if 'bin' in data and isinstance(data['bin'], dict):
+                for bin_name, _bin_path in data['bin'].items():
+                    entry_points.append(EntryPointInfo(
+                        file=file_path,
+                        type="bin_script",
+                        name=bin_name,
+                        line=self._find_line(content, bin_name),
+                        framework="npm"
+                    ))
 
         # tsconfig.json
         elif filename == 'tsconfig.json':
@@ -430,7 +422,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _find_toml_entry_points(self, file_path: str, content: str) -> list[EntryPointInfo]:
         """Find entry points in TOML config files."""
-        entry_points = []
+        entry_points: list[EntryPointInfo] = []
         filename = Path(file_path).name.lower()
 
         # pyproject.toml
@@ -482,7 +474,7 @@ class ConfigLanguage(BaseLanguage):
 
     def _find_yaml_entry_points(self, file_path: str, content: str) -> list[EntryPointInfo]:
         """Find entry points in YAML config files."""
-        entry_points = []
+        entry_points: list[EntryPointInfo] = []
         filename = Path(file_path).name.lower()
 
         # docker-compose.yml
@@ -541,7 +533,7 @@ class ConfigLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve config file reference to file path.
 
         Config files reference other files directly by path, so resolution

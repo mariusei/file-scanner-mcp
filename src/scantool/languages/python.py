@@ -14,19 +14,18 @@ import io
 import re
 import textwrap
 import tokenize
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_python
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -83,16 +82,12 @@ class PythonLanguage(BaseLanguage):
     @classmethod
     def should_skip(cls, filename: str) -> bool:
         """Skip compiled Python files."""
-        if filename.endswith(('.pyc', '.pyo', '.pyd')):
-            return True
-        return False
+        return bool(filename.endswith(('.pyc', '.pyo', '.pyd')))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip compiled Python files."""
         filename = Path(file_path).name
-        if filename.endswith(('.pyc', '.pyo', '.pyd')):
-            return False
-        return True
+        return not filename.endswith(('.pyc', '.pyo', '.pyd'))
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Python files for inventory listing.
@@ -119,7 +114,7 @@ class PythonLanguage(BaseLanguage):
     # Structure Scanning (from PythonScanner)
     # ===========================================================================
 
-    def condense_excerpt(self, excerpt_lines: list[str]) -> Optional[list[str]]:
+    def condense_excerpt(self, excerpt_lines: list[str]) -> list[str] | None:
         """Condense excerpt to a method skeleton via Python AST.
 
         Returns None (verbatim fallback) when the excerpt doesn't parse,
@@ -144,7 +139,7 @@ class PythonLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -234,7 +229,7 @@ class PythonLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract function signature with parameters and return type."""
         parts = []
 
@@ -256,7 +251,7 @@ class PythonLanguage(BaseLanguage):
 
     def _extract_decorators(self, node: Node, source_code: bytes) -> list[str]:
         """Extract decorators from a function/class definition."""
-        decorators = []
+        decorators: list[str] = []
         prev = node.prev_sibling
 
         while prev and prev.type == "decorator":
@@ -266,7 +261,7 @@ class PythonLanguage(BaseLanguage):
 
         return decorators
 
-    def _extract_docstring(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_docstring(self, node: Node, source_code: bytes) -> str | None:
         """Extract first line of docstring."""
         body = node.child_by_field_name("body")
         if not body or len(body.children) == 0:
@@ -277,7 +272,9 @@ class PythonLanguage(BaseLanguage):
             for child in first_stmt.children:
                 if child.type == "string":
                     docstring = self._get_node_text(child, source_code)
-                    docstring = docstring.strip('"""').strip("'''").strip('"').strip("'")
+                    # Each strip() argument is a quote character set; the chain
+                    # peels the docstring's own delimiters. B005 does not apply.
+                    docstring = docstring.strip('"""').strip("'''").strip('"').strip("'")  # noqa: B005
                     lines = [line.strip() for line in docstring.split('\n')]
                     for line in lines:
                         if line:
@@ -322,7 +319,7 @@ class PythonLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
-        structures = []
+        structures: list[StructureNode] = []
 
         for match in re.finditer(r'^class\s+(\w+)', text, re.MULTILINE):
             line_num = text[:match.start()].count('\n') + 1
@@ -634,7 +631,7 @@ class PythonLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve Python import module to file path.
 
         Handles:
@@ -787,13 +784,13 @@ def _trailing_comments(source: str) -> dict[int, str]:
 
 
 def _skeleton_stmts(
-    stmts: list[ast.stmt], depth: int, comments: Optional[dict[int, str]] = None
+    stmts: list[ast.stmt], depth: int, comments: dict[int, str] | None = None
 ) -> list[str]:
     """Recursively render statements as skeleton lines (1 space per level)."""
     out: list[str] = []
     ind = " " * depth
 
-    def emit(text: str, row: Optional[int] = None) -> None:
+    def emit(text: str, row: int | None = None) -> None:
         if comments and row is not None:
             comment = comments.pop(row, None)
             if comment:

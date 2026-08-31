@@ -8,15 +8,14 @@ get_extensions() returns an empty list. It should be instantiated directly
 by code_map.py as a fallback when no other language handler is available.
 """
 
-from typing import Optional
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -61,7 +60,7 @@ class GenericLanguage(BaseLanguage):
     # Structure Scanning
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """No structure scanning for generic files.
 
         Generic files don't have a known structure that can be parsed.

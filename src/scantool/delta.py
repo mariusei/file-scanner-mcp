@@ -32,7 +32,6 @@ import hashlib
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 # Within-session iteration is preserved; cross-conversation ghosts die
 _MEMORY_TTL_SECONDS = 30 * 60
@@ -105,7 +104,7 @@ def diff_nodes(previous: dict[str, str], current: dict[str, str]) -> NodeDiff:
     return diff
 
 
-def stat_fingerprint(path: str) -> Optional[tuple]:
+def stat_fingerprint(path: str) -> tuple | None:
     """(st_mtime_ns, st_size) for a file, or None on error. The cheap
     change-detection key shared by ScanMemory (per-file delta) and the code-map
     corpus cache (per-file extraction)."""
@@ -127,7 +126,7 @@ class ScanMemory:
         self._files.clear()
 
     def file_unchanged(self, path: str,
-                       detail: float = FULL_DETAIL) -> Optional[float]:
+                       detail: float = FULL_DETAIL) -> float | None:
         """Age in seconds of the previous identical scan — None if changed,
         unseen, expired (TTL), or previously shown at LESS detail than this
         request: "identical to the previous response" must refer to a
@@ -147,7 +146,7 @@ class ScanMemory:
         return None
 
     def diff_and_record(self, path: str, structures, source_lines: list[str],
-                        detail: float = FULL_DETAIL) -> Optional[NodeDiff]:
+                        detail: float = FULL_DETAIL) -> NodeDiff | None:
         """Node-diff against the previous scan (None on first scan), then
         record the current state. A previous record at less detail counts
         as a first scan — node-level suppression must never point at

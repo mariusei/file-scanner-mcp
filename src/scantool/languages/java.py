@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_java
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -74,9 +73,7 @@ class JavaLanguage(BaseLanguage):
     @classmethod
     def should_skip(cls, filename: str) -> bool:
         """Skip compiled Java files."""
-        if filename.endswith('.class'):
-            return True
-        return False
+        return bool(filename.endswith('.class'))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip compiled Java files.
@@ -88,9 +85,7 @@ class JavaLanguage(BaseLanguage):
         build/ and target/ directories are already filtered by COMMON_SKIP_DIRS.
         """
         filename = Path(file_path).name
-        if filename.endswith('.class'):
-            return False
-        return True
+        return not filename.endswith('.class')
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Java files for inventory listing.
@@ -115,7 +110,7 @@ class JavaLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -377,7 +372,7 @@ class JavaLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_method_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract method signature with type parameters, parameters and return type."""
         parts = []
 
@@ -432,7 +427,7 @@ class JavaLanguage(BaseLanguage):
 
         # Also check previous siblings (annotations can sometimes be separate)
         prev = node.prev_sibling
-        prev_annotations = []
+        prev_annotations: list[str] = []
         while prev:
             if prev.type == "marker_annotation" or prev.type == "annotation":
                 ann_text = self._get_node_text(prev, source_code).strip()
@@ -446,7 +441,7 @@ class JavaLanguage(BaseLanguage):
 
         return annotations
 
-    def _extract_javadoc(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_javadoc(self, node: Node, source_code: bytes) -> str | None:
         """Extract first line of JavaDoc comment."""
         prev = node.prev_sibling
 
@@ -469,7 +464,7 @@ class JavaLanguage(BaseLanguage):
 
         return None
 
-    def _extract_type_parameters(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_type_parameters(self, node: Node, source_code: bytes) -> str | None:
         """Extract type parameters (generics) like <T> or <K, V>."""
         type_params = node.child_by_field_name("type_parameters")
         if type_params:
@@ -753,7 +748,7 @@ class JavaLanguage(BaseLanguage):
         # resolves to nothing (which would silently drop the edge).
         def_names = {d.name for d in definitions}
 
-        def traverse(node: Node, current_method: Optional[str] = None):
+        def traverse(node: Node, current_method: str | None = None):
             # Track current method/constructor context
             if node.type in ("method_declaration", "constructor_declaration"):
                 name_node = node.child_by_field_name("name")
@@ -896,7 +891,7 @@ class JavaLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve Java import to file path.
 
         Java imports are fully qualified class names:

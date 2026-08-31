@@ -6,8 +6,6 @@ allows languages to share common structures.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ===========================================================================
 # Structure models (from scanners)
@@ -29,19 +27,19 @@ class StructureNode:
     children: list["StructureNode"] = field(default_factory=list)
 
     # Enhanced metadata (optional)
-    signature: Optional[str] = None  # Function signature with types
+    signature: str | None = None  # Function signature with types
     decorators: list[str] = field(default_factory=list)  # @decorators
-    docstring: Optional[str] = None  # First line of docstring
-    complexity: Optional[dict] = None  # {"lines": int, "depth": int, "branches": int}
+    docstring: str | None = None  # First line of docstring
+    complexity: dict | None = None  # {"lines": int, "depth": int, "branches": int}
     modifiers: list[str] = field(default_factory=list)  # async, static, public, etc.
-    file_metadata: Optional[dict] = None  # File-level metadata: size, timestamps
+    file_metadata: dict | None = None  # File-level metadata: size, timestamps
 
     # Entropy-based saliency (set by FileScanner._annotate_salient_code)
-    code_excerpt: Optional[list[str]] = None  # Verbatim source lines for salient nodes
-    code_skeleton: Optional[list[str]] = None  # Condensed method skeleton (preferred display)
-    saliency: Optional[float] = None  # Normalized saliency score for selected nodes
-    recent_edits: Optional[int] = None  # Distinct commits behind this node's lines (90d window)
-    delta_status: Optional[str] = None  # "new"/"changed" vs previous scan (delta mode)
+    code_excerpt: list[str] | None = None  # Verbatim source lines for salient nodes
+    code_skeleton: list[str] | None = None  # Condensed method skeleton (preferred display)
+    saliency: float | None = None  # Normalized saliency score for selected nodes
+    recent_edits: int | None = None  # Distinct commits behind this node's lines (90d window)
+    delta_status: str | None = None  # "new"/"changed" vs previous scan (delta mode)
 
     def __post_init__(self):
         # Names are single-line by contract: they are interpolated into
@@ -55,7 +53,7 @@ class StructureNode:
         return f"{self.type}: {self.name} ({self.start_line}-{self.end_line})"
 
 
-def is_file_info_stub(structures: Optional[list["StructureNode"]]) -> bool:
+def is_file_info_stub(structures: list["StructureNode"] | None) -> bool:
     """True if a file's scan is just a bare file-info stub — no parseable
     structure, only name + size metadata. A file is stubbed either because its
     type is unsupported or because it is too large to parse in a sweep (a
@@ -92,9 +90,9 @@ class EntryPointInfo:
 
     file: str  # File containing entry point
     type: str  # "main_function", "if_main", "app_instance", "export"
-    name: Optional[str] = None  # Function/variable name if applicable
+    name: str | None = None  # Function/variable name if applicable
     line: int = 0  # Line number
-    framework: Optional[str] = None  # "Flask", "FastAPI", etc.
+    framework: str | None = None  # "Flask", "FastAPI", etc.
 
 
 @dataclass
@@ -105,8 +103,8 @@ class DefinitionInfo:
     type: str  # "function", "class", "method"
     name: str  # Name of function/class
     line: int  # Starting line number
-    signature: Optional[str] = None  # Full signature
-    parent: Optional[str] = None  # Parent class if method
+    signature: str | None = None  # Full signature
+    parent: str | None = None  # Parent class if method
     # Reachability facts the call graph cannot see (carried from StructureNode so
     # dead-detection can read them language-agnostically). Each language already
     # emits these: visibility in modifiers (Go cap->"public", Rust "pub", TS
@@ -117,7 +115,7 @@ class DefinitionInfo:
     # Lets a language tell a public-by-container method (a trait/interface member,
     # public via its container) apart from a genuinely private one. None when the
     # definition is top-level or the language has not modelled it.
-    enclosing_kind: Optional[str] = None
+    enclosing_kind: str | None = None
 
 
 @dataclass
@@ -125,7 +123,7 @@ class CallInfo:
     """Information about a function call."""
 
     caller_file: str  # File where call is made
-    caller_name: Optional[str]  # Function/method making the call
+    caller_name: str | None  # Function/method making the call
     callee_name: str  # Function/method being called
     line: int  # Line number of call
     is_cross_file: bool = False  # True if calling function in another file

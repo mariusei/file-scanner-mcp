@@ -3,7 +3,7 @@
 The cache must be invisible in the output (same result, just faster) and only
 re-extract files whose stat-fingerprint changed.
 """
-from scantool.code_map import CodeMap, clear_corpus_cache, _EXTRACT_CACHE
+from scantool.code_map import _EXTRACT_CACHE, CodeMap, clear_corpus_cache
 
 
 def _result_tuple(r):

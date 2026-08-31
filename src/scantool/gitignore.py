@@ -2,7 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import Optional
 
 
 class GitignoreParser:
@@ -34,12 +33,10 @@ class GitignoreParser:
         if is_negation:
             pattern = pattern[1:]
 
-        # Directory-only pattern
+        # Directory-only pattern: the trailing slash is stripped, but the
+        # directory-only restriction itself is not enforced when matching.
         if pattern.endswith('/'):
             pattern = pattern[:-1]
-            is_dir_only = True
-        else:
-            is_dir_only = False
 
         # Anchored pattern (starts with /)
         if pattern.startswith('/'):
@@ -123,7 +120,7 @@ class GitignoreParser:
         return ignored
 
 
-def load_gitignore(directory: Path) -> Optional[GitignoreParser]:
+def load_gitignore(directory: Path) -> GitignoreParser | None:
     """
     Load .gitignore files from directory and all parent directories up to git root.
 
@@ -153,7 +150,7 @@ def load_gitignore(directory: Path) -> Optional[GitignoreParser]:
     # Load patterns from all .gitignore files (reverse order: root first)
     for gitignore_path in reversed(gitignore_paths):
         try:
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
+            with open(gitignore_path, encoding='utf-8') as f:
                 all_patterns.extend(f.readlines())
         except Exception:
             continue

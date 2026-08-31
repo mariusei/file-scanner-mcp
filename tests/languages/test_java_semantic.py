@@ -1,8 +1,8 @@
 """Tests for Java language."""
 
 import pytest
+
 from scantool.languages.java import JavaLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

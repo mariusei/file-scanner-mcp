@@ -1,6 +1,5 @@
 """Tests for Markdown scanner."""
 
-from scantool.scanner import FileScanner
 from conftest import validate_line_range_invariants
 
 

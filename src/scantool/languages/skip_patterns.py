@@ -295,7 +295,4 @@ def should_skip_file(file_name: str) -> bool:
 
     # Check file extension
     ext = Path(file_name).suffix.lower()
-    if ext in COMMON_SKIP_EXTENSIONS:
-        return True
-
-    return False
+    return ext in COMMON_SKIP_EXTENSIONS

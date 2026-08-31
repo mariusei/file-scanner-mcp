@@ -17,7 +17,6 @@ approach picks core logic where the indirect one picked trivial getters.
 
 import re
 import zlib
-from typing import Optional
 
 import numpy as np
 
@@ -54,10 +53,10 @@ _PROFILES = {
 
 def select_salient_nodes(
     data: bytes,
-    structures: Optional[list],
+    structures: list | None,
     top_percent: float = 0.20,
     use_centrality: bool = True,
-    line_edits: Optional[dict[int, str]] = None,
+    line_edits: dict[int, str] | None = None,
     mode: str = "balanced",
 ) -> list[tuple]:
     """Select the most salient structure nodes in a file.

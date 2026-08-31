@@ -2,25 +2,23 @@
 
 import threading
 import time
-from pathlib import Path
 from collections import OrderedDict, defaultdict
-from typing import Optional
+from pathlib import Path
+from typing import Any
 
+from . import call_graph
+from .consensus import DivergenceConfig, find_divergences, format_divergences
 from .delta import stat_fingerprint
 from .gitignore import load_gitignore
 from .languages import (
-    get_registry,
     CodeMapResult,
-    FileNode,
-    EntryPointInfo,
-    ImportInfo,
     DefinitionInfo,
-    CallInfo,
+    EntryPointInfo,
+    FileNode,
+    ImportInfo,
+    get_registry,
 )
 from .languages.generic import GenericLanguage
-from . import call_graph
-from .consensus import DivergenceConfig, find_divergences, format_divergences
-
 
 # ── Warm corpus cache ────────────────────────────────────────────────────────
 # analyze()'s per-file extraction (parse + imports/entry-points/clusters/defs/
@@ -43,7 +41,7 @@ def clear_corpus_cache() -> None:
         _EXTRACT_CACHE.clear()
 
 
-def _read_text_skip_binary(path: Path) -> Optional[str]:
+def _read_text_skip_binary(path: Path) -> str | None:
     """Read a file as UTF-8 text, but bail cheaply on binaries.
 
     A directory of geodata or media carries multi-GB binaries (GeoTIFF,
@@ -271,7 +269,7 @@ class CodeMap:
 
         from .languages.skip_patterns import should_skip_directory, should_skip_file
 
-        files = []
+        files: list[str] = []
 
         # os.walk with in-place dir pruning: ignored trees (node_modules,
         # .venv, gitignored dirs) are never descended into — rglob walked
@@ -315,7 +313,10 @@ class CodeMap:
             return self.generic_language
 
     def _build_import_graph(
-        self, imports: list[ImportInfo], all_files: list[str], type_to_file: dict[str, str] = None
+        self,
+        imports: list[ImportInfo],
+        all_files: list[str],
+        type_to_file: dict[str, str] | None = None,
     ) -> dict[str, FileNode]:
         """
         Build import graph from imports.
@@ -328,7 +329,6 @@ class CodeMap:
         Returns:
             Dict mapping file path to FileNode
         """
-        import os
 
         now = time.time()
         type_to_file = type_to_file or {}
@@ -380,7 +380,7 @@ class CodeMap:
         imp: ImportInfo,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Resolve import to file path by delegating to language-specific analyzer.
 
@@ -417,7 +417,7 @@ class CodeMap:
         Returns:
             Dict with top-level dirs, their subdirs, and file type info
         """
-        structure = defaultdict(lambda: {
+        structure: defaultdict[str, dict[str, Any]] = defaultdict(lambda: {
             "subdirs": set(),
             "extensions": defaultdict(int),
             "file_count": 0
@@ -578,7 +578,7 @@ class CodeMap:
                 large_threshold = max(median_size, 2000)        # Larger than median or 2KB
 
                 # Classify each file into archetypes
-                archetypes = {
+                archetypes: dict[str, list[FileNode]] = {
                     "core_infrastructure": [],  # 🏛️ old + central + stable
                     "active_core": [],          # 🔧 central + recently changed
                     "active_development": [],   # 🚀 recent + large + not central
@@ -650,11 +650,11 @@ class CodeMap:
             lines.append("━━━ ENTRY POINTS ━━━")
             # Deduplicate entry points by (file, name) - keep highest line number
             # (lower line numbers are often in comments/documentation)
-            seen = {}
+            seen: dict[tuple[str, str | None], EntryPointInfo] = {}
             for ep in result.entry_points:
-                key = (ep.file, ep.name)
-                if key not in seen or ep.line > seen[key].line:
-                    seen[key] = ep
+                ep_key = (ep.file, ep.name)
+                if ep_key not in seen or ep.line > seen[ep_key].line:
+                    seen[ep_key] = ep
             deduped_entry_points = list(seen.values())
 
             for ep in deduped_entry_points[:max_entries]:
@@ -676,7 +676,7 @@ class CodeMap:
             )
 
             # Build a map of file -> definitions for quick lookup
-            file_defs = {}
+            file_defs: dict[str, list[DefinitionInfo]] = {}
             if result.definitions:
                 for defn in result.definitions:
                     if defn.file not in file_defs:
@@ -774,14 +774,13 @@ class CodeMap:
 
                     # For important clusters, show file contents
                     show_contents = cluster_name in ["entry_points", "core_logic", "plugins"]
-                    files_to_show = files[:3] if show_contents else files[:3]
 
-                    for f in files_to_show:
-                        lines.append(f"    - {f}")
+                    for cluster_file in files[:3]:
+                        lines.append(f"    - {cluster_file}")
 
                         # Show what's in this file (for key clusters only)
-                        if show_contents and f in file_defs:
-                            defs = file_defs[f]
+                        if show_contents and cluster_file in file_defs:
+                            defs = file_defs[cluster_file]
                             classes = [d for d in defs if d.type == "class"]
                             functions = [d for d in defs if d.type == "function"]
 
@@ -838,15 +837,15 @@ class CodeMap:
         # Section 5: Hot Functions (Layer 2)
         if result.hot_functions:
             lines.append("━━━ HOT FUNCTIONS (most called) ━━━")
-            for func in result.hot_functions[:max_entries]:
-                if func.centrality_score > 0:
+            for hot in result.hot_functions[:max_entries]:
+                if hot.centrality_score > 0:
                     # Parse FQN: file:name or file:class.method
-                    parts = func.name.split(":")
-                    display_name = parts[1] if len(parts) > 1 else func.name
+                    parts = hot.name.split(":")
+                    display_name = parts[1] if len(parts) > 1 else hot.name
                     lines.append(
-                        f"  {display_name} ({func.type}): "
-                        f"called by {len(func.callers)}, "
-                        f"calls {len(func.callees)} @{parts[0] if len(parts) > 1 else 'unknown'}"
+                        f"  {display_name} ({hot.type}): "
+                        f"called by {len(hot.callers)}, "
+                        f"calls {len(hot.callees)} @{parts[0] if len(parts) > 1 else 'unknown'}"
                     )
             lines.append("")
 
@@ -881,8 +880,8 @@ class CodeMap:
 
             # Files in hot functions
             if result.hot_functions:
-                for func in result.hot_functions:
-                    parts = func.name.split(":")
+                for hot in result.hot_functions:
+                    parts = hot.name.split(":")
                     if len(parts) > 1:
                         important_files.add(parts[0])
 

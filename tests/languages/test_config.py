@@ -1,6 +1,7 @@
 """Tests for config language."""
 
 import pytest
+
 from scantool.languages.config import ConfigLanguage
 
 
@@ -188,8 +189,8 @@ tokio = { version = "1.0", features = ["full"] }
 """
         imports = language.extract_imports("Cargo.toml", content)
         # Should not extract registry package names
-        assert not any("serde" == imp.target_module for imp in imports)
-        assert not any("tokio" == imp.target_module for imp in imports)
+        assert not any(imp.target_module == "serde" for imp in imports)
+        assert not any(imp.target_module == "tokio" for imp in imports)
 
     def test_extract_imports_pyproject_toml_config_file(self, language):
         """Test extraction of config file paths from pyproject.toml."""

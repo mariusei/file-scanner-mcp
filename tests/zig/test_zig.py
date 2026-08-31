@@ -1,6 +1,5 @@
 """Tests for Zig scanner."""
 
-from scantool.scanner import FileScanner
 
 
 def test_basic_parsing(file_scanner):

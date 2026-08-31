@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_go
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -79,9 +78,7 @@ class GoLanguage(BaseLanguage):
         if filename_lower.endswith('.pb.go'):
             return True
         # Skip other generated files
-        if filename_lower.endswith('.gen.go') or 'generated' in filename_lower:
-            return True
-        return False
+        return bool(filename_lower.endswith('.gen.go') or 'generated' in filename_lower)
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -103,10 +100,7 @@ class GoLanguage(BaseLanguage):
             return False
 
         # Skip vendor (should be caught by COMMON_SKIP_DIRS, but double-check)
-        if '/vendor/' in path_lower:
-            return False
-
-        return True
+        return '/vendor/' not in path_lower
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Go files for inventory listing.
@@ -129,7 +123,7 @@ class GoLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -172,7 +166,7 @@ class GoLanguage(BaseLanguage):
         traverse(root, structures)
         return structures
 
-    def _extract_type(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_type(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract type declaration (struct, interface, etc.)."""
         # type_declaration has a type_spec child
         type_spec = None
@@ -289,8 +283,8 @@ class GoLanguage(BaseLanguage):
         )
 
     def _extract_signature(
-        self, node: Node, source_code: bytes, receiver: Optional[str] = None
-    ) -> Optional[str]:
+        self, node: Node, source_code: bytes, receiver: str | None = None
+    ) -> str | None:
         """Extract function/method signature with parameters and return types."""
         parts = []
 
@@ -320,12 +314,12 @@ class GoLanguage(BaseLanguage):
         signature = "".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
 
-    def _extract_comment(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_comment(self, node: Node, source_code: bytes) -> str | None:
         """Extract comment immediately preceding a declaration."""
         # In Go, comments are typically previous siblings
         prev = node.prev_sibling
 
-        comments = []
+        comments: list[str] = []
         while prev and prev.type == "comment":
             comment_text = self._get_node_text(prev, source_code).strip()
             # Remove comment markers
@@ -366,7 +360,7 @@ class GoLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find type declarations
         for match in re.finditer(r'^type\s+(\w+)\s+(struct|interface)', text, re.MULTILINE):
@@ -542,7 +536,11 @@ class GoLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -561,15 +559,19 @@ class GoLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children
             if node.children:
                 # For structs, set them as parent for nested methods
-                child_parent = node.name if node.type in ("struct", "interface") else parent
+                is_container = node.type in ("struct", "interface")
+                child_parent = node.name if is_container else parent
+                child_kind = node.type if is_container else parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind)
                 )
 
         return definitions
@@ -596,7 +598,7 @@ class GoLanguage(BaseLanguage):
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
 
-        def traverse(node: Node, current_func: Optional[str] = None):
+        def traverse(node: Node, current_func: str | None = None):
             # Track function/method context
             if node.type in ("function_declaration", "method_declaration"):
                 name_node = node.child_by_field_name("name")
@@ -718,7 +720,7 @@ class GoLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Resolve Go import path to file path.
 

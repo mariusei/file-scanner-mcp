@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
-from .languages import CallInfo, DefinitionInfo, CallGraphNode
+from .languages import CallGraphNode, CallInfo, DefinitionInfo
 
 
 @dataclass
@@ -175,5 +175,3 @@ def find_hot_functions(
     )
 
     return sorted_nodes[:top_n]
-
-

@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_rust
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -56,9 +55,7 @@ class RustLanguage(BaseLanguage):
             return True
         if defn.enclosing_kind == "trait":
             return True
-        if defn.enclosing_kind == "impl" and defn.parent and " for " in defn.parent:
-            return True
-        return False
+        return bool(defn.enclosing_kind == "impl" and defn.parent and " for " in defn.parent)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -88,9 +85,7 @@ class RustLanguage(BaseLanguage):
     @classmethod
     def should_skip(cls, filename: str) -> bool:
         """Skip generated protobuf files."""
-        if filename.endswith('.pb.rs'):
-            return True
-        return False
+        return bool(filename.endswith('.pb.rs'))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip files that should not be analyzed.
@@ -108,10 +103,7 @@ class RustLanguage(BaseLanguage):
             return False
 
         # Skip files in target/ directory
-        if 'target' in path.parts:
-            return False
-
-        return True
+        return 'target' not in path.parts
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Rust files for inventory listing.
@@ -138,7 +130,7 @@ class RustLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -367,7 +359,7 @@ class RustLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract function signature with parameters and return type."""
         parts = []
 
@@ -396,7 +388,7 @@ class RustLanguage(BaseLanguage):
         signature = "".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
 
-    def _extract_type_parameters(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_type_parameters(self, node: Node, source_code: bytes) -> str | None:
         """Extract type parameters (generics and lifetimes)."""
         type_params_node = node.child_by_field_name("type_parameters")
         if type_params_node:
@@ -409,7 +401,7 @@ class RustLanguage(BaseLanguage):
 
     def _extract_attributes(self, node: Node, source_code: bytes) -> list[str]:
         """Extract attributes like #[derive(...)], #[test], etc."""
-        attributes = []
+        attributes: list[str] = []
         prev = node.prev_sibling
 
         while prev:
@@ -425,12 +417,12 @@ class RustLanguage(BaseLanguage):
 
         return attributes
 
-    def _extract_doc_comment(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_doc_comment(self, node: Node, source_code: bytes) -> str | None:
         """Extract doc comments (/// or /**/)."""
         prev = node.prev_sibling
 
         # Collect all consecutive doc comments
-        doc_lines = []
+        doc_lines: list[str] = []
         while prev:
             if prev.type == "line_comment":
                 comment_text = self._get_node_text(prev, source_code).strip()
@@ -493,7 +485,7 @@ class RustLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find struct definitions
         for match in re.finditer(r'^\s*pub\s+struct\s+(\w+)|^\s*struct\s+(\w+)', text, re.MULTILINE):
@@ -611,9 +603,7 @@ class RustLanguage(BaseLanguage):
 
             # Simple use statement
             import_type = "use"
-            if use_path.startswith('super::'):
-                import_type = "relative"
-            elif use_path.startswith('self::'):
+            if use_path.startswith('super::') or use_path.startswith('self::'):
                 import_type = "relative"
             elif use_path.startswith('crate::'):
                 import_type = "crate"
@@ -738,8 +728,8 @@ class RustLanguage(BaseLanguage):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -771,6 +761,8 @@ class RustLanguage(BaseLanguage):
                 # For impl and trait blocks, set them as parent (carry the kind so
                 # a method knows whether it lives in a trait/impl/struct).
                 if node.type in ("impl", "trait", "struct"):
+                    child_parent: str | None
+                    child_kind: str | None
                     child_parent, child_kind = node.name, node.type
                 else:
                     child_parent, child_kind = parent, parent_kind
@@ -946,7 +938,7 @@ class RustLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve Rust use path to file path.
 
         Rust use patterns:

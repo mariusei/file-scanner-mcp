@@ -4,8 +4,8 @@ fact-dense representation in the pipeline."""
 
 import re
 
-from scantool.scanner import FileScanner
 from scantool.directory_formatter import DirectoryFormatter
+from scantool.scanner import FileScanner
 
 
 def fmt(tmp_path, files: dict[str, str], **formatter_kwargs):
@@ -45,7 +45,7 @@ class TestGlimpse:
     def test_python_glimpse_shows_body_gist(self, tmp_path):
         output = fmt(tmp_path, {"core.py": PY_FILE})
 
-        glimpse = next(l for l in output.split("\n") if "> reconcile:" in l)
+        glimpse = next(ln for ln in output.split("\n") if "> reconcile:" in ln)
         assert "drift = sum(" in glimpse
 
     def test_go_declaration_line_skipped(self, tmp_path):
@@ -53,23 +53,23 @@ class TestGlimpse:
         since the tree already names the node."""
         output = fmt(tmp_path, {"util.go": GO_FILE})
 
-        glimpse = next(l for l in output.split("\n") if "> ClampValue:" in l)
+        glimpse = next(ln for ln in output.split("\n") if "> ClampValue:" in ln)
         assert "func ClampValue" not in glimpse
         assert "if value < low {" in glimpse
 
     def test_glimpse_capped_at_one_line(self, tmp_path):
         output = fmt(tmp_path, {"core.py": PY_FILE})
 
-        glimpse_lines = [l for l in output.split("\n") if re.search(r"> \w+:", l)]
+        glimpse_lines = [ln for ln in output.split("\n") if re.search(r"> \w+:", ln)]
         assert len(glimpse_lines) == 1
         assert len(glimpse_lines[0].strip()) <= DirectoryFormatter.GLIMPSE_MAX_CHARS + 20
 
     def test_docs_only_has_no_glimpse(self, tmp_path):
         output = fmt(tmp_path, {"README.md": "# Tittel\n\nBare prosa her.\n"})
 
-        assert not any(re.search(r"> \w+:", l) for l in output.split("\n"))
+        assert not any(re.search(r"> \w+:", ln) for ln in output.split("\n"))
 
     def test_opt_out(self, tmp_path):
         output = fmt(tmp_path, {"core.py": PY_FILE}, include_glimpse=False)
 
-        assert not any(re.search(r"> \w+:", l) for l in output.split("\n"))
+        assert not any(re.search(r"> \w+:", ln) for ln in output.split("\n"))

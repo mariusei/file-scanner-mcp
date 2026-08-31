@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_c_sharp
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -54,9 +53,7 @@ class CSharpLanguage(BaseLanguage):
     def is_offgraph_reachable(self, defn, content: str) -> bool:
         if any(m in self._PUBLIC_CS for m in defn.modifiers):
             return True
-        if defn.enclosing_kind == "interface":
-            return True
-        return False
+        return defn.enclosing_kind == "interface"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -91,9 +88,7 @@ class CSharpLanguage(BaseLanguage):
             return True
         if lower.endswith('.g.cs') or lower.endswith('.generated.cs'):
             return True
-        if lower == 'assemblyinfo.cs':
-            return True
-        return False
+        return lower == 'assemblyinfo.cs'
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -121,10 +116,7 @@ class CSharpLanguage(BaseLanguage):
             return False
 
         # Skip bin/obj (should be caught by COMMON_SKIP_DIRS, but double-check)
-        if '/bin/' in path_lower or '/obj/' in path_lower:
-            return False
-
-        return True
+        return not ('/bin/' in path_lower or '/obj/' in path_lower)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value C# files for inventory listing.
@@ -147,7 +139,7 @@ class CSharpLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -560,7 +552,7 @@ class CSharpLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_method_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract method signature with type parameters, parameters and return type."""
         parts = []
 
@@ -625,7 +617,7 @@ class CSharpLanguage(BaseLanguage):
 
         return attributes
 
-    def _extract_xml_doc(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_xml_doc(self, node: Node, source_code: bytes) -> str | None:
         """Extract first line of XML documentation comment (///)."""
         # Try to find comments before the node
         start_byte = node.start_byte
@@ -635,7 +627,7 @@ class CSharpLanguage(BaseLanguage):
         lines_before = text[:start_byte].split('\n')
 
         # Collect XML doc comment lines (///)
-        doc_lines = []
+        doc_lines: list[str] = []
         for line in reversed(lines_before):
             stripped = line.strip()
             if stripped.startswith('///'):
@@ -659,7 +651,7 @@ class CSharpLanguage(BaseLanguage):
 
         return None
 
-    def _extract_type_parameters(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_type_parameters(self, node: Node, source_code: bytes) -> str | None:
         """Extract type parameters (generics) like <T> or <TKey, TValue>."""
         # Try field-based access first
         type_params = node.child_by_field_name("type_parameters")
@@ -923,8 +915,8 @@ class CSharpLanguage(BaseLanguage):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -953,6 +945,8 @@ class CSharpLanguage(BaseLanguage):
             # Recurse into children
             if node.children:
                 if node.type in container:
+                    child_parent: str | None
+                    child_kind: str | None
                     child_parent, child_kind = node.name, node.type
                 else:
                     child_parent, child_kind = parent, parent_kind
@@ -1126,7 +1120,7 @@ class CSharpLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Resolve C# using directive to file path.
 

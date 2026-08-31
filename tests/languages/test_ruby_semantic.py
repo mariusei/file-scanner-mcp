@@ -1,8 +1,8 @@
 """Tests for Ruby language."""
 
 import pytest
+
 from scantool.languages.ruby import RubyLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

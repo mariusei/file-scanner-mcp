@@ -1,7 +1,8 @@
 """Tests for SQL scanner."""
 
-from scantool.scanner import FileScanner
 from conftest import validate_line_range_invariants
+
+from scantool.scanner import FileScanner
 
 
 def test_basic_parsing(file_scanner):

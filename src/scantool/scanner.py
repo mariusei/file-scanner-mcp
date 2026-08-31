@@ -1,16 +1,14 @@
 """Main file scanner orchestrator using the plugin system."""
 
+import fnmatch as _fnmatch
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-import fnmatch as _fnmatch
-
+from .gitignore import GitignoreParser, load_gitignore
+from .glob_expander import expand_braces
 from .languages import StructureNode, get_registry
 from .languages.skip_patterns import should_skip_directory
-from .gitignore import load_gitignore, GitignoreParser
-from .glob_expander import expand_braces
 
 
 def _matches_pattern(rel_path: str, pattern: str) -> bool:
@@ -97,7 +95,7 @@ class FileScanner:
         content: str | bytes,
         filename: str,
         include_metadata: bool = False
-    ) -> Optional[list[StructureNode]]:
+    ) -> list[StructureNode] | None:
         """
         Scan file content directly without requiring a file path.
 
@@ -165,11 +163,11 @@ class FileScanner:
         self,
         file_path: str,
         include_file_metadata: bool = True,
-        budget: Optional[int] = None,
-        line_edits: Optional[dict[int, str]] = None,
+        budget: int | None = None,
+        line_edits: dict[int, str] | None = None,
         mode: str = "balanced",
-        max_bytes: Optional[int] = None
-    ) -> Optional[list[StructureNode]]:
+        max_bytes: int | None = None
+    ) -> list[StructureNode] | None:
         """
         Scan a single file and return its structure.
 
@@ -297,8 +295,8 @@ class FileScanner:
         source_code: bytes,
         top_percent: float = 0.20,
         language=None,
-        budget: Optional[int] = None,
-        line_edits: Optional[dict[int, str]] = None,
+        budget: int | None = None,
+        line_edits: dict[int, str] | None = None,
         mode: str = "balanced"
     ) -> None:
         """
@@ -402,10 +400,10 @@ class FileScanner:
         directory: str,
         pattern: str = "**/*",
         respect_gitignore: bool = True,
-        exclude_patterns: Optional[list[str]] = None,
+        exclude_patterns: list[str] | None = None,
         mode: str = "balanced",
-        max_files: Optional[int] = None,
-    ) -> dict[str, Optional[list[StructureNode]]]:
+        max_files: int | None = None,
+    ) -> dict[str, list[StructureNode] | None]:
         """
         Scan all supported files in a directory.
 
@@ -421,7 +419,7 @@ class FileScanner:
         Returns:
             Dictionary mapping file paths to their structures
         """
-        results = {}
+        results: dict[str, list[StructureNode] | None] = {}
         dir_path = Path(directory).resolve()
 
         if not dir_path.exists():

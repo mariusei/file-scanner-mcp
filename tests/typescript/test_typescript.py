@@ -1,7 +1,7 @@
 """Tests for TypeScript and TSX scanner."""
 
-import tempfile
 import os
+import tempfile
 from pathlib import Path
 
 from scantool.scanner import FileScanner

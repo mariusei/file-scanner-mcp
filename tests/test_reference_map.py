@@ -1,6 +1,6 @@
 """Directed reference mapping: a producer referenced nowhere is an orphan; a
 referenced one is reached."""
-from scantool.reference_map import run, HTTP_ROUTE, JINJA_TEMPLATE
+from scantool.reference_map import HTTP_ROUTE, JINJA_TEMPLATE, run
 
 
 def test_fastapi_orphan_vs_reached(tmp_path):

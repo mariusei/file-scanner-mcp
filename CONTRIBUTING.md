@@ -324,9 +324,46 @@ def test_entry_points():
 # Run language-specific tests
 uv run pytest tests/ruby/ -v
 
-# Run all tests
-uv run pytest
+# Run all tests (point at tests/ — loose root files break collection)
+uv run pytest tests/
 ```
+
+---
+
+## Quality Gates
+
+CI runs three gates on every push and pull request, and again before a release
+is published. Run them locally before you push:
+
+```bash
+uv run ruff check .   # lint
+uv run mypy           # type check (src/scantool, clean as of 0.19.6)
+uv run pytest tests/  # 962 tests, including the golden output contract
+```
+
+Install the pre-commit hooks once and ruff runs on staged files automatically:
+
+```bash
+uv run pre-commit install
+```
+
+Two directories are deliberately outside the linter's reach, because their
+content is test data rather than code:
+
+- `tests/*/samples/` — malformed by design, so the regex fallback has something
+  to fall back from. Their syntax errors are the fixture.
+- `experiments/` and `tests/golden/fixture_dir/` — frozen inputs. Reformatting
+  either would invalidate results already recorded against them.
+
+Formatting is **not** gated. `ruff format` would rewrite 88 of 103 files in one
+sweep, which is a decision worth making on its own rather than as a side effect
+of a lint fix.
+
+Three rules earn their place beyond style. `B023` catches a closure that reads
+a loop variable it does not bind, `B005` a `strip()` call whose multi-character
+argument is a character set rather than a prefix, and mypy's `override` check a
+subclass signature that has drifted from its base — the SQL, Go and SCSS
+implementations of `_structures_to_definitions` had all dropped `parent_kind`.
 
 ---
 

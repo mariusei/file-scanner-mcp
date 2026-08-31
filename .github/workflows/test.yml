@@ -6,7 +6,38 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+# A new push to the same branch supersedes the one still running: the matrix is
+# 9 jobs, so cancelling saves real minutes on an active PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  quality:
+    name: Lint and type check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: mypy
+        run: uv run mypy
+
   test:
     name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
@@ -18,15 +49,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -34,16 +65,15 @@ jobs:
         run: uv sync --locked --group dev
 
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run pytest tests/ -v
 
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        run: |
-          uv run pytest --cov=src/scantool --cov-report=xml
+        run: uv run pytest tests/ --cov=src/scantool --cov-report=xml
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
           fail_ci_if_error: false

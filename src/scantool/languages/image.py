@@ -6,9 +6,8 @@ by extracting metadata like dimensions, colors, and optimization hints.
 Note: Images don't have imports or entry points, so those methods return empty lists.
 """
 
-from io import BytesIO
-from typing import Optional
 from collections import Counter
+from io import BytesIO
 
 try:
     from PIL import Image
@@ -18,11 +17,9 @@ except ImportError:
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
     EntryPointInfo,
-    DefinitionInfo,
-    CallInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -60,7 +57,7 @@ class ImageLanguage(BaseLanguage):
     # Structure Scanning
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Extract image metadata and visual characteristics."""
         if not PILLOW_AVAILABLE:
             return [StructureNode(
@@ -72,7 +69,7 @@ class ImageLanguage(BaseLanguage):
 
         try:
             img = Image.open(BytesIO(source_code))
-            structures = []
+            structures: list[StructureNode] = []
 
             # Basic format information
             structures.append(StructureNode(

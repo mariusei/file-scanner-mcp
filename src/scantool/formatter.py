@@ -1,7 +1,8 @@
 """Pretty tree formatter for file structure with rich metadata display."""
 
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from .languages import StructureNode
 
 

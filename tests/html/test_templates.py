@@ -1,21 +1,22 @@
 """Tests for template preprocessing in HTML files."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+
 from scantool.languages.html import HTMLLanguage
+from scantool.languages.models import StructureNode
 from scantool.languages.templates import (
-    preprocess,
-    detect_dialect,
-    merge_trees,
     Dialect,
+    _build_template_tree,
+    _extract_blade_tags,
     _extract_jinja_tags,
     _extract_svelte_tags,
-    _extract_blade_tags,
-    _build_template_tree,
     _neutralize,
+    detect_dialect,
+    merge_trees,
+    preprocess,
 )
-from scantool.languages.models import StructureNode
 
 
 @pytest.fixture

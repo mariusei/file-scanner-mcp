@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_swift
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -75,12 +74,10 @@ class SwiftLanguage(BaseLanguage):
             return True
         if "override" in mods:
             return True
-        if defn.enclosing_kind == "protocol":
-            return True
-        return False
+        return defn.enclosing_kind == "protocol"
 
     @staticmethod
-    def _parse_conformances(signature: Optional[str]) -> list[str]:
+    def _parse_conformances(signature: str | None) -> list[str]:
         """Names in a type's inheritance clause (`: Base, Proto<T> where …`)."""
         s = (signature or "").strip()
         if not s.startswith(":"):
@@ -153,9 +150,7 @@ class SwiftLanguage(BaseLanguage):
     def should_skip(cls, filename: str) -> bool:
         """Skip generated Swift files."""
         filename_lower = filename.lower()
-        if ".generated.swift" in filename_lower or "generated" in filename_lower:
-            return True
-        return False
+        return bool(".generated.swift" in filename_lower or "generated" in filename_lower)
 
     def should_analyze(self, file_path: str) -> bool:
         """
@@ -185,10 +180,7 @@ class SwiftLanguage(BaseLanguage):
         # Skip build directories - handle both with and without leading /
         if "/.build/" in path_lower or path_lower.startswith(".build/"):
             return False
-        if "/deriveddata/" in path_lower or path_lower.startswith("deriveddata/"):
-            return False
-
-        return True
+        return not ("/deriveddata/" in path_lower or path_lower.startswith("deriveddata/"))
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Swift files for inventory listing.
@@ -211,7 +203,7 @@ class SwiftLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -262,7 +254,7 @@ class SwiftLanguage(BaseLanguage):
         traverse(root, structures)
         return structures
 
-    def _extract_type_declaration(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_type_declaration(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract type declaration (class, struct, enum, extension, actor).
 
         In tree-sitter-swift, class_declaration is used for all these types.
@@ -326,7 +318,7 @@ class SwiftLanguage(BaseLanguage):
             children=children
         )
 
-    def _extract_protocol(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_protocol(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract protocol declaration."""
         name = None
         for child in node.children:
@@ -362,7 +354,7 @@ class SwiftLanguage(BaseLanguage):
             children=children
         )
 
-    def _extract_function(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_function(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract function declaration."""
         name = None
         for child in node.children:
@@ -392,7 +384,7 @@ class SwiftLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_typealias(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_typealias(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract typealias declaration."""
         name = None
         alias_type = None
@@ -424,7 +416,7 @@ class SwiftLanguage(BaseLanguage):
 
     def _extract_type_members(self, node: Node, source_code: bytes, parent_type: str) -> list[StructureNode]:
         """Extract members from a type declaration."""
-        members = []
+        members: list[StructureNode] = []
 
         # Find the body node
         body = None
@@ -489,7 +481,7 @@ class SwiftLanguage(BaseLanguage):
 
     def _extract_protocol_members(self, node: Node, source_code: bytes) -> list[StructureNode]:
         """Extract members from a protocol declaration."""
-        members = []
+        members: list[StructureNode] = []
 
         # Find protocol body
         body = None
@@ -514,7 +506,7 @@ class SwiftLanguage(BaseLanguage):
 
         return members
 
-    def _extract_protocol_function(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_protocol_function(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract protocol function declaration."""
         name = None
         for child in node.children:
@@ -540,7 +532,7 @@ class SwiftLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_property(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_property(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract property declaration."""
         name = None
 
@@ -591,7 +583,7 @@ class SwiftLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_subscript(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_subscript(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract subscript declaration."""
         modifiers = self._extract_modifiers(node, source_code)
         docstring = self._extract_docstring(node, source_code)
@@ -615,7 +607,7 @@ class SwiftLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_initializer(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_initializer(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract initializer declaration."""
         modifiers = self._extract_modifiers(node, source_code)
         decorators = self._extract_decorators(node, source_code)
@@ -642,7 +634,7 @@ class SwiftLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_enum_case(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_enum_case(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract enum case."""
         name = None
         for child in node.children:
@@ -722,7 +714,7 @@ class SwiftLanguage(BaseLanguage):
 
         return decorators
 
-    def _extract_docstring(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_docstring(self, node: Node, source_code: bytes) -> str | None:
         """Extract documentation comment preceding a declaration."""
         prev = node.prev_sibling
 
@@ -730,7 +722,7 @@ class SwiftLanguage(BaseLanguage):
         while prev and prev.type in ("modifiers", "attribute"):
             prev = prev.prev_sibling
 
-        comments = []
+        comments: list[str] = []
         while prev and prev.type == "comment":
             comment_text = self._get_node_text(prev, source_code).strip()
 
@@ -764,10 +756,7 @@ class SwiftLanguage(BaseLanguage):
         for child in node.children:
             if child.type == "inheritance_specifier":
                 for spec_child in child.children:
-                    if spec_child.type == "user_type":
-                        type_name = self._get_node_text(spec_child, source_code)
-                        inheritance.append(type_name)
-                    elif spec_child.type == "type_identifier":
+                    if spec_child.type == "user_type" or spec_child.type == "type_identifier":
                         type_name = self._get_node_text(spec_child, source_code)
                         inheritance.append(type_name)
 
@@ -779,7 +768,7 @@ class SwiftLanguage(BaseLanguage):
 
         return inheritance
 
-    def _extract_function_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_function_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract function signature with parameters and return type."""
         parts = []
         in_params = False
@@ -1128,8 +1117,8 @@ class SwiftLanguage(BaseLanguage):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list for Swift.
 
@@ -1157,6 +1146,8 @@ class SwiftLanguage(BaseLanguage):
             if node.children:
                 # For Swift, use the type name as parent for nested types
                 if node.type in self._CONTAINER_TYPES:
+                    child_parent: str | None
+                    child_kind: str | None
                     child_parent, child_kind = node.name, node.type
                 else:
                     child_parent, child_kind = parent, parent_kind
@@ -1202,7 +1193,7 @@ class SwiftLanguage(BaseLanguage):
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
 
-        def get_last_identifier(node: Node) -> Optional[str]:
+        def get_last_identifier(node: Node) -> str | None:
             """Get the last identifier from a navigation_expression (the method name)."""
             # For logger.info, we want "info" not "logger"
             # Structure: navigation_expression > [simple_identifier, navigation_suffix]
@@ -1224,10 +1215,10 @@ class SwiftLanguage(BaseLanguage):
         # that resolves to nothing (which would silently drop the edge).
         def_names = {d.name for d in definitions}
 
-        def adopt(name: Optional[str], current: Optional[str]) -> Optional[str]:
+        def adopt(name: str | None, current: str | None) -> str | None:
             return name if name and name in def_names else current
 
-        def traverse(node: Node, current_func: Optional[str] = None):
+        def traverse(node: Node, current_func: str | None = None):
             # Track function context
             if node.type == "function_declaration":
                 for child in node.children:
@@ -1398,7 +1389,7 @@ class SwiftLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Resolve Swift import/type reference to file path.
 

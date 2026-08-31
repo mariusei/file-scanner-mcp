@@ -7,9 +7,9 @@ See experiments/condensation/ for the measurements behind the design.
 
 import pytest
 
-from scantool.languages.python import PythonLanguage
-from scantool.languages.models import StructureNode
 from scantool.formatter import TreeFormatter
+from scantool.languages.models import StructureNode
+from scantool.languages.python import PythonLanguage
 
 
 @pytest.fixture
@@ -19,22 +19,7 @@ def lang():
 
 class TestCondenseExcerpt:
     def test_keeps_control_flow_and_calls(self, lang):
-        excerpt = '''\
-def format_extensions(self, max_types: int = 3) -> str:
-    """Format top file extensions as compact string."""
-    if not self.extensions:
-        return ""
-
-    # Sort by count, descending
-    sorted_exts = sorted(self.extensions.items(), key=lambda x: x[1], reverse=True)
-    top_exts = sorted_exts[:max_types]
-
-    parts = [f"{ext}:{count}" for ext, count in top_exts]
-
-    if len(sorted_exts) > max_types:
-        parts.append("...")
-
-    return " ".join(parts)'''.split("\n")
+        excerpt = ['def format_extensions(self, max_types: int = 3) -> str:', '    """Format top file extensions as compact string."""', '    if not self.extensions:', '        return ""', '', '    # Sort by count, descending', '    sorted_exts = sorted(self.extensions.items(), key=lambda x: x[1], reverse=True)', '    top_exts = sorted_exts[:max_types]', '', '    parts = [f"{ext}:{count}" for ext, count in top_exts]', '', '    if len(sorted_exts) > max_types:', '        parts.append("...")', '', '    return " ".join(parts)']
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -56,10 +41,7 @@ def format_extensions(self, max_types: int = 3) -> str:
         assert "…" in text
 
     def test_header_and_docstring_excluded(self, lang):
-        excerpt = '''\
-def connect(self):
-    """Establish database connection."""
-    self.conn = driver.connect(self.connection_string)'''.split("\n")
+        excerpt = ['def connect(self):', '    """Establish database connection."""', '    self.conn = driver.connect(self.connection_string)']
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -98,17 +80,7 @@ def connect(self):
         assert skeleton is None or skeleton == ["…"]
 
     def test_try_except_and_loops(self, lang):
-        excerpt = '''\
-def load(self, paths):
-    results = []
-    for path in paths:
-        try:
-            with open(path) as f:
-                results.append(parse(f.read()))
-        except OSError as e:
-            log.warning(e)
-            continue
-    return results'''.split("\n")
+        excerpt = ['def load(self, paths):', '    results = []', '    for path in paths:', '        try:', '            with open(path) as f:', '                results.append(parse(f.read()))', '        except OSError as e:', '            log.warning(e)', '            continue', '    return results']
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -122,10 +94,7 @@ def load(self, paths):
         assert "return results" in text
 
     def test_long_expression_elides_but_keeps_call_names(self, lang):
-        excerpt = '''\
-def rank(self, partitions):
-    score = compute_weighted_score(shannon_entropy(data), compression_ratio(data), structural_uniqueness(idx, partitions, cache))
-    return score'''.split("\n")
+        excerpt = ['def rank(self, partitions):', '    score = compute_weighted_score(shannon_entropy(data), compression_ratio(data), structural_uniqueness(idx, partitions, cache))', '    return score']
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -137,12 +106,7 @@ def rank(self, partitions):
             assert name in text
 
     def test_trailing_comment_survives_on_kept_line(self, lang):
-        excerpt = '''\
-def get_ttl(tile_type):
-    # full-line comments are dropped
-    if tile_type == 'grid':
-        return None  # Never expires
-    return 300  # 5 minutes default'''.split("\n")
+        excerpt = ['def get_ttl(tile_type):', '    # full-line comments are dropped', "    if tile_type == 'grid':", '        return None  # Never expires', '    return 300  # 5 minutes default']
 
         skeleton = lang.condense_excerpt(excerpt)
 
@@ -171,16 +135,7 @@ class TestGenericStrategies:
     def test_typescript_skeleton_keeps_flow_and_calls(self):
         from scantool.languages.typescript import TypeScriptLanguage
 
-        excerpt = '''\
-function login(username: string): User | null {
-  // look up the user
-  const user = users.get(username);
-  if (!user) {
-    return null;
-  }
-  log.info("ok");
-  return user;
-}'''.split("\n")
+        excerpt = ['function login(username: string): User | null {', '  // look up the user', '  const user = users.get(username);', '  if (!user) {', '    return null;', '  }', '  log.info("ok");', '  return user;', '}']
 
         skeleton = TypeScriptLanguage().condense_excerpt(excerpt)
 
@@ -197,16 +152,7 @@ function login(username: string): User | null {
     def test_go_skeleton_keeps_defer_and_branches(self):
         from scantool.languages.go import GoLanguage
 
-        excerpt = '''\
-func Get(index int) (int, bool) {
-\tmu.Lock()
-\tdefer mu.Unlock()
-\t// bounds check
-\tif index >= 0 && index < len(items) {
-\t\treturn items[index], true
-\t}
-\treturn 0, false
-}'''.split("\n")
+        excerpt = ['func Get(index int) (int, bool) {', '\tmu.Lock()', '\tdefer mu.Unlock()', '\t// bounds check', '\tif index >= 0 && index < len(items) {', '\t\treturn items[index], true', '\t}', '\treturn 0, false', '}']
 
         skeleton = GoLanguage().condense_excerpt(excerpt)
 
@@ -220,13 +166,7 @@ func Get(index int) (int, bool) {
     def test_php_fragment_prefix_enables_parsing(self):
         from scantool.languages.php import PHPLanguage
 
-        excerpt = '''\
-function login($user) {
-    if (!$user) {
-        return null;
-    }
-    return validate($user);
-}'''.split("\n")
+        excerpt = ['function login($user) {', '    if (!$user) {', '        return null;', '    }', '    return validate($user);', '}']
 
         skeleton = PHPLanguage().condense_excerpt(excerpt)
 
@@ -239,13 +179,7 @@ function login($user) {
     def test_sql_compact_keeps_columns(self):
         from scantool.languages.sql import SQLLanguage
 
-        excerpt = '''\
--- Users table for auth
-CREATE TABLE users (
-    id BIGINT PRIMARY KEY,
-
-    name VARCHAR(50) NOT NULL
-);'''.split("\n")
+        excerpt = ['-- Users table for auth', 'CREATE TABLE users (', '    id BIGINT PRIMARY KEY,', '', '    name VARCHAR(50) NOT NULL', ');']
 
         skeleton = SQLLanguage().condense_excerpt(excerpt)
 
@@ -262,13 +196,7 @@ CREATE TABLE users (
     def test_css_compact_keeps_declarations(self):
         from scantool.languages.css import CSSLanguage
 
-        excerpt = '''\
-.button {
-    /* primary color */
-    color: red;
-
-    background: blue;
-}'''.split("\n")
+        excerpt = ['.button {', '    /* primary color */', '    color: red;', '', '    background: blue;', '}']
 
         skeleton = CSSLanguage().condense_excerpt(excerpt)
 
@@ -306,13 +234,7 @@ CREATE TABLE users (
     def test_swift_multiline_init_keeps_header(self):
         from scantool.languages.swift import SwiftLanguage
 
-        excerpt = '''\
-init(
-    store: Store<GameState, GameAction>,
-    nub: Nub? = nil
-) {
-    self.store = store
-}'''.split("\n")
+        excerpt = ['init(', '    store: Store<GameState, GameAction>,', '    nub: Nub? = nil', ') {', '    self.store = store', '}']
 
         skeleton = SwiftLanguage().condense_excerpt(excerpt)
 

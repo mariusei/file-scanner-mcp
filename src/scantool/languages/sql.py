@@ -11,24 +11,22 @@ Key features:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_sql
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 # Optional PostgreSQL-specific parser
 try:
-    import pglast
     from pglast import parse_sql
     HAS_PGLAST = True
 except ImportError:
@@ -146,7 +144,7 @@ class SQLLanguage(BaseLanguage):
         else:
             return 'generic'
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Scan SQL source code and extract structure."""
         try:
             # Detect SQL dialect
@@ -176,9 +174,9 @@ class SQLLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
-        def traverse(node: Node, parent_structures: list, parent_node: Optional[Node] = None):
+        def traverse(node: Node, parent_structures: list, parent_node: Node | None = None):
             # Handle parse errors
             if node.type == "ERROR":
                 if self.show_errors:
@@ -232,7 +230,7 @@ class SQLLanguage(BaseLanguage):
         traverse(root, structures)
         return structures
 
-    def _extract_table(self, node: Node, source_code: bytes, parent_node: Optional[Node] = None) -> StructureNode:
+    def _extract_table(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
         """Extract CREATE TABLE with columns."""
         # Get table name
         name_node = self._find_object_reference(node)
@@ -260,7 +258,7 @@ class SQLLanguage(BaseLanguage):
             children=columns
         )
 
-    def _extract_column(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_column(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract column definition."""
         # Get column name (first identifier)
         col_name = None
@@ -300,7 +298,7 @@ class SQLLanguage(BaseLanguage):
             signature=signature
         )
 
-    def _extract_view(self, node: Node, source_code: bytes, parent_node: Optional[Node] = None) -> StructureNode:
+    def _extract_view(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
         """Extract CREATE VIEW."""
         # Get view name
         name_node = self._find_object_reference(node)
@@ -329,7 +327,7 @@ class SQLLanguage(BaseLanguage):
             docstring=docstring
         )
 
-    def _extract_function(self, node: Node, source_code: bytes, parent_node: Optional[Node] = None) -> StructureNode:
+    def _extract_function(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
         """Extract CREATE FUNCTION."""
         # Get function name
         name_node = self._find_object_reference(node)
@@ -375,7 +373,7 @@ class SQLLanguage(BaseLanguage):
             docstring=docstring
         )
 
-    def _extract_procedure(self, node: Node, source_code: bytes, parent_node: Optional[Node] = None) -> StructureNode:
+    def _extract_procedure(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
         """Extract CREATE PROCEDURE."""
         # Get procedure name
         name_node = self._find_object_reference(node)
@@ -400,7 +398,7 @@ class SQLLanguage(BaseLanguage):
             docstring=docstring
         )
 
-    def _extract_trigger(self, node: Node, source_code: bytes, parent_node: Optional[Node] = None) -> StructureNode:
+    def _extract_trigger(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
         """Extract CREATE TRIGGER."""
         # Get trigger name
         name_node = self._find_object_reference(node)
@@ -447,7 +445,7 @@ class SQLLanguage(BaseLanguage):
             docstring=docstring
         )
 
-    def _extract_index(self, node: Node, source_code: bytes, parent_node: Optional[Node] = None) -> StructureNode:
+    def _extract_index(self, node: Node, source_code: bytes, parent_node: Node | None = None) -> StructureNode:
         """Extract CREATE INDEX."""
         # Get index name
         index_name = None
@@ -485,7 +483,7 @@ class SQLLanguage(BaseLanguage):
             docstring=docstring
         )
 
-    def _find_object_reference(self, node: Node) -> Optional[Node]:
+    def _find_object_reference(self, node: Node) -> Node | None:
         """Find object_reference node (used for names)."""
         for child in node.children:
             if child.type == "object_reference":
@@ -496,14 +494,14 @@ class SQLLanguage(BaseLanguage):
                 return child
         return None
 
-    def _find_node_by_type(self, node: Node, node_type: str) -> Optional[Node]:
+    def _find_node_by_type(self, node: Node, node_type: str) -> Node | None:
         """Find first child node of given type."""
         for child in node.children:
             if child.type == node_type:
                 return child
         return None
 
-    def _extract_preceding_comment(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_preceding_comment(self, node: Node, source_code: bytes) -> str | None:
         """Extract preceding comment (-- or /* */)."""
         prev = node.prev_sibling
 
@@ -564,13 +562,10 @@ class SQLLanguage(BaseLanguage):
 
         try:
             text = source_code.decode('utf-8', errors='replace')
-            structures = []
+            structures: list[StructureNode] = []
 
             # Parse with pglast
             statements = parse_sql(text)
-
-            # Track line numbers for proper ranges
-            lines = text.split('\n')
 
             for stmt in statements:
                 if not hasattr(stmt, 'stmt'):
@@ -583,7 +578,6 @@ class SQLLanguage(BaseLanguage):
                 start_line = 1
                 if hasattr(stmt, 'stmt_location') and stmt.stmt_location >= 0:
                     start_line = text[:stmt.stmt_location].count('\n') + 1
-                end_line = start_line
 
                 # Extract different PostgreSQL statement types
                 if stmt_type == 'CreateStmt':  # CREATE TABLE
@@ -631,7 +625,7 @@ class SQLLanguage(BaseLanguage):
             tree = self.parser.parse(source_code)
             return self._extract_structure(tree.root_node, source_code)
 
-    def _extract_pgsql_table(self, stmt, text: str, approx_line: int) -> Optional[StructureNode]:
+    def _extract_pgsql_table(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE TABLE from pglast AST."""
         if not hasattr(stmt, 'relation') or not stmt.relation:
             return None
@@ -670,7 +664,7 @@ class SQLLanguage(BaseLanguage):
             children=children
         )
 
-    def _extract_pgsql_view(self, stmt, text: str, approx_line: int) -> Optional[StructureNode]:
+    def _extract_pgsql_view(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE VIEW from pglast AST."""
         if not hasattr(stmt, 'view') or not stmt.view:
             return None
@@ -685,7 +679,7 @@ class SQLLanguage(BaseLanguage):
             end_line=end_line
         )
 
-    def _extract_pgsql_function(self, stmt, text: str, approx_line: int) -> Optional[StructureNode]:
+    def _extract_pgsql_function(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE FUNCTION from pglast AST."""
         if not hasattr(stmt, 'funcname') or not stmt.funcname:
             return None
@@ -701,7 +695,7 @@ class SQLLanguage(BaseLanguage):
             end_line=end_line
         )
 
-    def _extract_pgsql_index(self, stmt, text: str, approx_line: int) -> Optional[StructureNode]:
+    def _extract_pgsql_index(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract CREATE INDEX from pglast AST."""
         if not hasattr(stmt, 'idxname'):
             return None
@@ -716,7 +710,7 @@ class SQLLanguage(BaseLanguage):
             end_line=end_line
         )
 
-    def _extract_pgsql_do_block(self, stmt, text: str, approx_line: int) -> Optional[StructureNode]:
+    def _extract_pgsql_do_block(self, stmt, text: str, approx_line: int) -> StructureNode | None:
         """Extract DO block (PL/pgSQL anonymous block) from pglast AST."""
         # Find the actual DO $$ start from the approximate line
         lines = text.split('\n')
@@ -751,7 +745,7 @@ class SQLLanguage(BaseLanguage):
             end_line=end_line
         )
 
-    def _extract_pgsql_alter(self, stmt, stmt_type: str, text: str, approx_line: int) -> Optional[StructureNode]:
+    def _extract_pgsql_alter(self, stmt, stmt_type: str, text: str, approx_line: int) -> StructureNode | None:
         """Extract ALTER/RENAME statements from pglast AST."""
         start_line = approx_line
         end_line = approx_line
@@ -928,12 +922,13 @@ class SQLLanguage(BaseLanguage):
 
         # Handle relative imports for file-based imports
         for imp in imports:
-            if imp.import_type in ("relative", "file", "source"):
-                # Only resolve if it looks like a file path
-                if '/' in imp.target_module or '\\' in imp.target_module or imp.target_module.endswith('.sql'):
-                    resolved = self._resolve_relative_import(file_path, imp.target_module)
-                    if resolved:
-                        imp.target_module = resolved
+            # Only resolve file-based imports that look like a path
+            if (imp.import_type in ("relative", "file", "source")
+                    and ('/' in imp.target_module or '\\' in imp.target_module
+                         or imp.target_module.endswith('.sql'))):
+                resolved = self._resolve_relative_import(file_path, imp.target_module)
+                if resolved:
+                    imp.target_module = resolved
 
         return imports
 
@@ -1019,7 +1014,11 @@ class SQLLanguage(BaseLanguage):
     # ===========================================================================
 
     def _structures_to_definitions(
-        self, file_path: str, structures: list[StructureNode], parent: str = None
+        self,
+        file_path: str,
+        structures: list[StructureNode],
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -1042,14 +1041,18 @@ class SQLLanguage(BaseLanguage):
                         line=node.start_line,
                         signature=node.signature,
                         parent=parent,
+                        enclosing_kind=parent_kind,
                     )
                 )
 
             # Recurse into children (e.g., columns in tables)
             if node.children:
-                child_parent = node.name if node.type == "table" else parent
+                is_table = node.type == "table"
+                child_parent = node.name if is_table else parent
+                child_kind = node.type if is_table else parent_kind
                 definitions.extend(
-                    self._structures_to_definitions(file_path, node.children, child_parent)
+                    self._structures_to_definitions(
+                        file_path, node.children, child_parent, child_kind)
                 )
 
         return definitions
@@ -1152,7 +1155,7 @@ class SQLLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve SQL include to file path.
 
         SQL includes: \i file.sql, SOURCE file.sql, etc.

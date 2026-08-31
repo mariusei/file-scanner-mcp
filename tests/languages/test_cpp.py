@@ -1,8 +1,8 @@
 """Tests for C/C++ language."""
 
 import pytest
+
 from scantool.languages.cpp import CCppLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

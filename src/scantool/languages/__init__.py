@@ -29,18 +29,18 @@ Models are available from the models submodule:
 
 import importlib
 import pkgutil
-from typing import Dict, Type, Optional
+from typing import Optional
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
-    CallInfo,
     CallGraphNode,
-    FileNode,
+    CallInfo,
     CodeMapResult,
+    DefinitionInfo,
+    EntryPointInfo,
+    FileNode,
+    ImportInfo,
+    StructureNode,
     is_file_info_stub,
 )
 
@@ -71,8 +71,8 @@ class LanguageRegistry:
     """
 
     _instance: Optional["LanguageRegistry"] = None
-    _languages: Dict[str, Type[BaseLanguage]]
-    _instances: Dict[str, BaseLanguage]
+    _languages: dict[str, type[BaseLanguage]]
+    _instances: dict[str, BaseLanguage]
 
     def __new__(cls):
         """Singleton pattern for registry."""
@@ -87,7 +87,7 @@ class LanguageRegistry:
         """Auto-discover language implementations in this package."""
         # Import all modules in this package
         package_path = __path__
-        for importer, modname, ispkg in pkgutil.iter_modules(package_path):
+        for _importer, modname, _ispkg in pkgutil.iter_modules(package_path):
             if modname in ("base", "models", "__init__"):
                 continue
             try:
@@ -104,7 +104,7 @@ class LanguageRegistry:
             except ImportError:
                 pass  # Skip modules that fail to import
 
-    def register(self, language_cls: Type[BaseLanguage]):
+    def register(self, language_cls: type[BaseLanguage]):
         """Register a language handler.
 
         Args:
@@ -119,7 +119,7 @@ class LanguageRegistry:
                     continue
             self._languages[ext_lower] = language_cls
 
-    def get(self, extension: str) -> Optional[BaseLanguage]:
+    def get(self, extension: str) -> BaseLanguage | None:
         """Get language handler instance for extension.
 
         Args:
@@ -138,7 +138,7 @@ class LanguageRegistry:
 
         return self._instances[ext_lower]
 
-    def get_class(self, extension: str) -> Optional[Type[BaseLanguage]]:
+    def get_class(self, extension: str) -> type[BaseLanguage] | None:
         """Get language handler class for extension.
 
         Args:
@@ -163,11 +163,11 @@ class LanguageRegistry:
 
     # Backward compatibility methods (match old ScannerRegistry/AnalyzerRegistry interface)
 
-    def get_scanner(self, extension: str) -> Optional[Type[BaseLanguage]]:
+    def get_scanner(self, extension: str) -> type[BaseLanguage] | None:
         """Get language class for extension (backward compatible with ScannerRegistry)."""
         return self.get_class(extension)
 
-    def get_analyzer(self, extension: str) -> Optional[Type[BaseLanguage]]:
+    def get_analyzer(self, extension: str) -> type[BaseLanguage] | None:
         """Get language class for extension (backward compatible with AnalyzerRegistry)."""
         return self.get_class(extension)
 
@@ -182,7 +182,7 @@ class LanguageRegistry:
 
 # Module-level convenience functions
 
-_registry: Optional[LanguageRegistry] = None
+_registry: LanguageRegistry | None = None
 
 
 def get_registry() -> LanguageRegistry:
@@ -193,7 +193,7 @@ def get_registry() -> LanguageRegistry:
     return _registry
 
 
-def get_language(extension: str) -> Optional[BaseLanguage]:
+def get_language(extension: str) -> BaseLanguage | None:
     """Get language handler instance for extension.
 
     Args:

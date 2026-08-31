@@ -1,9 +1,6 @@
 """Tests for directory preview functionality."""
 
-import tempfile
-from pathlib import Path
-import pytest
-from scantool.preview import preview_directory, DirectoryPreview, DirectoryStats
+from scantool.preview import DirectoryPreview, DirectoryStats, preview_directory
 
 
 class TestDirectoryStats:
@@ -100,8 +97,8 @@ class TestDirectoryPreview:
 
         assert scanner.total_files == 2
         # Check that we have src and tests in stats
-        assert any("src" in path for path in scanner.dir_stats.keys())
-        assert any("tests" in path for path in scanner.dir_stats.keys())
+        assert any("src" in path for path in scanner.dir_stats)
+        assert any("tests" in path for path in scanner.dir_stats)
 
     def test_max_depth_limit(self, tmp_path):
         """Test max_depth parameter."""

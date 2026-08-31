@@ -1,10 +1,11 @@
 """Lightweight directory preview for quick codebase reconnaissance."""
 
+import contextlib
 import os
 import time
-from pathlib import Path
 from collections import defaultdict
-from typing import Optional
+from pathlib import Path
+
 from .gitignore import load_gitignore
 from .languages.skip_patterns import should_skip_directory
 
@@ -28,7 +29,7 @@ class DirectoryStats:
 
     def format_size(self) -> str:
         """Format size as human-readable string."""
-        size = self.total_size
+        size: float = self.total_size
         for unit in ['B', 'KB', 'MB', 'GB']:
             if size < 1024.0:
                 return f"{size:.1f}{unit}" if size >= 10 else f"{size:.0f}{unit}"
@@ -60,7 +61,7 @@ class DirectoryPreview:
     def __init__(
         self,
         directory: str,
-        max_depth: Optional[int] = 5,
+        max_depth: int | None = 5,
         max_files_hint: int = 100000,
         show_top_n: int = 8,
         respect_gitignore: bool = True
@@ -102,7 +103,7 @@ class DirectoryPreview:
             self._scan_recursive(self.directory, depth=0)
             # Collapse linear paths after scanning
             self._collapse_linear_paths()
-        except Exception as e:
+        except Exception:
             # If scan fails, we still want to return what we got
             pass
 
@@ -176,12 +177,10 @@ class DirectoryPreview:
         count = 0
         size = 0
         try:
-            for root, dirs, files in os.walk(path):
+            for root, _dirs, files in os.walk(path):
                 for fname in files:
-                    try:
+                    with contextlib.suppress(OSError):
                         size += os.path.getsize(os.path.join(root, fname))
-                    except OSError:
-                        pass
                 count += len(files)
                 if count > max_count:
                     return max_count, size
@@ -199,7 +198,7 @@ class DirectoryPreview:
           a/b/c/ (high information density)
         """
         # Find linear chains
-        chains_to_collapse = {}  # {start_path: [path1, path2, path3, ...]}
+        chains_to_collapse: dict[str, list[str]] = {}  # {start_path: [path1, path2, path3, ...]}
 
         for path in sorted(self.dir_stats.keys()):
             # Skip if already part of a chain
@@ -212,7 +211,7 @@ class DirectoryPreview:
                 chains_to_collapse[path] = chain
 
         # Create collapsed representations
-        for start_path, chain in chains_to_collapse.items():
+        for _start_path, chain in chains_to_collapse.items():
             # Create collapsed path string
             collapsed_display = "/".join(p.split("/")[-1] for p in chain)
             leaf_path = chain[-1]
@@ -231,7 +230,7 @@ class DirectoryPreview:
 
         while True:
             # Get children of current path
-            children = [p for p in self.dir_stats.keys()
+            children = [p for p in self.dir_stats
                        if p.startswith(current + "/") and p.count("/") == current.count("/") + 1]
 
             # Stop if not exactly 1 child
@@ -239,7 +238,6 @@ class DirectoryPreview:
                 break
 
             child_path = children[0]
-            child_stats = self.dir_stats[child_path]
 
             # Stop if current has significant files (structure holds data)
             current_stats = self.dir_stats[current]
@@ -272,7 +270,7 @@ class DirectoryPreview:
         # Show root-level files for flat projects
         root_files = self._get_root_files()
         # Heuristic: show root files if few top-level directories
-        top_level_count = sum(1 for path in self.dir_stats.keys() if "/" not in path)
+        top_level_count = sum(1 for path in self.dir_stats if "/" not in path)
         if root_files and top_level_count < 5:
             file_list = self._format_root_files(root_files)
             if file_list:  # Only show if there are non-noise files
@@ -326,9 +324,6 @@ class DirectoryPreview:
 
                 ext_str = stats.format_extensions()
                 size_str = stats.format_size()
-
-                # Check for subdirectories to show
-                indent = "├─ " if i < len(top_level_dirs[:self.show_top_n]) - 1 else "└─ "
 
                 # Determine if this looks like third-party code
                 warning = ""
@@ -562,11 +557,12 @@ class DirectoryPreview:
     @staticmethod
     def _format_size(size: int) -> str:
         """Format bytes as human-readable string."""
+        value = float(size)
         for unit in ['B', 'KB', 'MB', 'GB']:
-            if size < 1024.0:
-                return f"{size:.0f}{unit}" if size < 10 else f"{size:.1f}{unit}"
-            size /= 1024.0
-        return f"{size:.1f}TB"
+            if value < 1024.0:
+                return f"{value:.0f}{unit}" if value < 10 else f"{value:.1f}{unit}"
+            value /= 1024.0
+        return f"{value:.1f}TB"
 
     @staticmethod
     def _format_count(count: int) -> str:
@@ -578,7 +574,7 @@ class DirectoryPreview:
 
 def preview_directory(
     directory: str,
-    max_depth: Optional[int] = 5,
+    max_depth: int | None = 5,
     max_files_hint: int = 100000,
     show_top_n: int = 8,
     respect_gitignore: bool = True

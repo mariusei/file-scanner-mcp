@@ -12,8 +12,8 @@ from pathlib import Path
 # Add src to path for this example
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from scantool.scanner import FileScanner
 from scantool.formatter import TreeFormatter
+from scantool.scanner import FileScanner
 
 
 def main():

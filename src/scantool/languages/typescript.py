@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_typescript
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -56,9 +55,7 @@ class TypeScriptLanguage(BaseLanguage):
             return True
         if defn.enclosing_kind == "interface":
             return True
-        if defn.enclosing_kind == "class" and "private" not in defn.modifiers:
-            return True
-        return False
+        return bool(defn.enclosing_kind == "class" and "private" not in defn.modifiers)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -99,10 +96,7 @@ class TypeScriptLanguage(BaseLanguage):
             return True
 
         # Skip webpack/rollup bundles (auto-generated)
-        if 'bundle' in filename.lower() or 'chunk' in filename.lower():
-            return True
-
-        return False
+        return bool('bundle' in filename.lower() or 'chunk' in filename.lower())
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip TypeScript/JavaScript files that should not be analyzed."""
@@ -117,10 +111,7 @@ class TypeScriptLanguage(BaseLanguage):
             return False
 
         # Skip webpack/rollup bundles
-        if 'bundle' in filename or 'chunk' in filename:
-            return False
-
-        return True
+        return not ('bundle' in filename or 'chunk' in filename)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value TypeScript/JavaScript files for inventory listing.
@@ -155,7 +146,7 @@ class TypeScriptLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -346,7 +337,7 @@ class TypeScriptLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_arrow_function(self, node: Node, source_code: bytes) -> Optional[StructureNode]:
+    def _extract_arrow_function(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract arrow function assigned to a const/let/var."""
         # Look for pattern: const/let/var name = () => {}
         for child in node.children:
@@ -387,7 +378,7 @@ class TypeScriptLanguage(BaseLanguage):
 
         return None
 
-    def _extract_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract function/method signature with parameters and return type."""
         parts = []
 
@@ -409,7 +400,7 @@ class TypeScriptLanguage(BaseLanguage):
         signature = "".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
 
-    def _extract_arrow_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_arrow_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract arrow function signature."""
         parts = []
 
@@ -432,7 +423,7 @@ class TypeScriptLanguage(BaseLanguage):
 
     def _extract_decorators(self, node: Node, source_code: bytes) -> list[str]:
         """Extract decorators from a function/class/method."""
-        decorators = []
+        decorators: list[str] = []
         prev = node.prev_sibling
 
         while prev and prev.type == "decorator":
@@ -442,7 +433,7 @@ class TypeScriptLanguage(BaseLanguage):
 
         return decorators
 
-    def _extract_jsdoc(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_jsdoc(self, node: Node, source_code: bytes) -> str | None:
         """Extract first line of JSDoc comment."""
         prev = node.prev_sibling
 
@@ -465,7 +456,7 @@ class TypeScriptLanguage(BaseLanguage):
 
         return None
 
-    def _extract_heritage(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_heritage(self, node: Node, source_code: bytes) -> str | None:
         """Extract extends/implements clause."""
         parts = []
 
@@ -527,7 +518,7 @@ class TypeScriptLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode('utf-8', errors='replace')
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find class definitions
         for match in re.finditer(r'^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)', text, re.MULTILINE):
@@ -752,8 +743,8 @@ class TypeScriptLanguage(BaseLanguage):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -782,6 +773,8 @@ class TypeScriptLanguage(BaseLanguage):
             if node.children:
                 # For both class and interface, set child_parent to node name
                 if node.type in ("class", "interface"):
+                    child_parent: str | None
+                    child_kind: str | None
                     child_parent, child_kind = node.name, node.type
                 else:
                     child_parent, child_kind = parent, parent_kind
@@ -935,7 +928,7 @@ class TypeScriptLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve TypeScript/JavaScript import to file path.
 
         Handles:

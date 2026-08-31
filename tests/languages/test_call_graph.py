@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+
 from scantool.call_graph import (
     build_call_graph,
     calculate_centrality,
@@ -10,7 +11,7 @@ from scantool.call_graph import (
     find_hot_functions,
 )
 from scantool.code_map import CodeMap
-from scantool.languages import DefinitionInfo, CallInfo, CallGraphNode
+from scantool.languages import CallInfo, DefinitionInfo
 
 _TESTS_DIR = Path(__file__).resolve().parents[1]
 

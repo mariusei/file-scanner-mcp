@@ -1,8 +1,9 @@
 """Tests for Python scanner."""
 
-from scantool.scanner import FileScanner
-from scantool.languages.python import PythonLanguage
 from conftest import validate_line_range_invariants
+
+from scantool.languages.python import PythonLanguage
+from scantool.scanner import FileScanner
 
 
 def test_nested_closure_call_attribution():
@@ -151,4 +152,3 @@ def test_line_range_invariants(file_scanner):
     # Also test edge cases file
     structures = file_scanner.scan_file("tests/python/samples/edge_cases.py")
     validate_line_range_invariants(structures)
-

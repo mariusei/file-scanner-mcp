@@ -1,7 +1,8 @@
 """Tests for SCSS language."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from scantool.languages.scss import SCSSLanguage
 
@@ -196,7 +197,7 @@ class TestSCSSScanner:
 
         # Find .block rule
         block = next(
-            (s for s in structures if s.type == "rule_set" and ".block" == s.name),
+            (s for s in structures if s.type == "rule_set" and s.name == ".block"),
             None
         )
         assert block is not None

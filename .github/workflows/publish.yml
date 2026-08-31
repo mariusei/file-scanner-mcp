@@ -8,8 +8,46 @@ permissions:
   contents: read
 
 jobs:
+  verify:
+    name: Verify release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: '3.13'
+
+      # A version bump that skips `uv lock` leaves the lockfile stale, which
+      # only surfaced as a test-run failure after the release was already cut.
+      - name: Install dependencies (fails on a stale lockfile)
+        run: uv sync --locked --group dev
+
+      - name: Check the tag matches the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(uv run python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$tag" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match pyproject version $version" >&2
+            exit 1
+          fi
+          echo "Tag and version agree on $version"
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: mypy
+        run: uv run mypy
+
+      - name: Run tests
+        run: uv run pytest tests/ -q
+
   publish:
     name: Build and publish to PyPI
+    needs: verify
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -20,15 +58,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v10
+        with:
+          python-version: '3.11'
 
       - name: Build package
         run: uv build

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from scantool.scanner import FileScanner
 from scantool.formatter import TreeFormatter
+from scantool.scanner import FileScanner
 
 
 @pytest.fixture

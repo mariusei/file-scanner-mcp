@@ -21,7 +21,6 @@ SCOPE:
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from .consensus import find_divergences, format_divergences
 from .delta import apply_node_delta, diff_nodes, node_hashes
@@ -33,7 +32,7 @@ from .scanner import FileScanner
 def diff_against_ref(
     directory: str,
     ref: str = "HEAD",
-    budget: Optional[int] = 1500,
+    budget: int | None = 1500,
 ) -> str:
     """Structural diff of the working tree against a git ref.
 
@@ -184,7 +183,7 @@ def _connectivity_section(toplevel: str, changed_files: set[str]) -> str:
         return ""
 
 
-def _scan_quietly(scanner: FileScanner, path: str, budget: Optional[int]):
+def _scan_quietly(scanner: FileScanner, path: str, budget: int | None):
     try:
         return scanner.scan_file(path, budget=budget)
     except Exception:

@@ -1,8 +1,10 @@
 """Tests for code map orchestrator."""
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from scantool.code_map import CodeMap
 
 

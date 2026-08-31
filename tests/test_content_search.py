@@ -4,7 +4,7 @@ file type."""
 
 from pathlib import Path
 
-from scantool.content_search import search_content, format_hits
+from scantool.content_search import format_hits, search_content
 from scantool.scanner import FileScanner
 
 

@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_zig
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -94,10 +93,7 @@ class ZigLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip cache and build directories
-        if '/zig-cache/' in path_lower or '/zig-out/' in path_lower:
-            return False
-
-        return True
+        return not ('/zig-cache/' in path_lower or '/zig-out/' in path_lower)
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value Zig files for inventory listing.
@@ -118,7 +114,7 @@ class ZigLanguage(BaseLanguage):
         self, root: Node, source_code: bytes
     ) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         for node in root.children:
             if node.type == "function_declaration":
@@ -182,7 +178,7 @@ class ZigLanguage(BaseLanguage):
 
     def _extract_variable_declaration(
         self, node: Node, source_code: bytes, root: Node
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract struct, enum, union, or import from variable declaration."""
         name = None
         decl_type = None
@@ -277,7 +273,7 @@ class ZigLanguage(BaseLanguage):
             children=[],
         )
 
-    def _extract_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract function signature with parameters and return type."""
         params_node = None
         return_type = None
@@ -341,7 +337,7 @@ class ZigLanguage(BaseLanguage):
 
         return modifiers
 
-    def _extract_doc_comment(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_doc_comment(self, node: Node, source_code: bytes) -> str | None:
         """Extract doc comments (/// or //!)."""
         # Look for comments before the node
         start_byte = node.start_byte
@@ -349,13 +345,11 @@ class ZigLanguage(BaseLanguage):
 
         # Find doc comments (///)
         lines = text_before.split("\n")
-        doc_lines = []
+        doc_lines: list[str] = []
 
         for line in reversed(lines[-10:]):  # Check last 10 lines
             stripped = line.strip()
-            if stripped.startswith("///"):
-                doc_lines.insert(0, stripped[3:].strip())
-            elif stripped.startswith("//!"):
+            if stripped.startswith("///") or stripped.startswith("//!"):
                 doc_lines.insert(0, stripped[3:].strip())
             elif stripped and not stripped.startswith("//"):
                 break
@@ -367,7 +361,7 @@ class ZigLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for severely malformed files."""
         text = source_code.decode("utf-8", errors="replace")
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find struct definitions
         for match in re.finditer(
@@ -577,8 +571,8 @@ class ZigLanguage(BaseLanguage):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -608,6 +602,8 @@ class ZigLanguage(BaseLanguage):
             if node.children:
                 # For Zig, struct/enum/union can contain methods
                 if node.type in containers:
+                    child_parent: str | None
+                    child_kind: str | None
                     child_parent, child_kind = node.name, node.type
                 else:
                     child_parent, child_kind = parent, parent_kind
@@ -647,7 +643,7 @@ class ZigLanguage(BaseLanguage):
         # resolves to nothing (which would silently drop the edge).
         def_names = {d.name for d in definitions}
 
-        def get_callee_name(node: Node) -> Optional[str]:
+        def get_callee_name(node: Node) -> str | None:
             """Extract the callee name from a call expression's function node."""
             if node.type == "identifier":
                 return self._get_node_text(node, source_bytes)
@@ -658,7 +654,7 @@ class ZigLanguage(BaseLanguage):
                         return self._get_node_text(child, source_bytes)
             return None
 
-        def traverse(node: Node, current_func: Optional[str] = None):
+        def traverse(node: Node, current_func: str | None = None):
             # Track function context
             if node.type == "function_declaration":
                 # Find the function name (direct identifier child)
@@ -763,7 +759,7 @@ class ZigLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve Zig @import to file path.
 
         Zig imports:

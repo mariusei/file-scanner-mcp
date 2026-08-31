@@ -14,6 +14,7 @@ cheap; NOT wired/referenced-by (measured grep-equivalent overhead). Server-layer
 so it is outside the frozen golden scope (like git churn / delta notes).
 """
 
+import contextlib
 import re
 import threading
 import time
@@ -88,10 +89,8 @@ def _compute_dead(directory: str, result) -> "tuple[set, bool]":
 
     corpus = []
     for f in reference_map.source_files(repo, _DEAD_EXTS):
-        try:
+        with contextlib.suppress(OSError):
             corpus.append(f.read_text(errors="replace"))
-        except OSError:
-            pass
     blob = "\n".join(corpus)
     dyn = bool(re.search(r"\bgetattr\(|\bglobals\(\)\[|importlib", blob))
     # Precompute once (O(blob)): how often each name appears as a call `name(` and
@@ -188,7 +187,9 @@ def warm(directory: str, result=None) -> None:
                 _STATE[directory] = (*prev[:5], time.time())  # touch ts, keep state
                 return
         if result.total_files > _MAX_HEAVY_FILES:
-            dead, orphans, dyn = set(), [], False
+            dead: set[str] = set()
+            orphans: list[str] = []
+            dyn = False
         else:
             dead, dyn = _compute_dead(directory, result)
             orphans = _compute_orphans(directory)

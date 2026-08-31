@@ -23,7 +23,6 @@ import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 _GIT_TIMEOUT = 5.0
 # Commits touching more files than this are skipped for co-change —
@@ -42,7 +41,7 @@ class GitSignals:
     window_days: int
 
 
-def _run_git(directory: str, *args: str) -> Optional[str]:
+def _run_git(directory: str, *args: str) -> str | None:
     """Run a git command; None on any failure (no git, no repo, timeout)."""
     try:
         result = subprocess.run(
@@ -62,7 +61,7 @@ def _run_git(directory: str, *args: str) -> Optional[str]:
     return result.stdout
 
 
-def repo_root(file_path: str) -> Optional[str]:
+def repo_root(file_path: str) -> str | None:
     """Project root containing file_path: the git toplevel, else a walk up to a
     project marker, else the file's directory. None only if the path is unusable.
     Used to scope the whole-corpus connectivity view for a single scanned file."""
@@ -77,7 +76,7 @@ def repo_root(file_path: str) -> Optional[str]:
     return str(parent) if parent.is_dir() else None
 
 
-def _last_activity_ts(directory: str) -> Optional[float]:
+def _last_activity_ts(directory: str) -> float | None:
     """Unix timestamp of the repository's most recent commit."""
     out = _run_git(directory, "log", "-1", "--format=%ct")
     if out is None:
@@ -88,7 +87,7 @@ def _last_activity_ts(directory: str) -> Optional[float]:
         return None
 
 
-def _window_start(directory: str, window_days: int) -> Optional[float]:
+def _window_start(directory: str, window_days: int) -> float | None:
     """Window anchored at the project's LAST COMMIT, not at wall-clock now —
     "the last 90 days of activity". Older projects keep their signals; for
     actively developed projects this is indistinguishable from a now-window."""
@@ -102,7 +101,7 @@ def collect_git_signals(
     directory: str,
     window_days: int = 90,
     co_change_top: int = 5,
-) -> Optional[GitSignals]:
+) -> GitSignals | None:
     """Collect churn and co-change for files under directory.
 
     The window covers the last window_days of ACTIVITY (anchored at the
@@ -183,7 +182,7 @@ def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
             + "\n".join(lines))
 
 
-def recent_line_edits(file_path: str, window_days: int = 90) -> Optional[dict[int, str]]:
+def recent_line_edits(file_path: str, window_days: int = 90) -> dict[int, str] | None:
     """Map current line numbers to the commit that last touched them,
     filtered to the last window_days of ACTIVITY (anchored at the repo's
     most recent commit). Built on git blame, so history is projected
@@ -225,7 +224,7 @@ def recent_line_edits(file_path: str, window_days: int = 90) -> Optional[dict[in
     return edits
 
 
-def file_churn(file_path: str, window_days: int = 90) -> Optional[int]:
+def file_churn(file_path: str, window_days: int = 90) -> int | None:
     """Commits touching a single file in the last window_days of activity
     (anchored at the repo's most recent commit); None without git/repo."""
     parent = str(Path(file_path).parent) or "."

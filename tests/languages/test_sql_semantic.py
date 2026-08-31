@@ -1,8 +1,8 @@
 """Tests for SQL language."""
 
 import pytest
+
 from scantool.languages.sql import SQLLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_php
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -94,10 +93,7 @@ class PHPLanguage(BaseLanguage):
         path_lower = file_path.lower()
 
         # Skip Laravel Blade cache files
-        if 'storage/framework/views' in path_lower:
-            return False
-
-        return True
+        return 'storage/framework/views' not in path_lower
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value PHP files for inventory listing.
@@ -106,8 +102,6 @@ class PHPLanguage(BaseLanguage):
         - Small config files
         - Blade cache files
         """
-        filename = Path(file_path).name
-
         # Very small files are likely boilerplate
         if size > 0 and size < 50:
             return True
@@ -120,7 +114,7 @@ class PHPLanguage(BaseLanguage):
 
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_structures: list):
             # Handle parse errors
@@ -400,7 +394,7 @@ class PHPLanguage(BaseLanguage):
             children=[]
         )
 
-    def _extract_method_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_method_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract method signature with parameters and return type."""
         parts = []
 
@@ -419,7 +413,7 @@ class PHPLanguage(BaseLanguage):
         signature = "".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
 
-    def _extract_function_signature(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_function_signature(self, node: Node, source_code: bytes) -> str | None:
         """Extract function signature with parameters and return type."""
         parts = []
 
@@ -461,7 +455,7 @@ class PHPLanguage(BaseLanguage):
 
         return attributes
 
-    def _extract_phpdoc(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _extract_phpdoc(self, node: Node, source_code: bytes) -> str | None:
         """Extract first line of PHPDoc comment."""
         prev = node.prev_sibling
 
@@ -737,8 +731,8 @@ class PHPLanguage(BaseLanguage):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -770,6 +764,8 @@ class PHPLanguage(BaseLanguage):
             if node.children:
                 # Set parent for child methods in class-like structures
                 if node.type in containers:
+                    child_parent: str | None
+                    child_kind: str | None
                     child_parent, child_kind = node.name, node.type
                 else:
                     child_parent, child_kind = parent, parent_kind
@@ -798,7 +794,7 @@ class PHPLanguage(BaseLanguage):
         """Extract calls using tree-sitter AST with caller context tracking."""
         calls = []
 
-        def traverse(node: Node, current_func: Optional[str] = None):
+        def traverse(node: Node, current_func: str | None = None):
             # Track function/method context
             if node.type in ("function_definition", "method_declaration"):
                 name_node = node.child_by_field_name("name")
@@ -957,7 +953,7 @@ class PHPLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve PHP use statement to file path.
 
         PHP uses namespace imports like:
@@ -992,7 +988,7 @@ class PHPLanguage(BaseLanguage):
 
     def _resolve_php_relative_path(
         self, current_file: str, relative_path: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve PHP relative file path (e.g., './config.php', '../utils.php').
 
         Unlike Python's dot imports, PHP uses Unix-style relative paths.
@@ -1004,7 +1000,6 @@ class PHPLanguage(BaseLanguage):
         Returns:
             Resolved absolute path or None
         """
-        import os.path as osp
 
         # Get directory of current file
         current_dir = "/".join(current_file.split("/")[:-1])

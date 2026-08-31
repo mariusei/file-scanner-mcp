@@ -9,19 +9,18 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_css
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 
@@ -70,11 +69,7 @@ class CSSLanguage(BaseLanguage):
         if filename.endswith(".css.map"):
             return True
         # Skip common generated patterns
-        if any(pattern in filename.lower() for pattern in [
-            ".generated.", ".compiled.", "bundle.", "chunk."
-        ]):
-            return True
-        return False
+        return bool(any(pattern in filename.lower() for pattern in [".generated.", ".compiled.", "bundle.", "chunk."]))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip CSS files that should not be analyzed.
@@ -94,12 +89,7 @@ class CSSLanguage(BaseLanguage):
             return False
 
         # Skip common generated patterns
-        if any(pattern in filename for pattern in [
-            ".generated.", ".compiled.", "bundle.", "chunk."
-        ]):
-            return False
-
-        return True
+        return not any(pattern in filename for pattern in [".generated.", ".compiled.", "bundle.", "chunk."])
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value CSS files for inventory listing.
@@ -130,7 +120,7 @@ class CSSLanguage(BaseLanguage):
         self, root: Node, source_code: bytes
     ) -> list[StructureNode]:
         """Extract structure from CSS stylesheet."""
-        structures = []
+        structures: list[StructureNode] = []
 
         for node in root.children:
             if node.type == "ERROR":
@@ -194,7 +184,7 @@ class CSSLanguage(BaseLanguage):
         self, error_node: Node, source_code: bytes
     ) -> list[StructureNode]:
         """Extract valid CSS structures from within an ERROR node."""
-        structures = []
+        structures: list[StructureNode] = []
 
         for child in error_node.children:
             if child.type == "ERROR":
@@ -247,7 +237,7 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_import_node(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @import statement as StructureNode."""
         url = None
         for child in node.children:
@@ -276,7 +266,7 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_media(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @media statement."""
         query = None
         children = []
@@ -303,7 +293,7 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_keyframes(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @keyframes statement."""
         name = None
         for child in node.children:
@@ -321,7 +311,7 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_supports(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract @supports statement."""
         query = None
         children = []
@@ -346,7 +336,7 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_at_rule(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract at-rule (@media, @keyframes, @import, etc.)."""
         keyword = None
         query = None
@@ -420,7 +410,7 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_rule_set(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract a CSS rule set (selector + declarations)."""
         selectors = []
         declaration_count = 0
@@ -479,7 +469,7 @@ class CSSLanguage(BaseLanguage):
     ) -> list[str]:
         """Extract individual selectors from a selectors node."""
         selectors = []
-        current = []
+        current: list[str] = []
 
         for child in selectors_node.children:
             if child.type == ",":
@@ -517,7 +507,9 @@ class CSSLanguage(BaseLanguage):
 
     def _extract_comment_title(self, comment: str) -> str:
         """Extract a title from a comment."""
-        text = comment.strip("/*! \n\r\t*/")
+        # noqa argument is a character set (comment delimiters + whitespace),
+        # not a prefix — B005 does not apply.
+        text = comment.strip("/*! \n\r\t*/")  # noqa: B005
         first_line = text.split("\n")[0].strip()
         if len(first_line) > 50:
             first_line = first_line[:47] + "..."
@@ -526,7 +518,7 @@ class CSSLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for malformed CSS files."""
         text = source_code.decode("utf-8", errors="replace")
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find @import rules
         import_pattern = r'@import\s+(?:url\(["\']?([^"\')\s]+)["\']?\)|["\']([^"\']+)["\'])'
@@ -775,7 +767,7 @@ class CSSLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve CSS @import to file path.
 
         CSS imports are relative paths or URLs.
@@ -822,7 +814,4 @@ class CSSLanguage(BaseLanguage):
             return True
 
         # Check for protocol prefixes
-        if url.startswith(("http://", "https://", "//", "data:", "blob:")):
-            return True
-
-        return False
+        return bool(url.startswith(("http://", "https://", "//", "data:", "blob:")))

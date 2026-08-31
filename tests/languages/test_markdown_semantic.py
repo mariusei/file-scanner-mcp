@@ -1,8 +1,8 @@
 """Tests for Markdown language."""
 
 import pytest
+
 from scantool.languages.markdown import MarkdownLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

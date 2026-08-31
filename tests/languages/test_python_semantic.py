@@ -1,8 +1,8 @@
 """Tests for Python language."""
 
 import pytest
+
 from scantool.languages.python import PythonLanguage
-from scantool.languages import ImportInfo, EntryPointInfo, DefinitionInfo, CallInfo
 
 
 @pytest.fixture

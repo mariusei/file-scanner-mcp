@@ -1,10 +1,9 @@
 """Expand bash-style brace patterns in glob expressions."""
 
 import re
-from typing import List
 
 
-def expand_braces(pattern: str) -> List[str]:
+def expand_braces(pattern: str) -> list[str]:
     """
     Expand brace expressions in a glob pattern.
 

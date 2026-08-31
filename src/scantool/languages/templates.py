@@ -12,10 +12,8 @@ nodes merged back into the final structure tree.
 
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from .models import StructureNode
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Template dialect detection and tag patterns
@@ -544,7 +542,7 @@ class PreprocessResult:
     tag_count: int
 
 
-def preprocess(source_code: bytes) -> Optional[PreprocessResult]:
+def preprocess(source_code: bytes) -> PreprocessResult | None:
     """Preprocess HTML source with template syntax.
 
     Returns None if no template syntax detected.

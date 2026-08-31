@@ -1,14 +1,12 @@
 """Integration tests for all scanners."""
 
-from pathlib import Path
-from datetime import datetime
 import re
+from datetime import datetime
+from pathlib import Path
 
-import pytest
-
-from scantool.scanner import FileScanner
-from scantool.formatter import TreeFormatter
 from scantool.directory_formatter import DirectoryFormatter
+from scantool.formatter import TreeFormatter
+from scantool.scanner import FileScanner
 
 
 def test_scan_all_sample_files():

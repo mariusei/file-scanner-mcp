@@ -31,7 +31,6 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
-from typing import Optional
 
 from .languages import get_language, is_file_info_stub
 
@@ -60,7 +59,7 @@ class Definition:
 
 
 def analyze_health(
-    results: dict[str, Optional[list]],
+    results: dict[str, list | None],
     max_unreferenced: int = 12,
     max_duplicate_groups: int = 5,
 ) -> str:
@@ -119,34 +118,32 @@ def _collect_definitions(results, contents) -> tuple[list[Definition], set[str]]
     definitions: list[Definition] = []
     rooted: set[str] = set()
 
+    def walk(nodes, file_path, source_lines, parent=None):
+        for node in nodes:
+            if (node.type not in _SKIP_TYPES and node.name
+                    and node.end_line >= node.start_line):
+                block_lines = source_lines[node.start_line - 1:node.end_line]
+                block = "\n".join(
+                    line.rstrip() for line in dedent("\n".join(block_lines)).split("\n")
+                    if line.strip()
+                )
+                # Containers (classes/structs with members) are often
+                # instantiated dynamically (registries, DI, reflection);
+                # methods in subclasses are dispatch targets (visitors,
+                # overrides, framework hooks). Neither may be flagged.
+                in_subclass = (parent is not None and parent.signature)
+                definitions.append(Definition(
+                    file=file_path, name=node.name,
+                    line=node.start_line, block=block,
+                    flaggable=not node.children and not in_subclass,
+                ))
+                if node.decorators or "override" in (node.modifiers or []):
+                    rooted.add(node.name)
+            if node.children:
+                walk(node.children, file_path, source_lines, parent=node)
+
     for file_path, structures in results.items():
-        source_lines = contents.get(file_path, "").split("\n")
-
-        def walk(nodes, parent=None):
-            for node in nodes:
-                if (node.type not in _SKIP_TYPES and node.name
-                        and node.end_line >= node.start_line):
-                    block_lines = source_lines[node.start_line - 1:node.end_line]
-                    block = "\n".join(
-                        line.rstrip() for line in dedent("\n".join(block_lines)).split("\n")
-                        if line.strip()
-                    )
-                    # Containers (classes/structs with members) are often
-                    # instantiated dynamically (registries, DI, reflection);
-                    # methods in subclasses are dispatch targets (visitors,
-                    # overrides, framework hooks). Neither may be flagged.
-                    in_subclass = (parent is not None and parent.signature)
-                    definitions.append(Definition(
-                        file=file_path, name=node.name,
-                        line=node.start_line, block=block,
-                        flaggable=not node.children and not in_subclass,
-                    ))
-                    if node.decorators or "override" in (node.modifiers or []):
-                        rooted.add(node.name)
-                if node.children:
-                    walk(node.children, parent=node)
-
-        walk(structures or [])
+        walk(structures or [], file_path, contents.get(file_path, "").split("\n"))
     return definitions, rooted
 
 
@@ -161,7 +158,8 @@ def _entry_point_names(results, contents) -> set[str]:
             continue
         try:
             for ep in lang.find_entry_points(file_path, contents.get(file_path, "")):
-                names.add(ep.name)
+                if ep.name:
+                    names.add(ep.name)
         except Exception:
             continue
     return names

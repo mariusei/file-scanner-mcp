@@ -21,9 +21,9 @@ Cross-language by nature (string matching). Sits alongside the AST/call graph.
 
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from .gitignore import load_gitignore
 from .scanner import FileScanner

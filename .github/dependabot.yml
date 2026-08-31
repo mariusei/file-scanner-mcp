@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Actions drifted four to six major versions behind before this was added.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      tree-sitter:
+        patterns: ["tree-sitter*"]
+      dev:
+        dependency-type: development

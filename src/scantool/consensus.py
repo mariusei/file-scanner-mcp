@@ -61,7 +61,7 @@ _COMMON_METHODS = frozenset({
     "encode", "decode", "read", "write", "close", "open", "seek", "flush",
     "group", "groups", "match", "search", "finditer", "sub", "compile", "span",
     "start", "end", "exists", "is_file", "is_dir", "read_text", "write_text",
-    "decode", "isdigit", "isalpha", "isspace", "title", "splitlines",
+    "isdigit", "isalpha", "isspace", "title", "splitlines",
 })
 _NOISE_NAMES = frozenset(dir(builtins)) | _COMMON_METHODS
 
@@ -226,11 +226,11 @@ def _role_conditioner(bags, file_clusters, lenses=("name", "cluster", "graph")):
             cl(c) for c in conformers
         ):
             return False
-        if "graph" in lenses and graph_role(site, anchor, missing) != modal(
-            graph_role(c, anchor, missing) for c in conformers
-        ):
-            return False
-        return True
+        return not (
+            "graph" in lenses
+            and graph_role(site, anchor, missing)
+            != modal(graph_role(c, anchor, missing) for c in conformers)
+        )
 
     return same_role
 
@@ -361,13 +361,13 @@ def find_divergences(
             continue
         if suspects is None and cand.strength <= fence:  # outlier gate: audit only
             continue
-        conformers = sorted(callers_of[cand.anchor] & callers_of[cand.missing])
-        sample = [f"{f}:{c}" for f, c in conformers][: cfg.PEERS_SAMPLE]
+        conformer_sites = sorted(callers_of[cand.anchor] & callers_of[cand.missing])
+        sample = [f"{f}:{c}" for f, c in conformer_sites][: cfg.PEERS_SAMPLE]
         for f, c in sorted(cand.missing_sites):
             if suspects is not None and (f, c) not in suspects:
                 continue
             if same_role is not None and not same_role(
-                (f, c), conformers, cand.anchor, cand.missing
+                (f, c), conformer_sites, cand.anchor, cand.missing
             ):
                 continue  # site plays a different architectural role — not drift
             findings.append(

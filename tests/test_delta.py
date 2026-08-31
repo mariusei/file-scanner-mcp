@@ -6,7 +6,7 @@ import pytest
 
 from scantool.delta import FULL_DETAIL, GIST_DETAIL, ScanMemory
 from scantool.languages.models import StructureNode
-from scantool.server import scan_file, scan_directory, scan_memory
+from scantool.server import scan_directory, scan_file, scan_memory
 
 SOURCE_V1 = '''\
 def alpha(items):

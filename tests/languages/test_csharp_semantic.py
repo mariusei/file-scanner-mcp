@@ -1,8 +1,8 @@
 """Tests for C# language."""
 
 import pytest
+
 from scantool.languages.csharp import CSharpLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture

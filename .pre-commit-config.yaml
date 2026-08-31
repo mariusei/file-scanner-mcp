@@ -1,0 +1,24 @@
+# Run `uv run pre-commit install` once to enable. Mirrors the quality job in
+# .github/workflows/test.yml, so a clean commit is a clean CI run.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      # ruff-format is deliberately absent: enabling it would reformat 88 of
+      # 103 files in one sweep, and tests/golden/fixture_dir is frozen input
+      # that must stay byte-exact. Adopt it as its own commit if wanted.
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+        # Byte-exact inputs: golden snapshots, the malformed parser fixtures,
+        # and the raw experiment logs.
+        exclude: &frozen ^(tests/(golden|[a-z]+/samples)|experiments)/
+      - id: trailing-whitespace
+        exclude: *frozen
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict

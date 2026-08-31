@@ -1,7 +1,8 @@
 """Tests for HTML language."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from scantool.languages.html import HTMLLanguage
 
@@ -134,7 +135,7 @@ class TestHTMLScanner:
         lists = find_lists(structures)
         assert len(lists) >= 2  # ul and ol
 
-        feature_list = next((l for l in lists if l.name == "feature-list"), None)
+        feature_list = next((ln for ln in lists if ln.name == "feature-list"), None)
         assert feature_list is not None
         assert "unordered" in feature_list.modifiers
 

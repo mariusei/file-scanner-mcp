@@ -12,11 +12,12 @@ Tests robustness against:
 - Mixed dialect confusion
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
+
 from scantool.languages.html import HTMLLanguage
-from scantool.languages.templates import preprocess, Dialect
+from scantool.languages.templates import Dialect, preprocess
 
 
 @pytest.fixture
@@ -212,7 +213,7 @@ class TestDeepNesting:
         for i in range(depth):
             lines.append(f"{{% if cond_{i} %}}")
         lines.append("<p>deep</p>")
-        for i in range(depth):
+        for _ in range(depth):
             lines.append("{% endif %}")
         source = "\n".join(lines)
         result = preprocess(source.encode())

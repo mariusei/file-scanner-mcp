@@ -4,26 +4,30 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 from fastmcp import FastMCP
 from mcp.types import TextContent
 
 from .code_health import analyze_health
-from .content_search import search_content, format_hits, find_leads
-from .delta import (FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta,
-                    format_age)
-from .ref_diff import diff_against_ref
+from .code_map import CodeMap
+from .connectivity import connectivity_tail
+from .consensus import DivergenceConfig, find_divergences, format_divergences
+from .content_search import find_leads, format_hits, search_content
+from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
+from .directory_formatter import DirectoryFormatter
 from .focus import format_focus
 from .formatter import TreeFormatter
-from .directory_formatter import DirectoryFormatter
-from .git_signals import collect_git_signals, file_churn, format_activity, recent_line_edits, repo_root
-from .connectivity import connectivity_tail
-from .scanner import FileScanner
+from .git_signals import (
+    collect_git_signals,
+    file_churn,
+    format_activity,
+    recent_line_edits,
+    repo_root,
+)
 from .languages import StructureNode, is_file_info_stub
 from .preview import preview_directory as preview_dir_func
-from .code_map import CodeMap
-from .consensus import DivergenceConfig, find_divergences, format_divergences
+from .ref_diff import diff_against_ref
+from .scanner import FileScanner
 
 # Injected into context at session start even when tools are deferred behind
 # ToolSearch (clients truncate at ~2KB — most important guidance first).
@@ -229,17 +233,17 @@ def preview_directory(
                 enable_layer2=enable_layer2
             )
 
-            result = cm.analyze()
-            output = cm.format_tree(result, max_entries=max_entries)
+            code_map = cm.analyze()
+            output = cm.format_tree(code_map, max_entries=max_entries)
 
             return [TextContent(type="text", text=output + _git_activity_section(directory))]
 
         else:
             return [TextContent(type="text", text=f"Error: Invalid depth '{depth}'. Use 'quick', 'normal', or 'deep'.")]
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
-    except PermissionError as e:
+    except PermissionError:
         return [TextContent(type="text", text=f"Error: Permission denied: {directory}")]
     except Exception as e:
         return [TextContent(type="text", text=f"Error analyzing directory: {e}")]
@@ -278,7 +282,7 @@ def preview_directory(
 )
 def list_directories(
     directory: str,
-    max_depth: Optional[int] = 3,
+    max_depth: int | None = 3,
     respect_gitignore: bool = True
 ) -> list[TextContent]:
     """
@@ -305,6 +309,7 @@ def list_directories(
         list_directories(".", max_depth=5, respect_gitignore=False)
     """
     from pathlib import Path
+
     from .gitignore import load_gitignore
 
     try:
@@ -458,14 +463,14 @@ def scan_file_content(
 )
 def scan_file(
     file_path: str,
-    focus: Optional[str] = None,
+    focus: str | None = None,
     show_signatures: bool = True,
     show_decorators: bool = True,
     show_docstrings: bool = True,
     show_complexity: bool = False,
     condense: bool = True,
-    budget: Optional[int] = None,
-    depth: Optional[str] = None,
+    budget: int | None = None,
+    depth: str | None = None,
     delta: bool = True,
     mode: str = "balanced",
     output_format: str = "tree"
@@ -641,12 +646,12 @@ def scan_file(
 def scan_directory(
     directory: str,
     pattern: str = "**/*",
-    max_files: Optional[int] = None,
+    max_files: int | None = None,
     respect_gitignore: bool = True,
-    exclude_patterns: Optional[list[str]] = None,
+    exclude_patterns: list[str] | None = None,
     delta: bool = True,
     mode: str = "balanced",
-    depth: Optional[str] = None,
+    depth: str | None = None,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -822,7 +827,7 @@ def scan_directory(
 def scan_diff(
     directory: str,
     ref: str = "HEAD",
-    budget: Optional[int] = 1500
+    budget: int | None = 1500
 ) -> list[TextContent]:
     """
     Structural diff of the working tree against a git ref.
@@ -920,11 +925,11 @@ def find_divergence(
 )
 def search_structures(
     directory: str,
-    type_filter: Optional[str] = None,
-    name_pattern: Optional[str] = None,
-    has_decorator: Optional[str] = None,
-    min_complexity: Optional[int] = None,
-    content_pattern: Optional[str] = None,
+    type_filter: str | None = None,
+    name_pattern: str | None = None,
+    has_decorator: str | None = None,
+    min_complexity: int | None = None,
+    content_pattern: str | None = None,
     output_format: str = "tree"
 ) -> list[TextContent]:
     """
@@ -1024,10 +1029,10 @@ def search_structures(
 
 def _filter_structures(
     structures: list[StructureNode],
-    type_filter: Optional[str] = None,
-    name_pattern: Optional[str] = None,
-    has_decorator: Optional[str] = None,
-    min_complexity: Optional[int] = None
+    type_filter: str | None = None,
+    name_pattern: str | None = None,
+    has_decorator: str | None = None,
+    min_complexity: int | None = None
 ) -> list[StructureNode]:
     """Filter structures based on criteria."""
     results = []
@@ -1045,9 +1050,9 @@ def _filter_structures(
         if has_decorator and (not node.decorators or not any(has_decorator in d for d in node.decorators)):
             match = False
 
-        if min_complexity and node.complexity:
-            if node.complexity.get("lines", 0) < min_complexity:
-                match = False
+        if (min_complexity and node.complexity
+                and node.complexity.get("lines", 0) < min_complexity):
+            match = False
 
         if match:
             results.append(node)

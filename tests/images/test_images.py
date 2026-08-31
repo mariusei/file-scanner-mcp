@@ -1,6 +1,5 @@
 """Tests for image scanner."""
 
-import pytest
 from scantool.scanner import FileScanner
 
 
@@ -143,8 +142,8 @@ def test_error_handling():
     scanner = FileScanner(show_errors=True)
 
     # Create a fake corrupted image file
-    import tempfile
     import os
+    import tempfile
 
     with tempfile.NamedTemporaryFile(mode='wb', suffix='.png', delete=False) as f:
         f.write(b"not a valid image")

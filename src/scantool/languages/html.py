@@ -9,22 +9,21 @@ Key optimizations:
 """
 
 import re
-from typing import Optional
 from pathlib import Path
 
 import tree_sitter_html
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 from .base import BaseLanguage
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
-from .templates import preprocess as preprocess_templates, merge_trees
-
+from .templates import merge_trees
+from .templates import preprocess as preprocess_templates
 
 # Semantic HTML5 elements that define document structure
 SEMANTIC_SECTIONS = {
@@ -94,11 +93,7 @@ class HTMLLanguage(BaseLanguage):
         if filename.endswith(".min.html"):
             return True
         # Skip common generated/template cache files
-        if any(pattern in filename.lower() for pattern in [
-            ".cache.", ".generated.", ".compiled."
-        ]):
-            return True
-        return False
+        return bool(any(pattern in filename.lower() for pattern in [".cache.", ".generated.", ".compiled."]))
 
     def should_analyze(self, file_path: str) -> bool:
         """Skip HTML files that should not be analyzed.
@@ -113,12 +108,7 @@ class HTMLLanguage(BaseLanguage):
             return False
 
         # Skip common generated patterns
-        if any(pattern in filename for pattern in [
-            ".generated.", ".compiled.", ".cache."
-        ]):
-            return False
-
-        return True
+        return not any(pattern in filename for pattern in [".generated.", ".compiled.", ".cache."])
 
     def is_low_value_for_inventory(self, file_path: str, size: int = 0) -> bool:
         """Identify low-value HTML files for inventory listing.
@@ -143,7 +133,7 @@ class HTMLLanguage(BaseLanguage):
     # Structure Scanning (from HTMLScanner)
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Scan HTML source code and extract structure with metadata.
 
         For files with template syntax (Jinja2, Django, Svelte, Blade, ERB):
@@ -186,7 +176,7 @@ class HTMLLanguage(BaseLanguage):
         self, root: Node, source_code: bytes
     ) -> list[StructureNode]:
         """Extract structure from HTML document."""
-        structures = []
+        structures: list[StructureNode] = []
 
         def traverse(node: Node, parent_list: list):
             """Recursively traverse and extract meaningful structures."""
@@ -235,7 +225,7 @@ class HTMLLanguage(BaseLanguage):
 
     def _extract_element(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract a structural HTML element."""
         tag_name = self._get_tag_name(node, source_code)
         if not tag_name:
@@ -262,14 +252,10 @@ class HTMLLanguage(BaseLanguage):
 
         return None
 
-    def _get_tag_name(self, node: Node, source_code: bytes) -> Optional[str]:
+    def _get_tag_name(self, node: Node, source_code: bytes) -> str | None:
         """Get the tag name from an element node."""
         for child in node.children:
-            if child.type == "start_tag":
-                for tag_child in child.children:
-                    if tag_child.type == "tag_name":
-                        return self._get_node_text(tag_child, source_code)
-            elif child.type == "self_closing_tag":
+            if child.type == "start_tag" or child.type == "self_closing_tag":
                 for tag_child in child.children:
                     if tag_child.type == "tag_name":
                         return self._get_node_text(tag_child, source_code)
@@ -421,11 +407,10 @@ class HTMLLanguage(BaseLanguage):
                 for child in n.children:
                     if child.type == "start_tag":
                         for tag_child in child.children:
-                            if tag_child.type == "tag_name":
-                                if self._get_node_text(
-                                    tag_child, n.text
-                                ).lower() == item_tag:
-                                    count += 1
+                            if (tag_child.type == "tag_name"
+                                    and self._get_node_text(tag_child, n.text or b"").lower()
+                                    == item_tag):
+                                count += 1
             for child in n.children:
                 count_items(child)
 
@@ -505,7 +490,7 @@ class HTMLLanguage(BaseLanguage):
 
     def _extract_resource_element(
         self, node: Node, source_code: bytes
-    ) -> Optional[StructureNode]:
+    ) -> StructureNode | None:
         """Extract script or style element."""
         is_script = node.type == "script_element"
         element_type = "script" if is_script else "style"
@@ -533,7 +518,7 @@ class HTMLLanguage(BaseLanguage):
         if is_script:
             src = attrs.get("src", "")
             name = src.split("/")[-1] if src else "inline"
-            signature = src if src else "inline script"
+            signature: str | None = src if src else "inline script"
             modifiers = []
             if attrs.get("type"):
                 modifiers.append(attrs["type"])
@@ -573,7 +558,7 @@ class HTMLLanguage(BaseLanguage):
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
         """Regex-based extraction for malformed HTML files."""
         text = source_code.decode("utf-8", errors="replace")
-        structures = []
+        structures: list[StructureNode] = []
 
         # Find DOCTYPE
         doctype_match = re.search(r'<!DOCTYPE[^>]*>', text, re.IGNORECASE)
@@ -911,7 +896,7 @@ class HTMLLanguage(BaseLanguage):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve HTML resource reference to file path.
 
         HTML imports are typically relative paths to JS, CSS, images.
@@ -964,10 +949,4 @@ class HTMLLanguage(BaseLanguage):
             return True
 
         # Check for CDN patterns
-        if any(cdn in url.lower() for cdn in [
-            "cdn.", "cdnjs.", "unpkg.com", "jsdelivr.net",
-            "googleapis.com", "cloudflare.com"
-        ]):
-            return True
-
-        return False
+        return bool(any(cdn in url.lower() for cdn in ["cdn.", "cdnjs.", "unpkg.com", "jsdelivr.net", "googleapis.com", "cloudflare.com"]))

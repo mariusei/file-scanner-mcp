@@ -11,14 +11,13 @@ a single file per language instead of separate scanner + analyzer files.
 import re
 import textwrap
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from .models import (
-    StructureNode,
-    ImportInfo,
-    EntryPointInfo,
-    DefinitionInfo,
     CallInfo,
+    DefinitionInfo,
+    EntryPointInfo,
+    ImportInfo,
+    StructureNode,
 )
 
 # ===========================================================================
@@ -60,7 +59,7 @@ def limit_skeleton_depth(skeleton: list[str], max_depth: int) -> list[str]:
         ws = line[: len(line) - len(line.lstrip())]
         return len(ws.expandtabs(4))
 
-    levels = {w: rank for rank, w in enumerate(sorted({width(l) for l in skeleton}))}
+    levels = {w: rank for rank, w in enumerate(sorted({width(ln) for ln in skeleton}))}
 
     out: list[str] = []
     marker = " " * max_depth + "…"
@@ -189,15 +188,13 @@ class BaseLanguage(ABC):
         Returns:
             True if file is low-value for inventory (can be hidden)
         """
-        if size > 0 and size < 50:
-            return True
-        return False
+        return bool(size > 0 and size < 50)
 
     # ===========================================================================
     # Structure Scanning (REQUIRED - from BaseScanner)
     # ===========================================================================
 
-    def scan(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def scan(self, source_code: bytes) -> list[StructureNode] | None:
         """Scan source code and extract structure.
 
         Default tree-sitter pipeline: parse, switch to regex fallback when
@@ -256,7 +253,7 @@ class BaseLanguage(ABC):
     #: Empty list → no regex fallback available.
     REGEX_FALLBACK_PATTERNS: list[dict] = []
 
-    def _fallback_extract(self, source_code: bytes) -> Optional[list[StructureNode]]:
+    def _fallback_extract(self, source_code: bytes) -> list[StructureNode] | None:
         """Regex-based extraction for severely malformed files.
 
         Used by the default scan() when the parse tree is dominated by
@@ -266,7 +263,7 @@ class BaseLanguage(ABC):
         if not self.REGEX_FALLBACK_PATTERNS:
             return None
         text = source_code.decode("utf-8", errors="replace")
-        structures = []
+        structures: list[StructureNode] = []
         for spec in self.REGEX_FALLBACK_PATTERNS:
             flags = spec.get("flags", re.MULTILINE)
             suffix = spec.get("suffix", " (fallback)")
@@ -291,7 +288,7 @@ class BaseLanguage(ABC):
     #: - "compact": keep-by-default; drop only blanks, comment-only lines and
     #:   closing punctuation (declarative languages — CSS, SQL — where
     #:   "trivial" lines ARE the content)
-    CONDENSE_STRATEGY: Optional[str] = None
+    CONDENSE_STRATEGY: str | None = None
 
     # Label for grouped import statements in the structure tree
     # (e.g. Rust shows "use statements")
@@ -301,7 +298,7 @@ class BaseLanguage(ABC):
         """Prefix needed for a detached excerpt to parse (e.g. PHP's '<?php')."""
         return ""
 
-    def condense_excerpt(self, excerpt_lines: list[str]) -> Optional[list[str]]:
+    def condense_excerpt(self, excerpt_lines: list[str]) -> list[str] | None:
         """Condense a salient code excerpt into a compact skeleton.
 
         Abstractive alternative to verbatim excerpts, driven by
@@ -546,7 +543,7 @@ class BaseLanguage(ABC):
 
     #: Regex call fallback: language keywords/builtins that look like calls
     #: and must be skipped. None → no regex fallback for this language.
-    REGEX_CALL_KEYWORDS: Optional[frozenset[str]] = None
+    REGEX_CALL_KEYWORDS: frozenset[str] | None = None
 
     #: Regex call fallback: pattern whose group 1 is the callee name
     REGEX_CALL_PATTERN: str = r"\b(\w+)\s*\("
@@ -589,8 +586,8 @@ class BaseLanguage(ABC):
         self,
         file_path: str,
         structures: list[StructureNode],
-        parent: str = None,
-        parent_kind: str = None,
+        parent: str | None = None,
+        parent_kind: str | None = None,
     ) -> list[DefinitionInfo]:
         """Convert StructureNode list to DefinitionInfo list.
 
@@ -731,7 +728,7 @@ class BaseLanguage(ABC):
         source_file: str,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve import module to actual file path.
 
         Override for language-specific resolution:
@@ -874,7 +871,7 @@ class BaseLanguage(ABC):
 
     def _resolve_relative_import(
         self, current_file: str, relative_import: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Resolve relative import to absolute file path.
 
         Args:

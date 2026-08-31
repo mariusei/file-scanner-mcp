@@ -232,8 +232,8 @@ def test_error_handling():
     scanner = FileScanner(show_errors=True)
 
     # Create a test file with broken syntax
-    import tempfile
     import os
+    import tempfile
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.cpp', delete=False) as f:
         f.write("""

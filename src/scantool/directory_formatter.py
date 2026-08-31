@@ -1,8 +1,9 @@
 """Hierarchical directory tree formatter with integrated code structures."""
 
-from pathlib import Path
-from typing import Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any
+
 from .languages import StructureNode, is_file_info_stub
 
 
@@ -83,7 +84,7 @@ class DirectoryFormatter:
         self.include_glimpse = include_glimpse
 
     @classmethod
-    def _glimpse_line(cls, structures) -> Optional[str]:
+    def _glimpse_line(cls, structures) -> str | None:
         """One-line gist of the file's most salient node: its depth-1
         skeleton joined, declaration line dropped (the tree already names
         the node). None for files without skeletons (docs, config)."""
@@ -117,7 +118,9 @@ class DirectoryFormatter:
             text = text[:cls.GLIMPSE_MAX_CHARS - 1] + "…"
         return text
 
-    def format(self, base_dir: str, file_structures: dict[str, list[StructureNode]]) -> str:
+    def format(
+        self, base_dir: str, file_structures: dict[str, list[StructureNode] | None]
+    ) -> str:
         """
         Format directory scan as hierarchical tree.
 
@@ -139,7 +142,9 @@ class DirectoryFormatter:
 
         return "\n".join(lines)
 
-    def _build_tree(self, base_path: Path, file_structures: dict[str, list[StructureNode]]) -> dict:
+    def _build_tree(
+        self, base_path: Path, file_structures: dict[str, list[StructureNode] | None]
+    ) -> dict:
         """Build hierarchical directory tree structure."""
         tree = {
             "type": "directory",
@@ -164,7 +169,7 @@ class DirectoryFormatter:
                 continue
 
             # Navigate/create directory structure
-            current = tree
+            current: dict[str, Any] = tree
             parts = list(rel_path.parts[:-1])  # All but filename
 
             for part in parts:

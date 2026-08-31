@@ -1,8 +1,8 @@
 """Tests for PHP language."""
 
 import pytest
+
 from scantool.languages.php import PHPLanguage
-from scantool.languages import ImportInfo, EntryPointInfo
 
 
 @pytest.fixture
@@ -484,7 +484,7 @@ class HomeController extends AbstractController
 
     def test_edge_cases_file(self, language):
         """Test analysis of edge cases file from test fixtures."""
-        with open("tests/php/samples/edge_cases.php", "r") as f:
+        with open("tests/php/samples/edge_cases.php") as f:
             content = f.read()
 
         imports = language.extract_imports("tests/php/samples/edge_cases.php", content)
