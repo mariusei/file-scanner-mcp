@@ -31,7 +31,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "fastmcp>=2.14.4",  # Includes stdio handling improvements
+    "fastmcp>=2.14.4", # Includes stdio handling improvements
     "tree-sitter>=0.23.2",
     "tree-sitter-python>=0.23.6",
     "tree-sitter-javascript>=0.23.1",
@@ -51,9 +51,9 @@ dependencies = [
     "tree-sitter-zig>=1.1.2",
     "tree-sitter-html>=0.23.0",
     "tree-sitter-css>=0.23.0",
-    "tree-sitter-scss>=1.0.0",
     "tree-sitter-swift>=0.0.1",
     "numpy>=1.24.0",
+    "tree-sitter-language-pack>=1.15.8",
 ]
 
 [dependency-groups]

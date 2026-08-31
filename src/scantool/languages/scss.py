@@ -13,8 +13,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
-import tree_sitter_scss
-from tree_sitter import Language, Node, Parser
+from tree_sitter import Node, Parser
+from tree_sitter_language_pack import get_language
 
 from .base import BaseLanguage
 from .css import CSSLanguage
@@ -43,7 +43,13 @@ class SCSSLanguage(BaseLanguage):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
-        self.parser.language = Language(tree_sitter_scss.language())
+        # The standalone tree-sitter-scss package is abandoned: one release,
+        # pinned to tree-sitter~=0.21, and its language() still returns a raw
+        # pointer as an int. tree-sitter 0.26 cannot convert that on Windows,
+        # where unsigned long is 32-bit — OverflowError, 16 SCSS tests down.
+        # Every other grammar here ships its own maintained package; this is
+        # the one that needs the language pack.
+        self.parser.language = get_language("scss")
 
     # ===========================================================================
     # Metadata (REQUIRED)
