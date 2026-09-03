@@ -18,7 +18,9 @@ SCOPE:
   ✗ Not blame/author analysis
 """
 
+import contextlib
 import os
+import signal
 import subprocess
 from collections import Counter
 from dataclasses import dataclass
@@ -44,23 +46,53 @@ class GitSignals:
 
 
 def _run_git(directory: str, *args: str) -> str | None:
-    """Run a git command; None on any failure (no git, no repo, timeout)."""
+    """Run a git command; None on any failure (no git, no repo, timeout).
+
+    Not subprocess.run(timeout=...): on Windows that calls communicate()
+    after killing the child, which waits for EOF on the pipe. Git for
+    Windows can spawn a child (mingw64 git.exe) holding the same pipes, so
+    a killed wrapper leaves stdout open and the wait never ends — scan_directory hung this way through 0.19.6 while every
+    test, all in-process, stayed green. Here a timeout kills the whole tree
+    and returns without reading further. Only stdout is piped; stderr goes
+    nowhere so it is one less handle for a stray child to keep.
+    """
     try:
-        result = subprocess.run(
+        process = subprocess.Popen(
             [*_GIT_COMMAND, "-C", directory, *args],
-            # Never inherit the MCP stdio transport. On Windows, cmd/git.exe
-            # can spawn mingw64/bin/git.exe with those handles; if the wrapper
-            # times out, the child keeps the pipes open and communicate() hangs.
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
+            stdin=subprocess.DEVNULL,  # never the MCP transport
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             text=True,
-            timeout=_GIT_TIMEOUT,
+            # A session of its own so killpg reaches every descendant. Windows
+            # has no such flag (False is the default); taskkill /T walks the tree.
+            start_new_session=os.name != "nt",
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError:
         return None
-    if result.returncode != 0:
+    try:
+        stdout, _ = process.communicate(timeout=_GIT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        _kill_tree(process)
         return None
-    return result.stdout
+    return stdout if process.returncode == 0 else None
+
+
+def _kill_tree(process: subprocess.Popen) -> None:
+    """Kill the process and everything it spawned; never block on the pipes."""
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=_GIT_TIMEOUT,
+            check=False,
+        )
+    else:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        process.wait(timeout=_GIT_TIMEOUT)
 
 
 def repo_root(file_path: str) -> str | None:
