@@ -12,7 +12,7 @@ from .code_health import analyze_health
 from .code_map import CodeMap
 from .connectivity import connectivity_tail
 from .consensus import DivergenceConfig, find_divergences, format_divergences
-from .content_search import find_leads, format_hits, search_content
+from .content_search import find_leads, format_hits, hits_to_json, search_content
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
 from .directory_formatter import DirectoryFormatter
 from .focus import format_focus
@@ -1023,6 +1023,13 @@ def search_structures(
                 name_re = re.compile(name_pattern)
                 found = [h for h in found if h.node_name and name_re.search(h.node_name)]
             leads = find_leads(found, results)
+            if output_format == "json":
+                return [
+                    TextContent(
+                        type="text",
+                        text=json.dumps(hits_to_json(found, content_pattern, leads), indent=2),
+                    )
+                ]
             return [TextContent(type="text", text=format_hits(found, content_pattern, leads))]
 
         # Filter structures
