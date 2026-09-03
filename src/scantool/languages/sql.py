@@ -632,9 +632,11 @@ class SQLLanguage(BaseLanguage):
                 stmt_type = type(stmt_obj).__name__
 
                 # Get statement location from byte offset
+                # pglast 8 types stmt_location as int | None
                 start_line = 1
-                if hasattr(stmt, "stmt_location") and stmt.stmt_location >= 0:
-                    start_line = text[: stmt.stmt_location].count("\n") + 1
+                location = getattr(stmt, "stmt_location", None)
+                if location is not None and location >= 0:
+                    start_line = text[:location].count("\n") + 1
 
                 # Extract different PostgreSQL statement types
                 if stmt_type == "CreateStmt":  # CREATE TABLE
