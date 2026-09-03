@@ -2,10 +2,17 @@
 on top. A hit must come back with the node chain it lives in — in any
 file type."""
 
+import json
 from pathlib import Path
 
-from scantool.content_search import format_hits, search_content
+from scantool.content_search import (
+    find_leads,
+    format_hits,
+    hits_to_json,
+    search_content,
+)
 from scantool.scanner import FileScanner
+from scantool.server import search_structures
 
 
 def scan(tmp_path, files: dict[str, str]):
@@ -209,3 +216,58 @@ def local_helper(items):
         found = search_content(results, "lake")
 
         assert {Path(h.file).name for h in found} == {"code.py"}
+
+
+class TestJsonOutput:
+    """`output_format="json"` is a contract, not a suggestion: both branches of
+    search_structures must honour it, and the JSON must answer the same
+    question the tree does."""
+
+    def test_content_pattern_json_is_parseable(self, tmp_path):
+        (tmp_path / "comp.py").write_text(PY_FILE)
+
+        out = search_structures.fn(str(tmp_path), content_pattern="zdict", output_format="json")[
+            0
+        ].text
+
+        data = json.loads(out)
+        assert data["pattern"] == "zdict"
+        assert data["total_hits"] == 1
+        chains = [s["chain"] for s in data["structures"]]
+        assert any("conditional" in chain for chain in chains)
+
+    def test_name_pattern_json_is_parseable(self, tmp_path):
+        (tmp_path / "comp.py").write_text(PY_FILE)
+
+        out = search_structures.fn(str(tmp_path), name_pattern="unrelated", output_format="json")[
+            0
+        ].text
+
+        json.loads(out)
+
+    def test_json_and_tree_report_the_same_selection(self, tmp_path):
+        results = scan(tmp_path, {"comp.py": PY_FILE})
+        found = search_content(results, "zlib")
+        leads = find_leads(found, results)
+
+        data = hits_to_json(found, "zlib", leads)
+        tree = format_hits(found, "zlib", leads)
+
+        assert data["total_hits"] == sum(len(n.hits) for n in found)
+        assert data["total_structures"] == len(found)
+        assert data["structures"], "sanity: the fixture must produce hits"
+        for structure in data["structures"]:
+            assert structure["chain"] in tree
+            for hit in structure["hits"]:
+                assert f"{hit['line']} |" in tree
+
+    def test_caps_are_reported_not_silently_applied(self, tmp_path):
+        many = "\n".join(f"def f{i}():\n    return marker\n" for i in range(45))
+        results = scan(tmp_path, {"many.py": many})
+        found = search_content(results, "marker")
+
+        data = hits_to_json(found, "marker")
+
+        assert data["total_structures"] == len(found)
+        assert len(data["structures"]) < data["total_structures"]
+        assert data["structures_omitted"] == data["total_structures"] - len(data["structures"])

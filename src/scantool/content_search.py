@@ -273,3 +273,49 @@ def format_hits(
             )
         )
     return "\n".join(lines)
+
+
+def hits_to_json(
+    found: list[NodeHits],
+    pattern: str,
+    leads: list[tuple[str, list[tuple[str, int]]]] | None = None,
+) -> dict:
+    """Machine-readable mirror of `format_hits`.
+
+    Shows the same selection of nodes and hits — the caps are one decision,
+    made once, so `output_format="json"` never answers a different question
+    than the tree does. Only the rendering differs: line text is not
+    truncated for display, and what the tree says in prose ("+N more") is a
+    count a consumer can act on.
+    """
+    shown = found[:_MAX_NODES]
+    return {
+        "pattern": pattern,
+        "total_hits": sum(len(n.hits) for n in found),
+        "total_structures": len(found),
+        "structures_omitted": max(0, len(found) - _MAX_NODES),
+        "structures": [
+            {
+                "file": node_hits.file,
+                "chain": node_hits.chain,
+                "node_type": node_hits.node_type,
+                "node_name": node_hits.node_name,
+                "signature": node_hits.signature,
+                "start_line": node_hits.start_line,
+                "end_line": node_hits.end_line,
+                "hits": [
+                    {"line": line_no, "text": text.strip()}
+                    for line_no, text in node_hits.hits[:_MAX_HITS_PER_NODE]
+                ],
+                "hits_omitted": max(0, len(node_hits.hits) - _MAX_HITS_PER_NODE),
+            }
+            for node_hits in shown
+        ],
+        "leads": [
+            {
+                "name": name,
+                "definitions": [{"file": file, "line": line} for file, line in targets],
+            }
+            for name, targets in (leads or [])
+        ],
+    }
