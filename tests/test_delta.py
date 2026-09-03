@@ -35,7 +35,7 @@ def fresh_memory():
 
 
 def _scan(path, **kwargs) -> str:
-    return scan_file.fn(str(path), **kwargs)[0].text
+    return scan_file(str(path), **kwargs)[0].text
 
 
 class TestScanFileDelta:
@@ -214,7 +214,7 @@ class TestCrossToolDelta:
         path = tmp_path / "app.py"
         path.write_text(SOURCE_V1)
 
-        scan_directory.fn(str(tmp_path), pattern="**/*.py")
+        scan_directory(str(tmp_path), pattern="**/*.py")
         out = _scan(path)
 
         assert "unchanged since last scan" not in out
@@ -224,7 +224,7 @@ class TestCrossToolDelta:
         for name in ("a.py", "b.py", "c.py"):
             (tmp_path / name).write_text(SOURCE_V1)
 
-        out = scan_directory.fn(
+        out = scan_directory(
             str(tmp_path),
             pattern="**/*.py",
             max_files=2,
@@ -240,7 +240,7 @@ class TestCrossToolDelta:
         path.write_text(SOURCE_V1)
 
         _scan(path)  # full detail seen — a gist view reveals nothing new
-        out = scan_directory.fn(str(tmp_path), pattern="**/*.py")[0].text
+        out = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
 
         assert "all 1 files unchanged" in out
 
@@ -269,8 +269,8 @@ class TestScanDirectoryDelta:
         (tmp_path / "a.py").write_text(SOURCE_V1)
         (tmp_path / "b.py").write_text("def gamma():\n    return fetch_thing()\n")
 
-        scan_directory.fn(str(tmp_path), pattern="**/*.py")
-        second = scan_directory.fn(str(tmp_path), pattern="**/*.py")[0].text
+        scan_directory(str(tmp_path), pattern="**/*.py")
+        second = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
 
         assert "all 2 files unchanged" in second
         assert "delta=False" in second
@@ -279,19 +279,19 @@ class TestScanDirectoryDelta:
         a, b = tmp_path / "a.py", tmp_path / "b.py"
         a.write_text(SOURCE_V1)
         b.write_text("def gamma():\n    return fetch_thing()\n")
-        scan_directory.fn(str(tmp_path), pattern="**/*.py")
+        scan_directory(str(tmp_path), pattern="**/*.py")
         a.write_text(SOURCE_V2)
 
-        out = scan_directory.fn(str(tmp_path), pattern="**/*.py")[0].text
+        out = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
 
         assert "a.py" in out.split("unchanged since")[0]  # changed file shown in full
         assert "unchanged since last scan (1 files): b.py" in out
 
     def test_delta_false_full(self, tmp_path):
         (tmp_path / "a.py").write_text(SOURCE_V1)
-        scan_directory.fn(str(tmp_path), pattern="**/*.py")
+        scan_directory(str(tmp_path), pattern="**/*.py")
 
-        out = scan_directory.fn(str(tmp_path), pattern="**/*.py", delta=False)[0].text
+        out = scan_directory(str(tmp_path), pattern="**/*.py", delta=False)[0].text
 
         assert "unchanged since" not in out
         assert "alpha" in out
