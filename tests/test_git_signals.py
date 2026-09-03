@@ -8,9 +8,13 @@ and language-agnostic (docs-only repos work the same as code repos).
 import os
 import shutil
 import subprocess
+import sys
+import threading
+import time
 
 import pytest
 
+from scantool import git_signals
 from scantool.git_signals import (
     _run_git,
     collect_git_signals,
@@ -25,14 +29,52 @@ def test_git_subprocess_does_not_inherit_mcp_stdin(monkeypatch, tmp_path):
     """Git children must not inherit the MCP server's stdio transport."""
     calls = []
 
-    def fake_run(*args, **kwargs):
-        calls.append((args, kwargs))
-        return subprocess.CompletedProcess(args[0], 0, stdout="ok\n", stderr="")
+    class FakeProcess:
+        returncode = 0
+        pid = 1
 
-    monkeypatch.setattr("scantool.git_signals.subprocess.run", fake_run)
+        def __init__(self, argv, **kwargs):
+            calls.append((argv, kwargs))
+
+        def communicate(self, timeout=None):
+            return "ok\n", None
+
+    monkeypatch.setattr("scantool.git_signals.subprocess.Popen", FakeProcess)
 
     assert _run_git(str(tmp_path), "status") == "ok\n"
     assert calls[0][1]["stdin"] is subprocess.DEVNULL
+
+
+def test_run_git_gives_up_when_a_grandchild_keeps_stdout_open(monkeypatch, tmp_path):
+    """The Windows hang, reproduced without git: the wrapper spawns a child
+    that inherits the pipes, the wrapper is killed at the timeout, and the
+    child keeps stdout open. CPython's run() then calls communicate() on
+    Windows and waits for an EOF that never comes. The stand-in git does
+    exactly that; _run_git must still return None within the timeout."""
+    stand_in = tmp_path / "git_stand_in.py"
+    stand_in.write_text(
+        "import subprocess, sys, time\n"
+        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(8)'])\n"
+        "time.sleep(8)\n"
+    )
+    monkeypatch.setattr(git_signals, "_GIT_COMMAND", (sys.executable, str(stand_in)))
+    monkeypatch.setattr(git_signals, "_GIT_TIMEOUT", 0.5)
+
+    outcome = {}
+    worker = threading.Thread(
+        target=lambda: outcome.setdefault("value", _run_git(str(tmp_path), "status")),
+        daemon=True,
+    )
+    started = time.monotonic()
+    worker.start()
+    worker.join(4.0)
+    elapsed = time.monotonic() - started
+
+    assert not worker.is_alive(), (
+        f"_run_git still blocked after {elapsed:.1f}s with a 0.5s timeout: "
+        "a grandchild holding the pipe kept communicate() waiting"
+    )
+    assert outcome["value"] is None
 
 
 def _git(cwd, *args, date=None):
