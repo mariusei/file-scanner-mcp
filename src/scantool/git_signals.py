@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _GIT_TIMEOUT = 5.0
+# The executable as a tuple so a test can point it at a stand-in.
+_GIT_COMMAND: tuple[str, ...] = ("git",)
 # Commits touching more files than this are skipped for co-change —
 # mass refactors and formatting sweeps say nothing about coupling
 _MASS_COMMIT_LIMIT = 20
@@ -45,7 +47,7 @@ def _run_git(directory: str, *args: str) -> str | None:
     """Run a git command; None on any failure (no git, no repo, timeout)."""
     try:
         result = subprocess.run(
-            ["git", "-C", directory, *args],
+            [*_GIT_COMMAND, "-C", directory, *args],
             # Never inherit the MCP stdio transport. On Windows, cmd/git.exe
             # can spawn mingw64/bin/git.exe with those handles; if the wrapper
             # times out, the child keeps the pipes open and communicate() hangs.
