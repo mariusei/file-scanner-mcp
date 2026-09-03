@@ -226,7 +226,7 @@ class TestJsonOutput:
     def test_content_pattern_json_is_parseable(self, tmp_path):
         (tmp_path / "comp.py").write_text(PY_FILE)
 
-        out = search_structures.fn(str(tmp_path), content_pattern="zdict", output_format="json")[
+        out = search_structures(str(tmp_path), content_pattern="zdict", output_format="json")[
             0
         ].text
 
@@ -239,7 +239,7 @@ class TestJsonOutput:
     def test_name_pattern_json_is_parseable(self, tmp_path):
         (tmp_path / "comp.py").write_text(PY_FILE)
 
-        out = search_structures.fn(str(tmp_path), name_pattern="unrelated", output_format="json")[
+        out = search_structures(str(tmp_path), name_pattern="unrelated", output_format="json")[
             0
         ].text
 
