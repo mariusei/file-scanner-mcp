@@ -7,16 +7,24 @@ PROBLEM:
   stateless by definition — state is structurally unmatchable.
 
 SOLUTION:
-  The server process remembers the previous scan per file (file fingerprint
-  = mtime+size, node fingerprint = source hash). A re-scan delivers only
-  changes: unchanged files as one line, unchanged nodes without skeletons.
-  The token-allocation principle in its purest form: unchanged costs ~zero,
-  changes get all the attention.
+  The server remembers the previous scan per CALLER and file (file
+  fingerprint = content hash, node fingerprint = source hash). A re-scan
+  delivers only changes: unchanged files as one line, unchanged nodes
+  without skeletons. The token-allocation principle in its purest form:
+  unchanged costs ~zero, changes get all the attention.
 
 CONTRACT:
   - Delta refers ONLY to what equals the previous output — never a guess.
     Output always says how to get everything (delta=False), because the
     consumer's context may have been compacted away.
+  - Memory is PER CALLER. One server process serves many agents (a session's
+    sub-agents share it), and in a field study 17 agents were told
+    "unchanged since last scan" about files they had never seen. A caller
+    names itself with an explicit id; without one there is no memory and
+    never a one-liner.
+  - The file fingerprint is the content, not mtime+size: a touch, a
+    checkout that restores identical bytes, or the same file reached by
+    another path spelling is still "unchanged".
   - The first scan of a file is always full.
   - Records carry the DETAIL LEVEL the consumer was shown. A one-liner (or
     node-level suppression) may only replace output seen at AT LEAST the
@@ -103,12 +111,22 @@ def diff_nodes(previous: dict[str, str], current: dict[str, str]) -> NodeDiff:
 
 
 def stat_fingerprint(path: str) -> tuple | None:
-    """(st_mtime_ns, st_size) for a file, or None on error. The cheap
-    change-detection key shared by ScanMemory (per-file delta) and the code-map
-    corpus cache (per-file extraction)."""
+    """(st_mtime_ns, st_size) for a file, or None on error: the cheap key
+    for a parse cache that lives and dies with one process (code_map)."""
     try:
         stat = os.stat(path)
         return (stat.st_mtime_ns, stat.st_size)
+    except OSError:
+        return None
+
+
+def content_fingerprint(path: str) -> str | None:
+    """Digest of the file's bytes, or None on error: what the consumer was
+    shown depends on the content, not on when it was written.
+    """
+    try:
+        with open(path, "rb") as handle:
+            return hashlib.sha1(handle.read()).hexdigest()
     except OSError:
         return None
 
@@ -117,43 +135,49 @@ class ScanMemory:
     """Remembers previous scans; answers "what changed since last time?"."""
 
     def __init__(self):
-        # path -> (stat_fp, {key: hash}, recorded_at, detail)
-        self._files: dict[str, tuple] = {}
+        # (caller, real path) -> (content_fp, {key: hash}, recorded_at, detail)
+        self._files: dict[tuple[str, str], tuple] = {}
+
+    @staticmethod
+    def _key(caller: str, path: str) -> tuple[str, str]:
+        return caller, os.path.realpath(path)
 
     def clear(self) -> None:
         self._files.clear()
 
-    def file_unchanged(self, path: str, detail: float = FULL_DETAIL) -> float | None:
+    def file_unchanged(self, path: str, detail: float, caller: str) -> float | None:
         """Age in seconds of the previous identical scan — None if changed,
         unseen, expired (TTL), or previously shown at LESS detail than this
         request: "identical to the previous response" must refer to a
         response that actually contained this level of detail."""
-        cached = self._files.get(path)
+        key = self._key(caller, path)
+        cached = self._files.get(key)
         if cached is None:
             return None
         age = time.time() - cached[2]
         if age > _MEMORY_TTL_SECONDS:
-            del self._files[path]
+            del self._files[key]
             return None
         if cached[3] < detail:
             return None
-        fingerprint = stat_fingerprint(path)
+        fingerprint = content_fingerprint(path)
         if fingerprint is not None and fingerprint == cached[0]:
             return age
         return None
 
     def diff_and_record(
-        self, path: str, structures, source_lines: list[str], detail: float = FULL_DETAIL
+        self, path: str, structures, source_lines: list[str], detail: float, caller: str
     ) -> NodeDiff | None:
         """Node-diff against the previous scan (None on first scan), then
         record the current state. A previous record at less detail counts
         as a first scan — node-level suppression must never point at
         detail the consumer was never shown."""
-        fingerprint = stat_fingerprint(path)
+        key = self._key(caller, path)
+        fingerprint = content_fingerprint(path)
         current = node_hashes(structures, source_lines)
-        previous = self._files.get(path)
+        previous = self._files.get(key)
 
-        self._files[path] = (fingerprint, current, time.time(), detail)
+        self._files[key] = (fingerprint, current, time.time(), detail)
 
         if (
             previous is None

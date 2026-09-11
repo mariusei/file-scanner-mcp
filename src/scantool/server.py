@@ -69,7 +69,8 @@ blob or stdin -> scan_file_content (same budget and focus as scan_file)
 
 After a full recursive scan_directory(pattern="**/*"), do not re-search with \
 glob/grep — the output already lists every file. Repeat scans are \
-delta-aware: unchanged files come back as a one-liner.
+delta-aware when you pass caller=<your own id> on every call: files \
+unchanged since YOUR previous scan come back as a one-liner.
 
 PARAMETERS (keyword arguments required): directory= (not directory_path); \
 scan_file takes file_path=; max_depth exists only on list_directories. Do \
@@ -518,6 +519,7 @@ def scan_file(
     budget: int | None = None,
     depth: str | None = None,
     delta: bool = True,
+    caller: str | None = None,
     mode: str = "balanced",
     include_metadata: bool = True,
     output_format: str = "tree",
@@ -572,6 +574,9 @@ def scan_file(
                 or deeper detail (budget) counts — a scan_directory gist or a
                 shallower budget never shortens the answer. Pass delta=False
                 for full output (default: True)
+            caller: Your own id (an agent or session name). Delta memory is
+                kept per caller, so pass the same id on every call; without
+                it there is no memory and never a one-liner (default: None)
         Semantics & display:
             mode: Saliency weight profile — "balanced" (default) or "active"
             include_metadata: File size and mtime, git churn and per-node
@@ -620,8 +625,8 @@ def scan_file(
         # Delta: unchanged since this session's previous scan → one line.
         # Focused reads bypass delta entirely — they request content, not
         # structure changes
-        if delta and focus is None and output_format != "json":
-            age = scan_memory.file_unchanged(file_path, detail)
+        if delta and caller and focus is None and output_format != "json":
+            age = scan_memory.file_unchanged(file_path, detail, caller)
             if age is not None:
                 return [
                     TextContent(
@@ -674,9 +679,9 @@ def scan_file(
             ]
 
         delta_note = ""
-        if delta and output_format != "json":
+        if delta and caller and output_format != "json":
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
-            diff = scan_memory.diff_and_record(file_path, structures, source_lines, detail)
+            diff = scan_memory.diff_and_record(file_path, structures, source_lines, detail, caller)
             if diff is not None:
                 changed, unchanged = apply_node_delta(structures, diff)
                 removed = f"; removed: {', '.join(diff.removed)}" if diff.removed else ""
@@ -725,6 +730,7 @@ def scan_directory(
     respect_gitignore: bool = True,
     exclude_patterns: list[str] | None = None,
     delta: bool = True,
+    caller: str | None = None,
     mode: str = "balanced",
     depth: str | None = None,
     include_metadata: bool = True,
@@ -784,6 +790,9 @@ def scan_directory(
                 in this session to a single line — full detail only for changed
                 or new files. The CODE HEALTH section always covers everything.
                 Pass delta=False for full output (default: True)
+            caller: Your own id (an agent or session name). Delta memory is
+                kept per caller, so pass the same id on every call; without
+                it there is no memory and never a one-liner (default: None)
         Semantics & display:
             mode: Saliency weight profile for the per-file glimpse lines —
                 "balanced" (default) or "active" (weights actively-edited
@@ -866,16 +875,18 @@ def scan_directory(
             # see references living in unchanged files.
             unchanged_paths = []
             display_results = results
-            if delta:
+            if delta and caller:
                 for path in results:
                     # Gist-level records: enough to aggregate future directory
                     # scans, but never enough to suppress a scan_file
-                    if scan_memory.file_unchanged(path, GIST_DETAIL) is not None:
+                    if scan_memory.file_unchanged(path, GIST_DETAIL, caller) is not None:
                         unchanged_paths.append(path)
                     elif results[path] and not is_file_info_stub(results[path]):
                         try:
                             lines = Path(path).read_text(errors="replace").split("\n")
-                            scan_memory.diff_and_record(path, results[path], lines, GIST_DETAIL)
+                            scan_memory.diff_and_record(
+                                path, results[path], lines, GIST_DETAIL, caller
+                            )
                         except OSError:
                             pass
                 if unchanged_paths:
@@ -883,7 +894,7 @@ def scan_directory(
                         p: s for p, s in results.items() if p not in set(unchanged_paths)
                     }
 
-            if delta and not display_results:
+            if delta and caller and not display_results:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
                 return [
                     TextContent(

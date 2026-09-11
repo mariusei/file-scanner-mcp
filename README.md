@@ -277,6 +277,7 @@ scan_file(
     condense=True,  # Condensed skeletons (set False for verbatim lines)
     budget=None,  # Approx token cap for skeletons — least salient
     # functions degrade first, output stays predictable
+    caller=None,  # Your own id; delta one-liners need it, kept per caller so other agents never see them
     include_metadata=True,  # File size/mtime, git churn, [N edits/90d] labels; False = checkout-independent output
     output_format="tree",  # "tree" or "json"
 )
@@ -381,6 +382,7 @@ scan_directory(
     max_files=None,  # File limit
     respect_gitignore=True,  # Honor .gitignore
     exclude_patterns=None,  # Additional exclusions
+    caller=None,  # Your own id; delta aggregation is per caller
     include_metadata=True,  # Size/age/churn per file; False = checkout-independent output
     output_format="tree",  # "tree" or "json"
 )
