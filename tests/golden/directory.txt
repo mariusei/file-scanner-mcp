@@ -1,3 +1,4 @@
+<4 files seen, 17 structures shown>
 fixture_dir/ (4 files, 1 class, 3 functions, 3 methods)
 - lib/ 
   - utils.ts (3-17) - Task, byPriority, formatTask

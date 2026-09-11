@@ -5,11 +5,25 @@ and analyzers (semantic analysis). Combining them here ensures consistency and
 allows languages to share common structures.
 """
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 # ===========================================================================
 # Structure models (from scanners)
 # ===========================================================================
+
+
+@dataclass
+class Sweep:
+    """What a directory scan saw and what it left out, so an answer can open
+    with a coverage line instead of dropping files silently."""
+
+    directory: str
+    results: dict[str, list["StructureNode"] | None]
+    notes: list[str] = field(default_factory=list)  # one-line notices, e.g. an override
+    excluded: Counter = field(default_factory=Counter)  # pattern label -> files and dirs
+    unsupported: Counter = field(default_factory=Counter)  # extension -> files (listed as stubs)
+    oversized: int = 0
 
 
 # Node types whose name is always scantool's, never the source's.

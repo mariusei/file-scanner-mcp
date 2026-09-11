@@ -82,8 +82,11 @@ def test_scan_json_several_paths_is_a_list(capsys):
     documents = json.loads(out)
     assert isinstance(documents, list) and len(documents) == 2
     directory = documents[1]
+    assert directory["coverage"]["files_seen"] == len(directory["files"])
     assert all(
-        node["type"] != "file-info" for entry in directory.values() for node in entry["structures"]
+        node["type"] != "file-info"
+        for entry in directory["files"].values()
+        for node in entry["structures"]
     )
 
 
@@ -142,7 +145,7 @@ def test_search_text_names_type_json_and_no_match(capsys):
     assert code == 0 and json.loads(out)["pattern"] == "format_focus"
 
     out, _, code = run("search", str(FOCUS_MODULE.parent), "zzqqxx_nowhere", capsys=capsys)
-    assert code == 1 and out.startswith("No content matches")
+    assert code == 1 and out.startswith("<") and "No content matches" in out
 
     out, _, code = run("search", "no-such-dir", "x", capsys=capsys)
     assert code == 1 and "no such directory" in out

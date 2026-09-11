@@ -5,6 +5,54 @@ from pathlib import Path
 from typing import Any
 
 from .languages import StructureNode, is_file_info_stub
+from .languages.models import Sweep
+
+
+def _count(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+
+
+def _top(counter, limit: int = 3) -> str:
+    labels = [label for label, _ in counter.most_common(limit)]
+    return ", ".join(labels) + (", …" if len(counter) > limit else "")
+
+
+def _structures_shown(results: dict) -> int:
+    def walk(nodes):
+        for node in nodes or []:
+            if node.type != "file-info":
+                yield node
+            yield from walk(node.children)
+
+    return sum(1 for nodes in results.values() for _ in walk(nodes))
+
+
+def format_coverage(sweep: Sweep) -> str:
+    """The line every directory answer opens with: what was seen, what was
+    left out and why. Nothing is dropped silently."""
+    parts = [
+        _count(len(sweep.results), "file") + " seen",
+        _count(_structures_shown(sweep.results), "structure") + " shown",
+    ]
+    if sweep.excluded:
+        parts.append(f"{sum(sweep.excluded.values())} excluded ({_top(sweep.excluded)})")
+    if sweep.unsupported:
+        parts.append(f"{sum(sweep.unsupported.values())} unsupported ({_top(sweep.unsupported)})")
+    if sweep.oversized:
+        parts.append(f"{sweep.oversized} oversized")
+    return "<" + ", ".join(parts) + ">"
+
+
+def coverage_dict(sweep: Sweep) -> dict:
+    """The same facts for the JSON form."""
+    return {
+        "files_seen": len(sweep.results),
+        "structures_shown": _structures_shown(sweep.results),
+        "excluded": dict(sweep.excluded),
+        "unsupported": dict(sweep.unsupported),
+        "oversized": sweep.oversized,
+        "notes": list(sweep.notes),
+    }
 
 
 class DirectoryFormatter:

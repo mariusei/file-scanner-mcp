@@ -8,6 +8,7 @@ from pathlib import Path
 from .gitignore import GitignoreParser, load_gitignore
 from .glob_expander import expand_braces
 from .languages import StructureNode, get_registry
+from .languages.models import Sweep
 from .languages.skip_patterns import should_skip_directory
 
 
@@ -43,6 +44,28 @@ def _estimate_tokens(lines: list[str]) -> int:
 # name+size stub instead. An explicit scan_file(path) leaves max_bytes=None
 # and still parses in full — naming one file IS the opt-in to scan it.
 SWEEP_MAX_BYTES = 100 * 1024 * 1024  # 100 MB; far above any hand/generated source file
+
+
+def _dir_excluded_by(name: str, rel: str, gitignore, exclude_parser: GitignoreParser) -> str | None:
+    """The label a pruned directory is counted under, or None to descend."""
+    if name.startswith(".") or should_skip_directory(name):
+        return f"{name}/"
+    if gitignore and (by := gitignore.decide(rel + "/", True)):
+        return by
+    return exclude_parser.decide(rel + "/", True)
+
+
+def _describe(source: Path, root: Path) -> str:
+    """A .gitignore file named the way a reader finds it: relative to the
+    scanned directory when below it, else from the home directory."""
+    try:
+        return source.relative_to(root).as_posix()
+    except ValueError:
+        pass
+    try:
+        return "~/" + source.relative_to(Path.home()).as_posix()
+    except ValueError:
+        return source.as_posix()
 
 
 def _format_size(size_bytes: int) -> str:
@@ -408,8 +431,52 @@ class FileScanner:
         mode: str = "balanced",
         max_files: int | None = None,
     ) -> dict[str, list[StructureNode] | None]:
+        """Scan all supported files in a directory: file path -> structures.
+        See sweep() for the same scan with its coverage record."""
+        return self.sweep(
+            directory,
+            pattern=pattern,
+            respect_gitignore=respect_gitignore,
+            exclude_patterns=exclude_patterns,
+            mode=mode,
+            max_files=max_files,
+        ).results
+
+    # Always excluded: OS litter and build/dependency directories that no
+    # scan of a project means to include.
+    DEFAULT_EXCLUSIONS = (
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini",
+        ".localized",
+        "node_modules/",
+        "__pycache__/",
+        ".pytest_cache/",
+        "dist/",
+        "build/",
+        "target/",
+        "*.egg-info/",
+        ".venv/",
+        "venv/",
+        ".next/",
+        ".nuxt/",
+        "coverage/",
+        ".coverage/",
+        ".ruff_cache/",
+        ".mypy_cache/",
+    )
+
+    def sweep(
+        self,
+        directory: str,
+        pattern: str = "**/*",
+        respect_gitignore: bool = True,
+        exclude_patterns: list[str] | None = None,
+        mode: str = "balanced",
+        max_files: int | None = None,
+    ) -> Sweep:
         """
-        Scan all supported files in a directory.
+        Scan all supported files in a directory and account for the rest.
 
         Args:
             directory: Directory path to scan
@@ -421,57 +488,31 @@ class FileScanner:
                 every match
 
         Returns:
-            Dictionary mapping file paths to their structures
+            Sweep: results (file path -> structures) plus what was excluded by
+            which pattern, which unsupported types were seen, and any notice.
+            A .gitignore that ignores the named directory itself is set aside
+            and named in the notes: an explicit path is meant to be read.
         """
-        results: dict[str, list[StructureNode] | None] = {}
         dir_path = Path(directory).resolve()
-
         if not dir_path.exists():
             raise FileNotFoundError(f"Directory not found: {directory}")
+        sweep = Sweep(directory=directory, results={})
 
-        # Load gitignore if requested
         gitignore = load_gitignore(dir_path) if respect_gitignore else None
+        if gitignore:
+            for source, ignored_by in gitignore.set_aside_root_ignores():
+                sweep.notes.append(
+                    f"note: {directory} is ignored by {_describe(source, dir_path)} "
+                    f"({ignored_by}); the explicit path wins"
+                )
 
-        # Default exclusions - always applied
-        default_exclusions = [
-            # Files
-            ".DS_Store",  # macOS
-            "Thumbs.db",  # Windows
-            "desktop.ini",  # Windows
-            ".localized",  # macOS
-            # Directories (universal noise)
-            "node_modules/",  # Node.js dependencies
-            "__pycache__/",  # Python bytecode
-            ".pytest_cache/",  # pytest cache
-            "dist/",  # Build output
-            "build/",  # Build output
-            "target/",  # Rust/Java/Kotlin build
-            "*.egg-info/",  # Python package metadata
-            ".venv/",  # Python virtual env
-            "venv/",  # Python virtual env
-            ".next/",  # Next.js build
-            ".nuxt/",  # Nuxt build
-            "coverage/",  # Test coverage
-            ".coverage/",  # Coverage reports
-            ".ruff_cache/",  # Ruff cache
-            ".mypy_cache/",  # MyPy cache
-        ]
-
-        # Combine defaults with user-provided exclusions
-        all_exclude_patterns = default_exclusions.copy()
-        if exclude_patterns:
-            all_exclude_patterns.extend(exclude_patterns)
-
-        # Parse exclusion patterns
-        exclude_parser = GitignoreParser(all_exclude_patterns) if all_exclude_patterns else None
-
-        # Expand brace patterns (e.g., "**/*.{py,js}" → ["**/*.py", "**/*.js"])
+        all_exclude_patterns = [*self.DEFAULT_EXCLUSIONS, *(exclude_patterns or [])]
+        exclude_parser = GitignoreParser(all_exclude_patterns)
         expanded_patterns = expand_braces(pattern)
-
         seen_files: set[str] = set()
 
         if max_files is not None and max_files <= 0:
-            return results
+            return sweep
 
         for root, dirs, files in os.walk(str(dir_path)):
             root_path = Path(root)
@@ -487,16 +528,12 @@ class FileScanner:
             # Prune directories in-place so os.walk never descends into them.
             pruned = []
             for d in sorted(dirs):
-                if d.startswith("."):
-                    continue
-                if should_skip_directory(d):
-                    continue
                 dir_rel = f"{rel_root_str}/{d}" if rel_root_str else d
-                if gitignore and gitignore.matches(dir_rel + "/", True):
-                    continue
-                if exclude_parser and exclude_parser.matches(dir_rel + "/", True):
-                    continue
-                pruned.append(d)
+                excluded_by = _dir_excluded_by(d, dir_rel, gitignore, exclude_parser)
+                if excluded_by:
+                    sweep.excluded[excluded_by] += 1
+                else:
+                    pruned.append(d)
             dirs[:] = pruned
 
             for fname in sorted(files):
@@ -508,14 +545,15 @@ class FileScanner:
                 rel_path_raw = f"{rel_root_str}/{fname}" if rel_root_str else fname
                 rel_path_native = str(file_path.relative_to(dir_path))
 
-                # Check if file matches any of the expanded patterns
+                # Outside the requested pattern: not part of this scan at all
                 if not any(_matches_pattern(rel_path_raw, pat) for pat in expanded_patterns):
                     continue
 
-                # Check gitignore and additional exclusions
-                if gitignore and gitignore.matches(rel_path_native, False):
+                if gitignore and (by := gitignore.decide(rel_path_native, False)):
+                    sweep.excluded[by] += 1
                     continue
-                if exclude_parser and exclude_parser.matches(rel_path_native, False):
+                if by := exclude_parser.decide(rel_path_native, False):
+                    sweep.excluded[by] += 1
                     continue
 
                 seen_files.add(file_str)
@@ -523,13 +561,12 @@ class FileScanner:
                 scanner_class = self.registry.get_scanner(file_path.suffix.lower())
                 if scanner_class:
                     if scanner_class.should_skip(file_path.name):
+                        sweep.excluded[f"*{file_path.suffix}"] += 1
                         continue
                     try:
-                        results[file_str] = self.scan_file(
-                            file_str, mode=mode, max_bytes=SWEEP_MAX_BYTES
-                        )
+                        structures = self.scan_file(file_str, mode=mode, max_bytes=SWEEP_MAX_BYTES)
                     except Exception as e:
-                        results[file_str] = [
+                        structures = [
                             StructureNode(
                                 type="error",
                                 name=f"Failed to scan: {str(e)}",
@@ -537,19 +574,27 @@ class FileScanner:
                                 end_line=1,
                             )
                         ]
+                    if (
+                        structures
+                        and structures[0].file_metadata
+                        and structures[0].file_metadata.get("oversized")
+                    ):
+                        sweep.oversized += 1
+                    sweep.results[file_str] = structures
                 else:
                     try:
                         file_stats = os.stat(file_str)
-                        results[file_str] = [
-                            _file_info_stub(file_path, file_stats, reason="unsupported")
-                        ]
-                    except Exception:
+                    except OSError:
                         continue
+                    sweep.unsupported[file_path.suffix or "(no extension)"] += 1
+                    sweep.results[file_str] = [
+                        _file_info_stub(file_path, file_stats, reason="unsupported")
+                    ]
 
-                if max_files is not None and len(results) >= max_files:
-                    return results
+                if max_files is not None and len(sweep.results) >= max_files:
+                    return sweep
 
-        return results
+        return sweep
 
     def get_supported_extensions(self) -> list[str]:
         """Get list of all supported file extensions."""

@@ -145,7 +145,12 @@ def _text(result) -> str:
 
 
 def _not_found(text: str) -> bool:
-    return text.startswith(NOT_FOUND_PREFIXES)
+    """Whether the answer, after its coverage line and any notes, says there
+    was nothing to show."""
+    body = text
+    while body.startswith(("<", "note: ", "Note: ")):
+        body = body.partition("\n")[2]
+    return body.startswith(NOT_FOUND_PREFIXES)
 
 
 def _stdin_paths(command: str) -> list[str]:
