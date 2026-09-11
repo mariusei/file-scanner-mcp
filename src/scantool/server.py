@@ -25,6 +25,7 @@ from .git_signals import (
     repo_root,
 )
 from .languages import StructureNode, is_file_info_stub
+from .launcher import ensure_launcher, shell_hint, shell_instructions
 from .preview import preview_directory as preview_dir_func
 from .ref_diff import diff_against_ref
 from .scanner import FileScanner
@@ -40,6 +41,8 @@ WHY: returns structure (functions, classes, headings, line numbers) with \
 condensed code skeletons instead of raw file contents — far fewer tool calls \
 and tokens than ls/find/grep followed by full file reads. Repeat scans are \
 delta-aware: unchanged files come back as a one-liner.
+
+{shell}
 
 PICK THE CHEAPEST TOOL THAT ANSWERS THE QUESTION:
 - targeted question ("where is X" / "how does X work") -> search_structures: \
@@ -78,7 +81,9 @@ scan_file takes file_path=; max_depth exists only on list_directories. Do \
 not guess file paths — discover them via scan_directory first.
 """
 
-mcp = FastMCP("File Scanner MCP", instructions=SERVER_INSTRUCTIONS)
+mcp = FastMCP(
+    "File Scanner MCP", instructions=SERVER_INSTRUCTIONS.format(shell=shell_instructions())
+)
 
 # Global scanner and formatter instances
 scanner = FileScanner()
@@ -128,7 +133,8 @@ def _annotate_churn(results: dict, directory: str) -> None:
 
 @mcp.tool(
     tags={"exploration", "overview", "analysis", "primary"},
-    description="Deep architecture analysis - entry points, hot functions, call graph, git activity (RICH output ~3-5k tokens; for first-time orientation of an unknown codebase. For targeted questions, search_structures or scan_directory are cheaper first calls)",
+    description="Deep architecture analysis - entry points, hot functions, call graph, git activity (RICH output ~3-5k tokens; for first-time orientation of an unknown codebase. For targeted questions, search_structures or scan_directory are cheaper first calls)"
+    + shell_hint("<dir>"),
 )
 def preview_directory(
     directory: str,
@@ -283,7 +289,8 @@ def preview_directory(
 
 @mcp.tool(
     tags={"exploration", "navigation", "directories"},
-    description="List directory tree structure (folders only, no files) - USE THIS to see folder hierarchy",
+    description="List directory tree structure (folders only, no files) - USE THIS to see folder hierarchy"
+    + shell_hint("--help"),
 )
 def list_directories(
     directory: str, max_depth: int | None = 3, respect_gitignore: bool = True
@@ -374,7 +381,8 @@ def list_directories(
 
 @mcp.tool(
     tags={"remote", "http", "content"},
-    description="Scan file content directly - USE THIS for remote files, GitHub, APIs instead of saving to disk first",
+    description="Scan file content directly - USE THIS for remote files, GitHub, APIs instead of saving to disk first"
+    + shell_hint("--help"),
 )
 def scan_file_content(
     content: str,
@@ -460,7 +468,8 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges. May append a self-levelling CONNECTIVITY note - candidate dead/orphan/drift across the whole corpus, silent when clean; candidates to look at, not verdicts",
+    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges. May append a self-levelling CONNECTIVITY note - candidate dead/orphan/drift across the whole corpus, silent when clean; candidates to look at, not verdicts"
+    + shell_hint("scan <path>", "focus <path> <name>"),
 )
 def scan_file(
     file_path: str,
@@ -637,7 +646,7 @@ def scan_file(
             return [
                 TextContent(
                     type="text",
-                    text=json.dumps(_structures_to_json(structures, file_path), indent=2),
+                    text=_structures_to_json(structures, file_path),
                 )
             ]
         else:
@@ -661,7 +670,8 @@ def scan_file(
 
 @mcp.tool(
     tags={"local", "directory", "exploration"},
-    description="Scan directory - file tree with one-line gists per file, code health and churn labels (cheap overview, good first call). Replaces Glob/ls for ALL file types",
+    description="Scan directory - file tree with one-line gists per file, code health and churn labels (cheap overview, good first call). Replaces Glob/ls for ALL file types"
+    + shell_hint("scan <dir>"),
 )
 def scan_directory(
     directory: str,
@@ -858,7 +868,8 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "diff", "review"},
-    description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions",
+    description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions"
+    + shell_hint("--help"),
 )
 def scan_diff(directory: str, ref: str = "HEAD", budget: int | None = 1500) -> list[TextContent]:
     """
@@ -901,7 +912,8 @@ def scan_diff(directory: str, ref: str = "HEAD", budget: int | None = 1500) -> l
 
 @mcp.tool(
     tags={"local", "analysis", "review", "divergence"},
-    description="Audit a directory for peer divergence - functions that break a call pattern their siblings across the codebase follow (peers calling X also call Y, this one doesn't). A REVIEW HINT to look at, not a verified bug list. Silent on a consistent codebase. Use to hunt drift, dead/missing connectivity, or misaligned implementations - cheaper and more focused than preview_directory when divergence is all you want",
+    description="Audit a directory for peer divergence - functions that break a call pattern their siblings across the codebase follow (peers calling X also call Y, this one doesn't). A REVIEW HINT to look at, not a verified bug list. Silent on a consistent codebase. Use to hunt drift, dead/missing connectivity, or misaligned implementations - cheaper and more focused than preview_directory when divergence is all you want"
+    + shell_hint("--help"),
 )
 def find_divergence(
     directory: str,
@@ -957,7 +969,8 @@ def find_divergence(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search across all file types - BEST FIRST CALL for targeted questions, USE INSTEAD of Grep: content_pattern finds text WITH structural context (enclosing function/class/section) plus leads to definitions; name/type/decorator find structures",
+    description="Search across all file types - BEST FIRST CALL for targeted questions, USE INSTEAD of Grep: content_pattern finds text WITH structural context (enclosing function/class/section) plus leads to definitions; name/type/decorator find structures"
+    + shell_hint("search <dir> <pattern>"),
 )
 def search_structures(
     directory: str,
@@ -1150,6 +1163,7 @@ def _structures_to_json(structures: list[StructureNode], file_path: str, return_
 
 def main():
     """Main entry point for the MCP server (STDIO mode)."""
+    ensure_launcher()
     mcp.run()
 
 
@@ -1175,6 +1189,7 @@ def http_main():
     )
 
     # Get port from environment variable (Smithery sets this to 8081)
+    ensure_launcher()
     port = int(os.environ.get("PORT", 8080))
     print(f"Listening on port {port}")
 

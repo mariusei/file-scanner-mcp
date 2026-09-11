@@ -17,6 +17,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 # The version is owned by pyproject.toml; the metadata lookup keeps them from
 # drifting apart (0.14 vs 0.15 happened with two hand-synced fields)
+__version__: str
 try:
     __version__ = version("scantool")
 except PackageNotFoundError:

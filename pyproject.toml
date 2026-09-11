@@ -68,6 +68,7 @@ dev = [
 [project.scripts]
 scantool = "scantool:main"
 scantool-http = "scantool.server:http_main"
+sct = "scantool.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/mariusei/file-scanner-mcp"

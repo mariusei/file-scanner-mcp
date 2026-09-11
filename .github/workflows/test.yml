@@ -74,6 +74,15 @@ jobs:
       - name: Run tests
         run: uv run pytest tests/ -v
 
+      # The console script as a shell sees it, on every OS (Windows runs
+      # uv's sct.exe shim). The launcher files the server writes are
+      # exercised through sh and cmd.exe inside tests/test_launcher.py.
+      - name: sct console script
+        run: |
+          uv run sct --help
+          uv run sct scan src/scantool/cli.py --depth quick
+          uv run sct tests/golden/fixture_dir
+
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: uv run pytest tests/ --cov=src/scantool --cov-report=xml

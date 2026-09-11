@@ -28,6 +28,8 @@ On real agent episodes, scantool agents answered with **88% fact coverage vs 73%
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+Every install below has one side effect: when the server starts it also writes `sct`, the same reader as a shell command, into uv's tool bin directory for the agent to use. See [`sct` in the shell](#sct-in-the-shell); `SCANTOOL_NO_CLI=1` opts out.
+
 ### Claude Code
 
 ```bash
@@ -105,6 +107,22 @@ Add to `.vscode/mcp.json` in your workspace:
 ### Cline
 
 In the Cline panel: MCP Servers icon → *Configure* tab → *Configure MCP Servers*, then add the same `mcpServers` entry as above. (Cline CLI reads `~/.cline/mcp.json`.)
+
+### `sct` in the shell
+
+Agents read most code through their shell, not through MCP tools. So when the server starts, it writes a launcher named `sct` into uv's tool bin directory (`uv tool dir --bin`: `~/.local/bin` on macOS and Linux, `%USERPROFILE%\.local\bin` on Windows, where it also writes `sct.cmd` for cmd.exe and PowerShell). The launcher runs the same tool functions the MCP server exposes, under the same interpreter. Nothing else is installed, PATH and shell profiles are never edited, and a file named `sct` that scantool did not write is never touched.
+
+```
+sct <dir>                                        orientation: entry points, hot functions, map
+sct scan   <path>... [--budget N] [--depth quick|normal|deep]
+sct focus  <path> <name|heading>
+sct search <dir> <pattern> [--names] [--type TYPE]
+sct --help                                       the full help; --json on scan and search, --ascii anywhere
+```
+
+If the bin directory is not on the agent's PATH, every tool description carries the absolute fallback, `"<python>" -m scantool.cli`, with the interpreter the server runs under.
+
+Opt out with `SCANTOOL_NO_CLI=1` in the server's environment, for example `"env": {"SCANTOOL_NO_CLI": "1"}` in the `mcpServers` entry. Without a running server, `uv tool install scantool` or `pipx install scantool` gives `sct` as a regular console script.
 
 ### Troubleshooting: `uvx` not found
 
