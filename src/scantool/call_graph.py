@@ -70,27 +70,22 @@ def build_call_graph(
     """
     # Initialize nodes for all definitions
     graph = {}
+    lookup_names: dict[str, tuple[str, str | None]] = {}  # fqn -> (qualified, bare method)
     for defn in definitions:
-        # Create fully qualified name: file:name or file:class.method
-        if defn.parent:
-            fqn = f"{defn.file}:{defn.parent}.{defn.name}"
-        else:
-            fqn = f"{defn.file}:{defn.name}"
-
+        # Fully qualified name: file:name or file:parent.name (the graph's own
+        # spelling, the same for every language)
+        qualified = f"{defn.parent}.{defn.name}" if defn.parent else defn.name
+        fqn = f"{defn.file}:{qualified}"
         graph[fqn] = CallGraphNode(name=fqn, file=defn.file, type=defn.type, callers=[], callees=[])
+        lookup_names[fqn] = (qualified, defn.name if defn.parent else None)
 
-    # Build lookup index for O(1) name resolution (instead of O(n) search)
-    # Maps name suffix -> list of matching FQNs
+    # Lookup index for O(1) name resolution: the qualified name for every
+    # definition, and the bare method name as well for members
     name_index = defaultdict(list)
-    for fqn in graph:
-        # Index by ":name" suffix (top-level functions)
-        parts = fqn.rsplit(":", 1)
-        if len(parts) == 2:
-            name_index[parts[1]].append(fqn)
-            # Also index by ".method" for class methods
-            if "." in parts[1]:
-                method_name = parts[1].rsplit(".", 1)[1]
-                name_index[method_name].append(fqn)
+    for fqn, (qualified, method_name) in lookup_names.items():
+        name_index[qualified].append(fqn)
+        if method_name:
+            name_index[method_name].append(fqn)
 
     def resolve(name: str) -> list[str]:
         """All FQNs a name could refer to. O(1) average case."""

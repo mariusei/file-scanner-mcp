@@ -4,6 +4,7 @@ facade syntax. The defaults live on BaseLanguage; Python overrides the
 surface with its facade logic; every other handler gets the default.
 """
 
+import re
 from pathlib import Path
 
 from scantool.callers import split_qualified
@@ -67,19 +68,51 @@ def test_python_surface_is_the_python_handlers(tmp_path):
     assert surface.exports[0].path.endswith("core.py")
 
 
-def test_no_syntax_outside_languages():
-    """The verifier's red flags (§9e): no ast, tree-sitter, extension test or
-    language keyword outside languages/."""
+# Named exemptions, each with its reason. The boundary itself: the
+# extension -> handler registry (scanner.py) and the ignore patterns
+# (gitignore.py) must name file types. connectivity.py and reference_map.py
+# hold corpus-scan policies (which file types can carry a handler name or a
+# route literal); those tables include file types with no handler (.kt, .vue,
+# .properties), so they cannot live behind a language. code_health.py's
+# UNREFERENCED exemptions (dunder and test-prefixed names) predate §9e;
+# moving them behind BaseLanguage is a separate change.
+BOUNDARY_ALLOWLIST = {
+    "scanner.py",
+    "gitignore.py",
+    "connectivity.py",
+    "reference_map.py",
+    "code_health.py",
+}
+BOUNDARY_RED_FLAGS = (
+    ("import ast", re.compile(r"^\s*(import ast\b|from ast\b)", re.M)),
+    ("tree-sitter", re.compile(r"tree_sitter")),
+    (
+        "file-extension test",
+        re.compile(
+            r"""(endswith|startswith)\(\s*\(?\s*['"]\.[A-Za-z0-9]+['"]|\.suffix\b[^\n]*(==|in\s)|['"]\.(py|ts|js|go|rs|rb|java|md)['"]"""
+        ),
+    ),
+    ("language keyword", re.compile(r"""['"](def |class |export |pub |fn |func )['"]""")),
+    (
+        "naming rule",
+        re.compile(r"""startswith\(\s*['"]__['"]\s*\)|rsplit\(\s*['"]\.['"]\s*,\s*1\s*\)"""),
+    ),
+)
+
+
+def test_boundary_nothing_outside_languages_knows_a_syntax():
+    """Brief §9e: walk src/scantool/ minus languages/ and fail on import ast,
+    tree-sitter, file-extension tests, language keywords and naming rules.
+    This would have stopped surface.py in #32."""
     package = TESTS_DIR.parent / "src" / "scantool"
-    # code_health's UNREFERENCED exemptions (dunder and test-prefixed names)
-    # predate §9e; moving them behind BaseLanguage is a separate change
-    known = {"code_health.py"}
     offenders = []
-    for path in package.glob("*.py"):
-        if path.name in known:
+    for path in sorted(package.glob("*.py")):
+        if path.name in BOUNDARY_ALLOWLIST:
             continue
         text = path.read_text(encoding="utf-8")
-        for needle in ("import ast\n", "tree_sitter", 'endswith(".py")', 'startswith("__")'):
-            if needle in text:
-                offenders.append(f"{path.name}: {needle.strip()}")
-    assert not offenders, offenders
+        for label, flag in BOUNDARY_RED_FLAGS:
+            match = flag.search(text)
+            if match:
+                line = text.count("\n", 0, match.start()) + 1
+                offenders.append(f"{path.name}:{line}: {label}: {match.group(0).strip()}")
+    assert not offenders, "\n".join(offenders)
