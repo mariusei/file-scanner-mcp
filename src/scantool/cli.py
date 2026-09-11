@@ -52,6 +52,7 @@ USAGE
   sct focus    <path>::<name>[@REF]        the address form, one argument
   sct focus    - --as <path> <name>        stdin content, one node
   sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE]
+  sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
   sct <command> --help
   any command: --json, --ascii
 
@@ -74,11 +75,23 @@ COMMANDS
             pattern is a Python regex: `a|b` alternates, grep's `\\|` is a
             literal bar. --type filters WHICH structures are reported, not
             where the text is. Truncates at 40 structures and says so.
+  diff      Structural diff between refs. One ref = that ref vs the working
+            tree. Two refs = A...B against their merge-base by default
+            (--no-merge-base compares the tips; a note says which). Per
+            file: + added, ~ changed (signature: old → new; or body: N code
+            / M doc lines), = renamed (paired by identical body; children
+            follow a renamed class), - removed; identical signature deltas
+            in 3+ functions fold into one row; new files as skeletons. The
+            coverage line counts files changed without structural rows and
+            names the reason for each.
 
 OPTIONS
   --ref REF      Read at a git ref (branch, tag, SHA) instead of the working
                  tree. No checkout; the repository is found from the path.
                  The coverage line ends with @REF.
+  --repo DIR     Repository for diff (default: the one the current directory
+                 is inside; required when it is not in one).
+  --path PATH    Restrict diff to a file or directory, relative to the repo.
   --budget N     Approximate output size in tokens (scan, files only).
   --as PATH      The name stdin content is scanned under (its extension picks
                  the parser; the name appears in the output).
@@ -95,7 +108,7 @@ CONVENTIONS
   error. Plain text; one fact per line. Errors on stderr.
 """
 
-COMMANDS = ("scan", "focus", "search")
+COMMANDS = ("scan", "focus", "search", "diff")
 STDIN = "-"
 
 # The glyphs scantool's own formatters emit; --ascii maps these and nothing
@@ -482,11 +495,51 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
     return [text], 1 if _not_found(text) else 0
 
 
+def run_diff(args: argparse.Namespace) -> tuple[list[str], int]:
+    from .structural_diff import (
+        WORKTREE,
+        ahead_behind,
+        diff_refs,
+        diff_to_json,
+        format_diff,
+        merge_base,
+        repo_top,
+        short,
+        verify_ref,
+    )
+
+    where = args.repo or os.getcwd()
+    top = repo_top(where)
+    if top is None:
+        raise RefError(f"{where} is not inside a git repository; pass --repo DIR")
+    side_a, side_b = args.ref_a, args.ref_b or WORKTREE
+    for ref in (side_a, side_b):
+        if not verify_ref(top, ref):
+            raise RefError(f"unknown ref {ref!r} in {top}")
+    note = None
+    if args.ref_b and not args.no_merge_base:
+        base = merge_base(top, side_a, side_b)
+        if base and short(top, base) != short(top, side_a):
+            ahead, behind = ahead_behind(top, side_a, side_b)
+            note = (
+                f"note: {side_a} and {side_b} diverged at {short(top, base)}; "
+                f"{side_a} is {ahead} ahead, {side_b} is {behind}; comparing "
+                f"{short(top, base)} → {side_b} (--no-merge-base compares the tips)"
+            )
+            side_a = short(top, base)
+    result = diff_refs(top, side_a, side_b, args.path)
+    result.note = note
+    if args.json:
+        return [json.dumps(diff_to_json(result), indent=2)], 0
+    return [format_diff(result)], 0
+
+
 RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "": run_orient,
     "scan": run_scan,
     "focus": run_focus,
     "search": run_search,
+    "diff": run_diff,
 }
 
 
@@ -541,7 +594,16 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     search.add_argument("--type", metavar="TYPE", help="report only structures of this type")
     ref_option(search)
 
-    return {"": orient, "scan": scan, "focus": focus, "search": search}
+    diff = parser("diff", "Structural diff between refs, or a ref and the working tree.", True)
+    diff.add_argument("ref_a", metavar="refA")
+    diff.add_argument("ref_b", metavar="refB", nargs="?", help="default: the working tree")
+    diff.add_argument("--repo", metavar="DIR", help="repository (default: the one cwd is inside)")
+    diff.add_argument("--path", metavar="PATH", help="a file or directory, relative to the repo")
+    diff.add_argument(
+        "--no-merge-base", action="store_true", help="compare the tips, not merge-base...refB"
+    )
+
+    return {"": orient, "scan": scan, "focus": focus, "search": search, "diff": diff}
 
 
 def _configure_streams() -> None:
