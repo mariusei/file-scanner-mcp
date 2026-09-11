@@ -20,10 +20,17 @@ import zlib
 
 import numpy as np
 
-# Structural node types that never get code excerpts
+# Structural node types that never get code excerpts. A node lands here when
+# its header line already carries everything an excerpt would repeat: a
+# docstring node IS its rendered first line, and a variable node IS its
+# rendered value. Without the exclusion a module of constants would compete
+# with its own functions for the full tier and spend the budget restating
+# signatures.
 _SKIP_TYPES = {
     "file-info",
     "imports",
+    "docstring",
+    "variable",
     "section",
     "heading",
     "heading-1",

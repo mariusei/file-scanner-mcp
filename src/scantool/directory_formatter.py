@@ -426,8 +426,11 @@ class DirectoryFormatter:
         """
         flattened = []
         for node in structures:
-            # Skip non-code structures (file-info, imports)
-            if node.type in ("file-info", "imports"):
+            # Skip nodes carrying no name of their own. The flattened view is a
+            # list of names with signatures and docstrings stripped, so a
+            # docstring node would contribute the label "module docstring" and
+            # nothing else.
+            if node.type in ("file-info", "imports", "docstring"):
                 continue
 
             # Create shallow copy with no children

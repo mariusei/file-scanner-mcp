@@ -329,7 +329,8 @@ scan_file(file_path="example.py", focus="DatabaseManager.query")
 
 ```
 focus: DatabaseManager.query @24-26
-example.py (3-57)
+example.py (1-57)
+- module docstring @1 # Example Python file for testing the scanner.
 - import statements @3
 - DatabaseManager @8 # Manages database connections and queries.
   - __init__ (self, connection_string: str) @11

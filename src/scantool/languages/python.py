@@ -6,6 +6,13 @@ eliminating duplication of metadata, tree-sitter parsing, and structure extracti
 Key optimizations:
 - extract_definitions() reuses scan() output instead of re-parsing
 - Single tree-sitter parser instance shared across all operations
+
+Module level is part of the structure, not a gap between definitions: the
+module docstring and named module-level bindings (constants, policy tables,
+__all__) are extracted alongside classes and functions. A field study on
+branch diffs found this absence dropping whole source files from a scan —
+the file carrying the contract or the constant — and counted 13 of 33 names
+on one package's public surface as module-level values.
 """
 
 import ast
@@ -137,11 +144,26 @@ class PythonLanguage(BaseLanguage):
 
         return _skeleton_stmts(body, 0, _trailing_comments(source)) or None
 
+    #: Node types a module-level binding may sit inside and still count as
+    #: module scope. An `if` guard (TYPE_CHECKING, a version check) binds names
+    #: the module really exports, so its branches are module scope; a function
+    #: body, a class body and a `try/except ImportError` fallback are not. The
+    #: try case is excluded on purpose: its two branches bind the SAME name to
+    #: different values, and emitting both would put two nodes with one key in
+    #: the tree, the delta map and focus resolution.
+    _MODULE_SCOPE_TYPES = frozenset(
+        {"module", "if_statement", "block", "elif_clause", "else_clause"}
+    )
+
     def _extract_structure(self, root: Node, source_code: bytes) -> list[StructureNode]:
         """Extract structure using tree-sitter."""
         structures: list[StructureNode] = []
 
-        def traverse(node: Node, parent_structures: list):
+        docstring_node = self._extract_module_docstring(root, source_code)
+        if docstring_node:
+            structures.append(docstring_node)
+
+        def traverse(node: Node, parent_structures: list, module_scope: bool = False):
             # Handle parse errors
             if node.type == "ERROR":
                 if self.show_errors:
@@ -172,12 +194,67 @@ class PythonLanguage(BaseLanguage):
             elif node.type in ("import_statement", "import_from_statement"):
                 self._handle_import(node, parent_structures)
 
-            else:
-                for child in node.children:
-                    traverse(child, parent_structures)
+            # Module-level bindings: constants, tables, __all__
+            elif module_scope and node.type == "expression_statement":
+                value_node = self._extract_module_value(node, source_code)
+                if value_node:
+                    parent_structures.append(value_node)
 
-        traverse(root, structures)
+            else:
+                child_scope = module_scope and node.type in self._MODULE_SCOPE_TYPES
+                for child in node.children:
+                    traverse(child, parent_structures, child_scope)
+
+        traverse(root, structures, module_scope=True)
         return structures
+
+    def _extract_module_docstring(self, root: Node, source_code: bytes) -> StructureNode | None:
+        """The module's own docstring as a node.
+
+        Its name is a label of scantool's ("module docstring"), never a name
+        from the source, hence synthetic=True.
+        """
+        first_statement = next((c for c in root.children if c.type != "comment"), None)
+        if first_statement is None or first_statement.type != "expression_statement":
+            return None
+
+        string_node = next((c for c in first_statement.children if c.type == "string"), None)
+        if string_node is None:
+            return None
+
+        return StructureNode(
+            type="docstring",
+            name="module docstring",
+            start_line=string_node.start_point[0] + 1,
+            end_line=string_node.end_point[0] + 1,
+            docstring=self._docstring_first_line(string_node, source_code),
+            synthetic=True,
+        )
+
+    def _extract_module_value(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """A named module-level binding: `NAME = value` or `NAME: T = value`.
+
+        Skipped, because none of them names a single module-level value:
+        tuple unpacking (`a, b = ...`), attribute targets (`obj.x = ...`),
+        augmented assignment (`x += ...`, a mutation of a name bound earlier)
+        and a bare annotation (`x: int`, which binds nothing at runtime).
+        """
+        assignment = next((c for c in node.children if c.type == "assignment"), None)
+        if assignment is None:
+            return None
+
+        left = assignment.child_by_field_name("left")
+        right = assignment.child_by_field_name("right")
+        if left is None or left.type != "identifier" or right is None:
+            return None
+
+        return StructureNode(
+            type="variable",
+            name=self._get_node_text(left, source_code),
+            start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1,
+            signature=f"= {_render_value(self._get_node_text(right, source_code))}",
+        )
 
     def _extract_class(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
         """Extract class with full metadata."""
@@ -271,16 +348,19 @@ class PythonLanguage(BaseLanguage):
         if first_stmt.type == "expression_statement":
             for child in first_stmt.children:
                 if child.type == "string":
-                    docstring = self._get_node_text(child, source_code)
-                    # Each strip() argument is a quote character set; the chain
-                    # peels the docstring's own delimiters. B005 does not apply.
-                    docstring = docstring.strip('"""').strip("'''").strip('"').strip("'")  # noqa: B005
-                    lines = [line.strip() for line in docstring.split("\n")]
-                    for line in lines:
-                        if line:
-                            return line
-                    return None
+                    return self._docstring_first_line(child, source_code)
 
+        return None
+
+    def _docstring_first_line(self, string_node: Node, source_code: bytes) -> str | None:
+        """First non-empty line of a docstring literal, delimiters peeled."""
+        docstring = self._get_node_text(string_node, source_code)
+        # Each strip() argument is a quote character set; the chain
+        # peels the docstring's own delimiters. B005 does not apply.
+        docstring = docstring.strip('"""').strip("'''").strip('"').strip("'")  # noqa: B005
+        for line in docstring.split("\n"):
+            if line.strip():
+                return line.strip()
         return None
 
     def _extract_superclasses(self, node: Node, source_code: bytes) -> list[str]:
@@ -317,7 +397,15 @@ class PythonLanguage(BaseLanguage):
         return modifiers
 
     def _fallback_extract(self, source_code: bytes) -> list[StructureNode]:
-        """Regex-based extraction for severely malformed files."""
+        """Regex-based extraction for severely malformed files.
+
+        Module-level bindings stay out of the fallback. `^NAME = ...` matches
+        inside an unterminated triple-quoted string as readily as in code, and
+        an unterminated string is the usual reason the parse broke in the first
+        place — so a regex here would invent constants out of prose, in exactly
+        the files where nothing can be verified. `def`/`class` survive the
+        trade because a header line is worth a false positive; a value is not.
+        """
         text = source_code.decode("utf-8", errors="replace")
         structures: list[StructureNode] = []
 
@@ -772,6 +860,21 @@ def _trunc(expr: ast.AST) -> str:
         return text[: _MAX_EXPR_LEN - 1] + "…"
     except Exception:
         return "…"
+
+
+def _render_value(source_text: str) -> str:
+    """Compact rendering of an assigned value, for a variable node's signature.
+
+    Same renderer the skeletons use, so a 200-line policy dict and a call in a
+    method body are elided by one rule. Tree-sitter accepts fragments `ast`
+    rejects (a value inside an otherwise broken file), so the flat source text
+    is the fallback, cut to the same width.
+    """
+    try:
+        return _trunc(ast.parse(source_text, mode="eval").body)
+    except SyntaxError:
+        flat = " ".join(source_text.split())
+        return flat if len(flat) <= _MAX_EXPR_LEN else flat[: _MAX_EXPR_LEN - 1] + "…"
 
 
 def _has_substance(value: ast.AST) -> bool:

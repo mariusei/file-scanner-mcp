@@ -2,6 +2,14 @@
   "file": "python/samples/basic.py",
   "structures": [
     {
+      "type": "docstring",
+      "name": "module docstring",
+      "start_line": 1,
+      "end_line": 1,
+      "synthetic": true,
+      "docstring": "Example Python file for testing the scanner."
+    },
+    {
       "type": "imports",
       "name": "import statements",
       "start_line": 3,

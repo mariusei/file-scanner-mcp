@@ -1,4 +1,5 @@
-basic.py (3-57)
+basic.py (1-57)
+- module docstring @1 # Example Python file for testing the scanner.
 - import statements @3
 - DatabaseManager @8 # Manages database connections and queries.
   - __init__ (self, connection_string: str) @11

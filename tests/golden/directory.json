@@ -3,6 +3,14 @@
     "file": "app.py",
     "structures": [
       {
+        "type": "docstring",
+        "name": "module docstring",
+        "start_line": 1,
+        "end_line": 1,
+        "synthetic": true,
+        "docstring": "Liten, stabil fixture for golden-test av scan_directory-formatet."
+      },
+      {
         "type": "class",
         "name": "TaskQueue",
         "start_line": 4,
