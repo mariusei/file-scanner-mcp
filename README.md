@@ -120,12 +120,15 @@ sct focus  <path> <name|heading> [--ref REF]
 sct focus  - --as <path> <name>                  one node from stdin content
 sct search <dir> <pattern> [--ref REF] [--names] [--type TYPE]
 sct diff   <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
+sct surface <package-dir> [--ref REF] [--against REF]
 sct --help                                       the full help; --json on scan and search, --ascii anywhere
 ```
 
 Output is valid input. A `focus` answer opens with the node's address, `path::Qualified.name (a-b)`, and `sct focus path::Qualified.name` is one argument that reads it again; with `--ref` the address carries it, `path::Qualified.name@origin/main (a-b)`. From a scan, the file line and a structure under it compose the same address. Headings are addressed by their ID tag when they have one (`notes.md::DEV-L17`), else quoted (`notes.md::"Quick Start"`). When a budget cut something, one trailer names the call that recovers the most: `next: sct focus <address>`. Search leads and hits are `path:line`.
 
 `sct diff` is the structural diff between two refs, or one ref and the working tree: per file, `+` added, `~` changed (`signature: old → new`, `value: old → new`, or `body: N code / M doc lines`), `=` renamed (paired by identical body; unchanged members of a renamed class follow it as a count), `-` removed; three or more functions with the same signature delta fold into one row; new files as skeletons. Two refs compare against their merge-base by default and say so in a note (`--no-merge-base` compares the tips). The coverage line counts files changed without structural rows and names the reason for each.
+
+`sct surface` is the public surface of a Python package: every exported name with its signature, how it is exported (`__all__`, a lazy-import table, a re-export, `TYPE_CHECKING`) and where it is defined after following the re-exports, with members inherited from bases inside the package marked. `--against REF` prints the surface diff and the header states the direction.
 
 `--ref REF` reads at a git ref (branch, tag, SHA) without a checkout: a file or one node through `git show`, a directory or a search through `git archive` into a temporary directory, with every path in the answer written the way you typed it and `@REF` at the end of the coverage line (in JSON, `coverage.ref`).
 
