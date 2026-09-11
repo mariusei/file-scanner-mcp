@@ -2,6 +2,8 @@
 session's previous scan. Contract: first scan is always full, suppressed
 content is always recoverable (delta=False), structure headers survive."""
 
+import os
+
 import pytest
 
 from scantool.delta import FULL_DETAIL, GIST_DETAIL, ScanMemory
@@ -34,8 +36,17 @@ def fresh_memory():
     scan_memory.clear()
 
 
+CALLER = "agent-a"
+
+
 def _scan(path, **kwargs) -> str:
+    kwargs.setdefault("caller", CALLER)
     return scan_file(str(path), **kwargs)[0].text
+
+
+def _scan_dir(path, **kwargs):
+    kwargs.setdefault("caller", CALLER)
+    return scan_directory(str(path), **kwargs)
 
 
 class TestScanFileDelta:
@@ -156,7 +167,7 @@ class TestDetailGating:
     def _record(memory, path, detail):
         structures = [StructureNode(type="function", name="foo", start_line=1, end_line=2)]
         lines = path.read_text().split("\n")
-        return memory.diff_and_record(str(path), structures, lines, detail)
+        return memory.diff_and_record(str(path), structures, lines, detail, CALLER)
 
     @pytest.fixture
     def sample(self, tmp_path):
@@ -168,24 +179,24 @@ class TestDetailGating:
         memory = ScanMemory()
         self._record(memory, sample, GIST_DETAIL)
 
-        assert memory.file_unchanged(str(sample), FULL_DETAIL) is None
-        assert memory.file_unchanged(str(sample), GIST_DETAIL) is not None
+        assert memory.file_unchanged(str(sample), FULL_DETAIL, CALLER) is None
+        assert memory.file_unchanged(str(sample), GIST_DETAIL, CALLER) is not None
 
     def test_full_record_suppresses_all_levels(self, sample):
         memory = ScanMemory()
         self._record(memory, sample, FULL_DETAIL)
 
-        assert memory.file_unchanged(str(sample), FULL_DETAIL) is not None
-        assert memory.file_unchanged(str(sample), 300) is not None
-        assert memory.file_unchanged(str(sample), GIST_DETAIL) is not None
+        assert memory.file_unchanged(str(sample), FULL_DETAIL, CALLER) is not None
+        assert memory.file_unchanged(str(sample), 300, CALLER) is not None
+        assert memory.file_unchanged(str(sample), GIST_DETAIL, CALLER) is not None
 
     def test_shallow_budget_never_suppresses_deeper_budget(self, sample):
         memory = ScanMemory()
         self._record(memory, sample, 300)
 
-        assert memory.file_unchanged(str(sample), 1500) is None
-        assert memory.file_unchanged(str(sample), FULL_DETAIL) is None
-        assert memory.file_unchanged(str(sample), 300) is not None
+        assert memory.file_unchanged(str(sample), 1500, CALLER) is None
+        assert memory.file_unchanged(str(sample), FULL_DETAIL, CALLER) is None
+        assert memory.file_unchanged(str(sample), 300, CALLER) is not None
 
     def test_diff_treats_shallower_record_as_first_scan(self, sample):
         memory = ScanMemory()
@@ -195,7 +206,7 @@ class TestDetailGating:
         # consumer never saw — must behave like a first scan instead
         assert self._record(memory, sample, FULL_DETAIL) is None
         # ... and the record is upgraded: full detail has now been shown
-        assert memory.file_unchanged(str(sample), FULL_DETAIL) is not None
+        assert memory.file_unchanged(str(sample), FULL_DETAIL, CALLER) is not None
 
     def test_deeper_record_still_gives_node_diff(self, sample):
         memory = ScanMemory()
@@ -214,7 +225,7 @@ class TestCrossToolDelta:
         path = tmp_path / "app.py"
         path.write_text(SOURCE_V1)
 
-        scan_directory(str(tmp_path), pattern="**/*.py")
+        _scan_dir(tmp_path, pattern="**/*.py")
         out = _scan(path)
 
         assert "unchanged since last scan" not in out
@@ -224,8 +235,8 @@ class TestCrossToolDelta:
         for name in ("a.py", "b.py", "c.py"):
             (tmp_path / name).write_text(SOURCE_V1)
 
-        out = scan_directory(
-            str(tmp_path),
+        out = _scan_dir(
+            tmp_path,
             pattern="**/*.py",
             max_files=2,
             delta=False,
@@ -240,7 +251,7 @@ class TestCrossToolDelta:
         path.write_text(SOURCE_V1)
 
         _scan(path)  # full detail seen — a gist view reveals nothing new
-        out = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
+        out = _scan_dir(tmp_path, pattern="**/*.py")[0].text
 
         assert "all 1 files unchanged" in out
 
@@ -269,8 +280,8 @@ class TestScanDirectoryDelta:
         (tmp_path / "a.py").write_text(SOURCE_V1)
         (tmp_path / "b.py").write_text("def gamma():\n    return fetch_thing()\n")
 
-        scan_directory(str(tmp_path), pattern="**/*.py")
-        second = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
+        _scan_dir(tmp_path, pattern="**/*.py")
+        second = _scan_dir(tmp_path, pattern="**/*.py")[0].text
 
         assert "all 2 files unchanged" in second
         assert "delta=False" in second
@@ -279,19 +290,58 @@ class TestScanDirectoryDelta:
         a, b = tmp_path / "a.py", tmp_path / "b.py"
         a.write_text(SOURCE_V1)
         b.write_text("def gamma():\n    return fetch_thing()\n")
-        scan_directory(str(tmp_path), pattern="**/*.py")
+        _scan_dir(tmp_path, pattern="**/*.py")
         a.write_text(SOURCE_V2)
 
-        out = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
+        out = _scan_dir(tmp_path, pattern="**/*.py")[0].text
 
         assert "a.py" in out.split("unchanged since")[0]  # changed file shown in full
         assert "unchanged since last scan (1 files): b.py" in out
 
     def test_delta_false_full(self, tmp_path):
         (tmp_path / "a.py").write_text(SOURCE_V1)
-        scan_directory(str(tmp_path), pattern="**/*.py")
+        _scan_dir(tmp_path, pattern="**/*.py")
 
-        out = scan_directory(str(tmp_path), pattern="**/*.py", delta=False)[0].text
+        out = _scan_dir(tmp_path, pattern="**/*.py", delta=False)[0].text
 
         assert "unchanged since" not in out
         assert "alpha" in out
+
+
+class TestPerCaller:
+    """One server process serves many agents. Memory belongs to the caller
+    that was shown the output; nobody else is told "unchanged"."""
+
+    def test_another_caller_gets_a_full_scan(self, tmp_path):
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        _scan(path, caller="agent-a")
+        out = _scan(path, caller="agent-b")
+        assert "unchanged since" not in out
+        assert "alpha" in out and "beta" in out
+
+    def test_without_a_caller_there_is_never_a_one_liner(self, tmp_path):
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        scan_file(str(path))
+        second = scan_file(str(path))[0].text
+        assert "unchanged since" not in second and "delta since" not in second
+        assert "alpha" in second and "beta" in second  # full output, twice
+        out = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
+        again = scan_directory(str(tmp_path), pattern="**/*.py")[0].text
+        assert "unchanged since" not in again and "mod.py" in again
+
+    def test_touch_without_change_is_still_unchanged(self, tmp_path):
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        _scan(path)
+        stat = path.stat()
+        os.utime(path, ns=(stat.st_atime_ns + 5_000_000_000, stat.st_mtime_ns + 5_000_000_000))
+        assert "unchanged since last scan" in _scan(path)
+
+    def test_path_spelling_does_not_split_the_memory(self, tmp_path):
+        path = tmp_path / "mod.py"
+        path.write_text(SOURCE_V1)
+        _scan(path)
+        spelled = tmp_path / "." / "mod.py"
+        assert "unchanged since last scan" in _scan(spelled)
