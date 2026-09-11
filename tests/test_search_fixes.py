@@ -5,6 +5,7 @@ heading paths keep their ends, and "no leads" is said rather than omitted.
 """
 
 import json
+import os
 
 from scantool import cli
 from scantool.content_search import NodeHits, format_hits
@@ -107,5 +108,5 @@ def test_json_carries_page_and_more_lines(tmp_path, capsys):
     )
     document = json.loads(out)
     assert (document["limit"], document["offset"], document["structures_omitted"]) == (2, 1, 1)
-    assert [s["file"].rsplit("/", 1)[-1] for s in document["structures"]] == ["m01.py", "m02.py"]
+    assert [os.path.basename(s["file"]) for s in document["structures"]] == ["m01.py", "m02.py"]
     assert all("more_lines" in s for s in document["structures"])
