@@ -232,19 +232,62 @@ def _containing_node(structures, line_no: int):
     return best, best_chain
 
 
+_MAX_CHAIN = 80  # a heading path longer than this keeps its ends and elides the middle
+_MORE_LINES = 6  # line numbers listed for hits beyond the per-structure cap
+
+
+def _short_chain(chain: str) -> str:
+    if len(chain) <= _MAX_CHAIN or chain.count(" > ") < 3:
+        return chain
+    parts = chain.split(" > ")
+    return " > ".join([parts[0], "…", *parts[-2:]])
+
+
+def _page(found: list[NodeHits], limit: int, offset: int) -> tuple[list[NodeHits], str]:
+    """The structures on this page, and the line that states the limit."""
+    offset = max(0, offset)
+    shown = found[offset : offset + limit]
+    end = offset + len(shown)
+    if len(found) <= limit and offset == 0:
+        return shown, ""
+    rest = len(found) - end
+    tail = f"; --offset {end} shows the next {min(limit, rest)}" if rest > 0 else ""
+    return shown, f"showing structures {offset + 1}-{end} of {len(found)} (--limit {limit}){tail}"
+
+
+def _hit_lines(node_hits: NodeHits) -> list[str]:
+    lines = [
+        f"   {line_no} | {text.strip()[:120]}"
+        for line_no, text in node_hits.hits[:_MAX_HITS_PER_NODE]
+    ]
+    rest = node_hits.hits[_MAX_HITS_PER_NODE:]
+    if rest:
+        numbers = ", ".join(str(line_no) for line_no, _ in rest[:_MORE_LINES])
+        if len(rest) > _MORE_LINES:
+            numbers += ", …"
+        lines.append(f"   +{len(rest)} more in this structure at lines {numbers}")
+    return lines
+
+
 def format_hits(
     found: list[NodeHits],
     pattern: str,
     leads: list[tuple[str, list[tuple[str, int]]]] | None = None,
+    limit: int = _MAX_NODES,
+    offset: int = 0,
 ) -> str:
     """Compact structural rendering: node chain + line-numbered hits,
-    plus one-hop leads to definitions in other files."""
+    plus one-hop leads to definitions in other files. Files come in path
+    order; the page and its limit are stated; every count that is cut
+    says where the rest is."""
     if not found:
         return f"No content matches for /{pattern}/"
 
     total_hits = sum(len(n.hits) for n in found)
-    shown = found[:_MAX_NODES]
+    shown, page = _page(found, limit, offset)
     lines = [f"{total_hits} hits in {len(found)} structures for /{pattern}/"]
+    if page:
+        lines.append(page)
 
     current_file = None
     for node_hits in shown:
@@ -252,17 +295,13 @@ def format_hits(
             current_file = node_hits.file
             lines.append(f"\n{current_file}")
         sig = f" {node_hits.signature}" if node_hits.signature else ""
-        header = f"- {node_hits.chain}{sig} @{node_hits.start_line}-{node_hits.end_line}"
-        if len(node_hits.hits) > 1:
-            header += f"  ({len(node_hits.hits)} hits)"
-        lines.append(header)
-        for line_no, text in node_hits.hits[:_MAX_HITS_PER_NODE]:
-            lines.append(f"   {line_no} | {text.strip()[:120]}")
-        if len(node_hits.hits) > _MAX_HITS_PER_NODE:
-            lines.append(f"   +{len(node_hits.hits) - _MAX_HITS_PER_NODE} more in this structure")
+        chain = _short_chain(node_hits.chain)
+        lines.append(
+            f"- {chain}{sig} @{node_hits.start_line}-{node_hits.end_line}  "
+            f"({len(node_hits.hits)} hit{'' if len(node_hits.hits) == 1 else 's'})"
+        )
+        lines.extend(_hit_lines(node_hits))
 
-    if len(found) > _MAX_NODES:
-        lines.append(f"\n+{len(found) - _MAX_NODES} more structures — narrow the pattern")
     if leads:
         # full path — the agent should be able to follow the lead with one scan_file call
         lines.append(
@@ -272,6 +311,10 @@ def format_hits(
                 for name, targets in leads
             )
         )
+    else:
+        lines.append(
+            "\nleads: none (no name called in the hits is defined in another scanned file)"
+        )
     return "\n".join(lines)
 
 
@@ -279,6 +322,8 @@ def hits_to_json(
     found: list[NodeHits],
     pattern: str,
     leads: list[tuple[str, list[tuple[str, int]]]] | None = None,
+    limit: int = _MAX_NODES,
+    offset: int = 0,
 ) -> dict:
     """Machine-readable mirror of `format_hits`.
 
@@ -288,12 +333,14 @@ def hits_to_json(
     truncated for display, and what the tree says in prose ("+N more") is a
     count a consumer can act on.
     """
-    shown = found[:_MAX_NODES]
+    shown, _ = _page(found, limit, offset)
     return {
         "pattern": pattern,
         "total_hits": sum(len(n.hits) for n in found),
         "total_structures": len(found),
-        "structures_omitted": max(0, len(found) - _MAX_NODES),
+        "limit": limit,
+        "offset": max(0, offset),
+        "structures_omitted": len(found) - len(shown),
         "structures": [
             {
                 "file": node_hits.file,
@@ -308,6 +355,7 @@ def hits_to_json(
                     for line_no, text in node_hits.hits[:_MAX_HITS_PER_NODE]
                 ],
                 "hits_omitted": max(0, len(node_hits.hits) - _MAX_HITS_PER_NODE),
+                "more_lines": [line_no for line_no, _ in node_hits.hits[_MAX_HITS_PER_NODE:]],
             }
             for node_hits in shown
         ],

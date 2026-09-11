@@ -1,0 +1,111 @@
+"""Search answers that leave nothing to guess (brief §5.3 item 19): the page
+and its limit are stated, every cut count says where the rest is, a grep
+pattern is read as the caller meant it and the reading is announced, long
+heading paths keep their ends, and "no leads" is said rather than omitted.
+"""
+
+import json
+
+from scantool import cli
+from scantool.content_search import NodeHits, format_hits
+
+
+def run(*argv, capsys):
+    code = cli.main(list(argv))
+    captured = capsys.readouterr()
+    return captured.out, captured.err, code
+
+
+def _corpus(tmp_path, files: int = 5, hits_per_file: int = 1):
+    for i in range(files):
+        body = "\n".join(f"def f{i}_{j}():\n    return needle_{j}\n" for j in range(hits_per_file))
+        (tmp_path / f"m{i:02d}.py").write_text(body + "\n")
+    return tmp_path
+
+
+def test_page_and_limit_are_stated(tmp_path, capsys):
+    _corpus(tmp_path, files=5)
+    out, _, code = run("search", str(tmp_path), "needle", "--limit", "2", capsys=capsys)
+    assert code == 0
+    assert "5 hits in 5 structures for /needle/" in out
+    assert "showing structures 1-2 of 5 (--limit 2); --offset 2 shows the next 2" in out
+    assert "m00.py" in out and "m01.py" in out and "m02.py" not in out
+
+    out, _, _ = run(
+        "search", str(tmp_path), "needle", "--limit", "2", "--offset", "4", capsys=capsys
+    )
+    assert (
+        "showing structures 5-5 of 5 (--limit 2)" in out
+        and "--offset" not in out.split("(--limit 2)")[1].splitlines()[0]
+    )
+    assert "m04.py" in out
+
+    out, _, _ = run("search", str(tmp_path), "needle", capsys=capsys)
+    assert "showing structures" not in out  # everything fits: no page line
+
+
+def test_every_structure_says_its_hit_count_and_more_hits_carry_lines(tmp_path, capsys):
+    (tmp_path / "many.py").write_text(
+        "def crowded():\n"
+        + "\n".join(f"    x{i} = needle  # {i}" for i in range(9))
+        + "\n    return x0\n"
+    )
+    out, _, _ = run("search", str(tmp_path), "needle", capsys=capsys)
+    assert "- crowded () @1-11  (9 hits)" in out
+    assert "+5 more in this structure at lines 6, 7, 8, 9, 10" in out
+    (tmp_path / "many.py").write_text("def single():\n    return needle\n")
+    out, _, _ = run("search", str(tmp_path), "needle", capsys=capsys)
+    assert "(1 hit)" in out
+
+
+def test_grep_alternation_is_read_and_announced(tmp_path, capsys):
+    (tmp_path / "a.py").write_text(
+        "def one():\n    return apple\n\n\ndef two():\n    return pear\n"
+    )
+    out, _, code = run("search", str(tmp_path), r"apple\|pear", capsys=capsys)
+    assert code == 0
+    assert out.splitlines()[0].startswith("note: `\\|` read as alternation (grep BRE)")
+    assert "2 hits in 2 structures" in out
+
+
+def test_long_heading_chains_keep_their_ends():
+    chain = " > ".join(
+        ["Top level document title that is long"]
+        + [f"Section {i} with a long name" for i in range(6)]
+    )
+    hits = [
+        NodeHits(
+            file="doc.md",
+            chain=chain,
+            node_type="heading",
+            node_name="x",
+            signature=None,
+            start_line=1,
+            end_line=2,
+            hits=[(1, "needle")],
+        )
+    ]
+    out = format_hits(hits, "needle")
+    line = [ln for ln in out.splitlines() if ln.startswith("- ")][0]
+    assert line.startswith(
+        "- Top level document title that is long > … > Section 4 with a long name > Section 5 with a long name"
+    )
+
+
+def test_leads_none_is_said(tmp_path, capsys):
+    (tmp_path / "notes.md").write_text("# Notes\n\nsome needle here\n")
+    out, _, _ = run("search", str(tmp_path), "needle", capsys=capsys)
+    assert out.rstrip().endswith(
+        "leads: none (no name called in the hits is defined in another scanned file)"
+    )
+
+
+def test_json_carries_page_and_more_lines(tmp_path, capsys):
+    _corpus(tmp_path, files=3)
+    out, _, _ = run(
+        "search", str(tmp_path), "needle", "--limit", "2", "--offset", "1", "--json", capsys=capsys
+    )
+    document = json.loads(out)
+    assert (document["limit"], document["offset"], document["structures_omitted"]) == (2, 1, 1)
+    assert [s["file"].rsplit("/", 1)[-1] for s in document["structures"]] == ["m01.py", "m02.py"]
+    assert all("more_lines" in s for s in document["structures"])
