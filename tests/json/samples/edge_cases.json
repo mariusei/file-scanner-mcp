@@ -1,0 +1,24 @@
+{
+  "empty_object": {},
+  "empty_array": [],
+  "null_value": null,
+  "boolean_true": true,
+  "boolean_false": false,
+  "integer": 42,
+  "negative": -17,
+  "float": 3.14159,
+  "exponent": 6.022e23,
+  "long_string": "This description is deliberately long enough that scantool has to truncate it in the signature",
+  "array_of_objects": [
+    { "id": 1, "label": "first" },
+    { "id": 2, "label": "second" }
+  ],
+  "deeply": {
+    "nested": {
+      "structure": {
+        "leaf": "value"
+      }
+    }
+  },
+  "unicode_key_é": "value"
+}

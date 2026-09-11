@@ -1,0 +1,18 @@
+basic.toml (2-19)
+- name "demo-app" @2
+- version "1.2.3" @3
+- server @5
+   5 | [server]
+   6 | host = "localhost"
+   7 | port = 8080
+  - host "localhost" @6
+  - port 8080 @7
+- server.tls @9
+  - enabled true @10
+  - cert "./certs/server.pem" @11
+- plugins @13
+  - name "auth" @14
+  - enabled true @15
+- plugins @17
+  - name "cache" @18
+  - enabled false @19

@@ -1,0 +1,19 @@
+# Project configuration
+name = "demo-app"
+version = "1.2.3"
+
+[server]
+host = "localhost"
+port = 8080
+
+[server.tls]
+enabled = true
+cert = "./certs/server.pem"
+
+[[plugins]]
+name = "auth"
+enabled = true
+
+[[plugins]]
+name = "cache"
+enabled = false

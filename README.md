@@ -521,6 +521,8 @@ consumer (measured in `experiments/benchmark/M2B.md`). Two consequences:
 | `.yaml`, `.yml` | YAML | mappings, sequences, scalars, anchors/aliases, multi-document streams |
 | `.md` | Markdown | headings (h1-h6), code blocks with hierarchy |
 | `.txt` | Plain Text | sections, paragraphs |
+| `.json` | JSON | object keys (nested fully), arrays with item counts, scalar values |
+| `.toml` | TOML | tables, array tables, nested keys, inline tables, arrays with item counts |
 | `.png`, `.jpg`, `.gif`, `.webp` | Images | format, dimensions, colors, content type |
 
 All files include metadata (size, modified date, permissions) automatically.

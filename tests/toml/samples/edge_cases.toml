@@ -1,0 +1,16 @@
+[metadata]
+title = "Edge Cases"
+"quoted key" = "value with spaces"
+
+[metadata.details]
+tags = ["a", "b", "c", "d", "e"]
+info = { author = "core team", version = 2 }
+description = "A very long description that should be truncated because it exceeds the fifty character signature limit"
+
+[[items]]
+id = 1
+
+[[items]]
+id = 2
+
+[empty]

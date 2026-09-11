@@ -1,0 +1,7 @@
+{
+  "name": "broken
+  "version": 1,
+  invalid syntax here !!!
+  "nested": {
+    "a": ,
+  }

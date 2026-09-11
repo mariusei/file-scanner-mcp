@@ -1,4 +1,8 @@
-"""Tests for config language."""
+"""Tests for config language (.ini).
+
+.json and .toml semantics moved to test_json_semantic.py / test_toml_semantic.py
+alongside their own dedicated language handlers.
+"""
 
 import pytest
 
@@ -17,9 +21,9 @@ class TestConfigAnalyzer:
     def test_extensions(self, language):
         """Test that analyzer supports correct extensions."""
         extensions = language.get_extensions()
-        assert ".json" in extensions
-        assert ".toml" in extensions
         assert ".ini" in extensions
+        assert ".json" not in extensions
+        assert ".toml" not in extensions
 
     def test_language_name(self, language):
         """Test language name."""
@@ -41,124 +45,8 @@ class TestConfigAnalyzer:
 
     def test_should_analyze_normal_files(self, language):
         """Test that normal config files are analyzed."""
-        assert language.should_analyze("package.json") is True
-        assert language.should_analyze("tsconfig.json") is True
-        assert language.should_analyze("pyproject.toml") is True
         assert language.should_analyze("docker-compose.yml") is True
-
-    # ===================================================================
-    # JSON imports
-    # ===================================================================
-
-    def test_extract_imports_tsconfig_extends(self, language):
-        """Test extraction of tsconfig extends."""
-        content = """{
-  "extends": "./base.json",
-  "compilerOptions": {}
-}"""
-        imports = language.extract_imports("tsconfig.json", content)
-        extends_imports = [imp for imp in imports if imp.import_type == "extends"]
-        assert len(extends_imports) == 1
-        assert extends_imports[0].target_module == "./base.json"
-
-    def test_extract_imports_tsconfig_files(self, language):
-        """Test extraction of tsconfig files array."""
-        content = """{
-  "files": [
-    "src/index.ts",
-    "src/types.ts"
-  ]
-}"""
-        imports = language.extract_imports("tsconfig.json", content)
-        file_imports = [imp for imp in imports if imp.import_type == "file_reference"]
-        assert len(file_imports) == 2
-        assert any(imp.target_module == "src/index.ts" for imp in file_imports)
-        assert any(imp.target_module == "src/types.ts" for imp in file_imports)
-
-    def test_extract_imports_tsconfig_paths(self, language):
-        """Test extraction of tsconfig path mappings."""
-        content = """{
-  "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*"],
-      "@components/*": ["./src/components/*"]
-    }
-  }
-}"""
-        imports = language.extract_imports("tsconfig.json", content)
-        path_imports = [imp for imp in imports if imp.import_type == "path_mapping"]
-        assert len(path_imports) == 2
-        assert any(imp.target_module == "./src/*" for imp in path_imports)
-        assert any(imp.target_module == "./src/components/*" for imp in path_imports)
-
-    def test_extract_imports_package_json_scripts(self, language):
-        """Test extraction of file references from package.json scripts."""
-        content = """{
-  "scripts": {
-    "build": "node build.js",
-    "test": "node ./scripts/test.mjs"
-  }
-}"""
-        imports = language.extract_imports("package.json", content)
-        script_imports = [imp for imp in imports if imp.import_type == "script_file"]
-        assert len(script_imports) >= 1
-        assert any("build.js" in imp.target_module for imp in script_imports)
-
-    def test_extract_imports_package_json_no_dependencies(self, language):
-        """Test that package.json dependencies are NOT extracted (they're package names)."""
-        content = """{
-  "dependencies": {
-    "react": "^18.0.0",
-    "lodash": "^4.17.21"
-  }
-}"""
-        imports = language.extract_imports("package.json", content)
-        # Should not extract package names from dependencies
-        assert not any("react" in imp.target_module for imp in imports)
-        assert not any("lodash" in imp.target_module for imp in imports)
-
-    # ===================================================================
-    # TOML imports
-    # ===================================================================
-
-    def test_extract_imports_cargo_toml_path_dependencies(self, language):
-        """Test extraction of path dependencies from Cargo.toml."""
-        content = """[dependencies]
-serde = "1.0"
-my_crate = { path = "../my_crate" }
-utils = { path = "./utils" }
-"""
-        imports = language.extract_imports("Cargo.toml", content)
-        path_imports = [imp for imp in imports if imp.import_type == "path_dependency"]
-        assert len(path_imports) == 2
-        assert any(imp.target_module == "../my_crate" for imp in path_imports)
-        assert any(imp.target_module == "./utils" for imp in path_imports)
-
-    def test_extract_imports_cargo_toml_no_registry_deps(self, language):
-        """Test that Cargo.toml registry dependencies are NOT extracted."""
-        content = """[dependencies]
-serde = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-"""
-        imports = language.extract_imports("Cargo.toml", content)
-        # Should not extract registry package names
-        assert not any(imp.target_module == "serde" for imp in imports)
-        assert not any(imp.target_module == "tokio" for imp in imports)
-
-    def test_extract_imports_pyproject_toml_config_file(self, language):
-        """Test extraction of config file paths from pyproject.toml."""
-        content = """[tool.mypy]
-config_file = "mypy.ini"
-python_version = "3.11"
-"""
-        imports = language.extract_imports("pyproject.toml", content)
-        config_imports = [imp for imp in imports if imp.import_type == "config_file"]
-        assert len(config_imports) == 1
-        assert config_imports[0].target_module == "mypy.ini"
-
-    # ===================================================================
-    # INI imports
-    # ===================================================================
+        assert language.should_analyze("app.ini") is True
 
     def test_extract_imports_ini_file_paths(self, language):
         """Test extraction of file paths from INI files."""
@@ -178,22 +66,20 @@ data_dir = ../data
 
     def test_extract_imports_generic_quoted_paths(self, language):
         """Test extraction of generic quoted relative paths."""
-        content = """{
-  "template": "./templates/base.html",
-  "stylesheet": "../assets/style.css"
-}"""
-        imports = language.extract_imports("custom.json", content)
+        content = """template: "./templates/base.html"
+stylesheet: "../assets/style.css"
+"""
+        imports = language.extract_imports("custom.yaml", content)
         assert len(imports) >= 2
         assert any(imp.target_module == "./templates/base.html" for imp in imports)
         assert any(imp.target_module == "../assets/style.css" for imp in imports)
 
     def test_extract_imports_generic_no_urls(self, language):
         """Test that URLs are not extracted as paths."""
-        content = """{
-  "api": "https://api.example.com/data.json",
-  "local": "./local/file.json"
-}"""
-        imports = language.extract_imports("config.json", content)
+        content = """api: "https://api.example.com/data.json"
+local: "./local/file.json"
+"""
+        imports = language.extract_imports("config.yaml", content)
         # Should extract local path but not URL
         assert any(imp.target_module == "./local/file.json" for imp in imports)
         assert not any("https://" in imp.target_module for imp in imports)
@@ -202,104 +88,8 @@ data_dir = ../data
     # Entry points
     # ===================================================================
 
-    def test_find_entry_points_package_json(self, language):
-        """Test detection of package.json as npm project entry point."""
-        content = """{
-  "name": "my-app",
-  "main": "index.js"
-}"""
-        entry_points = language.find_entry_points("package.json", content)
-        project_entries = [ep for ep in entry_points if ep.type == "project_config"]
-        assert len(project_entries) == 1
-        assert project_entries[0].framework == "npm"
-
-    def test_find_entry_points_package_json_main(self, language):
-        """Test detection of main entry in package.json."""
-        content = """{
-  "main": "dist/index.js"
-}"""
-        entry_points = language.find_entry_points("package.json", content)
-        main_entries = [ep for ep in entry_points if ep.type == "main_entry"]
-        assert len(main_entries) == 1
-        assert main_entries[0].name == "dist/index.js"
-
-    def test_find_entry_points_package_json_bin(self, language):
-        """Test detection of bin scripts in package.json."""
-        content = """{
-  "bin": {
-    "my-cli": "./bin/cli.js",
-    "my-tool": "./bin/tool.js"
-  }
-}"""
-        entry_points = language.find_entry_points("package.json", content)
-        bin_entries = [ep for ep in entry_points if ep.type == "bin_script"]
-        assert len(bin_entries) == 2
-        assert any(ep.name == "my-cli" for ep in bin_entries)
-        assert any(ep.name == "my-tool" for ep in bin_entries)
-
-    def test_find_entry_points_tsconfig_json(self, language):
-        """Test detection of tsconfig.json as TypeScript project."""
-        content = """{
-  "compilerOptions": {}
-}"""
-        entry_points = language.find_entry_points("tsconfig.json", content)
-        project_entries = [ep for ep in entry_points if ep.type == "project_config"]
-        assert len(project_entries) == 1
-        assert project_entries[0].framework == "TypeScript"
-
-    def test_find_entry_points_pyproject_toml(self, language):
-        """Test detection of pyproject.toml as Python project."""
-        content = """[project]
-name = "my-package"
-version = "0.1.0"
-"""
-        entry_points = language.find_entry_points("pyproject.toml", content)
-        project_entries = [ep for ep in entry_points if ep.type == "project_config"]
-        assert len(project_entries) == 1
-        assert project_entries[0].framework == "Python"
-
-    def test_find_entry_points_pyproject_toml_scripts(self, language):
-        """Test detection of project.scripts section in pyproject.toml."""
-        content = """[project.scripts]
-my-cli = "my_package:main"
-"""
-        entry_points = language.find_entry_points("pyproject.toml", content)
-        script_entries = [ep for ep in entry_points if ep.type == "scripts_section"]
-        assert len(script_entries) == 1
-
-    def test_find_entry_points_cargo_toml(self, language):
-        """Test detection of Cargo.toml as Rust project."""
-        content = """[package]
-name = "my-crate"
-version = "0.1.0"
-"""
-        entry_points = language.find_entry_points("Cargo.toml", content)
-        project_entries = [ep for ep in entry_points if ep.type == "project_config"]
-        assert len(project_entries) == 1
-        assert project_entries[0].framework == "Rust"
-
-    def test_find_entry_points_cargo_toml_bin(self, language):
-        """Test detection of [[bin]] targets in Cargo.toml."""
-        content = """[[bin]]
-name = "my-cli"
-path = "src/bin/cli.rs"
-
-[[bin]]
-name = "my-tool"
-"""
-        entry_points = language.find_entry_points("Cargo.toml", content)
-        bin_entries = [ep for ep in entry_points if ep.type == "bin_target"]
-        assert len(bin_entries) == 2
-
-    # ===================================================================
-    # Classification
-    # ===================================================================
-
     def test_classify_file_all_config(self, language):
         """Test that all config files are classified as config cluster."""
-        assert language.classify_file("package.json", "{}") == "config"
-        assert language.classify_file("tsconfig.json", "{}") == "config"
-        assert language.classify_file("pyproject.toml", "") == "config"
         assert language.classify_file("docker-compose.yml", "") == "config"
         assert language.classify_file("config.ini", "") == "config"
 
@@ -307,22 +97,12 @@ name = "my-tool"
     # Edge cases
     # ===================================================================
 
-    def test_extract_imports_malformed_json(self, language):
-        """Test that malformed JSON doesn't crash the language."""
-        content = """{
-  "invalid": "json
-  missing closing brace
-"""
-        imports = language.extract_imports("broken.json", content)
-        # Should return generic path patterns if any, but not crash
-        assert isinstance(imports, list)
-
     def test_extract_imports_empty_file(self, language):
         """Test that empty files return empty imports."""
-        imports = language.extract_imports("empty.json", "")
+        imports = language.extract_imports("empty.yaml", "")
         assert imports == []
 
     def test_find_entry_points_empty_file(self, language):
         """Test that empty files return empty entry points."""
-        entry_points = language.find_entry_points("empty.json", "")
+        entry_points = language.find_entry_points("empty.yaml", "")
         assert entry_points == []
