@@ -48,7 +48,7 @@ USAGE
   sct focus    <path> <name|heading> [--ref REF]
   sct focus    <path>::<name>[@REF]        the address form, one argument
   sct focus    - --as <path> <name>        stdin content, one node
-  sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE]
+  sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]
   sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
   sct surface  <package-dir> [--ref REF] [--against REF]
   sct overlap  <base> <branch>... [--repo DIR]
@@ -72,10 +72,12 @@ COMMANDS
             Answers open with the node's address, `path::Qualified.name (a-b)`.
   search    Text across a directory with structural context: each hit shows
             its enclosing structure, plus leads to where matched names are
-            defined. --names matches structure names instead of text. The
-            pattern is a Python regex: `a|b` alternates, grep's `\\|` is a
-            literal bar. --type filters WHICH structures are reported, not
-            where the text is. Truncates at 40 structures and says so.
+            defined; when no lead exists it says so. --names matches
+            structure names instead of text. The pattern is a Python regex;
+            grep's `\\|` is read as alternation with a note. --type filters
+            WHICH structures are reported, not where the text is. Files come
+            in path order; 40 structures per page, --limit/--offset for the
+            rest, and the page is stated.
   diff      Structural diff between refs. One ref = that ref vs the working
             tree. Two refs = A...B against their merge-base by default
             (--no-merge-base compares the tips; a note says which). Per
@@ -430,6 +432,8 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
     kwargs = dict(
         type_filter=args.type,
         include_metadata=False,
+        limit=args.limit,
+        offset=args.offset,
         output_format="json" if args.json else "tree",
         **pattern,
     )
@@ -675,6 +679,10 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     search.add_argument("pattern", help="Python regex")
     search.add_argument("--names", action="store_true", help="match structure names, not text")
     search.add_argument("--type", metavar="TYPE", help="report only structures of this type")
+    search.add_argument("--limit", type=int, default=40, metavar="N", help="structures per page")
+    search.add_argument(
+        "--offset", type=int, default=0, metavar="N", help="skip this many structures"
+    )
     ref_option(search)
 
     diff = parser("diff", "Structural diff between refs, or a ref and the working tree.", True)

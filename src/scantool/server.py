@@ -1077,6 +1077,8 @@ def search_structures(
     min_complexity: int | None = None,
     content_pattern: str | None = None,
     include_metadata: bool = True,
+    limit: int = 40,
+    offset: int = 0,
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -1129,6 +1131,14 @@ def search_structures(
         if not include_metadata:
             results = {path: _without_file_info(nodes) for path, nodes in results.items()}
             sweep.results = results
+        if content_pattern and "\\|" in content_pattern:
+            # grep -r users write BRE; in a Python regex \| is a literal bar
+            # and the answer would be a silent "no matches" (§9 item 3)
+            content_pattern = content_pattern.replace("\\|", "|")
+            sweep.notes.append(
+                "note: `\\|` read as alternation (grep BRE); this is a Python regex, "
+                "where `|` alternates — write `[|]` for a literal bar"
+            )
         header = "".join(f"{note}\n" for note in sweep.notes) + format_coverage(sweep) + "\n"
 
         if content_pattern is not None:
@@ -1145,7 +1155,7 @@ def search_structures(
                         type="text",
                         text=json.dumps(
                             {
-                                **hits_to_json(found, content_pattern, leads),
+                                **hits_to_json(found, content_pattern, leads, limit, offset),
                                 "coverage": coverage_dict(sweep),
                             },
                             indent=2,
@@ -1153,7 +1163,10 @@ def search_structures(
                     )
                 ]
             return [
-                TextContent(type="text", text=header + format_hits(found, content_pattern, leads))
+                TextContent(
+                    type="text",
+                    text=header + format_hits(found, content_pattern, leads, limit, offset),
+                )
             ]
 
         # Filter structures
