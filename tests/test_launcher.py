@@ -186,3 +186,17 @@ def test_nothing_names_a_client():
     ]
     for text in sources:
         assert not any(client in text for client in CLIENTS), text[:120]
+
+
+def test_instructions_route_to_the_shell_before_the_tool_list():
+    """Adoption follows the channel the harness recommends: the shell block
+    and the TRIGGER line come before the MCP tool list, and TRIGGER names sct."""
+    text = server.mcp.instructions or ""
+    shell, trigger, tools = (
+        text.index("IN YOUR SHELL"),
+        text.index("TRIGGER:"),
+        text.index("THE MCP TOOLS BELOW"),
+    )
+    assert shell < trigger < tools
+    assert "sct focus <path> <name>" in text[trigger:tools]
+    assert len(text[:tools].encode()) < 2048  # the part clients keep when they truncate

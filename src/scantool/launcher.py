@@ -69,11 +69,17 @@ def shell_hint(*examples: str) -> str:
 
 
 def shell_instructions() -> str:
-    """The paragraph for the server-level instructions field."""
+    """The shell block for the server-level instructions: the shortest path
+    for an agent with a shell, so it comes before the tool list."""
     return (
-        "SHELL: the same reader is available in your shell as `sct` "
-        "(`sct --help` lists the commands). If `sct` is not on PATH, run "
-        f"`{quoted_interpreter()} -m scantool.cli` in its place."
+        "IN YOUR SHELL (no tool lookup needed):\n"
+        "  sct <dir>                 orientation: entry points, hot functions, call-graph map\n"
+        "  sct scan <path>...        skeleton: every structure with path:line and a condensed\n"
+        "                            excerpt; `-` reads paths from stdin, `- --as <path>` content\n"
+        "  sct focus <path> <name>   ONE function/class/section verbatim with parent context\n"
+        "  sct search <dir> <regex>  text or names with their enclosing structure and leads\n"
+        "  sct --help for the rest. If sct is not on PATH, "
+        f"{quoted_interpreter()} -m scantool.cli replaces sct."
     )
 
 

@@ -33,48 +33,43 @@ from .scanner import FileScanner
 # Injected into context at session start even when tools are deferred behind
 # ToolSearch (clients truncate at ~2KB — most important guidance first).
 SERVER_INSTRUCTIONS = """\
-Structural scanner for code and documents — use INSTEAD of ls/find/grep/cat \
-when exploring projects or understanding files. Handles all file types: code \
-(20+ languages), markdown, HTML, CSS, SQL, config.
-
-WHY: returns structure (functions, classes, headings, line numbers) with \
-condensed code skeletons instead of raw file contents — far fewer tool calls \
-and tokens than ls/find/grep followed by full file reads. Repeat scans are \
-delta-aware: unchanged files come back as a one-liner.
+Structural scanner for code and documents — use INSTEAD of ls/find/grep/cat/\
+sed -n/git show when exploring a project or understanding a file. All file \
+types: code (20+ languages), markdown, HTML, CSS, SQL, config.
 
 {shell}
 
-PICK THE CHEAPEST TOOL THAT ANSWERS THE QUESTION:
+TRIGGER: about to run ls, find, grep, cat, sed -n or git show to read code? \
+STOP — run the sct line above instead: structure (functions, classes, \
+headings, path:line on everything) with condensed skeletons, in about a \
+second, instead of raw text. About to cat/sed/Read a file to see one \
+function or section? `sct focus <path> <name>` reads exactly that node — \
+measured 75% fewer read tokens at equal answer quality (M2c).
+
+THE MCP TOOLS BELOW are the same reader as structured calls, for clients \
+without a shell or when a call needs JSON. Pick the cheapest that answers \
+the question:
 - targeted question ("where is X" / "how does X work") -> search_structures: \
 name/type/decorator filters, or content_pattern for text search WITH \
-enclosing function/class/section context (replaces grep)
+enclosing function/class/section context
 - cheap overview of a directory -> scan_directory: file tree with one-line \
-gists, code health and churn labels (replaces ls/glob)
-- one file -> scan_file with budget=1500 (300 for a quick look) BEFORE \
-reading it; it may append a CONNECTIVITY note (candidate dead/orphan/drift \
-across the whole corpus, silent when clean) — a hint to look at, not a verdict
-- read ONE function/class/section from the scan -> scan_file with \
-focus="name" (or "ClassA.method"): the node verbatim plus parent context. \
-Never cat a whole file or guess a sed/Read line range for this — measured \
-75% fewer read tokens at equal answer quality (M2c)
-- "what changed" / review -> scan_diff against HEAD/main/any ref: \
-new/changed/removed functions (replaces git diff)
-- hunt drift / misaligned implementations across a codebase -> find_divergence: \
-functions that break a call pattern their siblings follow (review hint, silent \
-when consistent)
+gists, code health and churn labels
+- one file -> scan_file with budget=1500 (300 for a quick look); may append \
+a CONNECTIVITY note (candidate dead/orphan/drift across the corpus, silent \
+when clean) — a hint to look at, not a verdict
+- read ONE function/class/section -> scan_file with focus="name" (or \
+"ClassA.method"): the node verbatim plus parent context
+- "what changed" / review -> scan_diff against HEAD/main/any ref
+- hunt drift / misaligned implementations -> find_divergence: functions that \
+break a call pattern their siblings follow (review hint, silent when consistent)
 - first-time orientation in an UNKNOWN codebase -> preview_directory: entry \
-points, hot functions, call graph (RICH, ~3-5k tokens — not for targeted \
-questions)
-- folder hierarchy only -> list_directories; remote/unsaved content -> \
-scan_file_content
-
-TRIGGER: about to run ls, find, grep or cat to explore? STOP — one of the \
-tools above answers it cheaper. About to cat/sed/Read a file to see one \
-function or section? STOP — scan_file(focus=...) reads exactly that node. \
-Default first call in a directory you have not scanned yet: scan_directory.
+points, hot functions, call graph (RICH, ~3-5k tokens)
+- folder hierarchy only -> list_directories; remote/unsaved content, a git \
+blob or stdin -> scan_file_content (same budget and focus as scan_file)
 
 After a full recursive scan_directory(pattern="**/*"), do not re-search with \
-glob/grep — the output already lists every file.
+glob/grep — the output already lists every file. Repeat scans are \
+delta-aware: unchanged files come back as a one-liner.
 
 PARAMETERS (keyword arguments required): directory= (not directory_path); \
 scan_file takes file_path=; max_depth exists only on list_directories. Do \
@@ -92,6 +87,13 @@ dir_formatter = DirectoryFormatter()
 
 # Session-scoped scan memory for delta mode — lives as long as the server
 scan_memory = ScanMemory()
+
+
+def _budget_for(budget: int | None, depth: str | None) -> int | None:
+    """An explicit budget wins; otherwise depth names one of three tiers."""
+    if budget is None and depth is not None:
+        return {"quick": 300, "normal": 1500, "deep": None}.get(depth)
+    return budget
 
 
 def _git_activity_section(directory: str) -> str:
@@ -381,16 +383,21 @@ def list_directories(
 
 @mcp.tool(
     tags={"remote", "http", "content"},
-    description="Scan file content directly - USE THIS for remote files, GitHub, APIs instead of saving to disk first"
-    + shell_hint("--help"),
+    description="Scan file content directly - USE THIS for remote files, GitHub, APIs, a git blob or stdin instead of saving to disk first. Same budget/depth and focus='name' as scan_file"
+    + shell_hint("scan - --as <path>", "focus - --as <path> <name>"),
 )
 def scan_file_content(
     content: str,
     filename: str,
+    focus: str | None = None,
     show_signatures: bool = True,
     show_decorators: bool = True,
     show_docstrings: bool = True,
     show_complexity: bool = False,
+    condense: bool = True,
+    budget: int | None = None,
+    depth: str | None = None,
+    mode: str = "balanced",
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -416,11 +423,19 @@ def scan_file_content(
         Common:
             content: The file content as a string
             filename: Filename (with extension) to determine parser type
+            focus: Read ONE node verbatim by name ("query", "ClassA.method",
+                a heading or a substring of one), as in scan_file
+        Cost & slicing:
+            budget: Approximate token cap for code skeletons (None = full)
+            depth: "quick" (~300), "normal" (~1500) or "deep" (full) when
+                budget is not given
+            mode: Saliency weight profile — "balanced" or "active"
         Semantics & display:
             show_signatures: Include function signatures with types (default: True)
             show_decorators: Include decorators like @property, @staticmethod (default: True)
             show_docstrings: Include first line of docstrings (default: True)
             show_complexity: Show complexity metrics for long/complex functions (default: False)
+            condense: Show code as skeletons rather than verbatim excerpts (default: True)
             output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -434,7 +449,13 @@ def scan_file_content(
         )
     """
     try:
-        structures = scanner.scan_content(content=content, filename=filename, include_metadata=True)
+        structures = scanner.scan_content(
+            content=content,
+            filename=filename,
+            include_metadata=True,
+            budget=_budget_for(budget, depth),
+            mode=mode,
+        )
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
@@ -448,19 +469,23 @@ def scan_file_content(
         if not structures:
             return [TextContent(type="text", text=f"{filename} (empty file or no structure found)")]
 
-        # Format output
+        if focus is not None:
+            source_lines = content.split("\n")
+            return [
+                TextContent(
+                    type="text", text=format_focus(filename, structures, source_lines, focus)
+                )
+            ]
         if output_format == "json":
             return [TextContent(type="text", text=_structures_to_json(structures, filename))]
-        else:
-            # Use custom formatter with options
-            custom_formatter = TreeFormatter(
-                show_signatures=show_signatures,
-                show_decorators=show_decorators,
-                show_docstrings=show_docstrings,
-                show_complexity=show_complexity,
-            )
-            result = custom_formatter.format(filename, structures)
-            return [TextContent(type="text", text=result)]
+        custom_formatter = TreeFormatter(
+            show_signatures=show_signatures,
+            show_decorators=show_decorators,
+            show_docstrings=show_docstrings,
+            show_complexity=show_complexity,
+            condense=condense,
+        )
+        return [TextContent(type="text", text=custom_formatter.format(filename, structures))]
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error scanning content: {e}")]
@@ -570,8 +595,7 @@ def scan_file(
     try:
         # depth is an alias carried over from preview_directory; map it to the
         # native cost lever. Explicit budget always wins; "deep" == full (None).
-        if budget is None and depth is not None:
-            budget = {"quick": 300, "normal": 1500, "deep": None}.get(depth)
+        budget = _budget_for(budget, depth)
 
         # The detail level THIS call would show — a previous record may only
         # shorten the answer if the consumer already saw at least this much
