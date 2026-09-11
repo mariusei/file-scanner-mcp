@@ -11,10 +11,12 @@ SOLUTION:
   `sct`: a second door into the same tool functions the MCP server exposes.
   No second logic, no second formatter — the output contract is the same.
   Only the server-layer decorations that describe the checkout rather than
-  the code (file size, mtime, churn, delta memory) are left out.
+  the code (file size, mtime, churn, delta memory) are left out. Agents live
+  in pipes, so `-` reads a path list from stdin and `- --as <path>` scans
+  stdin content under its real name (`git show REF:path | sct scan - --as path`).
 
 SCOPE:
-  ✓ <dir> (orientation), scan, focus, search; --json, --ascii
+  ✓ <dir> (orientation), scan, focus, search; --json, --ascii; stdin
   ✓ UTF-8 and LF on stdout on every platform
   ✗ git refs, diff, overlap, surface, resolve, callers: later steps
 """
@@ -29,15 +31,22 @@ from collections.abc import Callable, Sequence
 HELP = """\
 sct — structure-first reader for code and documents
 
+  sct <dir>                 orientation: entry points, hot functions, call-graph map
+  sct scan <path>...        skeleton: every structure with path:line, condensed excerpts
+  sct focus <path> <name>   one function, class or section verbatim with parent context
+
 Reads code (Python, TypeScript, Go, Rust, Java, …) and documents (Markdown,
 HTML, CSS, SQL, config) as STRUCTURE — functions, classes, headings,
 sections, signatures, call relations — with path:line on everything. Ask by
 name, heading or question; never by line number.
 
 USAGE
-  sct <dir>                              orientation: entry points, hot functions, map
+  sct <dir>
   sct scan     <path>... [--budget N] [--depth quick|normal|deep]
+  sct scan     - [...]                     paths from stdin, one per line
+  sct scan     - --as <path> [...]         stdin content scanned as <path>
   sct focus    <path> <name|heading>
+  sct focus    - --as <path> <name>        stdin content, one node
   sct search   <dir> <pattern> [--names] [--type TYPE]
   sct <command> --help
   any command: --json, --ascii
@@ -51,6 +60,7 @@ COMMANDS
             Directory → tree with one-line gists. --depth quick ≈ 300
             tokens/file, normal ≈ 1500, deep = everything (files only).
             Elided content is marked ⟨…⟩; ask with focus to see it.
+            `git show REF:path | sct scan - --as path` reads at a git ref.
   focus     One structure verbatim with parent context. Name, qualified name
             (Class.method), heading, or a substring of a heading. Several
             matches → the list, exit 1. None → the top-level names, exit 1.
@@ -63,15 +73,18 @@ COMMANDS
 
 OPTIONS
   --budget N     Approximate output size in tokens (scan, files only).
+  --as PATH      The name stdin content is scanned under (its extension picks
+                 the parser; the name appears in the output).
   --json         Same content as JSON (scan, search).
   --ascii        scantool's own glyphs as ASCII; file content is untouched.
 
 CONVENTIONS
   path:line on every structure. Exit 0 ok, 1 not found, 2 usage error.
-  Plain text; one fact per line.
+  Plain text; one fact per line. Errors on stderr.
 """
 
 COMMANDS = ("scan", "focus", "search")
+STDIN = "-"
 
 # Server-layer decorations that describe the checkout, not the code: the
 # file-info line (size, mtime), per-node edit counts, and the directory
@@ -128,6 +141,10 @@ NOT_FOUND_PREFIXES = (
 )
 
 
+class UsageError(Exception):
+    """A usage error found after argparse: printed like argparse's, exit 2."""
+
+
 def strip_environment(text: str) -> str:
     return DIRECTORY_METADATA.sub("", EDIT_TAG.sub("", FILE_INFO_LINE.sub("", text)))
 
@@ -157,6 +174,22 @@ def _not_found(text: str) -> bool:
     return text.startswith(NOT_FOUND_PREFIXES)
 
 
+def _stdin_paths(command: str) -> list[str]:
+    paths = [line.strip() for line in sys.stdin.read().splitlines() if line.strip()]
+    if not paths:
+        raise UsageError(f"sct {command}: `-` given but stdin holds no paths")
+    return paths
+
+
+def _stdin_content(command: str, as_path: str | None, paths: Sequence[str]) -> str:
+    """The content form: exactly one path, `-`, plus --as naming it."""
+    if list(paths) != [STDIN]:
+        raise UsageError(f"sct {command}: --as goes with `-` as the only path")
+    if not as_path:
+        raise UsageError(f"sct {command}: --as PATH is required to scan stdin content")
+    return sys.stdin.read()
+
+
 def run_orient(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
@@ -169,8 +202,24 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
     output_format = "json" if args.json else "tree"
+    if args.as_path:
+        content = _stdin_content("scan", args.as_path, args.path)
+        text = _text(
+            server.scan_file_content(
+                content=content,
+                filename=args.as_path,
+                budget=args.budget,
+                depth=args.depth,
+                output_format=output_format,
+            )
+        )
+        return [text], 1 if _not_found(text) else 0
+
+    paths = [
+        p for given in args.path for p in (_stdin_paths("scan") if given == STDIN else [given])
+    ]
     outputs, code = [], 0
-    for path in args.path:
+    for path in paths:
         if os.path.isdir(path):
             result = server.scan_directory(directory=path, delta=False, output_format=output_format)
         elif os.path.isfile(path):
@@ -195,9 +244,14 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
 def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
-    if not os.path.isfile(args.path):
+    if args.as_path or args.path == STDIN:
+        content = _stdin_content("focus", args.as_path, [args.path])
+        result = server.scan_file_content(content=content, filename=args.as_path, focus=args.name)
+    elif not os.path.isfile(args.path):
         return [f"sct focus: no such file: {args.path}"], 1
-    text = _text(server.scan_file(file_path=args.path, focus=args.name, delta=False))
+    else:
+        result = server.scan_file(file_path=args.path, focus=args.name, delta=False)
+    text = _text(result)
     return [text], 1 if _not_found(text) else 0
 
 
@@ -239,17 +293,27 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
             p.set_defaults(json=False)
         return p
 
+    def stdin_option(p: argparse.ArgumentParser) -> None:
+        p.add_argument(
+            "--as",
+            dest="as_path",
+            metavar="PATH",
+            help="scan stdin content (path `-`) under this name; its extension picks the parser",
+        )
+
     orient = parser("", "Orientation: entry points, hot functions, call-graph map.", False)
     orient.add_argument("directory")
 
     scan = parser("scan", "Skeleton of files or a directory, within a budget.", True)
-    scan.add_argument("path", nargs="+")
+    scan.add_argument("path", nargs="+", help="file, directory, or `-` for paths on stdin")
     scan.add_argument("--budget", type=int, metavar="N", help="approximate output tokens (files)")
     scan.add_argument("--depth", choices=("quick", "normal", "deep"), help="files only")
+    stdin_option(scan)
 
     focus = parser("focus", "One structure verbatim with parent context.", False)
-    focus.add_argument("path")
+    focus.add_argument("path", help="file, or `-` with --as for stdin content")
     focus.add_argument("name", help="name, Class.method, heading, or a heading substring")
+    stdin_option(focus)
 
     search = parser("search", "Text or names across a directory with structural context.", True)
     search.add_argument("directory")
@@ -297,8 +361,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stdout.write(f"sct {__version__}\n")
         return 0
     command = argv[0] if argv[0] in COMMANDS else ""
-    args = build_parsers()[command].parse_args(argv[1:] if command else argv)
-    outputs, code = RUNNERS[command](args)
+    parser = build_parsers()[command]
+    args = parser.parse_args(argv[1:] if command else argv)
+    try:
+        outputs, code = RUNNERS[command](args)
+    except UsageError as error:
+        parser.print_usage(sys.stderr)
+        sys.stderr.write(f"{error}\n")
+        return 2
     _emit(outputs, args.json, args.ascii)
     return code
 

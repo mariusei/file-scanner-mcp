@@ -6,6 +6,7 @@ server-layer decorations (file-info, churn) removed, exit codes follow the
 help text, and stdout is UTF-8 with LF on every platform.
 """
 
+import io
 import json
 import os
 import subprocess
@@ -192,3 +193,50 @@ def test_stdout_is_utf8_and_lf_even_when_the_console_is_not():
     assert result.returncode == 0, result.stderr
     assert "—".encode() in result.stdout
     assert b"\r\n" not in result.stdout
+
+
+def test_help_opens_with_the_three_lines_every_agent_needs(capsys):
+    out, _, _ = run("--help", capsys=capsys)
+    first = [line.strip() for line in out.splitlines()[2:5]]
+    assert first[0].startswith("sct <dir>")
+    assert first[1].startswith("sct scan <path>")
+    assert first[2].startswith("sct focus <path> <name>")
+
+
+def test_scan_reads_a_path_list_from_stdin(monkeypatch, capsys):
+    monkeypatch.setattr("sys.stdin", io.StringIO(f"{PYTHON_SAMPLE}\n\n{MARKDOWN_SAMPLE}\n"))
+    out, _, code = run("scan", "-", "--depth", "quick", capsys=capsys)
+    assert code == 0
+    assert "DatabaseManager" in out and "basic.md (" in out
+
+
+def test_scan_stdin_content_under_a_name(monkeypatch, capsys):
+    """`git show REF:path | sct scan - --as path`: bytes scanned as that file."""
+    monkeypatch.setattr("sys.stdin", io.StringIO(PYTHON_SAMPLE.read_text()))
+    out, _, code = run("scan", "-", "--as", "lib/basic.py", capsys=capsys)
+    golden = (GOLDEN_DIR / "python.txt").read_text(encoding="utf-8")
+    assert code == 0
+    assert out.splitlines()[1:] == golden.splitlines()[1:]
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(PYTHON_SAMPLE.read_text()))
+    out, _, code = run("scan", "-", "--as", "lib/basic.py", "--json", capsys=capsys)
+    assert code == 0 and json.loads(out)["file"] == "lib/basic.py"
+
+
+def test_focus_on_stdin_content(monkeypatch, capsys):
+    monkeypatch.setattr("sys.stdin", io.StringIO(PYTHON_SAMPLE.read_text()))
+    out, _, code = run("focus", "-", "--as", "basic.py", "DatabaseManager.query", capsys=capsys)
+    golden = (GOLDEN_DIR / "focus_python.txt").read_text(encoding="utf-8")
+    assert code == 0
+    assert out.splitlines()[0] == golden.splitlines()[0]
+    assert out.splitlines()[2:] == golden.splitlines()[2:]
+
+
+def test_stdin_usage_errors_exit_2(monkeypatch, capsys):
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    assert cli.main(["scan", "-"]) == 2  # `-` with nothing on stdin
+    monkeypatch.setattr("sys.stdin", io.StringIO("x"))
+    assert cli.main(["scan", str(PYTHON_SAMPLE), "--as", "a.py"]) == 2  # --as without `-`
+    monkeypatch.setattr("sys.stdin", io.StringIO("x"))
+    assert cli.main(["focus", "-", "name"]) == 2  # `-` without --as
+    _, err, _ = run("--help", capsys=capsys)  # drain

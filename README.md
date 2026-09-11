@@ -115,7 +115,9 @@ Agents read most code through their shell, not through MCP tools. So when the se
 ```
 sct <dir>                                        orientation: entry points, hot functions, map
 sct scan   <path>... [--budget N] [--depth quick|normal|deep]
+sct scan   - [--as <path>]                       paths from stdin; with --as, stdin content scanned as <path>
 sct focus  <path> <name|heading>
+sct focus  - --as <path> <name>                  one node from stdin content (git show REF:path | sct focus - --as path name)
 sct search <dir> <pattern> [--names] [--type TYPE]
 sct --help                                       the full help; --json on scan and search, --ascii anywhere
 ```
@@ -350,16 +352,19 @@ read tokens than cat/sed line-range guessing.
 
 ### scan_file_content - Analyze content directly
 
-Scan content without requiring a file path. Works with remote files, APIs, or in-memory content.
+Scan content without requiring a file path: remote files, API responses, a git blob, stdin. The same reader as `scan_file`, with the same `budget`/`depth` tiers and `focus`; only the on-disk metadata and git signals are absent.
 
 ```python
 scan_file_content(
     content="def hello(): pass\n\nclass MyClass:\n    pass",
-    filename="example.py",  # Extension determines parser
+    filename="example.py",  # Extension determines parser; the name appears in the output
+    focus=None,  # One node verbatim, as in scan_file ("MyClass", "Class.method", a heading)
+    budget=None,  # Approximate token cap; or depth="quick" | "normal" | "deep"
     show_signatures=True,
     show_decorators=True,
     show_docstrings=True,
     show_complexity=False,
+    condense=True,
     output_format="tree",
 )
 ```

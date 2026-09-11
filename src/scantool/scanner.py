@@ -81,6 +81,12 @@ class FileScanner:
     # depth-2 measured as best fact-coverage per token (experiments/entropy_metrics/)
     BROAD_TIER_DEPTH = 2
 
+    # Binary formats: the image handler describes them; entropy analysis of
+    # their bytes is meaningless.
+    BINARY_EXTENSIONS = frozenset(
+        {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf"}
+    )
+
     def __init__(self, show_errors: bool = True, fallback_on_errors: bool = True):
         """
         Initialize file scanner.
@@ -94,55 +100,42 @@ class FileScanner:
         self.fallback_on_errors = fallback_on_errors
 
     def scan_content(
-        self, content: str | bytes, filename: str, include_metadata: bool = False
+        self,
+        content: str | bytes,
+        filename: str,
+        include_metadata: bool = False,
+        budget: int | None = None,
+        mode: str = "balanced",
     ) -> list[StructureNode] | None:
         """
         Scan file content directly without requiring a file path.
 
-        Useful for scanning remote files (e.g., from GitHub) or content from APIs.
+        For remote files (e.g., from GitHub), API content, a git blob or
+        stdin. Same parse, saliency tiers and budget as scan_file; only the
+        on-disk metadata (timestamps, permissions) and git signals are absent.
 
         Args:
             content: File content as string or bytes
             filename: Filename (used to determine language/scanner type)
             include_metadata: Include basic metadata node (just filename and size)
+            budget: Approximate token cap for code skeletons (see scan_file)
+            mode: Saliency weight profile — "balanced" or "active"
 
         Returns:
             List of StructureNode objects, or None if file type not supported
         """
-        # Get file extension from filename
         path = Path(filename)
-        suffix = path.suffix.lower()
-
-        # Get appropriate scanner for this file type
-        scanner_class = self.registry.get_scanner(suffix)
-
+        scanner_class = self.registry.get_scanner(path.suffix.lower())
         if not scanner_class:
             return None  # Unsupported file type
 
-        # Create scanner instance with options
-        scanner = scanner_class(
-            show_errors=self.show_errors, fallback_on_errors=self.fallback_on_errors
+        source_code = content.encode("utf-8") if isinstance(content, str) else content
+        structures = self._scan_source(
+            scanner_class, source_code, filename, budget=budget, mode=mode
         )
 
-        # Convert content to bytes if needed
-        if isinstance(content, str):
-            source_code = content.encode("utf-8")
-        else:
-            source_code = content
-
-        # Scan using the appropriate plugin
-        structures = scanner.scan(source_code)
-
-        # Prepend metadata if requested and structures exist
         if include_metadata and structures is not None:
             size_bytes = len(source_code)
-            if size_bytes < 1024:
-                size_str = f"{size_bytes}B"
-            elif size_bytes < 1024 * 1024:
-                size_str = f"{size_bytes / 1024:.1f}KB"
-            else:
-                size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
-
             file_info = StructureNode(
                 type="file-info",
                 name=path.name,
@@ -150,12 +143,41 @@ class FileScanner:
                 end_line=1,
                 file_metadata={
                     "size": size_bytes,
-                    "size_formatted": size_str,
+                    "size_formatted": _format_size(size_bytes),
                     "source": "content",
                 },
             )
             structures = [file_info] + structures
 
+        return structures
+
+    def _scan_source(
+        self,
+        scanner_class,
+        source_code: bytes,
+        label: str,
+        *,
+        budget: int | None,
+        mode: str,
+        line_edits: dict[int, str] | None = None,
+    ) -> list[StructureNode] | None:
+        """Parse bytes with a language handler and annotate salient code: the
+        step scan_file and scan_content share. label names the source in
+        messages and decides the binary skip by its extension."""
+        scanner = scanner_class(
+            show_errors=self.show_errors, fallback_on_errors=self.fallback_on_errors
+        )
+        structures = scanner.scan(source_code)
+        if structures is not None and Path(label).suffix.lower() not in self.BINARY_EXTENSIONS:
+            self._annotate_salient_code(
+                structures,
+                label,
+                source_code,
+                language=scanner,
+                budget=budget,
+                line_edits=line_edits,
+                mode=mode,
+            )
         return structures
 
     def scan_file(
@@ -207,44 +229,16 @@ class FileScanner:
         if max_bytes is not None and file_stats.st_size > max_bytes:
             return [_file_info_stub(path, file_stats, reason="oversized")]
 
-        # Create scanner instance with options
-        scanner = scanner_class(
-            show_errors=self.show_errors, fallback_on_errors=self.fallback_on_errors
-        )
-
-        # Read file
         with open(file_path, "rb") as f:
             source_code = f.read()
 
-        # Scan using the appropriate plugin
-        structures = scanner.scan(source_code)
-
-        # Entropy-based saliency analysis (annotate high-importance code regions)
-        # Skip for binary/non-code files where entropy analysis is meaningless
-        binary_extensions = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf"}
-        if structures is not None and suffix not in binary_extensions:
-            self._annotate_salient_code(
-                structures,
-                file_path,
-                source_code,
-                language=scanner,
-                budget=budget,
-                line_edits=line_edits,
-                mode=mode,
-            )
+        structures = self._scan_source(
+            scanner_class, source_code, file_path, budget=budget, mode=mode, line_edits=line_edits
+        )
 
         # Prepend file metadata if requested and structures exist
         if include_file_metadata and structures is not None:
-            # Format file size
             size_bytes = file_stats.st_size
-            if size_bytes < 1024:
-                size_str = f"{size_bytes}B"
-            elif size_bytes < 1024 * 1024:
-                size_str = f"{size_bytes / 1024:.1f}KB"
-            else:
-                size_str = f"{size_bytes / (1024 * 1024):.1f}MB"
-
-            # Create file info node
             file_info = StructureNode(
                 type="file-info",
                 name=path.name,
@@ -252,7 +246,7 @@ class FileScanner:
                 end_line=1,
                 file_metadata={
                     "size": size_bytes,
-                    "size_formatted": size_str,
+                    "size_formatted": _format_size(size_bytes),
                     "created": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
                     "modified": datetime.fromtimestamp(file_stats.st_mtime).isoformat(),
                     "permissions": oct(file_stats.st_mode)[-3:],
