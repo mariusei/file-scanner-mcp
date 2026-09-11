@@ -17,6 +17,7 @@ SCOPE:
   ✗ No delta/git integration — a focused read is not a scan
 """
 
+import re
 from dataclasses import replace
 
 from .formatter import TreeFormatter
@@ -24,9 +25,18 @@ from .languages import StructureNode
 
 
 def format_focus(
-    file_path: str, structures: list[StructureNode], source_lines: list[str], focus: str
+    file_path: str,
+    structures: list[StructureNode],
+    source_lines: list[str],
+    focus: str,
+    addressed: bool = False,
 ) -> str:
-    """Render skeleton-with-context + verbatim body for the focused node."""
+    """Render skeleton-with-context + verbatim body for the focused node.
+
+    addressed=True opens with the node's structural address instead of the
+    `focus:` line: `path::Qualified.name (a-b)`, the form `focus` accepts
+    back as one argument (`@` is reserved for a ref, so the range stays in
+    parentheses)."""
     matches = _resolve(structures, focus)
     if len(matches) != 1:
         return _resolution_error(structures, focus, matches)
@@ -35,9 +45,37 @@ def format_focus(
     path_ids = {id(node) for node in (*ancestors, target)}
     pruned = _prune(structures, target, path_ids, source_lines)
 
-    qualified = ".".join(node.name for node in (*ancestors, target))
-    header = f"focus: {qualified} @{target.start_line}-{target.end_line}"
+    if addressed:
+        name = address_name(structures, target, ancestors)
+        header = f"{file_path}::{name} ({target.start_line}-{target.end_line})"
+    else:
+        qualified = ".".join(node.name for node in (*ancestors, target))
+        header = f"focus: {qualified} @{target.start_line}-{target.end_line}"
     return header + "\n" + TreeFormatter().format(file_path, pruned)
+
+
+# A heading that opens with a bracketed tag ([DEV-L17] Contracts …) is
+# addressed by the tag; the study's documents used exactly this convention.
+_ID_TAG = re.compile(r"^\[([A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+)\]")
+
+
+def _is_heading(node: StructureNode) -> bool:
+    return node.type.startswith("heading") or node.type == "section"
+
+
+def address_name(structures: list[StructureNode], target: StructureNode, ancestors: tuple) -> str:
+    """The name part of `path::name`: the dotted qualified name for code; for
+    a heading its ID tag when it has one, else the heading text quoted — the
+    leaf alone when that is unique in the file, the dotted path otherwise."""
+    if not _is_heading(target):
+        return ".".join(node.name for node in (*ancestors, target))
+    tag = _ID_TAG.match(target.name)
+    if tag:
+        return tag.group(1)
+    same_name = [n for n, _ in _walk(structures) if n.name == target.name]
+    if len(same_name) == 1:
+        return f'"{target.name}"'
+    return '"' + ".".join(node.name for node in (*ancestors, target)) + '"'
 
 
 def _walk(structures: list[StructureNode], ancestors: tuple = ()):
@@ -49,7 +87,10 @@ def _walk(structures: list[StructureNode], ancestors: tuple = ()):
 
 
 def _resolve(structures: list[StructureNode], focus: str) -> list[tuple[StructureNode, tuple]]:
-    """Match tiers: exact name, qualified path, case-insensitive substring."""
+    """Match tiers: exact name, qualified path, case-insensitive substring.
+    A quoted name (a heading address) is matched without its quotes."""
+    if len(focus) >= 2 and focus[0] == focus[-1] == '"':
+        focus = focus[1:-1]
     nodes = list(_walk(structures))
 
     exact = [(n, a) for n, a in nodes if n.name == focus]

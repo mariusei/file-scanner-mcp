@@ -122,6 +122,8 @@ sct search <dir> <pattern> [--ref REF] [--names] [--type TYPE]
 sct --help                                       the full help; --json on scan and search, --ascii anywhere
 ```
 
+Output is valid input. A `focus` answer opens with the node's address, `path::Qualified.name (a-b)`, and `sct focus path::Qualified.name` is one argument that reads it again; with `--ref` the address carries it, `path::Qualified.name@origin/main (a-b)`. From a scan, the file line and a structure under it compose the same address. Headings are addressed by their ID tag when they have one (`notes.md::DEV-L17`), else quoted (`notes.md::"Quick Start"`). When a budget cut something, one trailer names the call that recovers the most: `next: sct focus <address>`. Search leads and hits are `path:line`.
+
 `--ref REF` reads at a git ref (branch, tag, SHA) without a checkout: a file or one node through `git show`, a directory or a search through `git archive` into a temporary directory, with every path in the answer written the way you typed it and `@REF` at the end of the coverage line (in JSON, `coverage.ref`).
 
 If the bin directory is not on the agent's PATH, every tool description carries the absolute fallback, `"<python>" -m scantool.cli`, with the interpreter the server runs under.

@@ -72,7 +72,9 @@ class TestRef:
 
     def test_focus_at_ref(self, repo, capsys):
         out, _, code = run("focus", "src/mod.py", "beta", "--ref", "HEAD", capsys=capsys)
-        assert code == 0 and out.startswith("focus: beta @5-6")
+        assert code == 0 and out.startswith("src/mod.py::beta@HEAD (5-6)")
+        again, _, code = run("focus", "src/mod.py::beta@HEAD", capsys=capsys)
+        assert code == 0 and again == out  # the printed address is the argument
         assert "return 2" in out
 
     def test_directory_at_ref_lists_the_committed_tree_under_the_callers_path(self, repo, capsys):

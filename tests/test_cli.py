@@ -40,25 +40,33 @@ def test_help_on_no_arguments_and_on_flag(capsys):
 
 
 def test_usage_error_exits_2(capsys):
-    for argv in (("scan",), ("scan", "--budget", "x"), ("focus", "only-one"), ("nope", "--bogus")):
+    for argv in (("scan",), ("scan", "--budget", "x"), ("nope", "--bogus")):
         with pytest.raises(SystemExit) as exit_info:
             cli.main(list(argv))
         assert exit_info.value.code == 2
+    assert cli.main(["focus", "only-one"]) == 2  # neither <path> <name> nor an address
 
 
-def test_scan_file_is_byte_identical_to_the_golden_contract(capsys):
+def _with_typed_path(golden: str, path: Path) -> str:
+    """The frozen contract, with the file line naming the path as typed — the
+    one thing the shell door adds so `<file line>::<name>` is an address."""
+    lines = golden.rstrip("\n").splitlines()
+    lines[1] = str(path) + lines[1][len(path.name) :]
+    return "\n".join(lines)
+
+
+def test_scan_file_is_the_golden_contract_under_the_typed_path(capsys):
     out, _, code = run("scan", str(PYTHON_SAMPLE), capsys=capsys)
     golden = (GOLDEN_DIR / "python.txt").read_text(encoding="utf-8")
     assert code == 0
-    assert out.rstrip("\n") == golden.rstrip("\n")
+    assert out.rstrip("\n") == _with_typed_path(golden, PYTHON_SAMPLE)
 
 
-def test_scan_markdown_is_byte_identical_to_golden(capsys):
+def test_scan_markdown_is_the_golden_contract_under_the_typed_path(capsys):
     out, _, code = run("scan", str(MARKDOWN_SAMPLE), capsys=capsys)
+    golden = (GOLDEN_DIR / "markdown.txt").read_text(encoding="utf-8")
     assert code == 0
-    assert out.rstrip("\n") == (GOLDEN_DIR / "markdown.txt").read_text(encoding="utf-8").rstrip(
-        "\n"
-    )
+    assert out.rstrip("\n") == _with_typed_path(golden, MARKDOWN_SAMPLE)
 
 
 def test_environment_lines_are_stripped(capsys):
@@ -107,8 +115,8 @@ def test_scan_json_keeps_stdout_pure(capsys):
 
 def test_focus_hit_miss_and_ambiguity(capsys):
     out, _, code = run("focus", str(FOCUS_MODULE), "_walk", capsys=capsys)
-    assert code == 0 and out.startswith("focus: _walk @")
-    assert "43 | def _walk(" in out
+    assert code == 0 and out.startswith(f"{FOCUS_MODULE}::_walk (")
+    assert "| def _walk(" in out  # the body, verbatim with its line numbers
 
     out, _, code = run("focus", str(FOCUS_MODULE), "no_such_node", capsys=capsys)
     assert code == 1 and "matches no node" in out
@@ -125,7 +133,9 @@ def test_focus_matches_a_heading_substring(capsys):
     leaf = golden.splitlines()[0].split("focus: ")[1].split(" @")[0].split(".")[-1]
     out, _, code = run("focus", str(MARKDOWN_SAMPLE), leaf[1:-1], capsys=capsys)
     assert code == 0
-    assert out.rstrip("\n") == golden.rstrip("\n")
+    # the shell door opens with the address; the body is the frozen contract
+    assert out.splitlines()[0] == f'{MARKDOWN_SAMPLE}::"{leaf}" (13-23)'
+    assert out.splitlines()[1:] == golden.splitlines()[1:]
 
 
 def test_search_text_names_type_json_and_no_match(capsys):
@@ -215,7 +225,8 @@ def test_focus_on_stdin_content(monkeypatch, capsys):
     out, _, code = run("focus", "-", "--as", "basic.py", "DatabaseManager.query", capsys=capsys)
     golden = (GOLDEN_DIR / "focus_python.txt").read_text(encoding="utf-8")
     assert code == 0
-    assert out.rstrip("\n") == golden.rstrip("\n")
+    assert out.splitlines()[0] == "basic.py::DatabaseManager.query (24-26)"
+    assert out.splitlines()[1:] == golden.splitlines()[1:]
 
 
 def test_stdin_usage_errors_exit_2(monkeypatch, capsys):

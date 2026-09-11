@@ -49,6 +49,7 @@ USAGE
   sct scan     - [...]                     paths from stdin, one per line
   sct scan     - --as <path> [...]         stdin content scanned as <path>
   sct focus    <path> <name|heading> [--ref REF]
+  sct focus    <path>::<name>[@REF]        the address form, one argument
   sct focus    - --as <path> <name>        stdin content, one node
   sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE]
   sct <command> --help
@@ -66,6 +67,7 @@ COMMANDS
   focus     One structure verbatim with parent context. Name, qualified name
             (Class.method), heading, or a substring of a heading. Several
             matches → the list, exit 1. None → the top-level names, exit 1.
+            Answers open with the node's address, `path::Qualified.name (a-b)`.
   search    Text across a directory with structural context: each hit shows
             its enclosing structure, plus leads to where matched names are
             defined. --names matches structure names instead of text. The
@@ -84,8 +86,13 @@ OPTIONS
   --ascii        scantool's own glyphs as ASCII; file content is untouched.
 
 CONVENTIONS
-  path:line on every structure. Exit 0 ok, 1 not found, 2 usage error.
-  Plain text; one fact per line. Errors on stderr.
+  Addresses: <file line>::<Qualified.name> — the file line of a scan and a
+  structure under it compose the address focus accepts; in a directory
+  listing, prefix the entry with the directory you scanned. Headings are
+  addressed by their ID tag ([DEV-L17] → path::DEV-L17), else quoted
+  (path::"Quick Start"). @REF at the end of the name carries the ref.
+  Search leads and hits are path:line. Exit 0 ok, 1 not found, 2 usage
+  error. Plain text; one fact per line. Errors on stderr.
 """
 
 COMMANDS = ("scan", "focus", "search")
@@ -220,8 +227,9 @@ def _relabel(text: str, scratch_path: str, shown: str) -> str:
 
 
 def _stamp_ref(text: str, ref: str, as_json: bool) -> str:
-    """The coverage line says which ref was read: `@REF` at its end, or
-    coverage.ref in JSON."""
+    """Every address the answer prints carries the ref it was read at: `@REF`
+    on the coverage line, in a focus header before the range, on the
+    `next:` trailer; coverage.ref in JSON."""
     if as_json:
         try:
             document = json.loads(text)
@@ -232,8 +240,48 @@ def _stamp_ref(text: str, ref: str, as_json: bool) -> str:
         return json.dumps(document, indent=2)
     first, newline, rest = text.partition("\n")
     if first.startswith("<") and first.endswith(">"):
-        return f"{first} @{ref}{newline}{rest}"
-    return text
+        first = f"{first} @{ref}"
+    elif "::" in first and first.endswith(")"):
+        name, _, span = first.rpartition(" (")
+        first = f"{name}@{ref} ({span}"
+    head, sep, trailer = rest.rpartition("\nnext: sct focus ")
+    if sep and "\n" not in trailer:
+        rest = f"{head}{sep}{trailer}@{ref}"
+    return f"{first}{newline}{rest}"
+
+
+def _typed_path_header(text: str, path: str) -> str:
+    """The file line of an answer names the path the caller typed, so
+    `<file line>::<name>` is an address the caller can run. The formatter
+    prints the base name (the frozen contract); the shell door widens it."""
+    typed = path.rstrip("/\\") or path
+    base = os.path.basename(typed)
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if line.startswith(("<", "note: ", "Note: ")):
+            continue
+        if base and (line.startswith(base + " (") or line.startswith(base + "/ (")):
+            lines[i] = typed + line[len(base) :]
+        break
+    return "\n".join(lines)
+
+
+def _split_address(address: str) -> tuple[str, str, str | None]:
+    """`path::name[@ref]` -> (path, name, ref). A quoted name keeps its quotes
+    and any `@` inside them; the ref is what follows the closing quote or
+    the last `@`."""
+    path, sep, name = address.rpartition("::")
+    if not sep:
+        raise UsageError("sct focus: give <path> <name>, or one address path::Qualified.name[@ref]")
+    ref = None
+    if name.startswith('"'):
+        closing = name.find('"', 1)
+        if closing > 0 and name[closing + 1 :].startswith("@"):
+            ref = name[closing + 2 :]
+            name = name[: closing + 1]
+    elif "@" in name:
+        name, _, ref = name.rpartition("@")
+    return path, name, ref or None
 
 
 def to_ascii(text: str) -> str:
@@ -330,7 +378,7 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
         text = _text(result)
         if _not_found(text):
             code = 1
-        outputs.append(text)
+        outputs.append(text if args.json else _typed_path_header(text, path))
     return outputs, code
 
 
@@ -364,12 +412,19 @@ def _scan_at_ref(path: str, args: argparse.Namespace, output_format: str) -> str
                 tree,
                 shown,
             )
+    if not args.json:
+        text = _typed_path_header(text, path)
     return _stamp_ref(text, args.ref, args.json)
 
 
 def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
+    if args.name is None:
+        args.path, args.name, ref = _split_address(args.path)
+        if ref and args.ref and ref != args.ref:
+            raise UsageError(f"sct focus: the address says @{ref}, --ref says {args.ref}")
+        args.ref = args.ref or ref
     if args.as_path and args.ref:
         raise UsageError(
             "sct focus: --as reads stdin content; --ref reads the repository. One or the other."
@@ -396,6 +451,8 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
             file_path=args.path, focus=args.name, delta=False, include_metadata=False
         )
     text = _text(result)
+    if args.ref:
+        text = _stamp_ref(text, args.ref, False)
     return [text], 1 if _not_found(text) else 0
 
 
@@ -470,8 +527,10 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     ref_option(scan)
 
     focus = parser("focus", "One structure verbatim with parent context.", False)
-    focus.add_argument("path", help="file, or `-` with --as for stdin content")
-    focus.add_argument("name", help="name, Class.method, heading, or a heading substring")
+    focus.add_argument("path", help="file, an address path::name[@ref], or `-` with --as")
+    focus.add_argument(
+        "name", nargs="?", help="name, Class.method, heading, or a heading substring"
+    )
     stdin_option(focus)
     ref_option(focus)
 

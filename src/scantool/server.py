@@ -16,7 +16,13 @@ from .content_search import find_leads, format_hits, hits_to_json, search_conten
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
 from .directory_formatter import DirectoryFormatter, coverage_dict, format_coverage
 from .focus import format_focus
-from .formatter import TreeFormatter, file_coverage, format_file_coverage, structures_to_json
+from .formatter import (
+    TreeFormatter,
+    file_coverage,
+    format_file_coverage,
+    next_focus,
+    structures_to_json,
+)
 from .git_signals import (
     collect_git_signals,
     file_churn,
@@ -88,6 +94,13 @@ dir_formatter = DirectoryFormatter()
 
 # Session-scoped scan memory for delta mode — lives as long as the server
 scan_memory = ScanMemory()
+
+
+def _next_focus_trailer(file_path: str, structures: list[StructureNode]) -> str:
+    """One line, only when the budget cut something: the call that reads the
+    largest cut node in full, as an address the shell accepts back."""
+    name = next_focus(structures)
+    return f"\nnext: sct focus {file_path}::{name}" if name else ""
 
 
 def _budget_for(budget: int | None, depth: str | None) -> int | None:
@@ -485,7 +498,8 @@ def scan_file_content(
             source_lines = content.split("\n")
             return [
                 TextContent(
-                    type="text", text=format_focus(filename, structures, source_lines, focus)
+                    type="text",
+                    text=format_focus(filename, structures, source_lines, focus, addressed=True),
                 )
             ]
         if output_format == "json":
@@ -504,7 +518,7 @@ def scan_file_content(
         text = (
             format_file_coverage(structures) + "\n" + custom_formatter.format(filename, structures)
         )
-        return [TextContent(type="text", text=text)]
+        return [TextContent(type="text", text=text + _next_focus_trailer(filename, structures))]
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error scanning content: {e}")]
@@ -681,7 +695,8 @@ def scan_file(
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
             return [
                 TextContent(
-                    type="text", text=format_focus(file_path, structures, source_lines, focus)
+                    type="text",
+                    text=format_focus(file_path, structures, source_lines, focus, addressed=True),
                 )
             ]
 
@@ -719,6 +734,7 @@ def scan_file(
                 + "\n"
                 + delta_note
                 + custom_formatter.format(file_path, structures)
+                + _next_focus_trailer(file_path, structures)
             )
             result += _connectivity_note(file_path)
             return [TextContent(type="text", text=result)]

@@ -75,7 +75,9 @@ def test_focus_on_content_matches_the_focus_golden():
             content=PYTHON_SAMPLE.read_text(), filename=str(PYTHON_SAMPLE), focus=focus
         )
     )
-    assert _without_file_info(text) == golden.rstrip("\n")
+    # the server opens with the address; the body is the frozen contract
+    assert text.splitlines()[0] == f"{PYTHON_SAMPLE}::{focus} (24-26)"
+    assert _without_file_info(text).splitlines()[1:] == golden.splitlines()[1:]
 
 
 def test_focus_miss_on_content_names_the_top_level_nodes():
