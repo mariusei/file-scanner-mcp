@@ -184,7 +184,7 @@ Claude Code will prompt team members for approval on first use.
 ## Features
 
 ### Multi-language Support
-Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, Swift, SQL (PostgreSQL, MySQL, SQLite), HTML, CSS, SCSS, YAML, Markdown, Plain Text, Images
+Python, JavaScript, TypeScript, Rust, Go, C/C++, Java, PHP, C#, Ruby, Zig, Swift, SQL (PostgreSQL, MySQL, SQLite), HTML, CSS, SCSS, YAML, Markdown, Jupyter notebooks, Plain Text, Images
 
 ### Structure Extraction
 - Classes, methods, functions, imports
@@ -520,6 +520,7 @@ consumer (measured in `experiments/benchmark/M2B.md`). Two consequences:
 | `.scss` | SCSS | selectors, mixins, variables, nesting |
 | `.yaml`, `.yml` | YAML | mappings, sequences, scalars, anchors/aliases, multi-document streams |
 | `.md` | Markdown | headings (h1-h6), code blocks with hierarchy |
+| `.ipynb` | Jupyter | cells, and inside them the Python and Markdown structure |
 | `.txt` | Plain Text | sections, paragraphs |
 | `.json` | JSON | object keys (nested fully), arrays with item counts, scalar values |
 | `.toml` | TOML | tables, array tables, nested keys, inline tables, arrays with item counts |

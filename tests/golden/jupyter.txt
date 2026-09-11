@@ -1,0 +1,17 @@
+basic.ipynb (7-40)
+- cell 1 (markdown) in-cell 1-3 at 7-9 @7
+   # Sales ledger
+   
+   Reads the nightly export and summarises it per region.
+  - Sales ledger @7
+- cell 2 (code) in-cell 1-16 at 18-33 @18
+  - import statements @18
+  - total (amounts) @21 # Sum of the amounts.
+     return sum(amounts)
+  - Ledger @26 # Rows of (region, amount).
+    - __init__ (self, rows) @29
+       def __init__(self, rows):
+           self.rows = rows
+    - mean (self) @32
+       return statistics.mean((amount for _, amount in self.rows))
+- cell 3 (raw) in-cell 1-1 at 40-40 @40
