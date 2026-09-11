@@ -122,6 +122,8 @@ sct search <dir> <pattern> [--ref REF] [--names] [--type TYPE]
 sct diff   <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
 sct surface <package-dir> [--ref REF] [--against REF]
 sct overlap <base> <branch>... [--repo DIR]
+sct callers <name> [--dir DIR] [--ref REF]
+sct resolve <path:line | path::name> --from REF --to REF [--repo DIR]
 sct --help                                       the full help; --json on scan and search, --ascii anywhere
 ```
 
@@ -132,6 +134,8 @@ Output is valid input. A `focus` answer opens with the node's address, `path::Qu
 `sct surface` is the public surface of a Python package: every exported name with its signature, how it is exported (`__all__`, a lazy-import table, a re-export, `TYPE_CHECKING`) and where it is defined after following the re-exports, with members inherited from bases inside the package marked. `--against REF` prints the surface diff and the header states the direction.
 
 `sct overlap` takes N branches against one base, each at its own merge-base: structures touched by two or more branches (as addresses), new names introduced independently by two or more branches, commits two branches share beyond the base (a stack, so their overlap is expected), and per branch whether it is already in the base and by which criterion (ancestor, patch-equivalent, tree-equal; patch-equivalence proves the branch can be deleted, not that its content is in the current tree). It ends with a merge-order hint, not a verdict.
+
+`sct callers` lists the actual call sites of a function or method across a directory, each with its enclosing function and `path:line`, with the definitions first; mentions in docstrings, comments and strings are not calls and never appear. `sct resolve` translates `path:line` or `path::name` from one ref to another: the enclosing structure with its start and end at `--from`, and where it is at `--to`, renamed with an identical body, or gone with the nearest names.
 
 `--ref REF` reads at a git ref (branch, tag, SHA) without a checkout: a file or one node through `git show`, a directory or a search through `git archive` into a temporary directory, with every path in the answer written the way you typed it and `@REF` at the end of the coverage line (in JSON, `coverage.ref`).
 
