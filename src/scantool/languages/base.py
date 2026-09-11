@@ -815,6 +815,7 @@ class BaseLanguage(ABC):
                 name=self.IMPORT_GROUP_LABEL,
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
+                synthetic=True,
             )
             parent_structures.append(import_node)
         else:

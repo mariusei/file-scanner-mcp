@@ -328,6 +328,7 @@ class RubyLanguage(BaseLanguage):
                 name="require statements",
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
+                synthetic=True,
             )
             parent_structures.append(require_node)
         else:

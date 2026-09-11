@@ -12,6 +12,10 @@ from dataclasses import dataclass, field
 # ===========================================================================
 
 
+# Node types whose name is always scantool's, never the source's.
+SYNTHETIC_TYPES = frozenset({"file-info", "parse-error", "error"})
+
+
 @dataclass
 class StructureNode:
     """Represents a node in the file structure with rich metadata.
@@ -40,8 +44,16 @@ class StructureNode:
     saliency: float | None = None  # Normalized saliency score for selected nodes
     recent_edits: int | None = None  # Distinct commits behind this node's lines (90d window)
     delta_status: str | None = None  # "new"/"changed" vs previous scan (delta mode)
+    # True when the name is a label scantool made up ("import statements",
+    # "paragraph (4-5)", "code block (bash)", "invalid syntax") rather than a
+    # name taken from the source. Consumers comparing names across files or
+    # refs must not treat a synthetic name as an identity.
+    synthetic: bool = False
 
     def __post_init__(self):
+        # scantool's own vocabulary: never a name from the source
+        if self.type in SYNTHETIC_TYPES:
+            self.synthetic = True
         # Names are single-line by contract: they are interpolated into
         # one-line tree rows and used as focus= keys. Multi-line sources
         # exist (e.g. a setext heading whose content spans several lines)

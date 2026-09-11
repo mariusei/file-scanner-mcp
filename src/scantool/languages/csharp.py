@@ -708,6 +708,7 @@ class CSharpLanguage(BaseLanguage):
                 name="using directives",
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
+                synthetic=True,
             )
             parent_structures.append(import_node)
         else:

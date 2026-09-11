@@ -92,6 +92,8 @@ class YourLanguage(BaseLanguage):
     # REGEX_DEFINITION_PATTERNS - definitions when scan() fails
     # REGEX_CALL_KEYWORDS (+ REGEX_CALL_PATTERN) - call extraction fallback
     # IMPORT_GROUP_LABEL - label for grouped imports (e.g. "use statements")
+    #   (the group node is created with synthetic=True: its name is scantool's,
+    #   not the source's — any container node you create yourself needs the same)
 ```
 
 ### Step 3: Test It
@@ -615,6 +617,12 @@ scanner's reach by nature — the engine returns "unresolvable" there, never a g
 ---
 
 ## The Output Contract (golden tests)
+
+Alongside the text snapshots, `tests/golden/*.json` freeze the JSON form and
+`tests/test_synthetic.py` checks every frozen sample for the `synthetic`
+flag: a node is synthetic when its name is not on the line that declares it
+(a made-up label such as "import statements" or "paragraph (4-5)"). A new
+handler that creates a container node without `synthetic=True` fails there.
 
 The default output format IS the API for LLM consumers — see "Output
 Contract" in README.md. `tests/test_golden.py` freezes it as snapshots

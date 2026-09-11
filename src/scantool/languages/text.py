@@ -108,6 +108,7 @@ class TextLanguage(BaseLanguage):
                         name=f"paragraph ({paragraph_start}-{i - 1})",
                         start_line=paragraph_start,
                         end_line=i - 1,
+                        synthetic=True,
                     )
                     if current_section:
                         current_section.children.append(para_node)
@@ -126,6 +127,7 @@ class TextLanguage(BaseLanguage):
                 name=f"paragraph ({paragraph_start}-{len(lines)})",
                 start_line=paragraph_start,
                 end_line=len(lines),
+                synthetic=True,
             )
             structures.append(para_node)
 

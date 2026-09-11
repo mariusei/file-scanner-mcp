@@ -1,0 +1,168 @@
+{
+  "file": "python/samples/basic.py",
+  "structures": [
+    {
+      "type": "imports",
+      "name": "import statements",
+      "start_line": 3,
+      "end_line": 5,
+      "synthetic": true
+    },
+    {
+      "type": "class",
+      "name": "DatabaseManager",
+      "start_line": 8,
+      "end_line": 26,
+      "docstring": "Manages database connections and queries.",
+      "complexity": {
+        "lines": 19,
+        "max_depth": 10,
+        "branches": 1
+      },
+      "children": [
+        {
+          "type": "method",
+          "name": "__init__",
+          "start_line": 11,
+          "end_line": 13,
+          "signature": "(self, connection_string: str)",
+          "complexity": {
+            "lines": 3,
+            "max_depth": 5,
+            "branches": 0
+          }
+        },
+        {
+          "type": "method",
+          "name": "connect",
+          "start_line": 15,
+          "end_line": 17,
+          "signature": "(self)",
+          "docstring": "Establish database connection.",
+          "complexity": {
+            "lines": 3,
+            "max_depth": 8,
+            "branches": 0
+          }
+        },
+        {
+          "type": "method",
+          "name": "disconnect",
+          "start_line": 19,
+          "end_line": 22,
+          "signature": "(self)",
+          "docstring": "Close database connection.",
+          "complexity": {
+            "lines": 4,
+            "max_depth": 8,
+            "branches": 1
+          }
+        },
+        {
+          "type": "method",
+          "name": "query",
+          "start_line": 24,
+          "end_line": 26,
+          "signature": "(self, sql: str) -> list",
+          "docstring": "Execute a SQL query.",
+          "complexity": {
+            "lines": 3,
+            "max_depth": 4,
+            "branches": 0
+          }
+        }
+      ]
+    },
+    {
+      "type": "class",
+      "name": "UserService",
+      "start_line": 29,
+      "end_line": 45,
+      "docstring": "Handles user-related operations.",
+      "complexity": {
+        "lines": 17,
+        "max_depth": 7,
+        "branches": 0
+      },
+      "children": [
+        {
+          "type": "method",
+          "name": "__init__",
+          "start_line": 32,
+          "end_line": 33,
+          "signature": "(self, db: DatabaseManager)",
+          "complexity": {
+            "lines": 2,
+            "max_depth": 5,
+            "branches": 0
+          }
+        },
+        {
+          "type": "method",
+          "name": "create_user",
+          "start_line": 35,
+          "end_line": 37,
+          "signature": "(self, username: str, email: str) -> int",
+          "docstring": "Create a new user.",
+          "complexity": {
+            "lines": 3,
+            "max_depth": 4,
+            "branches": 0
+          }
+        },
+        {
+          "type": "method",
+          "name": "get_user",
+          "start_line": 39,
+          "end_line": 41,
+          "signature": "(self, user_id: int) -> Optional[dict]",
+          "docstring": "Retrieve user by ID.",
+          "complexity": {
+            "lines": 3,
+            "max_depth": 5,
+            "branches": 0
+          }
+        },
+        {
+          "type": "method",
+          "name": "delete_user",
+          "start_line": 43,
+          "end_line": 45,
+          "signature": "(self, user_id: int) -> bool",
+          "docstring": "Delete a user.",
+          "complexity": {
+            "lines": 3,
+            "max_depth": 4,
+            "branches": 0
+          }
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "validate_email",
+      "start_line": 48,
+      "end_line": 50,
+      "signature": "(email: str) -> bool",
+      "docstring": "Validate email format.",
+      "complexity": {
+        "lines": 3,
+        "max_depth": 5,
+        "branches": 0
+      }
+    },
+    {
+      "type": "function",
+      "name": "main",
+      "start_line": 53,
+      "end_line": 57,
+      "signature": "()",
+      "docstring": "Main entry point.",
+      "complexity": {
+        "lines": 5,
+        "max_depth": 7,
+        "branches": 0
+      }
+    }
+  ]
+}

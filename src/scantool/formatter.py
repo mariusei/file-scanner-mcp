@@ -1,9 +1,45 @@
 """Pretty tree formatter for file structure with rich metadata display."""
 
+import json
 from datetime import datetime
 from pathlib import Path
 
 from .languages import StructureNode
+
+
+def _spans_source(node: StructureNode) -> bool:
+    return (node.start_line > 0 or node.end_line > 0) and node.file_metadata is None
+
+
+def structures_to_json(structures: list[StructureNode], file_path: str, return_dict: bool = False):
+    """The JSON output format: one document per file, nodes nested as in the
+    tree. Optional fields appear only when set; synthetic only when true."""
+
+    def node_to_dict(node: StructureNode) -> dict:
+        result: dict = {
+            "type": node.type,
+            "name": node.name,
+            "start_line": node.start_line,
+            "end_line": node.end_line,
+        }
+        if node.synthetic:
+            result["synthetic"] = True
+        if node.signature:
+            result["signature"] = node.signature
+        if node.decorators:
+            result["decorators"] = node.decorators
+        if node.docstring:
+            result["docstring"] = node.docstring
+        if node.modifiers:
+            result["modifiers"] = node.modifiers
+        if node.complexity:
+            result["complexity"] = node.complexity
+        if node.children:
+            result["children"] = [node_to_dict(child) for child in node.children]
+        return result
+
+    data = {"file": file_path, "structures": [node_to_dict(s) for s in structures]}
+    return data if return_dict else json.dumps(data, indent=2)
 
 
 class TreeFormatter:
@@ -47,8 +83,9 @@ class TreeFormatter:
         if not structures:
             return f"{Path(file_path).name} (empty file)"
 
-        # Get file line range (excluding metadata nodes with line 0)
-        content_nodes = [s for s in self._flatten(structures) if s.start_line > 0 or s.end_line > 0]
+        # The range covers nodes from the source; the file-info record sits
+        # at line 1 without being content
+        content_nodes = [s for s in self._flatten(structures) if _spans_source(s)]
         if content_nodes:
             min_line = min(s.start_line for s in content_nodes)
             max_line = max(s.end_line for s in content_nodes)

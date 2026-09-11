@@ -23,13 +23,13 @@ def _without_file_info(text: str) -> str:
 
 
 def test_content_scan_matches_the_golden_contract():
-    """Bytes in, the frozen scanner+formatter text out — the header range aside,
-    which the MCP layer widens to the file-info node (see test_cli)."""
+    """Bytes in, the frozen scanner+formatter text out; the file-info record
+    is the only addition and does not widen the header range."""
     text = _text(
         server.scan_file_content(content=PYTHON_SAMPLE.read_text(), filename=str(PYTHON_SAMPLE))
     )
     golden = (GOLDEN_DIR / "python.txt").read_text(encoding="utf-8")
-    assert _without_file_info(text).splitlines()[1:] == golden.splitlines()[1:]
+    assert _without_file_info(text) == golden.rstrip("\n")
 
 
 def test_content_scan_and_file_scan_agree_node_for_node():
@@ -66,8 +66,7 @@ def test_focus_on_content_matches_the_focus_golden():
             content=PYTHON_SAMPLE.read_text(), filename=str(PYTHON_SAMPLE), focus=focus
         )
     )
-    assert _without_file_info(text).splitlines()[2:] == golden.splitlines()[2:]
-    assert text.splitlines()[0] == golden.splitlines()[0]
+    assert _without_file_info(text) == golden.rstrip("\n")
 
 
 def test_focus_miss_on_content_names_the_top_level_nodes():
