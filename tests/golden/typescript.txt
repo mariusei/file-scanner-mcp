@@ -1,3 +1,4 @@
+<1 file seen, 15 structures shown>
 basic.ts (5-114)
 - import statements @5
 - Config @11 # Configuration interface for authentication service.

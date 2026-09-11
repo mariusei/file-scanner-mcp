@@ -1,3 +1,4 @@
+<1 file seen, 11 structures shown>
 basic.zig (4-61)
 - Config @4 [pub] # Configuration for the application
   - total (self: Config) i32 @9 [pub] # Calculate the total value

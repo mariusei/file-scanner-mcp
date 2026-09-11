@@ -1,3 +1,4 @@
+<1 file seen, 22 structures shown>
 basic.css (1-114)
 - Main stylesheet for the application @1 # /*! Main stylesheet for the application */
 - base/reset.css base/reset.css @3 [import]

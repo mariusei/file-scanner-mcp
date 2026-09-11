@@ -1,3 +1,4 @@
+<1 file seen, 14 structures shown>
 basic.toml (2-19)
 - name "demo-app" @2
 - version "1.2.3" @3

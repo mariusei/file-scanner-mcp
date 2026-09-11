@@ -1,3 +1,4 @@
+<1 file seen, 9 structures shown>
 basic.c (3-59)
 - #include directives @3
 - User @8 # User structure definition

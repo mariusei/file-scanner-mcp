@@ -1,3 +1,4 @@
+<1 file seen, 21 structures shown>
 basic.php (6-132)
 - App\Database @6
 - use statements @8

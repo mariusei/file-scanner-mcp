@@ -1,3 +1,4 @@
+<1 file seen, 31 structures shown>
 basic.yaml (1-42)
 - document 1 @1
   - name sample-workflow @1

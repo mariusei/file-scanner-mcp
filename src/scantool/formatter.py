@@ -11,6 +11,35 @@ def _spans_source(node: StructureNode) -> bool:
     return (node.start_line > 0 or node.end_line > 0) and node.file_metadata is None
 
 
+def _walk(structures: list[StructureNode]):
+    for node in structures:
+        if node.type != "file-info":
+            yield node
+        yield from _walk(node.children)
+
+
+def file_coverage(structures: list[StructureNode]) -> dict:
+    """What a single-file answer shows and what the budget cut."""
+    nodes = list(_walk(structures))
+    return {
+        "files_seen": 1,
+        "structures_shown": len(nodes),
+        "elided": sum(1 for node in nodes if node.elided),
+    }
+
+
+def format_file_coverage(structures: list[StructureNode]) -> str:
+    """The line every single-file answer opens with. Elided nodes are the
+    ones a budget cut to a header: shown as ⟨…⟩ +N in the tree, readable in
+    full with focus."""
+    coverage = file_coverage(structures)
+    shown = coverage["structures_shown"]
+    parts = ["1 file seen", f"{shown} structure{'' if shown == 1 else 's'} shown"]
+    if coverage["elided"]:
+        parts.append(f"{coverage['elided']} elided (budget)")
+    return "<" + ", ".join(parts) + ">"
+
+
 def structures_to_json(structures: list[StructureNode], file_path: str, return_dict: bool = False):
     """The JSON output format: one document per file, nodes nested as in the
     tree. Optional fields appear only when set; synthetic only when true."""
@@ -179,8 +208,12 @@ class TreeFormatter:
                 lines.append(f"{decorator_prefix}{decorator}")
 
         # Add code for salient (high-entropy) nodes: condensed skeleton when
-        # available, verbatim excerpt otherwise
-        if node.code_skeleton and self.condense:
+        # available, verbatim excerpt otherwise; a node the budget cut to its
+        # header says so, with the number of lines focus= would show
+        if node.elided:
+            code_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "
+            lines.append(f"{code_prefix}⟨…⟩ +{node.end_line - node.start_line}")
+        elif node.code_skeleton and self.condense:
             # Plain pseudocode lines, no line numbers — that absence is what
             # distinguishes condensed skeletons from verbatim excerpts
             code_prefix = (

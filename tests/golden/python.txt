@@ -1,3 +1,4 @@
+<1 file seen, 14 structures shown>
 basic.py (1-57)
 - module docstring @1 # Example Python file for testing the scanner.
 - import statements @3

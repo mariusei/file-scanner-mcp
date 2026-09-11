@@ -478,10 +478,13 @@ consumer (measured in `experiments/benchmark/M2B.md`). Two consequences:
   dependent parts (file size/mtime, git churn, delta memory) live outside
   the frozen layer and are switched off with `include_metadata=False`.
   The JSON form is frozen the same way (`tests/golden/*.json`).
-- **Nothing is dropped silently.** Every directory answer (`scan_directory`,
-  `search_structures`, `sct scan <dir>`, `sct search`) opens with a coverage
-  line: `<N files seen, M structures shown, E excluded (<patterns>), U
-  unsupported (<types>)>`, naming the patterns that excluded files (defaults
+- **Nothing is dropped silently.** Every answer opens with a coverage
+  line. For one file: `<1 file seen, M structures shown, K elided (budget)>`,
+  and each node the budget cut to its header shows `⟨…⟩ +N` (N lines, read in
+  full with `focus`). For a directory (`scan_directory`, `search_structures`,
+  `sct scan <dir>`, `sct search`): `<N files seen, M structures shown, E
+  excluded (<patterns>), U unsupported (<types>)>`, naming the patterns that
+  excluded files (defaults
   such as `node_modules/`, your `.gitignore` files, `exclude_patterns`). A
   `.gitignore` that ignores the directory you named explicitly (uv writes
   `.venv/.gitignore` containing `*`) is set aside and named in a `note:` line

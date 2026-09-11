@@ -1,3 +1,4 @@
+<1 file seen, 17 structures shown>
 basic.rs (3-89)
 - use statements @3
 - User @8 [pub] # User account with basic information.

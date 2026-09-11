@@ -1,3 +1,4 @@
+<1 file seen, 26 structures shown>
 basic.scss (3-124)
 - base/variables @use @3 [use]
 - base/mixins @use @4 [use]

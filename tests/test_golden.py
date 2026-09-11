@@ -25,7 +25,12 @@ from scantool.code_map import CodeMap
 from scantool.consensus import find_divergences, format_divergences
 from scantool.directory_formatter import DirectoryFormatter, coverage_dict, format_coverage
 from scantool.focus import format_focus
-from scantool.formatter import TreeFormatter, structures_to_json
+from scantool.formatter import (
+    TreeFormatter,
+    file_coverage,
+    format_file_coverage,
+    structures_to_json,
+)
 from scantool.scanner import FileScanner
 
 TESTS_DIR = Path(__file__).parent
@@ -67,7 +72,7 @@ UPDATE_HINT = (
 def _render_file(sample: Path) -> str:
     structures = FileScanner().scan_file(str(sample), include_file_metadata=False)
     assert structures, f"no structure for sample: {sample}"
-    return TreeFormatter().format(str(sample), structures)
+    return format_file_coverage(structures) + "\n" + TreeFormatter().format(str(sample), structures)
 
 
 def _render_directory(fixture_dir: Path) -> str:
@@ -108,7 +113,11 @@ def test_scan_directory_output_is_frozen():
 def _render_file_json(rel: str) -> str:
     structures = FileScanner().scan_file(str(TESTS_DIR / rel), include_file_metadata=False)
     assert structures, f"no structure for sample: {rel}"
-    return structures_to_json(structures, rel)
+    document = {
+        "coverage": file_coverage(structures),
+        **structures_to_json(structures, rel, return_dict=True),
+    }
+    return json.dumps(document, indent=2)
 
 
 def _render_directory_json(fixture_dir: Path) -> str:

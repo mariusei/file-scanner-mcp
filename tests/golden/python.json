@@ -1,4 +1,9 @@
 {
+  "coverage": {
+    "files_seen": 1,
+    "structures_shown": 14,
+    "elided": 0
+  },
   "file": "python/samples/basic.py",
   "structures": [
     {
