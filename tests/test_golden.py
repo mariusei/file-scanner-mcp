@@ -136,6 +136,40 @@ def _render_directory_json(fixture_dir: Path) -> str:
     return json.dumps({"coverage": coverage_dict(sweep), "files": files}, indent=2)
 
 
+# ── the hook matrix: which language overrides which BaseLanguage hook ───────
+# Frozen, not required: a language gaining or losing a hook shows as a diff
+# here and must be named in the commit. Function identity against the base,
+# so a hook that was never overridden is visible, which no output golden can
+# show. The same file is the coverage table per language.
+
+
+def _hook_matrix() -> str:
+    from scantool.languages import get_registry
+    from scantool.languages.base import BaseLanguage
+
+    hooks = sorted(
+        name
+        for name, value in vars(BaseLanguage).items()
+        if not name.startswith("_")
+        and (callable(value) or isinstance(value, classmethod | staticmethod) or name.isupper())
+    )
+    matrix = {}
+    for language in sorted(get_registry().languages(), key=lambda lang: lang.get_language_name()):
+        cls = (
+            language if isinstance(language, type) else type(language)
+        )  # the registry yields classes
+        overrides = {}
+        for hook in hooks:
+            owner = next((klass for klass in cls.__mro__ if hook in vars(klass)), BaseLanguage)
+            overrides[hook] = "inherited" if owner is BaseLanguage else "overridden"
+        matrix[language.get_language_name()] = overrides
+    return json.dumps({"hooks": hooks, "languages": matrix}, indent=2)
+
+
+def test_language_hook_matrix_is_frozen():
+    _assert_matches_golden("hooks", _hook_matrix(), suffix="json")
+
+
 def test_scan_file_json_is_frozen():
     _assert_matches_golden("python", _render_file_json(SAMPLES["python"]), suffix="json")
 

@@ -19,11 +19,13 @@ SCOPE:
     the name (the note says so)
 """
 
+import os
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 from .code_map import CodeMap
+from .languages import get_registry
 
 
 @dataclass
@@ -42,9 +44,19 @@ class Callers:
     files_scanned: int
 
 
+def split_qualified(name: str) -> tuple[str | None, str]:
+    """(parent, bare) for a name written with any registered language's
+    qualifier, longest qualifier first; (None, name) when unqualified."""
+    qualifiers = {language.QUALIFIER for language in get_registry().languages()}
+    for qualifier in sorted(qualifiers, key=len, reverse=True):
+        if qualifier in name:
+            parent, _, bare = name.rpartition(qualifier)
+            return parent, bare
+    return None, name
+
+
 def find_callers(directory: str, name: str) -> Callers:
-    leaf = name.rsplit(".", 1)[-1]
-    parent = name.rsplit(".", 1)[0] if "." in name else None
+    parent, leaf = split_qualified(name)
     result = CodeMap(directory).analyze()
     definitions = [
         (d.file, d.line, d.type, d.parent)
@@ -79,14 +91,16 @@ def format_callers(found: Callers, label: str) -> str:
         f"{_count(found.files_scanned, 'file')} scanned",
     ]
     lines = [f"<{', '.join(parts)}> callers of {found.name} {label}".rstrip()]
-    if "." in found.name and found.sites:
+    qualified_input, bare = split_qualified(found.name)
+    if qualified_input and found.sites:
         lines.append(
             "note: call sites match the bare name; which definition each one binds to is not resolved"
         )
+    registry = get_registry()
     for file, line, kind, parent in found.definitions:
-        qualified = (
-            f"{parent}.{found.name.rsplit('.', 1)[-1]}" if parent else found.name.rsplit(".", 1)[-1]
-        )
+        language = registry.get(os.path.splitext(file)[1].lower())
+        qualifier = language.QUALIFIER if language else "."
+        qualified = f"{parent}{qualifier}{bare}" if parent else bare
         lines.append(f"defined: {file}::{qualified} ({kind}) {file}:{line}")
     if not found.sites:
         lines.append(

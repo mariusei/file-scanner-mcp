@@ -21,8 +21,9 @@ SCOPE:
 import difflib
 from dataclasses import dataclass
 
+from .languages import get_registry
 from .scanner import FileScanner
-from .structural_diff import NodeRecord, read_side, records
+from .structural_diff import NodeRecord, language_of, read_side, records
 
 
 @dataclass
@@ -40,10 +41,11 @@ def _records_at(top: str, ref: str, rel: str) -> dict[str, NodeRecord] | None:
     content = read_side(top, ref, rel)
     if content is None:
         return None
-    structures = FileScanner().scan_content(content, rel, include_metadata=False)
+    scanner = FileScanner()
+    structures = scanner.scan_content(content, rel, include_metadata=False)
     if structures is None:
         return None
-    return records(structures, content.split("\n"))
+    return records(structures, content.split("\n"), language_of(scanner, rel))
 
 
 def _enclosing(table: dict[str, NodeRecord], line: int) -> NodeRecord | None:
@@ -51,11 +53,21 @@ def _enclosing(table: dict[str, NodeRecord], line: int) -> NodeRecord | None:
     return min(inside, key=lambda r: r.end - r.start) if inside else None
 
 
+def bare_name(name: str) -> str:
+    """The last segment of a qualified name, whichever registered language's
+    qualifier it was written with (longest qualifier first)."""
+    qualifiers = {language.QUALIFIER for language in get_registry().languages()}
+    for qualifier in sorted(qualifiers, key=len, reverse=True):
+        if qualifier in name:
+            return name.rsplit(qualifier, 1)[-1]
+    return name
+
+
 def _named(table: dict[str, NodeRecord], name: str) -> NodeRecord | None:
     exact = [r for r in table.values() if r.name == name]
     if len(exact) == 1:
         return exact[0]
-    leaf = [r for r in table.values() if r.name.rsplit(".", 1)[-1] == name.rsplit(".", 1)[-1]]
+    leaf = [r for r in table.values() if r.bare == bare_name(name)]
     return leaf[0] if len(leaf) == 1 else None
 
 

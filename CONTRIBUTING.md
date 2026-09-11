@@ -598,6 +598,33 @@ scanner's reach by nature — the engine returns "unresolvable" there, never a g
 
 ---
 
+## Naming conventions and the public surface
+
+Everything outside `languages/` sees `StructureNode`s and never a syntax.
+Three hooks on `BaseLanguage` carry what a language knows about names, and
+the generic commands (`diff`, `overlap`, `callers`, `resolve`, `surface`)
+use them instead of implementing a rule of their own:
+
+- `QUALIFIER` — the separator in a qualified name (`Class.method`).
+  Default `"."`; a language with `::` overrides it. `structural_diff.records`
+  joins and splits qualified names with it.
+- `is_private_name(name)` — whether the convention marks a bare name private.
+  Default: a leading underscore. `overlap` uses it to keep language-given
+  names (`__init__`) out of the "colliding new names" section.
+- `public_surface(package_dir, read_file)` — the names a package exports,
+  as `Export` records (`models.py`). Default: the top-level definitions in
+  the package's files that `is_private_name` does not reject. A language
+  with an explicit export mechanism overrides it: `python.py` follows
+  `__all__`, a PEP 562 lazy table, `TYPE_CHECKING` and re-export chains and
+  renders signatures with `ast` — the only place `ast` is used. TypeScript
+  (`export`), Go (capitalised names) and Rust (`pub`) are the same override,
+  not yet written.
+
+A red flag in review: `import ast`, `tree_sitter`, a file-extension test,
+a language keyword (`def `, `export`, `pub `), or a naming rule (private
+prefix, qualifier, dunder) anywhere outside `languages/`.
+`tests/test_language_conventions.py` checks the first four mechanically.
+
 ## Checklist for New Languages
 
 - [ ] Create `src/scantool/languages/LANG.py`

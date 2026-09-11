@@ -447,35 +447,10 @@ class CodeMap:
         if not extensions:
             return ""
 
-        # Map extensions to language names
-        lang_map = {
-            ".py": "Python",
-            ".ts": "TypeScript",
-            ".tsx": "TypeScript",
-            ".js": "JavaScript",
-            ".jsx": "JavaScript",
-            ".go": "Go",
-            ".rs": "Rust",
-            ".java": "Java",
-            ".rb": "Ruby",
-            ".php": "PHP",
-            ".cs": "C#",
-            ".c": "C",
-            ".cpp": "C++",
-            ".h": "C/C++",
-            ".sql": "SQL",
-            ".md": "Markdown",
-            ".json": "JSON",
-            ".yaml": "YAML",
-            ".yml": "YAML",
-        }
-
-        # Find dominant extension
-        sorted_exts = sorted(extensions.items(), key=lambda x: x[1], reverse=True)
-        if sorted_exts:
-            top_ext = sorted_exts[0][0]
-            return lang_map.get(top_ext, top_ext)
-        return ""
+        # The handler names the language; an extension without one stays as is
+        top_ext = max(extensions.items(), key=lambda item: item[1])[0]
+        language = self.registry.get(top_ext)
+        return language.get_language_name() if language else top_ext
 
     def _format_age(self, days: float) -> str:
         """Format age in days as human-readable string."""
