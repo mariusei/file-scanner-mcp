@@ -37,50 +37,23 @@ from .ref_diff import diff_against_ref
 from .scanner import FileScanner
 
 # Injected into context at session start even when tools are deferred behind
-# ToolSearch (clients truncate at ~2KB — most important guidance first).
+# ToolSearch. Clients cap this text (measured ~2 047 characters in one; the
+# rest is silently gone), so the whole block stays under 2 000 characters:
+# shell first, every command named, parameter hints in the tool descriptions.
+INSTRUCTIONS_CAP = 2000
 SERVER_INSTRUCTIONS = """\
-Structural scanner for code and documents — use INSTEAD of ls/find/grep/cat/\
-sed -n/git show when exploring a project or understanding a file. All file \
-types: code (20+ languages), markdown, HTML, CSS, SQL, config.
+Structure-first reader for code and documents (20+ languages, markdown, HTML, \
+CSS, SQL, config): functions, classes, headings with path:line instead of \
+raw text.
 
 {shell}
 
-TRIGGER: about to run ls, find, grep, cat, sed -n or git show to read code? \
-STOP — run the sct line above instead: structure (functions, classes, \
-headings, path:line on everything) with condensed skeletons, in about a \
-second, instead of raw text. About to cat/sed/Read a file to see one \
-function or section? `sct focus <path> <name>` reads exactly that node — \
-measured 75% fewer read tokens at equal answer quality (M2c).
-
-THE MCP TOOLS BELOW are the same reader as structured calls, for clients \
-without a shell or when a call needs JSON. Pick the cheapest that answers \
-the question:
-- targeted question ("where is X" / "how does X work") -> search_structures: \
-name/type/decorator filters, or content_pattern for text search WITH \
-enclosing function/class/section context
-- cheap overview of a directory -> scan_directory: file tree with one-line \
-gists, code health and churn labels
-- one file -> scan_file with budget=1500 (300 for a quick look); may append \
-a CONNECTIVITY note (candidate dead/orphan/drift across the corpus, silent \
-when clean) — a hint to look at, not a verdict
-- read ONE function/class/section -> scan_file with focus="name" (or \
-"ClassA.method"): the node verbatim plus parent context
-- "what changed" / review -> scan_diff against HEAD/main/any ref
-- hunt drift / misaligned implementations -> find_divergence: functions that \
-break a call pattern their siblings follow (review hint, silent when consistent)
-- first-time orientation in an UNKNOWN codebase -> preview_directory: entry \
-points, hot functions, call graph (RICH, ~3-5k tokens)
-- folder hierarchy only -> list_directories; remote/unsaved content, a git \
-blob or stdin -> scan_file_content (same budget and focus as scan_file)
-
-After a full recursive scan_directory(pattern="**/*"), do not re-search with \
-glob/grep — the output already lists every file. Repeat scans are \
-delta-aware when you pass caller=<your own id> on every call: files \
-unchanged since YOUR previous scan come back as a one-liner.
-
-PARAMETERS (keyword arguments required): directory= (not directory_path); \
-scan_file takes file_path=; max_depth exists only on list_directories. Do \
-not guess file paths — discover them via scan_directory first.
+MCP TOOLS: the same reader for clients without a shell, or when a call needs \
+JSON; each description carries its parameters. search_structures (targeted \
+question; text with its enclosing structure), scan_directory (tree with \
+gists), scan_file (one file; focus= reads one node), scan_diff (working tree \
+vs a ref), preview_directory (orientation), find_divergence (drift hint), \
+list_directories (folders), scan_file_content (stdin, a blob).
 """
 
 mcp = FastMCP(
@@ -329,7 +302,8 @@ def list_directories(
         Common:
             directory: Root directory to list
         Cost & slicing:
-            max_depth: Maximum depth to traverse (default: 3)
+            max_depth: Maximum depth to traverse (default: 3). Exists on this
+                tool only; the scanners take pattern= instead
             respect_gitignore: Respect .gitignore patterns (default: True)
 
     Returns:
@@ -556,6 +530,9 @@ def scan_file(
 
     **Recommended for:** Local files (includes full metadata: timestamps, permissions, size)
 
+    Keyword arguments only: file_path= (not directory). Paths come from a
+    scan_directory answer, not from a guess.
+
     Provides table of contents with line numbers for any file type:
     - Code files: classes, functions, methods, imports
     - Markdown: headings, code blocks, sections
@@ -778,6 +755,11 @@ def scan_directory(
     list of top-level classes/functions for each file. Compact bird's-eye view
     perfect for understanding codebase organization.
 
+    Keyword arguments only: directory= (not directory_path). After a full
+    recursive scan (pattern="**/*") do not re-search with glob or grep: the
+    output already lists every file. Do not guess file paths; discover them
+    here first.
+
     For detailed view of a specific file (with methods, decorators, docstrings),
     use scan_file() instead.
 
@@ -966,7 +948,7 @@ def scan_directory(
 @mcp.tool(
     tags={"local", "diff", "review"},
     description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions"
-    + shell_hint("--help"),
+    + shell_hint("diff <ref>", "diff <refA> <refB>"),
 )
 def scan_diff(directory: str, ref: str = "HEAD", budget: int | None = 1500) -> list[TextContent]:
     """
