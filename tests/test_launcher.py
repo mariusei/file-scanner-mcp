@@ -100,14 +100,15 @@ def test_marked_launcher_with_a_live_interpreter_and_current_version_is_kept(tmp
     existing interpreter at our version stays."""
     other = Path(shutil.which("git") or sys.executable)
     (tmp_path / "sct").write_bytes(_marked_launcher(other.as_posix(), launcher.__version__))
-    assert launcher.ensure_launcher(tmp_path) == []
+    written = {p.name for p in launcher.ensure_launcher(tmp_path)}
+    assert "sct" not in written  # on Windows the absent sct.cmd is still written
     assert other.as_posix().encode() in (tmp_path / "sct").read_bytes()
 
 
 def test_marked_launcher_with_a_newer_version_is_kept(tmp_path):
     newer = _bump(launcher.__version__, +1)
     (tmp_path / "sct").write_bytes(_marked_launcher(Path(sys.executable).as_posix(), newer))
-    assert launcher.ensure_launcher(tmp_path) == []
+    assert "sct" not in {p.name for p in launcher.ensure_launcher(tmp_path)}
     assert newer.encode() in (tmp_path / "sct").read_bytes()
 
 
