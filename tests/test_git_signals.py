@@ -60,19 +60,29 @@ def test_run_git_gives_up_when_a_grandchild_keeps_stdout_open(monkeypatch, tmp_p
     monkeypatch.setattr(git_signals, "_GIT_COMMAND", (sys.executable, str(stand_in)))
     monkeypatch.setattr(git_signals, "_GIT_TIMEOUT", 0.5)
 
-    outcome = {}
-    worker = threading.Thread(
-        target=lambda: outcome.setdefault("value", _run_git(str(tmp_path), "status")),
-        daemon=True,
-    )
+    outcome: dict = {}
+
+    def call():
+        try:
+            outcome["value"] = _run_git(str(tmp_path), "status")
+        except Exception as error:  # the point is to see it, not to hide it
+            outcome["error"] = error
+
+    # The guarantee is git timeout + kill budget; the kill step on a loaded
+    # Windows runner has taken longer than a short git timeout on its own.
+    deadline = git_signals._GIT_TIMEOUT + git_signals._KILL_TIMEOUT + 1.0
+    worker = threading.Thread(target=call, daemon=True)
     started = time.monotonic()
     worker.start()
-    worker.join(4.0)
+    worker.join(deadline)
     elapsed = time.monotonic() - started
 
     assert not worker.is_alive(), (
-        f"_run_git still blocked after {elapsed:.1f}s with a 0.5s timeout: "
+        f"_run_git still blocked after {elapsed:.1f}s (deadline {deadline:.1f}s): "
         "a grandchild holding the pipe kept communicate() waiting"
+    )
+    assert "error" not in outcome, (
+        f"_run_git raised instead of returning None: {outcome['error']!r}"
     )
     assert outcome["value"] is None
 

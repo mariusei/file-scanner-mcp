@@ -27,6 +27,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _GIT_TIMEOUT = 5.0
+# Killing the tree after a timeout is its own step with its own budget: on a
+# loaded Windows runner taskkill alone took longer than a short git timeout.
+_KILL_TIMEOUT = 5.0
 # The executable as a tuple so a test can point it at a stand-in.
 _GIT_COMMAND: tuple[str, ...] = ("git",)
 # Commits touching more files than this are skipped for co-change —
@@ -78,21 +81,27 @@ def _run_git(directory: str, *args: str) -> str | None:
 
 
 def _kill_tree(process: subprocess.Popen) -> None:
-    """Kill the process and everything it spawned; never block on the pipes."""
+    """Kill the process and everything it spawned; never block on the pipes,
+    never raise: _run_git returns None within _GIT_TIMEOUT + _KILL_TIMEOUT
+    whatever the tree does."""
     if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/F", "/T", "/PID", str(process.pid)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=_GIT_TIMEOUT,
-            check=False,
-        )
+        with contextlib.suppress(subprocess.SubprocessError, OSError):
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=_KILL_TIMEOUT,
+                check=False,
+            )
     else:
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
+    # The direct child at least, should taskkill be slow or absent.
+    with contextlib.suppress(ProcessLookupError, OSError):
+        process.kill()
     with contextlib.suppress(subprocess.TimeoutExpired):
-        process.wait(timeout=_GIT_TIMEOUT)
+        process.wait(timeout=_KILL_TIMEOUT)
 
 
 def repo_root(file_path: str) -> str | None:
