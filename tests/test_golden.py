@@ -23,7 +23,7 @@ import pytest
 
 from scantool.code_map import CodeMap
 from scantool.consensus import find_divergences, format_divergences
-from scantool.directory_formatter import DirectoryFormatter
+from scantool.directory_formatter import DirectoryFormatter, coverage_dict, format_coverage
 from scantool.focus import format_focus
 from scantool.formatter import TreeFormatter, structures_to_json
 from scantool.scanner import FileScanner
@@ -67,15 +67,16 @@ def _render_file(sample: Path) -> str:
 
 
 def _render_directory(fixture_dir: Path) -> str:
-    results = FileScanner().scan_directory(str(fixture_dir))
-    assert results, f"no files scanned in: {fixture_dir}"
-    stripped = {
+    sweep = FileScanner().sweep(str(fixture_dir))
+    assert sweep.results, f"no files scanned in: {fixture_dir}"
+    sweep.results = {
         path: [node for node in (nodes or []) if node.type != "file-info"]
-        for path, nodes in results.items()
+        for path, nodes in sweep.results.items()
     }
-    # Server-defaults for katalogvisning: kompakt inline-format med glimt
+    # Server defaults for the directory view: the coverage line, then the
+    # compact inline format with glimpses
     formatter = DirectoryFormatter(include_structures=True, flatten_structures=True)
-    return formatter.format(str(fixture_dir), stripped)
+    return format_coverage(sweep) + "\n" + formatter.format(str(fixture_dir), sweep.results)
 
 
 def _assert_matches_golden(name: str, actual: str, suffix: str = "txt") -> None:
@@ -107,17 +108,19 @@ def _render_file_json(rel: str) -> str:
 
 
 def _render_directory_json(fixture_dir: Path) -> str:
-    results = FileScanner().scan_directory(str(fixture_dir))
-    assert results, f"no files scanned in: {fixture_dir}"
-    documents = {
-        Path(path).relative_to(fixture_dir).as_posix(): structures_to_json(
-            [node for node in (nodes or []) if node.type != "file-info"],
-            Path(path).relative_to(fixture_dir).as_posix(),
-            return_dict=True,
-        )
-        for path, nodes in sorted(results.items())
+    sweep = FileScanner().sweep(str(fixture_dir))
+    assert sweep.results, f"no files scanned in: {fixture_dir}"
+    sweep.results = {
+        path: [node for node in (nodes or []) if node.type != "file-info"]
+        for path, nodes in sweep.results.items()
     }
-    return json.dumps(documents, indent=2)
+    files = {
+        Path(path).relative_to(fixture_dir).as_posix(): structures_to_json(
+            nodes, Path(path).relative_to(fixture_dir).as_posix(), return_dict=True
+        )
+        for path, nodes in sorted(sweep.results.items())
+    }
+    return json.dumps({"coverage": coverage_dict(sweep), "files": files}, indent=2)
 
 
 def test_scan_file_json_is_frozen():

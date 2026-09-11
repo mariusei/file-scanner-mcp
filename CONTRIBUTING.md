@@ -618,6 +618,12 @@ scanner's reach by nature — the engine returns "unresolvable" there, never a g
 
 ## The Output Contract (golden tests)
 
+Directory answers open with a coverage line rendered from the scanner's
+`Sweep` record (`format_coverage` in `directory_formatter.py`): files seen,
+structures shown, what was excluded by which pattern, unsupported types. A
+handler that adds a new way to leave a file out must count it there, or the
+line lies.
+
 Alongside the text snapshots, `tests/golden/*.json` freeze the JSON form and
 `tests/test_synthetic.py` checks every frozen sample for the `synthetic`
 flag: a node is synthetic when its name is not on the line that declares it

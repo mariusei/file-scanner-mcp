@@ -14,7 +14,7 @@ from .connectivity import connectivity_tail
 from .consensus import DivergenceConfig, find_divergences, format_divergences
 from .content_search import find_leads, format_hits, hits_to_json, search_content
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
-from .directory_formatter import DirectoryFormatter
+from .directory_formatter import DirectoryFormatter, coverage_dict, format_coverage
 from .focus import format_focus
 from .formatter import TreeFormatter, structures_to_json
 from .git_signals import (
@@ -832,7 +832,7 @@ def scan_directory(
                 "or preview_directory(depth=).\n\n"
             )
 
-        results = scanner.scan_directory(
+        sweep = scanner.sweep(
             directory=directory,
             pattern=pattern,
             respect_gitignore=respect_gitignore,
@@ -840,22 +840,27 @@ def scan_directory(
             mode=mode,
             max_files=max_files,
         )
+        results = sweep.results
+        if depth_note:
+            sweep.notes.append(depth_note.strip())
+        if max_files is not None and len(results) >= max_files:
+            sweep.notes.append(
+                f"Note: Limited to first {max_files} files; scanning stopped at the limit"
+            )
+        if not include_metadata:
+            results = {path: _without_file_info(nodes) for path, nodes in results.items()}
+            sweep.results = results
+        # Every directory answer opens with what was seen and what was left out
+        notes = "".join(f"{note}\n" for note in sweep.notes)
+        header = notes + format_coverage(sweep) + "\n"
 
         if not results:
             return [
                 TextContent(
                     type="text",
-                    text=depth_note + f"No supported files found in {directory} matching {pattern}",
+                    text=header + f"No supported files found in {directory} matching {pattern}",
                 )
             ]
-        if not include_metadata:
-            results = {path: _without_file_info(nodes) for path, nodes in results.items()}
-
-        warning = depth_note
-        if max_files is not None and len(results) >= max_files:
-            warning += (
-                f"Note: Limited to first {max_files} files; scanning stopped at the limit\n\n"
-            )
 
         if output_format == "json":
             json_results = {}
@@ -864,7 +869,8 @@ def scan_directory(
                     json_results[file_path] = structures_to_json(
                         structures, file_path, return_dict=True
                     )
-            return [TextContent(type="text", text=warning + json.dumps(json_results, indent=2))]
+            document = {"coverage": coverage_dict(sweep), "files": json_results}
+            return [TextContent(type="text", text=json.dumps(document, indent=2))]
         else:
             if include_metadata:
                 _annotate_churn(results, directory)
@@ -899,7 +905,7 @@ def scan_directory(
                 return [
                     TextContent(
                         type="text",
-                        text=depth_note
+                        text=notes
                         + (
                             f"{directory}: all {len(unchanged_paths)} files unchanged "
                             f"since last scan in this session ({names}) — "
@@ -914,7 +920,7 @@ def scan_directory(
                 flatten_structures=True,  # Always flat for directory overview
                 show_metadata=include_metadata,
             )
-            result = warning + custom_formatter.format(directory, display_results)
+            result = header + custom_formatter.format(directory, display_results)
             if unchanged_paths:
                 names = ", ".join(sorted(Path(p).name for p in unchanged_paths))
                 result += (
@@ -1091,9 +1097,12 @@ def search_structures(
     """
     try:
         # Scan directory (recursively scan all files)
-        results = scanner.scan_directory(directory, "**/*")
+        sweep = scanner.sweep(directory, "**/*")
+        results = sweep.results
         if not include_metadata:
             results = {path: _without_file_info(nodes) for path, nodes in results.items()}
+            sweep.results = results
+        header = "".join(f"{note}\n" for note in sweep.notes) + format_coverage(sweep) + "\n"
 
         if content_pattern is not None:
             found = search_content(results, content_pattern)
@@ -1107,10 +1116,18 @@ def search_structures(
                 return [
                     TextContent(
                         type="text",
-                        text=json.dumps(hits_to_json(found, content_pattern, leads), indent=2),
+                        text=json.dumps(
+                            {
+                                **hits_to_json(found, content_pattern, leads),
+                                "coverage": coverage_dict(sweep),
+                            },
+                            indent=2,
+                        ),
                     )
                 ]
-            return [TextContent(type="text", text=format_hits(found, content_pattern, leads))]
+            return [
+                TextContent(type="text", text=header + format_hits(found, content_pattern, leads))
+            ]
 
         # Filter structures
         matching = {}
@@ -1130,7 +1147,9 @@ def search_structures(
                 matching[file_path] = filtered
 
         if not matching:
-            return [TextContent(type="text", text="No structures found matching the criteria")]
+            return [
+                TextContent(type="text", text=header + "No structures found matching the criteria")
+            ]
 
         # Format output
         if output_format == "json":
@@ -1139,13 +1158,14 @@ def search_structures(
                 json_results[file_path] = structures_to_json(
                     structures, file_path, return_dict=True
                 )
-            return [TextContent(type="text", text=json.dumps(json_results, indent=2))]
+            document = {"coverage": coverage_dict(sweep), "files": json_results}
+            return [TextContent(type="text", text=json.dumps(document, indent=2))]
         else:
             outputs = []
             for file_path, structures in sorted(matching.items()):
                 outputs.append(formatter.format(file_path, structures))
             result = "\n\n".join(outputs)
-            return [TextContent(type="text", text=result)]
+            return [TextContent(type="text", text=header + result)]
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error searching: {e}")]

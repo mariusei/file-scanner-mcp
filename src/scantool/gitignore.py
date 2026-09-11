@@ -1,6 +1,15 @@
-"""Gitignore parsing and path matching utilities."""
+"""Gitignore parsing and path matching utilities.
 
+A scan honours every .gitignore from the scanned directory up to the home
+directory, each one matched relative to ITS OWN directory as git does. A
+layer that ignores the scanned directory itself (uv writes `.venv/.gitignore`
+containing `*`) is set aside when that directory was named explicitly, and
+the caller is told which file and pattern were overridden.
+"""
+
+import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -14,7 +23,7 @@ class GitignoreParser:
         Args:
             patterns: List of gitignore pattern strings
         """
-        self.patterns = []
+        self.patterns: list[tuple[re.Pattern, bool, str]] = []
         for pattern in patterns:
             pattern = pattern.strip()
             # Skip empty lines and comments
@@ -22,13 +31,14 @@ class GitignoreParser:
                 continue
             self.patterns.append(self._compile_pattern(pattern))
 
-    def _compile_pattern(self, pattern: str) -> tuple[re.Pattern, bool]:
+    def _compile_pattern(self, pattern: str) -> tuple[re.Pattern, bool, str]:
         """
         Compile a gitignore pattern to regex.
 
         Returns:
-            Tuple of (compiled_regex, is_negation)
+            Tuple of (compiled_regex, is_negation, the pattern as written)
         """
+        raw = pattern
         is_negation = pattern.startswith("!")
         if is_negation:
             pattern = pattern[1:]
@@ -95,7 +105,7 @@ class GitignoreParser:
             # Matches at start or after /, then exact name or name/ with anything
             final_pattern = f"(?:^|/){regex_str}(?:/.*)?$"
 
-        return (re.compile(final_pattern), is_negation)
+        return (re.compile(final_pattern), is_negation, raw)
 
     def matches(self, path: str, is_dir: bool = False) -> bool:
         """
@@ -108,54 +118,99 @@ class GitignoreParser:
         Returns:
             True if path should be ignored
         """
-        # Normalize path (remove leading ./ if present)
+        return self.decide(path, is_dir) is not None
+
+    def decide(self, path: str, is_dir: bool = False) -> str | None:
+        """The pattern (as written) that ignores the path, or None. The last
+        matching pattern wins, as in git; a negation clears the decision."""
         if path.startswith("./"):
             path = path[2:]
-
-        ignored = False
-        for regex, is_negation in self.patterns:
+        decision = None
+        for regex, is_negation, raw in self.patterns:
             if regex.search(path):
-                ignored = not is_negation
+                decision = None if is_negation else raw
+        return decision
 
-        return ignored
+
+@dataclass
+class IgnoreLayer:
+    """One .gitignore file and where the scanned directory sits below it."""
+
+    source: Path  # the .gitignore file
+    prefix: str  # scan root relative to the file's directory; "" when it is the root
+    parser: GitignoreParser
+
+    def rooted(self, rel_path: str) -> str:
+        return f"{self.prefix}/{rel_path}" if self.prefix else rel_path
 
 
-def load_gitignore(directory: Path) -> GitignoreParser | None:
+class GitignoreStack:
+    """All .gitignore layers above and at a directory, outermost first, each
+    matched relative to its own directory; the last matching pattern wins."""
+
+    PROBE = "__scantool_probe__"  # a name no real pattern spells out
+
+    def __init__(self, layers: list[IgnoreLayer]):
+        self.layers = layers
+
+    def decide(self, path: str, is_dir: bool = False) -> str | None:
+        """'<gitignore file>: <pattern>' for the pattern that ignores the
+        path (relative to the scanned directory), or None."""
+        if path.startswith("./"):
+            path = path[2:]
+        decision = None
+        for layer in self.layers:
+            rooted = layer.rooted(path)
+            for regex, is_negation, raw in layer.parser.patterns:
+                if regex.search(rooted):
+                    decision = None if is_negation else f"{layer.source}: {raw}"
+        return decision
+
+    def matches(self, path: str, is_dir: bool = False) -> bool:
+        return self.decide(path, is_dir) is not None
+
+    def set_aside_root_ignores(self) -> list[tuple[Path, str]]:
+        """Drop every layer that ignores the scanned directory itself or
+        everything in it; return (file, pattern) for each. An explicitly
+        named directory is meant to be read."""
+        kept: list[IgnoreLayer] = []
+        set_aside: list[tuple[Path, str]] = []
+        for layer in self.layers:
+            pattern = layer.parser.decide(layer.prefix, True) if layer.prefix else None
+            pattern = pattern or layer.parser.decide(layer.rooted(self.PROBE), False)
+            if pattern:
+                set_aside.append((layer.source, pattern))
+            else:
+                kept.append(layer)
+        self.layers = kept
+        return set_aside
+
+
+def load_gitignore(directory: Path) -> GitignoreStack | None:
     """
-    Load .gitignore files from directory and all parent directories up to git root.
-
-    Mimics git behavior: traverses up to .git/ directory and combines all .gitignore
-    files found along the way.
-
-    Args:
-        directory: Directory to start search from
+    Load the .gitignore files from directory and every parent up to the home
+    directory (or the filesystem root), outermost first, each one matched
+    relative to its own directory as git does.
 
     Returns:
-        GitignoreParser with combined patterns, or None if no .gitignore found
+        GitignoreStack, or None if no .gitignore holds a pattern
     """
     directory = directory.resolve()
-    all_patterns = []
     home = Path.home()
-
-    # Collect all .gitignore files from current directory up to home (or filesystem root)
-    gitignore_paths = []
+    layers: list[IgnoreLayer] = []
     current = directory
-
     while current != current.parent and current != home:
         gitignore_path = current / ".gitignore"
         if gitignore_path.exists():
-            gitignore_paths.append(gitignore_path)
+            try:
+                patterns = gitignore_path.read_text(encoding="utf-8").splitlines()
+            except OSError:
+                patterns = []
+            parser = GitignoreParser(patterns)
+            if parser.patterns:
+                prefix = os.path.relpath(directory, current).replace(os.sep, "/")
+                layers.append(IgnoreLayer(gitignore_path, "" if prefix == "." else prefix, parser))
         current = current.parent
-
-    # Load patterns from all .gitignore files (reverse order: root first)
-    for gitignore_path in reversed(gitignore_paths):
-        try:
-            with open(gitignore_path, encoding="utf-8") as f:
-                all_patterns.extend(f.readlines())
-        except Exception:
-            continue
-
-    if not all_patterns:
+    if not layers:
         return None
-
-    return GitignoreParser(all_patterns)
+    return GitignoreStack(list(reversed(layers)))
