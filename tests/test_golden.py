@@ -15,6 +15,7 @@ A deliberate format change requires a deliberate snapshot update:
     UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from scantool.code_map import CodeMap
 from scantool.consensus import find_divergences, format_divergences
 from scantool.directory_formatter import DirectoryFormatter
 from scantool.focus import format_focus
-from scantool.formatter import TreeFormatter
+from scantool.formatter import TreeFormatter, structures_to_json
 from scantool.scanner import FileScanner
 
 TESTS_DIR = Path(__file__).parent
@@ -77,8 +78,8 @@ def _render_directory(fixture_dir: Path) -> str:
     return formatter.format(str(fixture_dir), stripped)
 
 
-def _assert_matches_golden(name: str, actual: str) -> None:
-    golden = GOLDEN_DIR / f"{name}.txt"
+def _assert_matches_golden(name: str, actual: str, suffix: str = "txt") -> None:
+    golden = GOLDEN_DIR / f"{name}.{suffix}"
     if os.environ.get("UPDATE_GOLDEN"):
         golden.write_text(actual + "\n", encoding="utf-8")
         return
@@ -94,6 +95,43 @@ def test_scan_file_output_is_frozen(lang):
 
 def test_scan_directory_output_is_frozen():
     _assert_matches_golden("directory", _render_directory(GOLDEN_DIR / "fixture_dir"))
+
+
+# The JSON form is a contract too: scan_file's used to return a JSON string
+# of a JSON string, and no text golden could see it. Paths are relative to
+# tests/ so the snapshot is the same on every machine.
+def _render_file_json(rel: str) -> str:
+    structures = FileScanner().scan_file(str(TESTS_DIR / rel), include_file_metadata=False)
+    assert structures, f"no structure for sample: {rel}"
+    return structures_to_json(structures, rel)
+
+
+def _render_directory_json(fixture_dir: Path) -> str:
+    results = FileScanner().scan_directory(str(fixture_dir))
+    assert results, f"no files scanned in: {fixture_dir}"
+    documents = {
+        Path(path).relative_to(fixture_dir).as_posix(): structures_to_json(
+            [node for node in (nodes or []) if node.type != "file-info"],
+            Path(path).relative_to(fixture_dir).as_posix(),
+            return_dict=True,
+        )
+        for path, nodes in sorted(results.items())
+    }
+    return json.dumps(documents, indent=2)
+
+
+def test_scan_file_json_is_frozen():
+    _assert_matches_golden("python", _render_file_json(SAMPLES["python"]), suffix="json")
+
+
+def test_scan_markdown_json_is_frozen():
+    _assert_matches_golden("markdown", _render_file_json(SAMPLES["markdown"]), suffix="json")
+
+
+def test_scan_directory_json_is_frozen():
+    _assert_matches_golden(
+        "directory", _render_directory_json(GOLDEN_DIR / "fixture_dir"), suffix="json"
+    )
 
 
 def _render_focus(sample: Path, focus: str) -> str:

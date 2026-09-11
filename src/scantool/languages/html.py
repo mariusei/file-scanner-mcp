@@ -378,6 +378,7 @@ class HTMLLanguage(BaseLanguage):
             signature=f"{item_count} items",
             modifiers=[list_type],
             children=[],
+            synthetic=not attrs.get("id"),
         )
 
     def _count_list_items(self, node: Node, tag_name: str) -> int:
@@ -515,6 +516,7 @@ class HTMLLanguage(BaseLanguage):
             signature=signature,
             modifiers=modifiers,
             children=[],
+            synthetic=is_script and not src,
         )
 
     def _extract_text_content(self, node: Node, source_code: bytes) -> str:

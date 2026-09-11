@@ -16,7 +16,7 @@ from .content_search import find_leads, format_hits, hits_to_json, search_conten
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
 from .directory_formatter import DirectoryFormatter
 from .focus import format_focus
-from .formatter import TreeFormatter
+from .formatter import TreeFormatter, structures_to_json
 from .git_signals import (
     collect_git_signals,
     file_churn,
@@ -116,6 +116,14 @@ def _connectivity_note(file_path: str) -> str:
         return connectivity_tail(root, file_path)
     except Exception:
         return ""
+
+
+def _without_file_info(structures: list[StructureNode] | None) -> list[StructureNode] | None:
+    """Drop the file-info record from a parsed file. A bare stub (an unsupported
+    file, nothing but the record) stays, so the file is still listed."""
+    if structures is None or is_file_info_stub(structures):
+        return structures
+    return [node for node in structures if node.type != "file-info"]
 
 
 def _annotate_churn(results: dict, directory: str) -> None:
@@ -398,6 +406,7 @@ def scan_file_content(
     budget: int | None = None,
     depth: str | None = None,
     mode: str = "balanced",
+    include_metadata: bool = True,
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -430,6 +439,8 @@ def scan_file_content(
             depth: "quick" (~300), "normal" (~1500) or "deep" (full) when
                 budget is not given
             mode: Saliency weight profile — "balanced" or "active"
+            include_metadata: The file-info record (name, size) as first node
+                (default: True)
         Semantics & display:
             show_signatures: Include function signatures with types (default: True)
             show_decorators: Include decorators like @property, @staticmethod (default: True)
@@ -452,7 +463,7 @@ def scan_file_content(
         structures = scanner.scan_content(
             content=content,
             filename=filename,
-            include_metadata=True,
+            include_metadata=include_metadata,
             budget=_budget_for(budget, depth),
             mode=mode,
         )
@@ -477,7 +488,7 @@ def scan_file_content(
                 )
             ]
         if output_format == "json":
-            return [TextContent(type="text", text=_structures_to_json(structures, filename))]
+            return [TextContent(type="text", text=structures_to_json(structures, filename))]
         custom_formatter = TreeFormatter(
             show_signatures=show_signatures,
             show_decorators=show_decorators,
@@ -508,6 +519,7 @@ def scan_file(
     depth: str | None = None,
     delta: bool = True,
     mode: str = "balanced",
+    include_metadata: bool = True,
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -562,6 +574,9 @@ def scan_file(
                 for full output (default: True)
         Semantics & display:
             mode: Saliency weight profile — "balanced" (default) or "active"
+            include_metadata: File size and mtime, git churn and per-node
+                "[N edits/90d]" labels (default: True). False for output that
+                must not depend on the checkout: the CLI, snapshots, diffs
                 (weights actively-edited code higher in skeleton selection)
             condense: Show code as condensed method skeletons (pseudocode without
                 line numbers) — every function gets a shallow depth-2 outline, the
@@ -623,10 +638,16 @@ def scan_file(
         # (weight 0.15 toward actively-worked nodes) and "[N edits/90d]"
         # labels. Cold files (zero churn) skip the blame call; silently
         # absent without git.
-        churn = file_churn(file_path)
+        churn = file_churn(file_path) if include_metadata else None
         line_edits = recent_line_edits(file_path) if churn else None
 
-        structures = scanner.scan_file(file_path, budget=budget, line_edits=line_edits, mode=mode)
+        structures = scanner.scan_file(
+            file_path,
+            include_file_metadata=include_metadata,
+            budget=budget,
+            line_edits=line_edits,
+            mode=mode,
+        )
 
         if structures is None:
             supported = ", ".join(scanner.get_supported_extensions())
@@ -670,7 +691,7 @@ def scan_file(
             return [
                 TextContent(
                     type="text",
-                    text=_structures_to_json(structures, file_path),
+                    text=structures_to_json(structures, file_path),
                 )
             ]
         else:
@@ -706,6 +727,7 @@ def scan_directory(
     delta: bool = True,
     mode: str = "balanced",
     depth: str | None = None,
+    include_metadata: bool = True,
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -766,6 +788,9 @@ def scan_directory(
             mode: Saliency weight profile for the per-file glimpse lines —
                 "balanced" (default) or "active" (weights actively-edited
                 code higher)
+            include_metadata: File size and mtime, git churn and per-node
+                "[N edits/90d]" labels (default: True). False for output that
+                must not depend on the checkout: the CLI, snapshots, diffs
             depth: Accepted but inert — scan_directory is already the shallow
                 bird's-eye tier, so there is no depth axis to set. Passing it
                 triggers a one-line usage hint pointing at the right lever
@@ -814,6 +839,8 @@ def scan_directory(
                     text=depth_note + f"No supported files found in {directory} matching {pattern}",
                 )
             ]
+        if not include_metadata:
+            results = {path: _without_file_info(nodes) for path, nodes in results.items()}
 
         warning = depth_note
         if max_files is not None and len(results) >= max_files:
@@ -825,12 +852,13 @@ def scan_directory(
             json_results = {}
             for file_path, structures in results.items():
                 if structures:
-                    json_results[file_path] = _structures_to_json(
+                    json_results[file_path] = structures_to_json(
                         structures, file_path, return_dict=True
                     )
             return [TextContent(type="text", text=warning + json.dumps(json_results, indent=2))]
         else:
-            _annotate_churn(results, directory)
+            if include_metadata:
+                _annotate_churn(results, directory)
 
             # Delta: files unchanged since this session's previous scan are
             # aggregated to one line; full detail only for changed/new files.
@@ -873,6 +901,7 @@ def scan_directory(
             custom_formatter = DirectoryFormatter(
                 include_structures=True,
                 flatten_structures=True,  # Always flat for directory overview
+                show_metadata=include_metadata,
             )
             result = warning + custom_formatter.format(directory, display_results)
             if unchanged_paths:
@@ -1003,6 +1032,7 @@ def search_structures(
     has_decorator: str | None = None,
     min_complexity: int | None = None,
     content_pattern: str | None = None,
+    include_metadata: bool = True,
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -1051,6 +1081,8 @@ def search_structures(
     try:
         # Scan directory (recursively scan all files)
         results = scanner.scan_directory(directory, "**/*")
+        if not include_metadata:
+            results = {path: _without_file_info(nodes) for path, nodes in results.items()}
 
         if content_pattern is not None:
             found = search_content(results, content_pattern)
@@ -1093,7 +1125,7 @@ def search_structures(
         if output_format == "json":
             json_results = {}
             for file_path, structures in matching.items():
-                json_results[file_path] = _structures_to_json(
+                json_results[file_path] = structures_to_json(
                     structures, file_path, return_dict=True
                 )
             return [TextContent(type="text", text=json.dumps(json_results, indent=2))]
@@ -1151,38 +1183,6 @@ def _filter_structures(
             results.extend(filtered_children)
 
     return results
-
-
-def _structures_to_json(structures: list[StructureNode], file_path: str, return_dict: bool = False):
-    """Convert structures to JSON format."""
-
-    def node_to_dict(node: StructureNode) -> dict:
-        """Convert a single node to dictionary."""
-        result = {
-            "type": node.type,
-            "name": node.name,
-            "start_line": node.start_line,
-            "end_line": node.end_line,
-        }
-
-        if node.signature:
-            result["signature"] = node.signature
-        if node.decorators:
-            result["decorators"] = node.decorators
-        if node.docstring:
-            result["docstring"] = node.docstring
-        if node.modifiers:
-            result["modifiers"] = node.modifiers
-        if node.complexity:
-            result["complexity"] = node.complexity
-        if node.children:
-            result["children"] = [node_to_dict(child) for child in node.children]
-
-        return result
-
-    data = {"file": file_path, "structures": [node_to_dict(s) for s in structures]}
-
-    return data if return_dict else json.dumps(data, indent=2)
 
 
 def main():

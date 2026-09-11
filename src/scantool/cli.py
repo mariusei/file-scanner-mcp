@@ -9,10 +9,9 @@ PROBLEM:
 
 SOLUTION:
   `sct`: a second door into the same tool functions the MCP server exposes.
-  No second logic, no second formatter — the output contract is the same.
-  Only the server-layer decorations that describe the checkout rather than
-  the code (file size, mtime, churn, delta memory) are left out. Agents live
-  in pipes, so `-` reads a path list from stdin and `- --as <path>` scans
+  No second logic, no second formatter — the output contract is the same,
+  asked for without the checkout's decorations (include_metadata=False: no
+  size, mtime or churn; delta=False: no session memory). Agents live in pipes, so `-` reads a path list from stdin and `- --as <path>` scans
   stdin content under its real name (`git show REF:path | sct scan - --as path`).
 
 SCOPE:
@@ -24,7 +23,6 @@ SCOPE:
 import argparse
 import json
 import os
-import re
 import sys
 from collections.abc import Callable, Sequence
 
@@ -86,13 +84,6 @@ CONVENTIONS
 COMMANDS = ("scan", "focus", "search")
 STDIN = "-"
 
-# Server-layer decorations that describe the checkout, not the code: the
-# file-info line (size, mtime), per-node edit counts, and the directory
-# listing's [size, age, churn] suffix.
-FILE_INFO_LINE = re.compile(r"^- file-info: .*\n?", re.MULTILINE)
-EDIT_TAG = re.compile(r" \[\d+ edits/90d\]")
-DIRECTORY_METADATA = re.compile(r" \[\d+(?:\.\d+)?[KMGT]?B(?:, [^\]]*\[ts:\d+\])?(?:, \d+x/90d)?\]")
-
 # The glyphs scantool's own formatters emit; --ascii maps these and nothing
 # else, so non-ASCII text from the scanned files survives.
 GLYPHS = {
@@ -145,25 +136,8 @@ class UsageError(Exception):
     """A usage error found after argparse: printed like argparse's, exit 2."""
 
 
-def strip_environment(text: str) -> str:
-    return DIRECTORY_METADATA.sub("", EDIT_TAG.sub("", FILE_INFO_LINE.sub("", text)))
-
-
 def to_ascii(text: str) -> str:
     return "".join(GLYPHS.get(char, char) for char in text)
-
-
-def drop_file_info(value):
-    """Remove file-info nodes from any JSON document the tools return."""
-    if isinstance(value, dict):
-        return {key: drop_file_info(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [
-            drop_file_info(item)
-            for item in value
-            if not (isinstance(item, dict) and item.get("type") == "file-info")
-        ]
-    return value
 
 
 def _text(result) -> str:
@@ -210,6 +184,7 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
                 filename=args.as_path,
                 budget=args.budget,
                 depth=args.depth,
+                include_metadata=False,
                 output_format=output_format,
             )
         )
@@ -221,13 +196,16 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     outputs, code = [], 0
     for path in paths:
         if os.path.isdir(path):
-            result = server.scan_directory(directory=path, delta=False, output_format=output_format)
+            result = server.scan_directory(
+                directory=path, delta=False, include_metadata=False, output_format=output_format
+            )
         elif os.path.isfile(path):
             result = server.scan_file(
                 file_path=path,
                 budget=args.budget,
                 depth=args.depth,
                 delta=False,
+                include_metadata=False,
                 output_format=output_format,
             )
         else:
@@ -246,11 +224,15 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
 
     if args.as_path or args.path == STDIN:
         content = _stdin_content("focus", args.as_path, [args.path])
-        result = server.scan_file_content(content=content, filename=args.as_path, focus=args.name)
+        result = server.scan_file_content(
+            content=content, filename=args.as_path, focus=args.name, include_metadata=False
+        )
     elif not os.path.isfile(args.path):
         return [f"sct focus: no such file: {args.path}"], 1
     else:
-        result = server.scan_file(file_path=args.path, focus=args.name, delta=False)
+        result = server.scan_file(
+            file_path=args.path, focus=args.name, delta=False, include_metadata=False
+        )
     text = _text(result)
     return [text], 1 if _not_found(text) else 0
 
@@ -265,6 +247,7 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
         server.search_structures(
             directory=args.directory,
             type_filter=args.type,
+            include_metadata=False,
             output_format="json" if args.json else "tree",
             **pattern,
         )
@@ -343,9 +326,9 @@ def _emit(outputs: list[str], as_json: bool, as_ascii: bool) -> None:
             sys.stderr.write(message.rstrip("\n") + "\n")
         if documents:
             document = documents[0] if len(documents) == 1 else documents
-            sys.stdout.write(json.dumps(drop_file_info(document), indent=2) + "\n")
+            sys.stdout.write(json.dumps(document, indent=2) + "\n")
         return
-    text = "\n".join(strip_environment(output).rstrip("\n") for output in outputs) + "\n"
+    text = "\n".join(output.rstrip("\n") for output in outputs) + "\n"
     sys.stdout.write(to_ascii(text) if as_ascii else text)
 
 

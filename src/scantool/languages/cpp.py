@@ -678,6 +678,7 @@ class CCppLanguage(BaseLanguage):
                 name="#include directives",
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
+                synthetic=True,
             )
             parent_structures.append(include_node)
         else:

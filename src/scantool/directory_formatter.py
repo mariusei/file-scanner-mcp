@@ -71,6 +71,7 @@ class DirectoryFormatter:
         include_structures: bool = True,
         flatten_structures: bool = False,
         include_glimpse: bool = True,
+        show_metadata: bool = True,
     ):
         """
         Initialize directory formatter with display options.
@@ -88,6 +89,7 @@ class DirectoryFormatter:
         self.include_structures = include_structures
         self.flatten_structures = flatten_structures
         self.include_glimpse = include_glimpse
+        self.show_metadata = show_metadata
 
     @classmethod
     def _glimpse_line(cls, structures) -> str | None:
@@ -286,15 +288,13 @@ class DirectoryFormatter:
                     churn = metadata.get("churn_90d")
                     meta_parts = [size, modified_relative, f"{churn}x/90d" if churn else ""]
                     meta_str = ", ".join(p for p in meta_parts if p)
-                    lines.append(f"{prefix}{connector} {name} [{meta_str}]")
+                    suffix = f" [{meta_str}]" if self.show_metadata else ""
+                    lines.append(f"{prefix}{connector} {name}{suffix}")
                 else:
                     # Supported file - show structures with metadata
-                    min_line = (
-                        min(s.start_line for s in self._flatten(structures)) if structures else 1
-                    )
-                    max_line = (
-                        max(s.end_line for s in self._flatten(structures)) if structures else 1
-                    )
+                    spans = [s for s in self._flatten(structures) if s.file_metadata is None]
+                    min_line = min((s.start_line for s in spans), default=1)
+                    max_line = max((s.end_line for s in spans), default=1)
 
                     # Extract metadata from file-info node if present
                     file_metadata = None
@@ -303,7 +303,7 @@ class DirectoryFormatter:
 
                     # Format metadata (size, modified time, git churn)
                     metadata_str = ""
-                    if file_metadata:
+                    if file_metadata and self.show_metadata:
                         size = file_metadata.get("size_formatted", "")
                         modified_iso = file_metadata.get("modified", "")
                         modified_relative = (

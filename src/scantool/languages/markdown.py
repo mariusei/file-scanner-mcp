@@ -282,6 +282,7 @@ class MarkdownLanguage(BaseLanguage):
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
             signature=language,  # Store language in signature field
+            synthetic=True,
         )
 
     def _extract_indented_code_block(self, node: Node, source_code: bytes) -> StructureNode:
@@ -291,6 +292,7 @@ class MarkdownLanguage(BaseLanguage):
             name="code block (indented)",
             start_line=node.start_point[0] + 1,
             end_line=node.end_point[0] + 1,
+            synthetic=True,
         )
 
     def _get_heading_level(self, node: Node) -> int:
@@ -427,6 +429,7 @@ class MarkdownLanguage(BaseLanguage):
                     start_line=line_num,
                     end_line=line_num,
                     signature=language,
+                    synthetic=True,
                 )
 
                 if heading_stack:

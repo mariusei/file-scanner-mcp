@@ -46,15 +46,11 @@ def test_usage_error_exits_2(capsys):
         assert exit_info.value.code == 2
 
 
-def test_scan_file_matches_the_golden_contract(capsys):
-    """The header's line range differs by one artefact: the MCP layer counts
-    the synthetic file-info node at line 1 into the range (basic.py 1-57 vs
-    the golden 3-57). Everything after the header is byte-identical."""
+def test_scan_file_is_byte_identical_to_the_golden_contract(capsys):
     out, _, code = run("scan", str(PYTHON_SAMPLE), capsys=capsys)
     golden = (GOLDEN_DIR / "python.txt").read_text(encoding="utf-8")
     assert code == 0
-    assert out.splitlines()[1:] == golden.splitlines()[1:]
-    assert out.splitlines()[0].split(" (")[0] == golden.splitlines()[0].split(" (")[0]
+    assert out.rstrip("\n") == golden.rstrip("\n")
 
 
 def test_scan_markdown_is_byte_identical_to_golden(capsys):
@@ -70,19 +66,6 @@ def test_environment_lines_are_stripped(capsys):
     for marker in ("file-info", "edits/90d", "[ts:", "x/90d", "unchanged since"):
         assert marker not in out, marker
     assert "fixture_dir/ (" in out
-
-
-def test_strip_environment_regexes():
-    text = (
-        "- file-info: 4.0KB modified: 2026-08-31 13:23 [ts:1788175401] churn: 3 commits/90d\n"
-        "- _walk (structures) @43 [1 edits/90d]\n"
-        "- core.py (1-208) [7.4KB, 1 week ago [ts:1788175401], 3x/90d] - a, b\n"
-        "- data.bin [155B]\n"
-        "- other.py (1-5) [1.2MB, 2 days ago [ts:17]] - c\n"
-    )
-    assert cli.strip_environment(text) == (
-        "- _walk (structures) @43\n- core.py (1-208) - a, b\n- data.bin\n- other.py (1-5) - c\n"
-    )
 
 
 def test_scan_json_is_one_document_without_file_info(capsys):
@@ -216,7 +199,7 @@ def test_scan_stdin_content_under_a_name(monkeypatch, capsys):
     out, _, code = run("scan", "-", "--as", "lib/basic.py", capsys=capsys)
     golden = (GOLDEN_DIR / "python.txt").read_text(encoding="utf-8")
     assert code == 0
-    assert out.splitlines()[1:] == golden.splitlines()[1:]
+    assert out.rstrip("\n") == golden.rstrip("\n")
 
     monkeypatch.setattr("sys.stdin", io.StringIO(PYTHON_SAMPLE.read_text()))
     out, _, code = run("scan", "-", "--as", "lib/basic.py", "--json", capsys=capsys)
@@ -228,8 +211,7 @@ def test_focus_on_stdin_content(monkeypatch, capsys):
     out, _, code = run("focus", "-", "--as", "basic.py", "DatabaseManager.query", capsys=capsys)
     golden = (GOLDEN_DIR / "focus_python.txt").read_text(encoding="utf-8")
     assert code == 0
-    assert out.splitlines()[0] == golden.splitlines()[0]
-    assert out.splitlines()[2:] == golden.splitlines()[2:]
+    assert out.rstrip("\n") == golden.rstrip("\n")
 
 
 def test_stdin_usage_errors_exit_2(monkeypatch, capsys):

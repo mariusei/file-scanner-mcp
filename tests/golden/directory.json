@@ -1,0 +1,183 @@
+{
+  "app.py": {
+    "file": "app.py",
+    "structures": [
+      {
+        "type": "class",
+        "name": "TaskQueue",
+        "start_line": 4,
+        "end_line": 21,
+        "docstring": "Holds pending tasks in priority order.",
+        "complexity": {
+          "lines": 18,
+          "max_depth": 9,
+          "branches": 1
+        },
+        "children": [
+          {
+            "type": "method",
+            "name": "__init__",
+            "start_line": 7,
+            "end_line": 9,
+            "signature": "(self, capacity: int = 10)",
+            "complexity": {
+              "lines": 3,
+              "max_depth": 5,
+              "branches": 0
+            }
+          },
+          {
+            "type": "method",
+            "name": "push",
+            "start_line": 11,
+            "end_line": 17,
+            "signature": "(self, task: str, priority: int) -> bool",
+            "docstring": "Add a task; reject when full.",
+            "complexity": {
+              "lines": 7,
+              "max_depth": 7,
+              "branches": 1
+            }
+          },
+          {
+            "type": "method",
+            "name": "pop",
+            "start_line": 19,
+            "end_line": 21,
+            "signature": "(self) -> str",
+            "docstring": "Remove and return the highest-priority task.",
+            "complexity": {
+              "lines": 3,
+              "max_depth": 7,
+              "branches": 0
+            }
+          }
+        ]
+      },
+      {
+        "type": "function",
+        "name": "drain",
+        "start_line": 24,
+        "end_line": 29,
+        "signature": "(queue: TaskQueue) -> list[str]",
+        "docstring": "Pop every task until the queue is empty.",
+        "complexity": {
+          "lines": 6,
+          "max_depth": 9,
+          "branches": 1
+        }
+      }
+    ]
+  },
+  "lib/utils.ts": {
+    "file": "lib/utils.ts",
+    "structures": [
+      {
+        "type": "interface",
+        "name": "Task",
+        "start_line": 3,
+        "end_line": 6,
+        "modifiers": [
+          "export"
+        ]
+      },
+      {
+        "type": "function",
+        "name": "byPriority",
+        "start_line": 8,
+        "end_line": 10,
+        "signature": "(a: Task, b: Task) : number",
+        "modifiers": [
+          "export"
+        ],
+        "complexity": {
+          "lines": 3,
+          "max_depth": 5,
+          "branches": 0
+        }
+      },
+      {
+        "type": "function",
+        "name": "formatTask",
+        "start_line": 12,
+        "end_line": 17,
+        "signature": "(task: Task) : string",
+        "modifiers": [
+          "export"
+        ],
+        "complexity": {
+          "lines": 6,
+          "max_depth": 8,
+          "branches": 1
+        }
+      }
+    ]
+  },
+  "notes.md": {
+    "file": "notes.md",
+    "structures": [
+      {
+        "type": "heading-1",
+        "name": "Task queue notes",
+        "start_line": 1,
+        "end_line": 12,
+        "children": [
+          {
+            "type": "heading-2",
+            "name": "Design",
+            "start_line": 5,
+            "end_line": 8
+          },
+          {
+            "type": "heading-2",
+            "name": "Open questions",
+            "start_line": 9,
+            "end_line": 12
+          }
+        ]
+      }
+    ]
+  },
+  "schema.sql": {
+    "file": "schema.sql",
+    "structures": [
+      {
+        "type": "table",
+        "name": "tasks",
+        "start_line": 3,
+        "end_line": 7,
+        "docstring": "Liten, stabil fixture for golden-test av scan_directory-formatet.",
+        "children": [
+          {
+            "type": "column",
+            "name": "id",
+            "start_line": 4,
+            "end_line": 4,
+            "signature": "BIGINT PRIMARY KEY"
+          },
+          {
+            "type": "column",
+            "name": "name",
+            "start_line": 5,
+            "end_line": 5,
+            "signature": "VARCHAR(100) NOT NULL"
+          },
+          {
+            "type": "column",
+            "name": "priority",
+            "start_line": 6,
+            "end_line": 6,
+            "signature": "INT DEFAULT"
+          }
+        ]
+      },
+      {
+        "type": "index",
+        "name": "idx_tasks_priority",
+        "start_line": 9,
+        "end_line": 9,
+        "signature": "ON tasks (priority)"
+      }
+    ]
+  }
+}

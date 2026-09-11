@@ -277,6 +277,7 @@ scan_file(
     condense=True,  # Condensed skeletons (set False for verbatim lines)
     budget=None,  # Approx token cap for skeletons — least salient
     # functions degrade first, output stays predictable
+    include_metadata=True,  # File size/mtime, git churn, [N edits/90d] labels; False = checkout-independent output
     output_format="tree",  # "tree" or "json"
 )
 ```
@@ -380,6 +381,7 @@ scan_directory(
     max_files=None,  # File limit
     respect_gitignore=True,  # Honor .gitignore
     exclude_patterns=None,  # Additional exclusions
+    include_metadata=True,  # Size/age/churn per file; False = checkout-independent output
     output_format="tree",  # "tree" or "json"
 )
 ```
@@ -471,7 +473,15 @@ consumer (measured in `experiments/benchmark/M2B.md`). Two consequences:
   deliberate snapshot update (`UPDATE_GOLDEN=1 uv run pytest
   tests/test_golden.py`); an accidental change fails CI. Environment-
   dependent parts (file size/mtime, git churn, delta memory) live outside
-  the frozen layer. Peer divergence is a pure function of the code, so it
+  the frozen layer and are switched off with `include_metadata=False`.
+  The JSON form is frozen the same way (`tests/golden/*.json`).
+- **Names are identities only when they come from the source.** A node
+  whose name scantool made up ("import statements", "paragraph (4-5)",
+  "code block (bash)", "unordered list") carries `synthetic: true` in JSON
+  and `synthetic=True` on `StructureNode`, so a consumer comparing names
+  across files or refs never pairs two files on a label they merely share.
+  `tests/test_synthetic.py` checks the flag against the source for every
+  frozen sample. Peer divergence is a pure function of the code, so it
   is frozen too (`tests/golden/consensus.txt`, fixture in
   `tests/golden/consensus_fixture/`).
 
