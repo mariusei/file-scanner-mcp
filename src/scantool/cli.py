@@ -51,6 +51,7 @@ USAGE
   sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE]
   sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
   sct surface  <package-dir> [--ref REF] [--against REF]
+  sct overlap  <base> <branch>... [--repo DIR]
   sct <command> --help
   any command: --json, --ascii
 
@@ -87,6 +88,14 @@ COMMANDS
             re-export, TYPE_CHECKING) and where it is defined after following
             re-exports; inherited members marked. --against REF prints the
             surface diff; the header states the direction (A → B).
+  overlap   N branches against one base, each at its own merge-base:
+            structures touched by 2+ branches, new names introduced
+            independently by 2+ branches, commits two branches share (a
+            stack: overlap between them is expected), and per branch whether
+            it is already in the base and by which criterion (ancestor /
+            patch-equivalent / tree-equal; patch-equivalence proves it can be
+            deleted, not that its content is in the current tree). Ends with
+            a merge-order hint, not a verdict.
 
 OPTIONS
   --ref REF      Read at a git ref (branch, tag, SHA) instead of the working
@@ -111,7 +120,7 @@ CONVENTIONS
   error. Plain text; one fact per line. Errors on stderr.
 """
 
-COMMANDS = ("scan", "focus", "search", "diff", "surface")
+COMMANDS = ("scan", "focus", "search", "diff", "surface", "overlap")
 STDIN = "-"
 
 # The glyphs scantool's own formatters emit; --ascii maps these and nothing
@@ -516,6 +525,26 @@ def run_surface(args: argparse.Namespace) -> tuple[list[str], int]:
     return [text], 1 if not surface_a.exports else 0
 
 
+def run_overlap(args: argparse.Namespace) -> tuple[list[str], int]:
+    from .overlap import format_overlap, overlap, overlap_to_json
+    from .structural_diff import repo_top, verify_ref
+
+    where = args.repo or os.getcwd()
+    top = repo_top(where)
+    if top is None:
+        raise RefError(f"{where} is not inside a git repository; pass --repo DIR")
+    for ref in (args.base, *args.branches):
+        if not verify_ref(top, ref):
+            raise RefError(f"unknown ref {ref!r} in {top}")
+    try:
+        result = overlap(top, args.base, args.branches)
+    except ValueError as error:
+        raise RefError(str(error)) from error
+    if args.json:
+        return [json.dumps(overlap_to_json(result), indent=2)], 0
+    return [format_overlap(result)], 0
+
+
 RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "": run_orient,
     "scan": run_scan,
@@ -523,6 +552,7 @@ RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "search": run_search,
     "diff": run_diff,
     "surface": run_surface,
+    "overlap": run_overlap,
 }
 
 
@@ -593,6 +623,13 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "--against", metavar="REF", help="print the surface diff, this ref on the B side"
     )
 
+    overlap = parser("overlap", "N branches against one base, merge-base per branch.", True)
+    overlap.add_argument("base")
+    overlap.add_argument("branches", metavar="branch", nargs="+")
+    overlap.add_argument(
+        "--repo", metavar="DIR", help="repository (default: the one cwd is inside)"
+    )
+
     return {
         "": orient,
         "scan": scan,
@@ -600,6 +637,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "search": search,
         "diff": diff,
         "surface": surface,
+        "overlap": overlap,
     }
 
 

@@ -101,7 +101,7 @@ class DiffResult:
 # ── git ──────────────────────────────────────────────────────────────────────
 
 
-def _git(top: str, *args: str) -> str | None:
+def git_output(top: str, *args: str) -> str | None:
     result = subprocess.run(["git", "-C", top, *args], capture_output=True)
     if result.returncode != 0:
         return None
@@ -111,32 +111,32 @@ def _git(top: str, *args: str) -> str | None:
 def verify_ref(top: str, ref: str) -> bool:
     return (
         ref == WORKTREE
-        or _git(top, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}") is not None
+        or git_output(top, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}") is not None
     )
 
 
 def merge_base(top: str, ref_a: str, ref_b: str) -> str | None:
-    base = _git(top, "merge-base", ref_a, ref_b)
+    base = git_output(top, "merge-base", ref_a, ref_b)
     return base.strip() if base else None
 
 
 def ahead_behind(top: str, ref_a: str, ref_b: str) -> tuple[int, int]:
-    counts = _git(top, "rev-list", "--left-right", "--count", f"{ref_a}...{ref_b}") or "0\t0"
+    counts = git_output(top, "rev-list", "--left-right", "--count", f"{ref_a}...{ref_b}") or "0\t0"
     left, right = counts.split()
     return int(left), int(right)
 
 
 def short(top: str, ref: str) -> str:
-    return (_git(top, "rev-parse", "--short", ref) or ref).strip()
+    return (git_output(top, "rev-parse", "--short", ref) or ref).strip()
 
 
-def _read(top: str, side: str, rel: str) -> str | None:
+def read_side(top: str, side: str, rel: str) -> str | None:
     if side == WORKTREE:
         try:
             return (Path(top) / rel).read_text(errors="replace")
         except OSError:
             return None
-    return _git(top, "show", f"{side}:{rel}")
+    return git_output(top, "show", f"{side}:{rel}")
 
 
 def _name_status(
@@ -149,10 +149,12 @@ def _name_status(
         return []
     ref = side_a if side_b == WORKTREE else side_b if side_a == WORKTREE else None
     if ref is None:
-        rows = _parse_name_status(_git(top, "diff", "--name-status", "-M", side_a, side_b, *spec))
+        rows = _parse_name_status(
+            git_output(top, "diff", "--name-status", "-M", side_a, side_b, *spec)
+        )
     else:
-        rows = _parse_name_status(_git(top, "diff", "--name-status", "-M", ref, *spec))
-        untracked = _git(top, "ls-files", "--others", "--exclude-standard", *spec) or ""
+        rows = _parse_name_status(git_output(top, "diff", "--name-status", "-M", ref, *spec))
+        untracked = git_output(top, "ls-files", "--others", "--exclude-standard", *spec) or ""
         rows += [("A", rel, rel) for rel in untracked.split("\n") if rel]
         if side_a == WORKTREE:
             rows = [_invert(row) for row in rows]
@@ -416,7 +418,7 @@ def diff_refs(
         )
         files.append(entry)
         if status.startswith("A"):
-            content = _read(top, side_b, new_rel)
+            content = read_side(top, side_b, new_rel)
             structures = (
                 scanner.scan_content(content, new_rel, include_metadata=False, budget=budget)
                 if content is not None
@@ -430,10 +432,14 @@ def diff_refs(
                 entry.skeleton = TreeFormatter().format(new_rel, structures)
             continue
         a = _scan_side(
-            scanner, _read(top, side_a, old_rel) if not status.startswith("A") else None, old_rel
+            scanner,
+            read_side(top, side_a, old_rel) if not status.startswith("A") else None,
+            old_rel,
         )
         b = _scan_side(
-            scanner, _read(top, side_b, new_rel) if not status.startswith("D") else None, new_rel
+            scanner,
+            read_side(top, side_b, new_rel) if not status.startswith("D") else None,
+            new_rel,
         )
         if a is None or b is None:
             entry.reason = "unstructured type"
@@ -557,5 +563,5 @@ def diff_to_json(result: DiffResult) -> dict:
 
 
 def repo_top(directory: str) -> str | None:
-    top = _git(os.path.abspath(directory), "rev-parse", "--show-toplevel")
+    top = git_output(os.path.abspath(directory), "rev-parse", "--show-toplevel")
     return top.strip() if top else None
