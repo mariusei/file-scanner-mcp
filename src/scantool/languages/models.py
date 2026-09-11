@@ -26,6 +26,25 @@ class Sweep:
     oversized: int = 0
 
 
+@dataclass
+class Export:
+    """One name on a package's public surface, followed to its definition."""
+
+    name: str
+    kind: str  # function | class | value | module | external | unresolved
+    via: str  # how the facade gets it: definition | re-export | lazy table | TYPE_CHECKING
+    module: str | None  # dotted module that defines it, inside the package
+    path: str | None  # relative to the directory holding the package
+    line: int | None
+    signature: str
+    inherited: list[str] = field(default_factory=list)  # "Base: m1, m2"
+    listed: bool = False  # named in an explicit export list (__all__)
+
+    @property
+    def location(self) -> str:
+        return f"{self.path}:{self.line}" if self.path else "-"
+
+
 # Node types whose name is always scantool's, never the source's.
 SYNTHETIC_TYPES = frozenset({"file-info", "parse-error", "error"})
 

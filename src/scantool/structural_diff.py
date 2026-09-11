@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .formatter import TreeFormatter
+from .languages.base import BaseLanguage, default_is_private_name
 from .languages.models import StructureNode
 from .scanner import FileScanner
 
@@ -57,6 +58,12 @@ class NodeRecord:
     body: list[str]  # own lines after the declaration, blank lines out, right-stripped
     digest: str  # of the body: a rename keeps it, so renames pair on it
     type: str
+    qualifier: str = "."  # the language's separator in a qualified name
+    private: bool = False  # the language's convention marks the bare name private
+
+    @property
+    def bare(self) -> str:
+        return self.name.rsplit(self.qualifier, 1)[-1]
 
     def differs_from(self, other: "NodeRecord") -> bool:
         return self.digest != other.digest or self.signature != other.signature
@@ -189,13 +196,24 @@ def _invert(row: tuple[str, str, str]) -> tuple[str, str, str]:
 # ── records per side ─────────────────────────────────────────────────────────
 
 
+def language_of(scanner: FileScanner, rel: str) -> BaseLanguage | None:
+    """The handler that owns a file, for its naming conventions."""
+    return scanner.registry.get(Path(rel).suffix.lower())
+
+
 def _is_heading(node: StructureNode) -> bool:
     return node.type.startswith("heading") or node.type == "section"
 
 
-def records(structures: list[StructureNode], lines: list[str]) -> dict[str, NodeRecord]:
-    """One record per structure that can be a row, keyed positionally."""
+def records(
+    structures: list[StructureNode], lines: list[str], language: BaseLanguage | None = None
+) -> dict[str, NodeRecord]:
+    """One record per structure that can be a row, keyed positionally. The
+    language supplies the qualifier and the private-name rule; without one
+    the defaults ("." and a leading underscore) apply."""
     out: dict[str, NodeRecord] = {}
+    qualifier = language.QUALIFIER if language else BaseLanguage.QUALIFIER
+    is_private = language.is_private_name if language else default_is_private_name
 
     def walk(nodes, chain: str, names: list[str]):
         for node in nodes or []:
@@ -220,13 +238,15 @@ def records(structures: list[StructureNode], lines: list[str]) -> dict[str, Node
                 ]
                 out[key] = NodeRecord(
                     key=key,
-                    name=node.name if _is_heading(node) else ".".join(dotted),
+                    name=node.name if _is_heading(node) else qualifier.join(dotted),
                     signature=" ".join((node.signature or "").split()),
                     start=node.start_line,
                     end=node.end_line,
                     body=body,
                     digest=hashlib.sha1("\n".join(body).encode()).hexdigest(),
                     type=node.type,
+                    qualifier=qualifier,
+                    private=bool(is_private(node.name)),
                 )
             walk(node.children, key, dotted)
 
@@ -241,7 +261,7 @@ def _scan_side(scanner: FileScanner, content: str | None, rel: str) -> dict[str,
     structures = scanner.scan_content(content, rel, include_metadata=False)
     if structures is None:
         return None
-    return records(structures, content.split("\n"))
+    return records(structures, content.split("\n"), language_of(scanner, rel))
 
 
 # ── one file ─────────────────────────────────────────────────────────────────

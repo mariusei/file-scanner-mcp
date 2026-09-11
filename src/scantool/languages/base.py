@@ -8,14 +8,17 @@ Each language implementation inherits from BaseLanguage and provides
 a single file per language instead of separate scanner + analyzer files.
 """
 
+import os
 import re
 import textwrap
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 
 from .models import (
     CallInfo,
     DefinitionInfo,
     EntryPointInfo,
+    Export,
     ImportInfo,
     StructureNode,
 )
@@ -70,6 +73,12 @@ def limit_skeleton_depth(skeleton: list[str], max_depth: int) -> list[str]:
         elif not out or out[-1] != marker:
             out.append(marker)
     return out
+
+
+def default_is_private_name(name: str) -> bool:
+    """The convention most languages share: a leading underscore is private.
+    Defined once here so callers without a handler use the same rule."""
+    return name.startswith("_")
 
 
 class BaseLanguage(ABC):
@@ -621,6 +630,55 @@ class BaseLanguage(ABC):
                 )
 
         return definitions
+
+    # ===========================================================================
+    # Naming conventions and the public surface (OPTIONAL)
+    # ===========================================================================
+    #: The separator between a container and a member in a qualified name
+    #: (Class.method). Rust and C++ would say "::"; everything outside
+    #: languages/ joins and splits qualified names with this, never with a
+    #: literal ".".
+    QUALIFIER: str = "."
+
+    def is_private_name(self, name: str) -> bool:
+        """Whether the language's convention marks this bare name as not part
+        of the public surface. Default: a leading underscore (Python, Ruby,
+        JavaScript by convention). Go would say "not capitalised"."""
+        return default_is_private_name(name)
+
+    def public_surface(
+        self, package_dir: str, read_file: Callable[[str], str | None]
+    ) -> list[Export]:
+        """The public surface of a package directory: every top-level
+        definition the language does not mark private, one Export per name,
+        in the files' order. Languages with an explicit export mechanism
+        (__all__, export, pub) override this; read_file(path) returns a
+        file's text or None, so the same walk serves a working tree and a
+        materialised ref."""
+        exports: list[Export] = []
+        root = os.path.dirname(os.path.abspath(package_dir))
+        extensions = tuple(self.get_extensions())
+        for name in sorted(os.listdir(package_dir)):
+            path = os.path.join(package_dir, name)
+            if not (os.path.isfile(path) and name.lower().endswith(extensions)):
+                continue
+            content = read_file(path)
+            structures = self.scan(content.encode("utf-8")) if content is not None else None
+            for node in structures or []:
+                if node.synthetic or node.type == "file-info" or self.is_private_name(node.name):
+                    continue
+                exports.append(
+                    Export(
+                        name=node.name,
+                        kind=node.type,
+                        via="definition",
+                        module=os.path.splitext(name)[0],
+                        path=os.path.relpath(path, root).replace(os.sep, "/"),
+                        line=node.start_line,
+                        signature=node.signature or "",
+                    )
+                )
+        return exports
 
     # ===========================================================================
     # Reachability contract — for dead-code detection (OPTIONAL, opt-in)

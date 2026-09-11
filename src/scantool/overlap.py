@@ -31,6 +31,7 @@ from .scanner import FileScanner
 from .structural_diff import (
     ahead_behind,
     git_output,
+    language_of,
     merge_base,
     read_side,
     records,
@@ -49,6 +50,7 @@ class BranchReport:
     merge_base: str  # short
     files: int = 0
     touched: dict[tuple[str, str], str] = field(default_factory=dict)  # (path, key) -> + ~ -
+    names: dict[tuple[str, str], str] = field(default_factory=dict)  # (path, key) -> qualified name
     added_names: dict[str, tuple[str, int]] = field(default_factory=dict)  # name -> (path, line)
     ahead: int = 0
     behind: int = 0
@@ -66,13 +68,9 @@ class OverlapResult:
     base_sha: str
     reports: list[BranchReport]
     shared: dict[tuple[str, str], list[tuple[str, str]]]  # (path, key) -> [(branch, mark)]
+    names: dict[tuple[str, str], str]  # (path, key) -> qualified name, as the language spells it
     colliding: dict[str, list[tuple[str, str, int]]]  # name -> [(branch, path, line)]
     stacked: list[tuple[str, str, int]]  # (branch a, branch b, commits in common)
-
-
-def _qualified(key: str) -> str:
-    """'/class:Foo/method:bar' -> 'Foo.bar'."""
-    return ".".join(segment.split(":", 1)[1] for segment in key.split("/") if segment)
 
 
 def _in_base(top: str, base: str, branch: str) -> str | None:
@@ -115,16 +113,17 @@ def branch_report(scanner: FileScanner, top: str, base: str, branch: str) -> Bra
             continue
         report.files += 1
         for key, record in new.items():
+            report.names[(new_path, key)] = record.name
             if key not in old:
                 report.touched[(new_path, key)] = "+"
-                bare = record.name.rsplit(".", 1)[-1]
-                if not (bare.startswith("__") and bare.endswith("__")):
-                    report.added_names.setdefault(bare, (new_path, record.start))
+                if not record.private:  # a name someone chose, not one the language did
+                    report.added_names.setdefault(record.bare, (new_path, record.start))
             elif old[key].differs_from(record):
                 report.touched[(new_path, key)] = "~"
-        for key in old:
+        for key, record in old.items():
             if key not in new:
                 report.touched[(old_path, key)] = "-"
+                report.names[(old_path, key)] = record.name
     return report
 
 
@@ -136,7 +135,7 @@ def _records(scanner: FileScanner, top: str, ref: str, rel: str):
     structures = scanner.scan_content(content, rel, include_metadata=False)
     if structures is None:
         return None
-    return records(structures, content.split("\n"))
+    return records(structures, content.split("\n"), language_of(scanner, rel))
 
 
 def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
@@ -144,7 +143,9 @@ def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
     reports = [branch_report(scanner, top, base, branch) for branch in branches]
 
     by_structure: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    names: dict[tuple[str, str], str] = {}
     for report in reports:
+        names.update(report.names)
         for site, mark in report.touched.items():
             by_structure.setdefault(site, []).append((report.branch, mark))
     shared = {site: hits for site, hits in by_structure.items() if len(hits) > 1}
@@ -162,7 +163,7 @@ def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
             if common:
                 stacked.append((a.branch, b.branch, common))
 
-    return OverlapResult(base, short(top, base), reports, shared, colliding, stacked)
+    return OverlapResult(base, short(top, base), reports, shared, names, colliding, stacked)
 
 
 def _count(n: int, noun: str) -> str:
@@ -205,7 +206,10 @@ def format_overlap(result: OverlapResult) -> str:
 
     if result.shared:
         rows = sorted(
-            ((f"{path}::{_qualified(key)}", hits) for (path, key), hits in result.shared.items()),
+            (
+                (f"{path}::{result.names[(path, key)]}", hits)
+                for (path, key), hits in result.shared.items()
+            ),
             key=lambda row: (-len(row[1]), row[0]),
         )
         shown = rows[:ROW_CAP]
@@ -283,7 +287,7 @@ def overlap_to_json(result: OverlapResult) -> dict:
         ],
         "overlap": [
             {
-                "address": f"{path}::{_qualified(key)}",
+                "address": f"{path}::{result.names[(path, key)]}",
                 "branches": [{"branch": b, "mark": m} for b, m in hits],
             }
             for (path, key), hits in result.shared.items()
