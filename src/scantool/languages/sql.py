@@ -35,7 +35,7 @@ except ImportError:
 
 
 class SQLLanguage(BaseLanguage):
-    """Unified language handler for SQL files (.sql, .psql, .mysql).
+    r"""Unified language handler for SQL files (.sql, .psql, .mysql).
 
     Provides both structure scanning and semantic analysis:
     - scan(): Extract tables, views, functions, indexes, procedures, triggers
@@ -1222,7 +1222,7 @@ class SQLLanguage(BaseLanguage):
         all_files: list[str],
         definitions_map: dict[str, str],
     ) -> str | None:
-        """Resolve SQL include to file path.
+        r"""Resolve SQL include to file path.
 
         SQL includes: \i file.sql, SOURCE file.sql, etc.
         """
