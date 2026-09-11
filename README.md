@@ -110,7 +110,7 @@ In the Cline panel: MCP Servers icon → *Configure* tab → *Configure MCP Serv
 
 ### `sct` in the shell
 
-Agents read most code through their shell, not through MCP tools. So when the server starts, it writes a launcher named `sct` into uv's tool bin directory (`uv tool dir --bin`: `~/.local/bin` on macOS and Linux, `%USERPROFILE%\.local\bin` on Windows, where it also writes `sct.cmd` for cmd.exe and PowerShell). The launcher runs the same tool functions the MCP server exposes, under the same interpreter. Nothing else is installed, PATH and shell profiles are never edited, and a file named `sct` that scantool did not write is never touched.
+Agents read most code through their shell, not through MCP tools. So when the server starts, it writes a launcher named `sct` into uv's tool bin directory (`uv tool dir --bin`: `~/.local/bin` on macOS and Linux, `%USERPROFILE%\.local\bin` on Windows, where it also writes `sct.cmd` for cmd.exe and PowerShell). The launcher runs the same tool functions the MCP server exposes, under the same interpreter. Nothing else is installed, PATH and shell profiles are never edited, and a file named `sct` that scantool did not write is never touched. A launcher scantool wrote earlier is kept as long as its interpreter still exists and the starting server is not newer, so two scantool installs on one machine do not take turns rewriting it.
 
 ```
 sct <dir>                                        orientation: entry points, hot functions, map
