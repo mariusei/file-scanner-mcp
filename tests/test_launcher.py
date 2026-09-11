@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from scantool import launcher, server
+from scantool import cli, launcher, server
 
 EM_DASH_UTF8 = "—".encode()  # first line of the help text; cp1252 would give b"\x97"
 CLIENTS = ("Claude", "Codex", "Cursor", "Copilot", "Cline", "Windsurf", "Gemini", "Zed")
@@ -189,14 +189,33 @@ def test_nothing_names_a_client():
 
 
 def test_instructions_route_to_the_shell_before_the_tool_list():
-    """Adoption follows the channel the harness recommends: the shell block
-    and the TRIGGER line come before the MCP tool list, and TRIGGER names sct."""
+    """Adoption follows the channel the harness recommends: the substitution
+    table, then every command, then the MCP tool list."""
     text = server.mcp.instructions or ""
-    shell, trigger, tools = (
+    table, commands, tools = (
         text.index("IN YOUR SHELL"),
-        text.index("TRIGGER:"),
-        text.index("THE MCP TOOLS BELOW"),
+        text.index("Every command:"),
+        text.index("MCP TOOLS"),
     )
-    assert shell < trigger < tools
-    assert "sct focus <path> <name>" in text[trigger:tools]
-    assert len(text[:tools].encode()) < 2048  # the part clients keep when they truncate
+    assert table < commands < tools
+
+
+def test_instructions_name_every_command_without_deferring_to_help():
+    """ "--help for the rest" is never read (brief §9b): every CLI command is on
+    its own line in the block, and the block does not point at --help."""
+    text = server.mcp.instructions or ""
+    for command in ("<dir>", *cli.COMMANDS):
+        assert f"sct {command}" in text, command
+    assert "--help" not in text
+
+
+def test_instructions_fit_the_client_cap(monkeypatch):
+    """Measured: one client cuts the block at ~2 047 characters and the rest
+    does not exist for the model. The whole block stays under the design
+    limit with the real interpreter path and with a long one."""
+    assert len(server.mcp.instructions or "") < server.INSTRUCTIONS_CAP
+    long_path = '"' + "/".join(["directory-with-a-long-name"] * 5) + '/python.exe"'
+    assert len(long_path) >= 140
+    monkeypatch.setattr(launcher, "quoted_interpreter", lambda: long_path)
+    text = server.SERVER_INSTRUCTIONS.format(shell=launcher.shell_instructions())
+    assert len(text) < server.INSTRUCTIONS_CAP, len(text)

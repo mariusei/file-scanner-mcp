@@ -70,16 +70,29 @@ def shell_hint(*examples: str) -> str:
 
 def shell_instructions() -> str:
     """The shell block for the server-level instructions: the shortest path
-    for an agent with a shell, so it comes before the tool list."""
+    for an agent with a shell, so it comes first. Clients cap the whole
+    instructions text (measured: ~2 047 characters in one of them, the rest
+    silently gone), so this is a per-command substitution table and every
+    command on one line, nothing deferred to --help."""
     return (
-        "IN YOUR SHELL (no tool lookup needed):\n"
-        "  sct <dir>                 orientation: entry points, hot functions, call-graph map\n"
-        "  sct scan <path>...        skeleton: every structure with path:line and a condensed\n"
-        "                            excerpt; `-` reads paths from stdin, `- --as <path>` content\n"
-        "  sct focus <path> <name>   ONE function/class/section verbatim with parent context\n"
-        "  sct search <dir> <regex>  text or names with their enclosing structure and leads\n"
-        "  sct --help for the rest. If sct is not on PATH, "
-        f"{quoted_interpreter()} -m scantool.cli replaces sct."
+        "IN YOUR SHELL (no tool lookup). Substitute per command, also inside && chains:\n"
+        "  ls <dir>, find <dir>          -> sct <dir>\n"
+        "  cat f | head, sed -n a,bp f   -> sct scan f --depth quick\n"
+        "  grep -rn p                    -> sct search . p\n"
+        "  git show REF:f | sed -n       -> sct focus f::name@REF\n"
+        "  git diff A..B, to understand  -> sct diff A B\n"
+        "Every command:\n"
+        "  sct <dir>                         orientation: entry points, hot functions, call map\n"
+        "  sct scan <path>... [--ref R]      skeleton with path:line; `-` reads paths from stdin\n"
+        "  sct focus <path> <name> [--ref R] one function/class/section verbatim; takes the address it prints\n"
+        "  sct search <dir> <regex>          hits with their enclosing structure and leads; --names\n"
+        "  sct diff <refA> [<refB>]          + ~ = - per structure, both sides\n"
+        "  sct surface <package-dir>         public names and where each is defined; --against REF\n"
+        "  sct overlap <base> <branch>...    structures 2+ branches touch, colliding names, merge order\n"
+        "  sct callers <name>                actual call sites with the enclosing function\n"
+        "  sct resolve <path:line> --from R --to R   a line or name carried across refs\n"
+        "  --json and --ascii on every command. "
+        f"If sct is not on PATH, {quoted_interpreter()} -m scantool.cli replaces sct."
     )
 
 
