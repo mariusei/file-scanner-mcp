@@ -1,0 +1,125 @@
+"""
+FILE: callers.py
+
+PROBLEM:
+  "Who calls this?" answered by grep returns every mention: docstrings,
+  comments, strings, the definition itself. The study's answer-key agent
+  wrote an ast walk over git show of every file to get actual call sites
+  with their enclosing function.
+
+SOLUTION:
+  The call graph the code map already builds (tree-sitter calls, each with
+  its enclosing function and line) filtered to one callee: every site with
+  its file, enclosing function and the line's text, plus where the callee
+  is defined. Mentions in prose never appear because they were never calls.
+
+SCOPE:
+  ✓ actual call sites across a directory, definitions of the name
+  ✗ no resolution of which definition a site binds to when several share
+    the name (the note says so)
+"""
+
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+
+from .code_map import CodeMap
+
+
+@dataclass
+class CallSite:
+    file: str
+    caller: str  # enclosing function, or "(module level)"
+    line: int
+    text: str
+
+
+@dataclass
+class Callers:
+    name: str
+    definitions: list[tuple[str, int, str, str | None]]  # (file, line, kind, parent)
+    sites: list[CallSite]
+    files_scanned: int
+
+
+def find_callers(directory: str, name: str) -> Callers:
+    leaf = name.rsplit(".", 1)[-1]
+    parent = name.rsplit(".", 1)[0] if "." in name else None
+    result = CodeMap(directory).analyze()
+    definitions = [
+        (d.file, d.line, d.type, d.parent)
+        for d in result.definitions
+        if d.name == leaf and (parent is None or d.parent == parent)
+    ]
+    sites = []
+    for call in result.calls:
+        if call.callee_name != leaf:
+            continue
+        try:
+            lines = Path(directory, call.caller_file).read_text(errors="replace").split("\n")
+            text = lines[call.line - 1].strip() if 0 < call.line <= len(lines) else ""
+        except OSError:
+            text = ""
+        sites.append(
+            CallSite(call.caller_file, call.caller_name or "(module level)", call.line, text)
+        )
+    sites.sort(key=lambda s: (s.file, s.line))
+    return Callers(name, definitions, sites, len(result.files))
+
+
+def _count(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+
+
+def format_callers(found: Callers, label: str) -> str:
+    files = {s.file for s in found.sites}
+    parts = [
+        f"{_count(len(found.sites), 'call site')} in {_count(len(files), 'file')}",
+        f"{_count(len(found.definitions), 'definition')}",
+        f"{_count(found.files_scanned, 'file')} scanned",
+    ]
+    lines = [f"<{', '.join(parts)}> callers of {found.name} {label}".rstrip()]
+    if "." in found.name and found.sites:
+        lines.append(
+            "note: call sites match the bare name; which definition each one binds to is not resolved"
+        )
+    for file, line, kind, parent in found.definitions:
+        qualified = (
+            f"{parent}.{found.name.rsplit('.', 1)[-1]}" if parent else found.name.rsplit(".", 1)[-1]
+        )
+        lines.append(f"defined: {file}::{qualified} ({kind}) {file}:{line}")
+    if not found.sites:
+        lines.append(
+            f"no call sites of {found.name} (mentions in docstrings, comments and strings are not calls)"
+        )
+        return "\n".join(lines)
+    by_file: dict[str, list[CallSite]] = {}
+    for site in found.sites:
+        by_file.setdefault(site.file, []).append(site)
+    for file, sites in by_file.items():
+        lines.append("")
+        lines.append(f"{file}  ({_count(len(sites), 'site')})")
+        for site in sites:
+            lines.append(f"  - {site.caller} {file}:{site.line}   {site.text}")
+    return "\n".join(lines)
+
+
+def callers_to_json(found: Callers, label: str) -> dict:
+    return {
+        "coverage": {
+            "call_sites": len(found.sites),
+            "files_with_sites": len({s.file for s in found.sites}),
+            "definitions": len(found.definitions),
+            "files_scanned": found.files_scanned,
+            "ref": label.lstrip("@") or None,
+            "by_file": dict(Counter(s.file for s in found.sites)),
+        },
+        "name": found.name,
+        "definitions": [
+            {"file": f, "line": ln, "kind": k, "parent": p} for f, ln, k, p in found.definitions
+        ],
+        "sites": [
+            {"file": s.file, "caller": s.caller, "line": s.line, "text": s.text}
+            for s in found.sites
+        ],
+    }

@@ -52,6 +52,8 @@ USAGE
   sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
   sct surface  <package-dir> [--ref REF] [--against REF]
   sct overlap  <base> <branch>... [--repo DIR]
+  sct callers  <name> [--dir DIR] [--ref REF]
+  sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
   sct <command> --help
   any command: --json, --ascii
 
@@ -96,13 +98,21 @@ COMMANDS
             patch-equivalent / tree-equal; patch-equivalence proves it can be
             deleted, not that its content is in the current tree). Ends with
             a merge-order hint, not a verdict.
+  callers   Actual call sites of a function or method (not docstring
+            mentions), each with its enclosing function and path:line,
+            across the directory; where the name is defined comes first.
+  resolve   Translate path:line or path::name from one ref to another: the
+            enclosing structure with start AND end at --from, where it is at
+            --to (same place, renamed with an identical body), or that it is
+            gone, with the nearest names.
 
 OPTIONS
   --ref REF      Read at a git ref (branch, tag, SHA) instead of the working
                  tree. No checkout; the repository is found from the path.
                  The coverage line ends with @REF.
-  --repo DIR     Repository for diff (default: the one the current directory
-                 is inside; required when it is not in one).
+  --repo DIR     Repository for diff, overlap and resolve (default: the one
+                 the current directory is inside; required when it is not).
+  --dir DIR      Directory callers scans (default: the current directory).
   --path PATH    Restrict diff to a file or directory, relative to the repo.
   --budget N     Approximate output size in tokens (scan, files only).
   --as PATH      The name stdin content is scanned under (its extension picks
@@ -120,7 +130,7 @@ CONVENTIONS
   error. Plain text; one fact per line. Errors on stderr.
 """
 
-COMMANDS = ("scan", "focus", "search", "diff", "surface", "overlap")
+COMMANDS = ("scan", "focus", "search", "diff", "surface", "overlap", "callers", "resolve")
 STDIN = "-"
 
 # The glyphs scantool's own formatters emit; --ascii maps these and nothing
@@ -545,6 +555,64 @@ def run_overlap(args: argparse.Namespace) -> tuple[list[str], int]:
     return [format_overlap(result)], 0
 
 
+def run_callers(args: argparse.Namespace) -> tuple[list[str], int]:
+    from .callers import callers_to_json, find_callers, format_callers
+
+    directory = args.dir or "."
+    label = f"@{args.ref}" if args.ref else ""
+    if args.ref:
+        top, rel = repo_and_rel(directory)
+        if ref_kind(top, args.ref, rel) != "tree":
+            raise RefError(f"{spec(args.ref, rel)} is not a directory")
+        with materialised(top, args.ref, rel, os.path.basename(os.path.abspath(directory))) as tree:
+            found = find_callers(tree, args.name)
+    elif not os.path.isdir(directory):
+        raise RefError(f"{directory} is not a directory")
+    else:
+        found = find_callers(directory, args.name)
+    if args.json:
+        return [json.dumps(callers_to_json(found, label), indent=2)], 0 if found.sites else 1
+    return [format_callers(found, label)], 0 if found.sites else 1
+
+
+def run_resolve(args: argparse.Namespace) -> tuple[list[str], int]:
+    from .resolve import Resolution, format_resolution, resolution_to_json, resolve
+    from .structural_diff import repo_top, verify_ref
+
+    address = args.address
+    target: str | int
+    if "::" in address:
+        path, name, ref_in_address = _split_address(address)
+        target = name
+        if ref_in_address and not args.ref_from:
+            args.ref_from = ref_in_address
+    else:
+        path, sep, line = address.rpartition(":")
+        if not sep or not line.isdigit():
+            raise UsageError("sct resolve: give path:line or path::name")
+        target = int(line)
+    if not args.ref_from:
+        raise UsageError("sct resolve: --from REF is required (or an address carrying @REF)")
+    top = repo_top(args.repo or os.path.dirname(os.path.abspath(path)))
+    if top is None:
+        raise RefError(f"{path} is not inside a git repository; pass --repo DIR")
+    rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
+    if args.repo:
+        rel = path.replace(os.sep, "/")
+    for ref in (args.ref_from, args.ref_to):
+        if not verify_ref(top, ref):
+            raise RefError(f"unknown ref {ref!r} in {top}")
+    outcome = resolve(top, rel, target, args.ref_from, args.ref_to)
+    if not isinstance(outcome, Resolution):
+        return [outcome], 1
+    text = (
+        json.dumps(resolution_to_json(outcome), indent=2)
+        if args.json
+        else format_resolution(outcome)
+    )
+    return [text.replace(rel, path, 1) if path != rel else text], 0 if outcome.target else 1
+
+
 RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "": run_orient,
     "scan": run_scan,
@@ -553,6 +621,8 @@ RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "diff": run_diff,
     "surface": run_surface,
     "overlap": run_overlap,
+    "callers": run_callers,
+    "resolve": run_resolve,
 }
 
 
@@ -630,6 +700,25 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "--repo", metavar="DIR", help="repository (default: the one cwd is inside)"
     )
 
+    callers = parser(
+        "callers", "Actual call sites of a function or method across a directory.", True
+    )
+    callers.add_argument("name", help="function, method, or Class.method")
+    callers.add_argument("--dir", metavar="DIR", help="directory to scan (default: .)")
+    ref_option(callers)
+
+    resolve = parser("resolve", "Translate path:line or path::name from one ref to another.", True)
+    resolve.add_argument("address", metavar="path:line | path::name")
+    resolve.add_argument(
+        "--from", dest="ref_from", metavar="REF", help="the ref the address is from"
+    )
+    resolve.add_argument(
+        "--to", dest="ref_to", metavar="REF", default="WORKTREE", help="default: the working tree"
+    )
+    resolve.add_argument(
+        "--repo", metavar="DIR", help="repository; the path is then relative to it"
+    )
+
     return {
         "": orient,
         "scan": scan,
@@ -638,6 +727,8 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "diff": diff,
         "surface": surface,
         "overlap": overlap,
+        "callers": callers,
+        "resolve": resolve,
     }
 
 
