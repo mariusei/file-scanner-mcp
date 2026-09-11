@@ -89,7 +89,9 @@ class TestRef:
         out, _, code = run("search", ".", "vanishing", "--ref", "HEAD", capsys=capsys)
         assert code == 0
         assert out.splitlines()[0].endswith(" @HEAD")
-        assert "src/gone.py" in out and "sct-ref" not in out
+        # the caller typed "."; below it the OS separator is the one the
+        # working-tree search prints too
+        assert "src/gone.py" in out.replace("\\", "/") and "sct-ref" not in out
 
     def test_json_coverage_carries_the_ref(self, repo, capsys):
         out, _, code = run("scan", "src/mod.py", "--ref", "HEAD", "--json", capsys=capsys)
@@ -100,7 +102,9 @@ class TestRef:
     def test_missing_at_ref_names_ref_and_repository(self, repo, capsys):
         out, err, code = run("scan", "src/added.py", "--ref", "HEAD", capsys=capsys)
         assert code == 1
-        assert "HEAD:src/added.py" in out + err and str(repo.resolve()) in out + err
+        message = (out + err).replace("\\", "/")
+        assert "HEAD:src/added.py" in message
+        assert str(repo.resolve()).replace("\\", "/") in message  # git spells it with slashes
 
     def test_ref_outside_a_repository_says_so(self, tmp_path, monkeypatch, capsys):
         outside = tmp_path / "plain"
