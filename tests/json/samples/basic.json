@@ -1,0 +1,20 @@
+{
+  "name": "demo-app",
+  "version": "1.2.3",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "node ./scripts/test.mjs"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "lodash": "^4.17.21"
+  },
+  "keywords": ["cli", "tool", "demo"],
+  "config": {
+    "server": {
+      "host": "localhost",
+      "port": 8080
+    }
+  }
+}
