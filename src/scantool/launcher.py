@@ -75,7 +75,7 @@ def shell_instructions() -> str:
     silently gone), so this is a per-command substitution table and every
     command on one line, nothing deferred to --help."""
     return (
-        "IN YOUR SHELL (no tool lookup). Substitute per command, also inside && chains:\n"
+        "Substitute per command:\n"
         "  ls <dir>, find <dir>          -> sct <dir>\n"
         "  cat f | head, sed -n a,bp f   -> sct scan f --depth quick\n"
         "  grep -rn p                    -> sct search . p\n"
