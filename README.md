@@ -114,13 +114,15 @@ Agents read most code through their shell, not through MCP tools. So when the se
 
 ```
 sct <dir>                                        orientation: entry points, hot functions, map
-sct scan   <path>... [--budget N] [--depth quick|normal|deep]
+sct scan   <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
 sct scan   - [--as <path>]                       paths from stdin; with --as, stdin content scanned as <path>
-sct focus  <path> <name|heading>
-sct focus  - --as <path> <name>                  one node from stdin content (git show REF:path | sct focus - --as path name)
-sct search <dir> <pattern> [--names] [--type TYPE]
+sct focus  <path> <name|heading> [--ref REF]
+sct focus  - --as <path> <name>                  one node from stdin content
+sct search <dir> <pattern> [--ref REF] [--names] [--type TYPE]
 sct --help                                       the full help; --json on scan and search, --ascii anywhere
 ```
+
+`--ref REF` reads at a git ref (branch, tag, SHA) without a checkout: a file or one node through `git show`, a directory or a search through `git archive` into a temporary directory, with every path in the answer written the way you typed it and `@REF` at the end of the coverage line (in JSON, `coverage.ref`).
 
 If the bin directory is not on the agent's PATH, every tool description carries the absolute fallback, `"<python>" -m scantool.cli`, with the interpreter the server runs under.
 

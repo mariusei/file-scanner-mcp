@@ -21,10 +21,15 @@ SCOPE:
 """
 
 import argparse
+import io
 import json
 import os
+import subprocess
 import sys
-from collections.abc import Callable, Sequence
+import tarfile
+import tempfile
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 
 HELP = """\
 sct — structure-first reader for code and documents
@@ -40,12 +45,12 @@ name, heading or question; never by line number.
 
 USAGE
   sct <dir>
-  sct scan     <path>... [--budget N] [--depth quick|normal|deep]
+  sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
   sct scan     - [...]                     paths from stdin, one per line
   sct scan     - --as <path> [...]         stdin content scanned as <path>
-  sct focus    <path> <name|heading>
+  sct focus    <path> <name|heading> [--ref REF]
   sct focus    - --as <path> <name>        stdin content, one node
-  sct search   <dir> <pattern> [--names] [--type TYPE]
+  sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE]
   sct <command> --help
   any command: --json, --ascii
 
@@ -57,8 +62,7 @@ COMMANDS
             signature or title, condensed excerpt within the budget.
             Directory → tree with one-line gists. --depth quick ≈ 300
             tokens/file, normal ≈ 1500, deep = everything (files only).
-            Elided content is marked ⟨…⟩; ask with focus to see it.
-            `git show REF:path | sct scan - --as path` reads at a git ref.
+            Elided content is marked ⟨…⟩ +N; ask with focus to see it.
   focus     One structure verbatim with parent context. Name, qualified name
             (Class.method), heading, or a substring of a heading. Several
             matches → the list, exit 1. None → the top-level names, exit 1.
@@ -70,6 +74,9 @@ COMMANDS
             where the text is. Truncates at 40 structures and says so.
 
 OPTIONS
+  --ref REF      Read at a git ref (branch, tag, SHA) instead of the working
+                 tree. No checkout; the repository is found from the path.
+                 The coverage line ends with @REF.
   --budget N     Approximate output size in tokens (scan, files only).
   --as PATH      The name stdin content is scanned under (its extension picks
                  the parser; the name appears in the output).
@@ -136,6 +143,99 @@ class UsageError(Exception):
     """A usage error found after argparse: printed like argparse's, exit 2."""
 
 
+class RefError(Exception):
+    """Nothing to read at the ref: the message names the ref, the path and
+    the repository, so the next call can be corrected. Exit 1."""
+
+
+def _git(top: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", top, *args], capture_output=True)
+
+
+def _repo_and_rel(path: str) -> tuple[str, str]:
+    """The repository containing path and path's forward-slash form relative
+    to its top. The path need not exist in the working tree; it may exist
+    only at the ref, so the repository is found from its nearest existing
+    ancestor."""
+    probe = os.path.abspath(path)
+    while not os.path.isdir(probe):
+        probe = os.path.dirname(probe)
+    result = subprocess.run(
+        ["git", "-C", probe, "rev-parse", "--show-toplevel"], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RefError(f"{path} is not inside a git repository; --ref needs one")
+    top = result.stdout.strip()
+    rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
+    return top, "" if rel == "." else rel
+
+
+def _spec(ref: str, rel: str) -> str:
+    return f"{ref}:{rel}" if rel else ref
+
+
+def _ref_kind(top: str, ref: str, rel: str) -> str:
+    """'blob' or 'tree'; RefError with git's own words when there is neither."""
+    result = _git(top, "cat-file", "-t", _spec(ref, rel))
+    if result.returncode != 0:
+        reason = result.stderr.decode(errors="replace").strip().splitlines()
+        raise RefError(
+            f"{_spec(ref, rel)} is not in {top} ({reason[0] if reason else 'git failed'})"
+        )
+    kind = result.stdout.decode().strip()
+    return "tree" if kind == "commit" else kind  # the repository root is a tree
+
+
+def _blob(top: str, ref: str, rel: str) -> str:
+    result = _git(top, "show", _spec(ref, rel))
+    if result.returncode != 0:
+        raise RefError(f"{_spec(ref, rel)} is not in {top}")
+    return result.stdout.decode("utf-8", errors="replace")
+
+
+@contextmanager
+def _materialised(top: str, ref: str, rel: str, name: str) -> Iterator[str]:
+    """The tree at ref unpacked into a temporary directory under `name`, so
+    the directory answer carries the caller's own name for it."""
+    result = _git(top, "archive", "--format=tar", _spec(ref, rel))
+    if result.returncode != 0:
+        raise RefError(f"{_spec(ref, rel)} is not a directory in {top}")
+    with tempfile.TemporaryDirectory(prefix="sct-ref-") as scratch:
+        target = os.path.join(scratch, name)
+        os.mkdir(target)
+        with tarfile.open(fileobj=io.BytesIO(result.stdout)) as tar:
+            if hasattr(tarfile, "data_filter"):  # 3.11.4+: refuse links and absolute paths
+                tar.extractall(target, filter="data")
+            else:
+                tar.extractall(target)
+        yield target
+
+
+def _relabel(text: str, scratch_path: str, shown: str) -> str:
+    """Every spelling of the temporary directory becomes the path the caller
+    typed: the tools resolve paths, so the real path is replaced too."""
+    for spelling in {os.path.realpath(scratch_path), scratch_path}:
+        text = text.replace(spelling, shown).replace(spelling.replace(os.sep, "/"), shown)
+    return text
+
+
+def _stamp_ref(text: str, ref: str, as_json: bool) -> str:
+    """The coverage line says which ref was read: `@REF` at its end, or
+    coverage.ref in JSON."""
+    if as_json:
+        try:
+            document = json.loads(text)
+        except ValueError:
+            return text
+        if isinstance(document, dict) and isinstance(document.get("coverage"), dict):
+            document["coverage"]["ref"] = ref
+        return json.dumps(document, indent=2)
+    first, newline, rest = text.partition("\n")
+    if first.startswith("<") and first.endswith(">"):
+        return f"{first} @{ref}{newline}{rest}"
+    return text
+
+
 def to_ascii(text: str) -> str:
     return "".join(GLYPHS.get(char, char) for char in text)
 
@@ -181,6 +281,10 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
     output_format = "json" if args.json else "tree"
+    if args.as_path and args.ref:
+        raise UsageError(
+            "sct scan: --as scans stdin content; --ref reads the repository. One or the other."
+        )
     if args.as_path:
         content = _stdin_content("scan", args.as_path, args.path)
         text = _text(
@@ -200,6 +304,12 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     ]
     outputs, code = [], 0
     for path in paths:
+        if args.ref:
+            text = _scan_at_ref(path, args, output_format)
+            if _not_found(text):
+                code = 1
+            outputs.append(text)
+            continue
         if os.path.isdir(path):
             result = server.scan_directory(
                 directory=path, delta=False, include_metadata=False, output_format=output_format
@@ -224,13 +334,60 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     return outputs, code
 
 
+def _scan_at_ref(path: str, args: argparse.Namespace, output_format: str) -> str:
+    from . import server
+
+    top, rel = _repo_and_rel(path)
+    if _ref_kind(top, args.ref, rel) == "blob":
+        text = _text(
+            server.scan_file_content(
+                content=_blob(top, args.ref, rel),
+                filename=path,
+                budget=args.budget,
+                depth=args.depth,
+                include_metadata=False,
+                output_format=output_format,
+            )
+        )
+    else:
+        shown = path.rstrip("/\\") or path
+        with _materialised(top, args.ref, rel, os.path.basename(os.path.abspath(path))) as tree:
+            text = _relabel(
+                _text(
+                    server.scan_directory(
+                        directory=tree,
+                        delta=False,
+                        include_metadata=False,
+                        output_format=output_format,
+                    )
+                ),
+                tree,
+                shown,
+            )
+    return _stamp_ref(text, args.ref, args.json)
+
+
 def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
+    if args.as_path and args.ref:
+        raise UsageError(
+            "sct focus: --as reads stdin content; --ref reads the repository. One or the other."
+        )
     if args.as_path or args.path == STDIN:
         content = _stdin_content("focus", args.as_path, [args.path])
         result = server.scan_file_content(
             content=content, filename=args.as_path, focus=args.name, include_metadata=False
+        )
+    elif args.ref:
+        top, rel = _repo_and_rel(args.path)
+        if _ref_kind(top, args.ref, rel) != "blob":
+            raise RefError(f"{_spec(args.ref, rel)} is a directory; focus reads one file")
+        result = server.scan_file_content(
+            content=_blob(top, args.ref, rel),
+            filename=args.path,
+            focus=args.name,
+            include_metadata=False,
         )
     elif not os.path.isfile(args.path):
         return [f"sct focus: no such file: {args.path}"], 1
@@ -245,18 +402,26 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
 def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
-    if not os.path.isdir(args.directory):
-        return [f"sct search: no such directory: {args.directory}"], 1
     pattern = {"name_pattern" if args.names else "content_pattern": args.pattern}
-    text = _text(
-        server.search_structures(
-            directory=args.directory,
-            type_filter=args.type,
-            include_metadata=False,
-            output_format="json" if args.json else "tree",
-            **pattern,
-        )
+    kwargs = dict(
+        type_filter=args.type,
+        include_metadata=False,
+        output_format="json" if args.json else "tree",
+        **pattern,
     )
+    if args.ref:
+        top, rel = _repo_and_rel(args.directory)
+        if _ref_kind(top, args.ref, rel) != "tree":
+            raise RefError(f"{_spec(args.ref, rel)} is a file; search reads a directory")
+        shown = args.directory.rstrip("/\\") or args.directory
+        name = os.path.basename(os.path.abspath(args.directory))
+        with _materialised(top, args.ref, rel, name) as tree:
+            text = _relabel(_text(server.search_structures(directory=tree, **kwargs)), tree, shown)
+        text = _stamp_ref(text, args.ref, args.json)
+    elif not os.path.isdir(args.directory):
+        return [f"sct search: no such directory: {args.directory}"], 1
+    else:
+        text = _text(server.search_structures(directory=args.directory, **kwargs))
     return [text], 1 if _not_found(text) else 0
 
 
@@ -289,6 +454,11 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
             help="scan stdin content (path `-`) under this name; its extension picks the parser",
         )
 
+    def ref_option(p: argparse.ArgumentParser) -> None:
+        p.add_argument(
+            "--ref", metavar="REF", help="read at this git ref (branch, tag, SHA), no checkout"
+        )
+
     orient = parser("", "Orientation: entry points, hot functions, call-graph map.", False)
     orient.add_argument("directory")
 
@@ -297,17 +467,20 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     scan.add_argument("--budget", type=int, metavar="N", help="approximate output tokens (files)")
     scan.add_argument("--depth", choices=("quick", "normal", "deep"), help="files only")
     stdin_option(scan)
+    ref_option(scan)
 
     focus = parser("focus", "One structure verbatim with parent context.", False)
     focus.add_argument("path", help="file, or `-` with --as for stdin content")
     focus.add_argument("name", help="name, Class.method, heading, or a heading substring")
     stdin_option(focus)
+    ref_option(focus)
 
     search = parser("search", "Text or names across a directory with structural context.", True)
     search.add_argument("directory")
     search.add_argument("pattern", help="Python regex")
     search.add_argument("--names", action="store_true", help="match structure names, not text")
     search.add_argument("--type", metavar="TYPE", help="report only structures of this type")
+    ref_option(search)
 
     return {"": orient, "scan": scan, "focus": focus, "search": search}
 
@@ -357,6 +530,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_usage(sys.stderr)
         sys.stderr.write(f"{error}\n")
         return 2
+    except RefError as error:
+        sys.stderr.write(f"sct {command}: {error}\n".replace("sct : ", "sct: "))
+        return 1
     _emit(outputs, args.json, args.ascii)
     return code
 
