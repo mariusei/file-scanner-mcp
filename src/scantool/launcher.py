@@ -26,6 +26,7 @@ SCOPE:
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,10 @@ log = logging.getLogger(__name__)
 
 MARKER = "scantool-launcher"
 OPT_OUT_ENV = "SCANTOOL_NO_CLI"
+
+# Both launcher forms quote the interpreter and carry the marker with a version.
+INTERPRETER_IN_LAUNCHER = re.compile(r'"([^"]+)" -m scantool\.cli')
+VERSION_IN_MARKER = re.compile(re.escape(MARKER) + r" (\S+)")
 
 
 def interpreter() -> str:
@@ -100,12 +105,32 @@ def launcher_files(python: str = "", version: str = __version__) -> dict[str, by
     return files
 
 
+def _version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", version.split("+")[0]))
+
+
+def keep_existing(current: bytes) -> bool:
+    """A marked launcher stays unless its interpreter is gone or ours is newer.
+
+    Two scantool installs on one machine (uvx for one client, a project venv
+    for another) would otherwise flip the launcher on every server start,
+    and it would die with whichever environment is deleted first.
+    """
+    text = current.decode(errors="replace")
+    python = INTERPRETER_IN_LAUNCHER.search(text)
+    marked = VERSION_IN_MARKER.search(text)
+    if python is None or marked is None or not Path(python.group(1)).exists():
+        return False
+    return _version_key(marked.group(1)) >= _version_key(__version__)
+
+
 def ensure_launcher(bin_dir: Path | None = None) -> list[Path]:
     """Write the launcher(s) unless opted out; return the paths written.
 
     Never raises: a server must start even when the launcher cannot be
     written (read-only home, sandboxed client). Files without the marker
-    belong to someone else and are left alone.
+    belong to someone else and are left alone; marked files follow
+    keep_existing().
     """
     if os.environ.get(OPT_OUT_ENV, "") not in ("", "0"):
         return []
@@ -122,9 +147,13 @@ def ensure_launcher(bin_dir: Path | None = None) -> list[Path]:
                     continue
                 if current == content:
                     continue
+                if keep_existing(current):
+                    log.debug("%s kept: its interpreter exists and is not older", target)
+                    continue
             target.write_bytes(content)
             target.chmod(0o755)
             written.append(target)
+            log.debug("%s now runs %s", target, interpreter())
     except OSError as exc:
         log.debug("could not write the sct launcher: %s", exc)
     return written

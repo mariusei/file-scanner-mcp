@@ -72,11 +72,49 @@ def test_foreign_sct_is_never_touched(tmp_path):
     assert (tmp_path / "sct").read_bytes() == foreign
 
 
-def test_stale_marked_launcher_is_rewritten(tmp_path):
-    stale = f'#!/bin/sh\n# {launcher.MARKER} 0.0.1\nexec /old/python -m scantool.cli "$@"\n'
-    (tmp_path / "sct").write_bytes(stale.encode())
+def test_marked_launcher_whose_interpreter_is_gone_is_rewritten(tmp_path):
+    """The stale case: the environment the launcher pointed at was deleted,
+    so even a newer marker version does not keep it."""
+    newer = _bump(launcher.__version__, +1)
+    (tmp_path / "sct").write_bytes(
+        _marked_launcher((tmp_path / "gone" / "python").as_posix(), newer)
+    )
     written = launcher.ensure_launcher(tmp_path)
     assert [p.name for p in written][:1] == ["sct"]
+    assert (tmp_path / "sct").read_bytes() == launcher.launcher_files()["sct"]
+
+
+def _marked_launcher(python: str, version: str) -> bytes:
+    return (
+        f'#!/bin/sh\n# {launcher.MARKER} {version}\nexec "{python}" -m scantool.cli "$@"\n'.encode()
+    )
+
+
+def _bump(version: str, by: int) -> str:
+    head, _, last = version.partition("+")[0].rpartition(".")
+    return f"{head}.{int(last) + by}"
+
+
+def test_marked_launcher_with_a_live_interpreter_and_current_version_is_kept(tmp_path):
+    """Two installs must not flip the launcher on every start: another
+    existing interpreter at our version stays."""
+    other = Path(shutil.which("git") or sys.executable)
+    (tmp_path / "sct").write_bytes(_marked_launcher(other.as_posix(), launcher.__version__))
+    written = {p.name for p in launcher.ensure_launcher(tmp_path)}
+    assert "sct" not in written  # on Windows the absent sct.cmd is still written
+    assert other.as_posix().encode() in (tmp_path / "sct").read_bytes()
+
+
+def test_marked_launcher_with_a_newer_version_is_kept(tmp_path):
+    newer = _bump(launcher.__version__, +1)
+    (tmp_path / "sct").write_bytes(_marked_launcher(Path(sys.executable).as_posix(), newer))
+    assert "sct" not in {p.name for p in launcher.ensure_launcher(tmp_path)}
+    assert newer.encode() in (tmp_path / "sct").read_bytes()
+
+
+def test_marked_launcher_with_an_older_version_is_rewritten(tmp_path):
+    (tmp_path / "sct").write_bytes(_marked_launcher(Path(sys.executable).as_posix(), "0.0.0"))
+    assert [p.name for p in launcher.ensure_launcher(tmp_path)][:1] == ["sct"]
     assert (tmp_path / "sct").read_bytes() == launcher.launcher_files()["sct"]
 
 
