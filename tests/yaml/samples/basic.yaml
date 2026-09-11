@@ -1,0 +1,41 @@
+name: sample-workflow
+
+shared_timeout: &timeout 10
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: *timeout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: make build
+
+  test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: *timeout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run tests
+        run: |
+          make test
+          make coverage
+
+notes: >
+  This is a folded block scalar
+  describing the workflow above.
+---
+service:
+  name: worker
+  replicas: 3
+  tags:
+    - prod
+    - critical

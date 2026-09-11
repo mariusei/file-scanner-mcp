@@ -1,8 +1,12 @@
 """Config language support - analyzer for configuration files.
 
 This module provides ConfigLanguage for analyzing configuration files
-(.json, .yaml, .yml, .toml, .ini). Since config files don't have
-traditional code structure, scan() returns an empty list.
+(.json, .toml, .ini). Since config files don't have traditional code
+structure, scan() returns an empty list.
+
+.yaml/.yml is handled by YAMLLanguage (languages/yaml.py), which has real
+structure and its own copy of the import/entry-point logic below (moved
+out, not shared, to keep the two handlers independent).
 
 Key functionality:
 - extract_imports(): Extract file path references from config files
@@ -25,7 +29,7 @@ from .models import (
 
 
 class ConfigLanguage(BaseLanguage):
-    """Language handler for configuration files (.json, .yaml, .yml, .toml, .ini).
+    """Language handler for configuration files (.json, .toml, .ini).
 
     Config files don't have traditional code structure (classes, functions),
     so scan() returns an empty list. The primary value is in:
@@ -40,7 +44,7 @@ class ConfigLanguage(BaseLanguage):
     @classmethod
     def get_extensions(cls) -> list[str]:
         """Configuration file extensions."""
-        return [".json", ".yaml", ".yml", ".toml", ".ini"]
+        return [".json", ".toml", ".ini"]
 
     @classmethod
     def get_language_name(cls) -> str:
@@ -118,7 +122,6 @@ class ConfigLanguage(BaseLanguage):
 
         Handles:
         - JSON: tsconfig paths, package.json scripts with file refs
-        - YAML: docker-compose volumes, env_file, Dockerfile paths
         - TOML: pyproject.toml paths, Cargo.toml paths
         - File path patterns in string values
 
@@ -131,8 +134,6 @@ class ConfigLanguage(BaseLanguage):
         # Detect file type
         if filename.endswith(".json"):
             imports.extend(self._extract_json_imports(file_path, content))
-        elif filename.endswith((".yaml", ".yml")):
-            imports.extend(self._extract_yaml_imports(file_path, content))
         elif filename.endswith(".toml"):
             imports.extend(self._extract_toml_imports(file_path, content))
         elif filename.endswith(".ini"):
@@ -229,51 +230,6 @@ class ConfigLanguage(BaseLanguage):
                                     import_type="script_file",
                                 )
                             )
-
-        return imports
-
-    def _extract_yaml_imports(self, file_path: str, content: str) -> list[ImportInfo]:
-        """Extract imports from YAML config files."""
-        imports: list[ImportInfo] = []
-        filename = Path(file_path).name.lower()
-
-        # docker-compose.yml patterns
-        if "docker-compose" in filename:
-            # env_file: .env.production or env_file: .env
-            env_file_pattern = r'env_file:\s*["\']?(\.env[^\s"\']*)["\']?'
-            for match in re.finditer(env_file_pattern, content):
-                imports.append(
-                    ImportInfo(
-                        source_file=file_path,
-                        target_module=match.group(1),
-                        line=content[: match.start()].count("\n") + 1,
-                        import_type="env_file",
-                    )
-                )
-
-            # dockerfile: ./Dockerfile.prod
-            dockerfile_pattern = r'dockerfile:\s*["\']?([^\s"\']+Dockerfile[^\s"\']*)["\']?'
-            for match in re.finditer(dockerfile_pattern, content, re.IGNORECASE):
-                imports.append(
-                    ImportInfo(
-                        source_file=file_path,
-                        target_module=match.group(1),
-                        line=content[: match.start()].count("\n") + 1,
-                        import_type="dockerfile",
-                    )
-                )
-
-            # volumes: - ./data:/app/data
-            volume_pattern = r'[-\s]+["\']?(\.{1,2}/[^:\s"\']+):[^\s"\']+["\']?'
-            for match in re.finditer(volume_pattern, content):
-                imports.append(
-                    ImportInfo(
-                        source_file=file_path,
-                        target_module=match.group(1),
-                        line=content[: match.start()].count("\n") + 1,
-                        import_type="volume_mount",
-                    )
-                )
 
         return imports
 
@@ -383,7 +339,6 @@ class ConfigLanguage(BaseLanguage):
         - package.json: main, bin scripts
         - Cargo.toml: [[bin]] targets
         - pyproject.toml: [project.scripts]
-        - docker-compose.yml: services
         - tsconfig.json: project config
         """
         entry_points: list[EntryPointInfo] = []
@@ -397,10 +352,6 @@ class ConfigLanguage(BaseLanguage):
             # TOML configs
             elif filename.endswith(".toml"):
                 entry_points.extend(self._find_toml_entry_points(file_path, content))
-
-            # YAML configs
-            elif filename.endswith((".yaml", ".yml")):
-                entry_points.extend(self._find_yaml_entry_points(file_path, content))
 
         except Exception:
             # Don't fail on parse errors
@@ -521,39 +472,6 @@ class ConfigLanguage(BaseLanguage):
                 entry_points.append(
                     EntryPointInfo(
                         file=file_path, type="bin_target", name="bin", line=line, framework="Rust"
-                    )
-                )
-
-        return entry_points
-
-    def _find_yaml_entry_points(self, file_path: str, content: str) -> list[EntryPointInfo]:
-        """Find entry points in YAML config files."""
-        entry_points: list[EntryPointInfo] = []
-        filename = Path(file_path).name.lower()
-
-        # docker-compose.yml
-        if "docker-compose" in filename:
-            entry_points.append(
-                EntryPointInfo(
-                    file=file_path,
-                    type="project_config",
-                    name="docker_compose_project",
-                    line=1,
-                    framework="Docker",
-                )
-            )
-
-            # services:
-            services_pattern = r"^services:\s*$"
-            for match in re.finditer(services_pattern, content, re.MULTILINE):
-                line = content[: match.start()].count("\n") + 1
-                entry_points.append(
-                    EntryPointInfo(
-                        file=file_path,
-                        type="services_section",
-                        name="services",
-                        line=line,
-                        framework="Docker",
                     )
                 )
 

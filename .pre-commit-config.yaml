@@ -30,6 +30,9 @@ repos:
       - id: trailing-whitespace
         exclude: *frozen
       - id: check-yaml
+        # Same frozen-fixture carve-out as above: tests/yaml/samples/ has a
+        # deliberate multi-document file and a deliberately malformed one.
+        exclude: *frozen
       - id: check-toml
       - id: check-merge-conflict
 

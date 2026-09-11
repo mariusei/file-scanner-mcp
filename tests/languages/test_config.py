@@ -18,8 +18,6 @@ class TestConfigAnalyzer:
         """Test that analyzer supports correct extensions."""
         extensions = language.get_extensions()
         assert ".json" in extensions
-        assert ".yaml" in extensions
-        assert ".yml" in extensions
         assert ".toml" in extensions
         assert ".ini" in extensions
 
@@ -118,51 +116,6 @@ class TestConfigAnalyzer:
         # Should not extract package names from dependencies
         assert not any("react" in imp.target_module for imp in imports)
         assert not any("lodash" in imp.target_module for imp in imports)
-
-    # ===================================================================
-    # YAML imports
-    # ===================================================================
-
-    def test_extract_imports_docker_compose_env_file(self, language):
-        """Test extraction of env_file from docker-compose.yml."""
-        content = """version: '3'
-services:
-  web:
-    env_file: .env.production
-    image: nginx
-"""
-        imports = language.extract_imports("docker-compose.yml", content)
-        env_imports = [imp for imp in imports if imp.import_type == "env_file"]
-        assert len(env_imports) == 1
-        assert env_imports[0].target_module == ".env.production"
-
-    def test_extract_imports_docker_compose_dockerfile(self, language):
-        """Test extraction of Dockerfile paths from docker-compose.yml."""
-        content = """version: '3'
-services:
-  app:
-    build:
-      dockerfile: ./docker/Dockerfile.prod
-"""
-        imports = language.extract_imports("docker-compose.yml", content)
-        dockerfile_imports = [imp for imp in imports if imp.import_type == "dockerfile"]
-        assert len(dockerfile_imports) == 1
-        assert dockerfile_imports[0].target_module == "./docker/Dockerfile.prod"
-
-    def test_extract_imports_docker_compose_volumes(self, language):
-        """Test extraction of volume mounts from docker-compose.yml."""
-        content = """version: '3'
-services:
-  db:
-    volumes:
-      - ./data:/var/lib/postgresql/data
-      - ./config:/etc/config
-"""
-        imports = language.extract_imports("docker-compose.yml", content)
-        volume_imports = [imp for imp in imports if imp.import_type == "volume_mount"]
-        assert len(volume_imports) >= 2
-        assert any(imp.target_module == "./data" for imp in volume_imports)
-        assert any(imp.target_module == "./config" for imp in volume_imports)
 
     # ===================================================================
     # TOML imports
@@ -338,31 +291,6 @@ name = "my-tool"
         bin_entries = [ep for ep in entry_points if ep.type == "bin_target"]
         assert len(bin_entries) == 2
 
-    def test_find_entry_points_docker_compose(self, language):
-        """Test detection of docker-compose.yml as Docker project."""
-        content = """version: '3'
-services:
-  web:
-    image: nginx
-"""
-        entry_points = language.find_entry_points("docker-compose.yml", content)
-        project_entries = [ep for ep in entry_points if ep.type == "project_config"]
-        assert len(project_entries) == 1
-        assert project_entries[0].framework == "Docker"
-
-    def test_find_entry_points_docker_compose_services(self, language):
-        """Test detection of services section in docker-compose.yml."""
-        content = """version: '3'
-services:
-  web:
-    image: nginx
-  db:
-    image: postgres
-"""
-        entry_points = language.find_entry_points("docker-compose.yml", content)
-        service_entries = [ep for ep in entry_points if ep.type == "services_section"]
-        assert len(service_entries) == 1
-
     # ===================================================================
     # Classification
     # ===================================================================
@@ -398,20 +326,3 @@ services:
         """Test that empty files return empty entry points."""
         entry_points = language.find_entry_points("empty.json", "")
         assert entry_points == []
-
-    def test_extract_imports_multiline_yaml(self, language):
-        """Test extraction from multiline YAML structures."""
-        content = """version: '3'
-services:
-  web:
-    volumes:
-      - ./app:/app
-      - ./config:/config
-    env_file:
-      - .env
-      - .env.local
-"""
-        imports = language.extract_imports("docker-compose.yml", content)
-        # Should find multiple volume mounts
-        volume_imports = [imp for imp in imports if imp.import_type == "volume_mount"]
-        assert len(volume_imports) >= 2
