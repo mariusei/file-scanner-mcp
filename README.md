@@ -121,6 +121,7 @@ sct focus  - --as <path> <name>                  one node from stdin content
 sct search <dir> <pattern> [--ref REF] [--names] [--type TYPE]
 sct diff   <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
 sct surface <package-dir> [--ref REF] [--against REF]
+sct overlap <base> <branch>... [--repo DIR]
 sct --help                                       the full help; --json on scan and search, --ascii anywhere
 ```
 
@@ -129,6 +130,8 @@ Output is valid input. A `focus` answer opens with the node's address, `path::Qu
 `sct diff` is the structural diff between two refs, or one ref and the working tree: per file, `+` added, `~` changed (`signature: old → new`, `value: old → new`, or `body: N code / M doc lines`), `=` renamed (paired by identical body; unchanged members of a renamed class follow it as a count), `-` removed; three or more functions with the same signature delta fold into one row; new files as skeletons. Two refs compare against their merge-base by default and say so in a note (`--no-merge-base` compares the tips). The coverage line counts files changed without structural rows and names the reason for each.
 
 `sct surface` is the public surface of a Python package: every exported name with its signature, how it is exported (`__all__`, a lazy-import table, a re-export, `TYPE_CHECKING`) and where it is defined after following the re-exports, with members inherited from bases inside the package marked. `--against REF` prints the surface diff and the header states the direction.
+
+`sct overlap` takes N branches against one base, each at its own merge-base: structures touched by two or more branches (as addresses), new names introduced independently by two or more branches, commits two branches share beyond the base (a stack, so their overlap is expected), and per branch whether it is already in the base and by which criterion (ancestor, patch-equivalent, tree-equal; patch-equivalence proves the branch can be deleted, not that its content is in the current tree). It ends with a merge-order hint, not a verdict.
 
 `--ref REF` reads at a git ref (branch, tag, SHA) without a checkout: a file or one node through `git show`, a directory or a search through `git archive` into a temporary directory, with every path in the answer written the way you typed it and `@REF` at the end of the coverage line (in JSON, `coverage.ref`).
 
