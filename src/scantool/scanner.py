@@ -400,6 +400,7 @@ class FileScanner:
             for i, (node, score, excerpt, skeleton) in enumerate(items):
                 level = levels[i]
                 if level == 0:
+                    node.elided = True  # only a budget degrades to this level
                     continue
                 if level == "full":
                     # Full tier: verbatim excerpt (shown when condense=False)

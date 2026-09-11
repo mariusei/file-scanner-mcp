@@ -16,7 +16,7 @@ from .content_search import find_leads, format_hits, hits_to_json, search_conten
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
 from .directory_formatter import DirectoryFormatter, coverage_dict, format_coverage
 from .focus import format_focus
-from .formatter import TreeFormatter, structures_to_json
+from .formatter import TreeFormatter, file_coverage, format_file_coverage, structures_to_json
 from .git_signals import (
     collect_git_signals,
     file_churn,
@@ -489,7 +489,11 @@ def scan_file_content(
                 )
             ]
         if output_format == "json":
-            return [TextContent(type="text", text=structures_to_json(structures, filename))]
+            document = {
+                "coverage": file_coverage(structures),
+                **structures_to_json(structures, filename, return_dict=True),
+            }
+            return [TextContent(type="text", text=json.dumps(document, indent=2))]
         custom_formatter = TreeFormatter(
             show_signatures=show_signatures,
             show_decorators=show_decorators,
@@ -497,7 +501,10 @@ def scan_file_content(
             show_complexity=show_complexity,
             condense=condense,
         )
-        return [TextContent(type="text", text=custom_formatter.format(filename, structures))]
+        text = (
+            format_file_coverage(structures) + "\n" + custom_formatter.format(filename, structures)
+        )
+        return [TextContent(type="text", text=text)]
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error scanning content: {e}")]
@@ -693,12 +700,11 @@ def scan_file(
 
         # Format output
         if output_format == "json":
-            return [
-                TextContent(
-                    type="text",
-                    text=structures_to_json(structures, file_path),
-                )
-            ]
+            document = {
+                "coverage": file_coverage(structures),
+                **structures_to_json(structures, file_path, return_dict=True),
+            }
+            return [TextContent(type="text", text=json.dumps(document, indent=2))]
         else:
             # Use custom formatter with options
             custom_formatter = TreeFormatter(
@@ -708,7 +714,12 @@ def scan_file(
                 show_complexity=show_complexity,
                 condense=condense,
             )
-            result = delta_note + custom_formatter.format(file_path, structures)
+            result = (
+                format_file_coverage(structures)
+                + "\n"
+                + delta_note
+                + custom_formatter.format(file_path, structures)
+            )
             result += _connectivity_note(file_path)
             return [TextContent(type="text", text=result)]
 

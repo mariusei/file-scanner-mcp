@@ -1,3 +1,4 @@
+<1 file seen, 33 structures shown>
 basic.swift (3-117)
 - import statements @3
 - Config @7 # Configuration structure for the application

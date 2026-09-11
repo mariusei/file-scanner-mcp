@@ -1,3 +1,4 @@
+<1 file seen, 22 structures shown>
 basic.cpp (3-138)
 - #include directives @3
 - utils @9 # Utility namespace

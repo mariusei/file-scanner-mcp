@@ -1,3 +1,4 @@
+<1 file seen, 23 structures shown>
 basic.html (1-76)
 - DOCTYPE @1
 - app.js scripts/app.js @9 [defer]

@@ -63,6 +63,10 @@ class StructureNode:
     # name taken from the source. Consumers comparing names across files or
     # refs must not treat a synthetic name as an identity.
     synthetic: bool = False
+    # True when a budget cut this node's excerpt down to its header line; the
+    # tree shows ⟨…⟩ +N and the coverage line counts it, so nothing is dropped
+    # silently. focus= reads the node in full.
+    elided: bool = False
 
     def __post_init__(self):
         # scantool's own vocabulary: never a name from the source

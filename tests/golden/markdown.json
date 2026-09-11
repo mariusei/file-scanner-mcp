@@ -1,4 +1,9 @@
 {
+  "coverage": {
+    "files_seen": 1,
+    "structures_shown": 25,
+    "elided": 0
+  },
   "file": "markdown/samples/basic.md",
   "structures": [
     {

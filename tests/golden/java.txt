@@ -1,3 +1,4 @@
+<1 file seen, 18 structures shown>
 Basic.java (5-104)
 - com.example.demo @5
 - import statements @7

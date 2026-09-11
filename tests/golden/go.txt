@@ -1,3 +1,4 @@
+<1 file seen, 15 structures shown>
 basic.go (4-90)
 - import statements @4
 - Config @10 [public] # Config holds application configuration

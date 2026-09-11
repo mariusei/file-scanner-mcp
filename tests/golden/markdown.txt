@@ -1,3 +1,4 @@
+<1 file seen, 25 structures shown>
 basic.md (1-119)
 - Project Documentation @1
   - Installation @5
