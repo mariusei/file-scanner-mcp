@@ -21,15 +21,12 @@ SCOPE:
 """
 
 import argparse
-import io
 import json
 import os
-import subprocess
 import sys
-import tarfile
-import tempfile
-from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Callable, Sequence
+
+from .gitref import RefError, blob, materialised, ref_kind, repo_and_rel, spec
 
 HELP = """\
 sct — structure-first reader for code and documents
@@ -53,6 +50,7 @@ USAGE
   sct focus    - --as <path> <name>        stdin content, one node
   sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE]
   sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
+  sct surface  <package-dir> [--ref REF] [--against REF]
   sct <command> --help
   any command: --json, --ascii
 
@@ -84,6 +82,11 @@ COMMANDS
             in 3+ functions fold into one row; new files as skeletons. The
             coverage line counts files changed without structural rows and
             names the reason for each.
+  surface   The public surface of a Python package at a ref: every exported
+            name with its signature, how it is exported (__all__, lazy table,
+            re-export, TYPE_CHECKING) and where it is defined after following
+            re-exports; inherited members marked. --against REF prints the
+            surface diff; the header states the direction (A → B).
 
 OPTIONS
   --ref REF      Read at a git ref (branch, tag, SHA) instead of the working
@@ -108,7 +111,7 @@ CONVENTIONS
   error. Plain text; one fact per line. Errors on stderr.
 """
 
-COMMANDS = ("scan", "focus", "search", "diff")
+COMMANDS = ("scan", "focus", "search", "diff", "surface")
 STDIN = "-"
 
 # The glyphs scantool's own formatters emit; --ascii maps these and nothing
@@ -161,74 +164,6 @@ NOT_FOUND_PREFIXES = (
 
 class UsageError(Exception):
     """A usage error found after argparse: printed like argparse's, exit 2."""
-
-
-class RefError(Exception):
-    """Nothing to read at the ref: the message names the ref, the path and
-    the repository, so the next call can be corrected. Exit 1."""
-
-
-def _git(top: str, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", top, *args], capture_output=True)
-
-
-def _repo_and_rel(path: str) -> tuple[str, str]:
-    """The repository containing path and path's forward-slash form relative
-    to its top. The path need not exist in the working tree; it may exist
-    only at the ref, so the repository is found from its nearest existing
-    ancestor."""
-    probe = os.path.abspath(path)
-    while not os.path.isdir(probe):
-        probe = os.path.dirname(probe)
-    result = subprocess.run(
-        ["git", "-C", probe, "rev-parse", "--show-toplevel"], capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        raise RefError(f"{path} is not inside a git repository; --ref needs one")
-    top = result.stdout.strip()
-    rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
-    return top, "" if rel == "." else rel
-
-
-def _spec(ref: str, rel: str) -> str:
-    return f"{ref}:{rel}" if rel else ref
-
-
-def _ref_kind(top: str, ref: str, rel: str) -> str:
-    """'blob' or 'tree'; RefError with git's own words when there is neither."""
-    result = _git(top, "cat-file", "-t", _spec(ref, rel))
-    if result.returncode != 0:
-        reason = result.stderr.decode(errors="replace").strip().splitlines()
-        raise RefError(
-            f"{_spec(ref, rel)} is not in {top} ({reason[0] if reason else 'git failed'})"
-        )
-    kind = result.stdout.decode().strip()
-    return "tree" if kind == "commit" else kind  # the repository root is a tree
-
-
-def _blob(top: str, ref: str, rel: str) -> str:
-    result = _git(top, "show", _spec(ref, rel))
-    if result.returncode != 0:
-        raise RefError(f"{_spec(ref, rel)} is not in {top}")
-    return result.stdout.decode("utf-8", errors="replace")
-
-
-@contextmanager
-def _materialised(top: str, ref: str, rel: str, name: str) -> Iterator[str]:
-    """The tree at ref unpacked into a temporary directory under `name`, so
-    the directory answer carries the caller's own name for it."""
-    result = _git(top, "archive", "--format=tar", _spec(ref, rel))
-    if result.returncode != 0:
-        raise RefError(f"{_spec(ref, rel)} is not a directory in {top}")
-    with tempfile.TemporaryDirectory(prefix="sct-ref-") as scratch:
-        target = os.path.join(scratch, name)
-        os.mkdir(target)
-        with tarfile.open(fileobj=io.BytesIO(result.stdout)) as tar:
-            if hasattr(tarfile, "data_filter"):  # 3.11.4+: refuse links and absolute paths
-                tar.extractall(target, filter="data")
-            else:
-                tar.extractall(target)
-        yield target
 
 
 def _relabel(text: str, scratch_path: str, shown: str) -> str:
@@ -398,11 +333,11 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
 def _scan_at_ref(path: str, args: argparse.Namespace, output_format: str) -> str:
     from . import server
 
-    top, rel = _repo_and_rel(path)
-    if _ref_kind(top, args.ref, rel) == "blob":
+    top, rel = repo_and_rel(path)
+    if ref_kind(top, args.ref, rel) == "blob":
         text = _text(
             server.scan_file_content(
-                content=_blob(top, args.ref, rel),
+                content=blob(top, args.ref, rel),
                 filename=path,
                 budget=args.budget,
                 depth=args.depth,
@@ -412,7 +347,7 @@ def _scan_at_ref(path: str, args: argparse.Namespace, output_format: str) -> str
         )
     else:
         shown = path.rstrip("/\\") or path
-        with _materialised(top, args.ref, rel, os.path.basename(os.path.abspath(path))) as tree:
+        with materialised(top, args.ref, rel, os.path.basename(os.path.abspath(path))) as tree:
             text = _relabel(
                 _text(
                     server.scan_directory(
@@ -448,11 +383,11 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
             content=content, filename=args.as_path, focus=args.name, include_metadata=False
         )
     elif args.ref:
-        top, rel = _repo_and_rel(args.path)
-        if _ref_kind(top, args.ref, rel) != "blob":
-            raise RefError(f"{_spec(args.ref, rel)} is a directory; focus reads one file")
+        top, rel = repo_and_rel(args.path)
+        if ref_kind(top, args.ref, rel) != "blob":
+            raise RefError(f"{spec(args.ref, rel)} is a directory; focus reads one file")
         result = server.scan_file_content(
-            content=_blob(top, args.ref, rel),
+            content=blob(top, args.ref, rel),
             filename=args.path,
             focus=args.name,
             include_metadata=False,
@@ -480,12 +415,12 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
         **pattern,
     )
     if args.ref:
-        top, rel = _repo_and_rel(args.directory)
-        if _ref_kind(top, args.ref, rel) != "tree":
-            raise RefError(f"{_spec(args.ref, rel)} is a file; search reads a directory")
+        top, rel = repo_and_rel(args.directory)
+        if ref_kind(top, args.ref, rel) != "tree":
+            raise RefError(f"{spec(args.ref, rel)} is a file; search reads a directory")
         shown = args.directory.rstrip("/\\") or args.directory
         name = os.path.basename(os.path.abspath(args.directory))
-        with _materialised(top, args.ref, rel, name) as tree:
+        with materialised(top, args.ref, rel, name) as tree:
             text = _relabel(_text(server.search_structures(directory=tree, **kwargs)), tree, shown)
         text = _stamp_ref(text, args.ref, args.json)
     elif not os.path.isdir(args.directory):
@@ -534,12 +469,60 @@ def run_diff(args: argparse.Namespace) -> tuple[list[str], int]:
     return [format_diff(result)], 0
 
 
+def _surface_at(package_dir: str, ref: str | None):
+    """The surface of the package as typed, or as it is at ref; paths are
+    prefixed with the directory the caller typed, so each row is runnable."""
+    from .surface import read_surface
+
+    typed = package_dir.rstrip("/\\") or package_dir
+    if ref is None:
+        if not os.path.isdir(typed):
+            raise RefError(f"{package_dir} is not a directory")
+        surface = read_surface(typed)
+    else:
+        top, rel = repo_and_rel(typed)
+        if ref_kind(top, ref, rel) != "tree":
+            raise RefError(f"{spec(ref, rel)} is not a directory; surface reads a package")
+        with materialised(top, ref, rel, os.path.basename(os.path.abspath(typed))) as tree:
+            surface = read_surface(tree)
+    parent = os.path.dirname(typed)
+    for export in surface.exports:
+        if export.path:
+            export.path = (
+                os.path.join(parent, export.path).replace(os.sep, "/") if parent else export.path
+            )
+    return surface
+
+
+def run_surface(args: argparse.Namespace) -> tuple[list[str], int]:
+    from .surface import format_surface, format_surface_diff, surface_to_json
+
+    label_a = f"@{args.ref}" if args.ref else "@WORKTREE"
+    surface_a = _surface_at(args.package_dir, args.ref)
+    if args.against:
+        surface_b = _surface_at(args.package_dir, args.against)
+        text = format_surface_diff(surface_a, surface_b, label_a, f"@{args.against}")
+        if args.json:
+            document = {
+                "direction": f"{label_a} → @{args.against}",
+                "a": surface_to_json(surface_a, label_a),
+                "b": surface_to_json(surface_b, f"@{args.against}"),
+            }
+            return [json.dumps(document, indent=2)], 0
+        return [text], 0
+    if args.json:
+        return [json.dumps(surface_to_json(surface_a, label_a), indent=2)], 0
+    text = format_surface(surface_a, label_a)
+    return [text], 1 if not surface_a.exports else 0
+
+
 RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "": run_orient,
     "scan": run_scan,
     "focus": run_focus,
     "search": run_search,
     "diff": run_diff,
+    "surface": run_surface,
 }
 
 
@@ -603,7 +586,21 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "--no-merge-base", action="store_true", help="compare the tips, not merge-base...refB"
     )
 
-    return {"": orient, "scan": scan, "focus": focus, "search": search, "diff": diff}
+    surface = parser("surface", "The public surface of a Python package at a ref.", True)
+    surface.add_argument("package_dir", metavar="package-dir")
+    ref_option(surface)
+    surface.add_argument(
+        "--against", metavar="REF", help="print the surface diff, this ref on the B side"
+    )
+
+    return {
+        "": orient,
+        "scan": scan,
+        "focus": focus,
+        "search": search,
+        "diff": diff,
+        "surface": surface,
+    }
 
 
 def _configure_streams() -> None:
