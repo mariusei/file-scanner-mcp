@@ -268,7 +268,7 @@ def format_hits(
         lines.append(
             "\nleads (called in hits, defined elsewhere): "
             + ", ".join(
-                f"{name} → " + " / ".join(f"{file}@{line}" for file, line in targets)
+                f"{name} → " + " / ".join(f"{file}:{line}" for file, line in targets)
                 for name, targets in leads
             )
         )

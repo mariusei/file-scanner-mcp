@@ -28,6 +28,23 @@ def file_coverage(structures: list[StructureNode]) -> dict:
     }
 
 
+def next_focus(structures: list[StructureNode]) -> str | None:
+    """The qualified name of the elided node hiding the most lines: the one
+    call that recovers the most of what the budget cut, or None."""
+
+    def walk(nodes, ancestors=()):
+        for node in nodes:
+            if node.type != "file-info":
+                yield node, ancestors
+            yield from walk(node.children, (*ancestors, node))
+
+    elided = [(node, anc) for node, anc in walk(structures) if node.elided]
+    if not elided:
+        return None
+    node, ancestors = max(elided, key=lambda pair: pair[0].end_line - pair[0].start_line)
+    return ".".join(n.name for n in (*ancestors, node))
+
+
 def format_file_coverage(structures: list[StructureNode]) -> str:
     """The line every single-file answer opens with. Elided nodes are the
     ones a budget cut to a header: shown as ⟨…⟩ +N in the tree, readable in
