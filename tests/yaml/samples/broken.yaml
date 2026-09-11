@@ -1,0 +1,9 @@
+top_level: value
+
+unterminated_flow: [1, 2, 3
+
+nested:
+  inner: {open: true
+  sibling: fine
+
+- stray_sequence_item_at_wrong_indent

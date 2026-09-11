@@ -50,6 +50,7 @@ SAMPLES = {
     "swift": "swift/samples/basic.swift",
     "text": "text/samples/basic.txt",
     "typescript": "typescript/samples/basic.ts",
+    "yaml": "yaml/samples/basic.yaml",
     "zig": "zig/samples/basic.zig",
 }
 
