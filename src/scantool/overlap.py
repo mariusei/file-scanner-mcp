@@ -7,21 +7,31 @@ PROBLEM:
   which are stacked on each other so their overlap is expected, and which
   are already in the base? git answers per file and per commit; the study's
   merge-plan assignment needed the answer per structure, and needed the
-  "already in base" question answered by a named criterion.
+  "already in base" question answered by a named criterion. Two more
+  questions decide a merge recommendation and were missing at structure
+  level: has the base itself moved a shared structure since the branches
+  forked (both branches are then behind, not just each other), and for a
+  stacked pair, what stays shared once their common commits are removed.
 
 SOLUTION:
   Each branch is diffed against ITS OWN merge-base with the base (not the
   base tip, which would report the base's later work as the branch's).
   Structures are the records structural_diff uses, so "touched" means the
   own body, signature or presence changed. Sections: structures touched by
-  2+ branches, new names added independently by 2+ branches, commits two
-  branches share beyond the base (a stack, so overlap between them is
-  expected), and per branch whether it is already in the base and by which
-  criterion. A merge-order hint closes it; it is a hint, not a verdict.
+  2+ branches, each with a base mark when the base tip changed it since the
+  oldest fork point among the branches touching it; new names added
+  independently by 2+ branches; commits two branches share beyond the base
+  (a stack, so overlap between them is expected) with the residual overlap
+  beyond their mutual merge-base; and per branch whether it is already in
+  the base and by which criterion. A merge-order hint closes it, counting
+  only the residual for stacked pairs; it is a hint, not a verdict.
 
 SCOPE:
   ✓ N branches vs one base, merge-base per branch, caps on every list
+  ✓ base marks and residuals computed only for the shared set (cheap)
   ✗ no conflict simulation (git merge-tree), no similarity beyond identity
+  ✗ base marks follow the path as the branch spells it; a rename on the
+    base side reads as removed
 """
 
 from collections import Counter
@@ -29,6 +39,7 @@ from dataclasses import dataclass, field
 
 from .scanner import FileScanner
 from .structural_diff import (
+    NodeRecord,
     ahead_behind,
     git_output,
     language_of,
@@ -42,6 +53,9 @@ ROW_CAP = 60
 FILE_CAP = 20
 NAME_CAP = 25
 LABEL_CAP = 72
+RESIDUAL_CAP = 20
+
+Site = tuple[str, str]  # (path, key)
 
 
 @dataclass
@@ -49,9 +63,12 @@ class BranchReport:
     branch: str
     merge_base: str  # short
     files: int = 0
-    touched: dict[tuple[str, str], str] = field(default_factory=dict)  # (path, key) -> + ~ -
-    names: dict[tuple[str, str], str] = field(default_factory=dict)  # (path, key) -> qualified name
-    added_names: dict[str, tuple[str, int]] = field(default_factory=dict)  # name -> (path, line)
+    touched: dict[Site, str] = field(default_factory=dict)  # + ~ -
+    # qualified name as the language spells it, and the record's type
+    names: dict[Site, str] = field(default_factory=dict)
+    kinds: dict[Site, str] = field(default_factory=dict)
+    # bare name -> (path, line, kind); a name someone chose, not one the language did
+    added_names: dict[str, tuple[str, int, str]] = field(default_factory=dict)
     ahead: int = 0
     behind: int = 0
     in_base: str | None = None  # ancestor | patch-equivalent | tree-equal
@@ -63,14 +80,28 @@ class BranchReport:
 
 
 @dataclass
+class SharedHistory:
+    a: str
+    b: str
+    commits: int  # in common beyond the base
+    residual: dict[Site, str]  # touched by both beyond their mutual merge-base -> name
+
+    @property
+    def residual_files(self) -> int:
+        return len({path for path, _ in self.residual})
+
+
+@dataclass
 class OverlapResult:
     base: str
     base_sha: str
     reports: list[BranchReport]
-    shared: dict[tuple[str, str], list[tuple[str, str]]]  # (path, key) -> [(branch, mark)]
-    names: dict[tuple[str, str], str]  # (path, key) -> qualified name, as the language spells it
-    colliding: dict[str, list[tuple[str, str, int]]]  # name -> [(branch, path, line)]
-    stacked: list[tuple[str, str, int]]  # (branch a, branch b, commits in common)
+    shared: dict[Site, list[tuple[str, str]]]  # -> [(branch, mark)]
+    names: dict[Site, str]
+    kinds: dict[Site, str]
+    base_moved: dict[Site, str]  # shared site -> how the base tip changed it since the oldest fork
+    colliding: dict[str, list[tuple[str, str, int, str]]]  # name -> [(branch, path, line, kind)]
+    stacked: list[SharedHistory]
 
 
 def _in_base(top: str, base: str, branch: str) -> str | None:
@@ -98,15 +129,23 @@ def branch_report(scanner: FileScanner, top: str, base: str, branch: str) -> Bra
     report.ahead, report.behind = ahead_behind(top, base, branch)[::-1]
     report.in_base = _in_base(top, base, branch)
     report.commits = set((git_output(top, "rev-list", f"{base_of_branch}..{branch}") or "").split())
+    _diff_structures(scanner, top, base_of_branch, branch, report)
+    return report
 
-    name_status = git_output(top, "diff", "--name-status", "-M", base_of_branch, branch) or ""
+
+def _diff_structures(
+    scanner: FileScanner, top: str, old_ref: str, new_ref: str, report: BranchReport
+) -> None:
+    """Every structure whose own body, signature or presence differs between
+    the refs, into the report."""
+    name_status = git_output(top, "diff", "--name-status", "-M", old_ref, new_ref) or ""
     for line in name_status.split("\n"):
         parts = line.split("\t")
         if len(parts) < 2:
             continue
         status, old_path, new_path = parts[0], parts[1], parts[-1]
-        old = _records(scanner, top, base_of_branch, old_path) if not status.startswith("A") else {}
-        new = _records(scanner, top, branch, new_path) if not status.startswith("D") else {}
+        old = _records(scanner, top, old_ref, old_path) if not status.startswith("A") else {}
+        new = _records(scanner, top, new_ref, new_path) if not status.startswith("D") else {}
         if old is None or new is None:
             continue
         if not old and not new:
@@ -114,20 +153,23 @@ def branch_report(scanner: FileScanner, top: str, base: str, branch: str) -> Bra
         report.files += 1
         for key, record in new.items():
             report.names[(new_path, key)] = record.name
+            report.kinds[(new_path, key)] = record.type
             if key not in old:
                 report.touched[(new_path, key)] = "+"
                 if not record.private:  # a name someone chose, not one the language did
-                    report.added_names.setdefault(record.bare, (new_path, record.start))
+                    report.added_names.setdefault(
+                        record.bare, (new_path, record.start, record.type)
+                    )
             elif old[key].differs_from(record):
                 report.touched[(new_path, key)] = "~"
         for key, record in old.items():
             if key not in new:
                 report.touched[(old_path, key)] = "-"
                 report.names[(old_path, key)] = record.name
-    return report
+                report.kinds[(old_path, key)] = record.type
 
 
-def _records(scanner: FileScanner, top: str, ref: str, rel: str):
+def _records(scanner: FileScanner, top: str, ref: str, rel: str) -> dict[str, NodeRecord] | None:
     """None for a file type without a handler; the empty dict for no structure."""
     content = read_side(top, ref, rel)
     if content is None:
@@ -138,22 +180,80 @@ def _records(scanner: FileScanner, top: str, ref: str, rel: str):
     return records(structures, content.split("\n"), language_of(scanner, rel))
 
 
+def _mark(old: dict[str, NodeRecord], new: dict[str, NodeRecord], key: str) -> str | None:
+    if key in new and key not in old:
+        return "+"
+    if key in old and key not in new:
+        return "-"
+    if key in old and key in new and old[key].differs_from(new[key]):
+        return "~"
+    return None
+
+
+def _base_moved(
+    scanner: FileScanner, top: str, base: str, shared: dict[Site, list[tuple[str, str]]]
+) -> dict[Site, str]:
+    """For each shared structure, how the base tip changed it since the
+    oldest fork point among the branches touching it (the octopus merge-base
+    of the base and those branches). Records are read once per (ref, path)."""
+    base_sha = (git_output(top, "rev-parse", f"{base}^{{commit}}") or "").strip()
+    since_of: dict[tuple[str, ...], str | None] = {}
+    at: dict[tuple[str, str], dict[str, NodeRecord] | None] = {}
+    moved: dict[Site, str] = {}
+    for (path, key), hits in shared.items():
+        branches = tuple(sorted(branch for branch, _ in hits))
+        if branches not in since_of:
+            fork = git_output(top, "merge-base", "--octopus", base, *branches)
+            since_of[branches] = fork.strip() if fork else None
+        since = since_of[branches]
+        if since is None or since == base_sha:
+            continue
+        for ref in (since, base_sha):
+            if (ref, path) not in at:
+                at[(ref, path)] = _records(scanner, top, ref, path)
+        old, new = at[(since, path)], at[(base_sha, path)]
+        if old is None or new is None:
+            continue
+        mark = _mark(old, new, key)
+        if mark:
+            moved[(path, key)] = mark
+    return moved
+
+
+def _residual(scanner: FileScanner, top: str, a: str, b: str) -> dict[Site, str]:
+    """Structures both branches touch beyond their mutual merge-base: what
+    stays shared once one of them is merged."""
+    mutual = merge_base(top, a, b)
+    if mutual is None:
+        return {}
+    sides = []
+    for branch in (a, b):
+        side = BranchReport(branch, mutual)
+        _diff_structures(scanner, top, mutual, branch, side)
+        sides.append(side)
+    common = sides[0].touched.keys() & sides[1].touched.keys()
+    return {site: sides[0].names[site] for site in sorted(common)}
+
+
 def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
     scanner = FileScanner()
     reports = [branch_report(scanner, top, base, branch) for branch in branches]
 
-    by_structure: dict[tuple[str, str], list[tuple[str, str]]] = {}
-    names: dict[tuple[str, str], str] = {}
+    by_structure: dict[Site, list[tuple[str, str]]] = {}
+    names: dict[Site, str] = {}
+    kinds: dict[Site, str] = {}
     for report in reports:
         names.update(report.names)
+        kinds.update(report.kinds)
         for site, mark in report.touched.items():
             by_structure.setdefault(site, []).append((report.branch, mark))
     shared = {site: hits for site, hits in by_structure.items() if len(hits) > 1}
+    base_moved = _base_moved(scanner, top, base, shared)
 
-    by_name: dict[str, list[tuple[str, str, int]]] = {}
+    by_name: dict[str, list[tuple[str, str, int, str]]] = {}
     for report in reports:
-        for name, (path, line) in report.added_names.items():
-            by_name.setdefault(name, []).append((report.branch, path, line))
+        for name, (path, line, kind) in report.added_names.items():
+            by_name.setdefault(name, []).append((report.branch, path, line, kind))
     colliding = {name: hits for name, hits in by_name.items() if len(hits) > 1}
 
     stacked = []
@@ -161,13 +261,33 @@ def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
         for b in reports[i + 1 :]:
             common = len(a.commits & b.commits)
             if common:
-                stacked.append((a.branch, b.branch, common))
+                residual = _residual(scanner, top, a.branch, b.branch)
+                stacked.append(SharedHistory(a.branch, b.branch, common, residual))
 
-    return OverlapResult(base, short(top, base), reports, shared, names, colliding, stacked)
+    return OverlapResult(
+        base, short(top, base), reports, shared, names, kinds, base_moved, colliding, stacked
+    )
 
 
 def _count(n: int, noun: str) -> str:
     return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+
+
+def _entanglement(result: OverlapResult) -> Counter:
+    """Shared structures per branch that stay shared after merging: those
+    shared with a branch it does not stack on, plus the residual with the
+    ones it does. A stacked pair's common commits count on neither side."""
+    stacked_with = {frozenset((s.a, s.b)) for s in result.stacked}
+    sites: dict[str, set[Site]] = {}
+    for site, hits in result.shared.items():
+        branches = [branch for branch, _ in hits]
+        for x in branches:
+            if any(frozenset((x, y)) not in stacked_with for y in branches if y != x):
+                sites.setdefault(x, set()).add(site)
+    for s in result.stacked:
+        for branch in (s.a, s.b):
+            sites.setdefault(branch, set()).update(s.residual)
+    return Counter({branch: len(found) for branch, found in sites.items()})
 
 
 def format_overlap(result: OverlapResult) -> str:
@@ -198,28 +318,37 @@ def format_overlap(result: OverlapResult) -> str:
             "  patch-equivalent proves the branch can be deleted, not that its content is in the base's current tree"
         )
 
-    for a, b, common in result.stacked:
+    for s in result.stacked:
         lines.append(
-            f"shared history: {a} and {b} share {_count(common, 'commit')} beyond the base; "
+            f"shared history: {s.a} and {s.b} share {_count(s.commits, 'commit')} beyond the base; "
             "overlap between them is expected, not a conflict"
         )
+        residual = (
+            f"{_count(len(s.residual), 'structure')} in {_count(s.residual_files, 'file')}"
+            if s.residual
+            else "none"
+        )
+        lines.append(f"  residual beyond their shared commits: {residual}")
 
     if result.shared:
         rows = sorted(
             (
-                (f"{path}::{result.names[(path, key)]}", hits)
+                (f"{path}::{result.names[(path, key)]}", hits, result.base_moved.get((path, key)))
                 for (path, key), hits in result.shared.items()
             ),
             key=lambda row: (-len(row[1]), row[0]),
         )
         shown = rows[:ROW_CAP]
         files_hit = len({path for path, _ in result.shared})
-        lines.append(
-            f"overlap (structures touched by 2+ branches): {len(rows)} in {_count(files_hit, 'file')}"
-        )
-        label_width = min(max(len(label) for label, _ in shown), LABEL_CAP)
-        for label, hits in shown:
+        header = f"overlap (structures touched by 2+ branches): {len(rows)} in {_count(files_hit, 'file')}"
+        if result.base_moved:
+            header += f", {len(result.base_moved)} also changed in base"
+        lines.append(header)
+        label_width = min(max(len(label) for label, _, _ in shown), LABEL_CAP)
+        for label, hits, base_mark in shown:
             marks = "  ".join(f"{branch}({mark})" for branch, mark in sorted(hits))
+            if base_mark:
+                marks += f"  base({base_mark})"
             lines.append(f"  {label:<{label_width}}   {marks}")
         if len(rows) > len(shown):
             per_file = Counter(path for path, _ in result.shared)
@@ -236,7 +365,8 @@ def format_overlap(result: OverlapResult) -> str:
         name_width = min(max(len(n) for n in shown_names), LABEL_CAP)
         for name in shown_names:
             sites = "  ".join(
-                f"{branch}:{path}:{line}" for branch, path, line in sorted(result.colliding[name])
+                f"{branch}:{path}:{line}"
+                for branch, path, line, _ in sorted(result.colliding[name])
             )
             lines.append(f"  {name:<{name_width}}   {sites}")
         if len(names) > len(shown_names):
@@ -244,7 +374,7 @@ def format_overlap(result: OverlapResult) -> str:
 
     candidates = [r for r in reports if not r.in_base]
     if len(candidates) > 1:
-        entangled = Counter(branch for hits in result.shared.values() for branch, _ in hits)
+        entangled = _entanglement(result)
         order = sorted(
             candidates, key=lambda r: (entangled[r.branch], sum(r.counts.values()), r.branch)
         )
@@ -260,6 +390,9 @@ def format_overlap(result: OverlapResult) -> str:
                 f"all share {entangled[first.branch]} structures; ordered by change size, "
                 f"{first.branch} touches {sum(first.counts.values())} and {last.branch} touches {sum(last.counts.values())}"
             )
+        in_stack = {branch for s in result.stacked for branch in (s.a, s.b)}
+        if any(r.branch in in_stack for r in candidates):
+            reason += "; stacked pairs count only their residual beyond shared commits"
         lines.append(f"merge order (a hint, not a verdict): {chain}   ({reason})")
     return "\n".join(lines)
 
@@ -270,7 +403,22 @@ def overlap_to_json(result: OverlapResult) -> dict:
             "branches": len(result.reports),
             "with_structural_changes": sum(1 for r in result.reports if r.touched),
             "already_in_base": {r.branch: r.in_base for r in result.reports if r.in_base},
-            "sharing_history": [{"a": a, "b": b, "commits": n} for a, b, n in result.stacked],
+            "sharing_history": [
+                {
+                    "a": s.a,
+                    "b": s.b,
+                    "commits": s.commits,
+                    "residual": {
+                        "structures": len(s.residual),
+                        "files": s.residual_files,
+                        "addresses": [
+                            f"{path}::{name}"
+                            for (path, _), name in list(s.residual.items())[:RESIDUAL_CAP]
+                        ],
+                    },
+                }
+                for s in result.stacked
+            ],
         },
         "base": {"ref": result.base, "sha": result.base_sha},
         "branches": [
@@ -288,12 +436,14 @@ def overlap_to_json(result: OverlapResult) -> dict:
         "overlap": [
             {
                 "address": f"{path}::{result.names[(path, key)]}",
+                "kind": result.kinds[(path, key)],
+                "base": result.base_moved.get((path, key)),
                 "branches": [{"branch": b, "mark": m} for b, m in hits],
             }
             for (path, key), hits in result.shared.items()
         ],
         "colliding_names": {
-            name: [{"branch": b, "path": p, "line": ln} for b, p, ln in hits]
+            name: [{"branch": b, "path": p, "line": ln, "kind": k} for b, p, ln, k in hits]
             for name, hits in result.colliding.items()
         },
     }

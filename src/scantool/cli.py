@@ -93,13 +93,15 @@ COMMANDS
             re-exports; inherited members marked. --against REF prints the
             surface diff; the header states the direction (A → B).
   overlap   N branches against one base, each at its own merge-base:
-            structures touched by 2+ branches, new names introduced
-            independently by 2+ branches, commits two branches share (a
-            stack: overlap between them is expected), and per branch whether
-            it is already in the base and by which criterion (ancestor /
-            patch-equivalent / tree-equal; patch-equivalence proves it can be
-            deleted, not that its content is in the current tree). Ends with
-            a merge-order hint, not a verdict.
+            structures touched by 2+ branches (marked base(~/+/-) when the
+            base itself changed them since the branches forked), new names
+            introduced independently by 2+ branches, commits two branches
+            share (a stack: overlap between them is expected; the residual
+            beyond their shared commits is what stays), and per branch
+            whether it is already in the base and by which criterion
+            (ancestor / patch-equivalent / tree-equal; patch-equivalence
+            proves it can be deleted, not that its content is in the current
+            tree). Ends with a merge-order hint, not a verdict.
   callers   Actual call sites of a function or method (not docstring
             mentions), each with its enclosing function and path:line,
             across the directory; where the name is defined comes first.
