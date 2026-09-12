@@ -13,6 +13,7 @@ import re
 import textwrap
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from .models import (
     CallInfo,
@@ -79,6 +80,97 @@ def default_is_private_name(name: str) -> bool:
     """The convention most languages share: a leading underscore is private.
     Defined once here so callers without a handler use the same rule."""
     return name.startswith("_")
+
+
+# ===========================================================================
+# Full-line comment blocks (shared by the config handlers: YAML, TOML)
+# ===========================================================================
+
+# A lone comment line shorter than this is a separator or a tag ("# ---",
+# "# TODO"), not an explanation; it is dropped unless it documents the key
+# directly below it.
+COMMENT_BLOCK_MIN_CHARS = 20
+
+
+@dataclass
+class CommentBlock:
+    """Consecutive full-line comments; `text` holds the lines with the
+    comment marker and surrounding whitespace stripped."""
+
+    start_line: int
+    end_line: int
+    text: list[str]
+
+
+class CommentBlocks:
+    """A file's full-line comment blocks, handed out in source order as the
+    structure traversal reaches the declaration that follows each of them.
+
+    One placement rule, applied by the handler at every declaration it emits
+    (`before(line)`):
+      - a single comment line directly above a declaration (no blank line
+        between) is that declaration's docstring;
+      - any other block — two or more consecutive lines, or one line of at
+        least COMMENT_BLOCK_MIN_CHARS — becomes a `comment` node placed right
+        before the declaration that follows it (`rest()` hands out the blocks
+        after the last declaration);
+      - a short lone line that documents nothing is dropped.
+    A `comment` node is named by its first line of prose (a banner such as
+    "# =====" is skipped), so focus= reaches the block by its own words; its
+    span is the whole block, so focus= prints it verbatim. `synthetic`
+    follows the invariant every node obeys: true only when the name is not
+    on the block's first line.
+    """
+
+    def __init__(self, comments: list[tuple[int, str]], name_limit: int):
+        """`comments`: (line, stripped text) of every full-line comment, in
+        source order. Names longer than `name_limit` are truncated."""
+        self._blocks: list[CommentBlock] = []
+        for line, text in comments:
+            if self._blocks and self._blocks[-1].end_line == line - 1:
+                self._blocks[-1].end_line = line
+                self._blocks[-1].text.append(text)
+            else:
+                self._blocks.append(CommentBlock(line, line, [text]))
+        self._name_limit = name_limit
+        self._next = 0
+
+    def before(self, line: int, attachable: bool = True) -> tuple[list[StructureNode], str | None]:
+        """Comment nodes for the blocks that end before `line`, plus the
+        docstring when a single comment line sits directly above it. With
+        `attachable=False` the declaration at `line` gets no node of its own
+        (a scalar sequence item), so that line is a block like any other."""
+        nodes: list[StructureNode] = []
+        docstring = None
+        while self._next < len(self._blocks) and self._blocks[self._next].end_line < line:
+            block = self._blocks[self._next]
+            self._next += 1
+            if attachable and block.end_line == line - 1 and len(block.text) == 1:
+                docstring = block.text[0] or None
+            elif (node := self._node(block)) is not None:
+                nodes.append(node)
+        return nodes, docstring
+
+    def rest(self) -> list[StructureNode]:
+        """Comment nodes for the blocks after the last declaration."""
+        last = self._blocks[-1].end_line + 1 if self._blocks else 0
+        return self.before(last, attachable=False)[0]
+
+    def _node(self, block: CommentBlock) -> StructureNode | None:
+        if len(block.text) == 1 and len(block.text[0]) < COMMENT_BLOCK_MIN_CHARS:
+            return None
+        name = next((text for text in block.text if re.search(r"\w", text)), block.text[0])
+        if len(name) > self._name_limit:
+            name = name[: self._name_limit - 3] + "..."
+        lines = len(block.text)
+        return StructureNode(
+            type="comment",
+            name=name,
+            start_line=block.start_line,
+            end_line=block.end_line,
+            signature=f"{lines} lines" if lines > 1 else None,
+            synthetic=name not in block.text[0],
+        )
 
 
 class BaseLanguage(ABC):
@@ -356,9 +448,10 @@ class BaseLanguage(ABC):
         else:
             out, folded = self._compact_lines(tree, lines, offset)
 
-        # Nothing recognized or nothing saved → verbatim (with line numbers)
+        # Nothing recognized, nothing saved, or nothing left (an excerpt that
+        # is all comments folds to a lone "…") → verbatim (with line numbers)
         # is strictly better
-        if not out or not folded:
+        if not out or not folded or all(line.strip() == "…" for line in out):
             return None
         return out
 

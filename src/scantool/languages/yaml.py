@@ -24,6 +24,17 @@ SOLUTION:
       `*foo`) — never resolved
     - a multi-document file (`---`) becomes one synthetic "document N"
       node per document, wrapping that document's top-level keys
+    - full-line comments are structure too (in a config file they carry
+      the explanation): a single comment line directly above a key is that
+      key's docstring; every other block of consecutive comment lines (or a
+      lone line of at least COMMENT_BLOCK_MIN_CHARS) becomes a `comment`
+      node placed right before the key that follows it — a file header
+      separated from the first key by a blank line is therefore a `comment`
+      node, and focus= prints it verbatim. Placement is by the following
+      key, not by indentation. A comment trailing a key on the same line
+      is left alone (it is neither a block nor a docstring), and comments
+      inside flow collections (`[...]`, `{...}`) are ignored. The rule and
+      the node shape live in base.CommentBlocks, shared with TOML.
   Every node's synthetic flag is computed the same way the golden/synthetic
   test checks it: true unless the node's name literally appears on its own
   start_line.
@@ -48,7 +59,7 @@ from pathlib import Path
 from tree_sitter import Node, Parser
 from tree_sitter_language_pack import get_language as get_packed_grammar
 
-from .base import BaseLanguage
+from .base import BaseLanguage, CommentBlocks
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -68,13 +79,15 @@ _PREVIEW_LIMIT = 60
 
 
 class _Src:
-    """Source bytes plus their decoded lines, computed once per scan()."""
+    """Source bytes, their decoded lines and the file's comment blocks,
+    computed once per scan()."""
 
-    __slots__ = ("bytes", "lines")
+    __slots__ = ("bytes", "lines", "comments")
 
-    def __init__(self, source_code: bytes):
+    def __init__(self, source_code: bytes, comments: CommentBlocks):
         self.bytes = source_code
         self.lines = source_code.decode("utf-8", errors="replace").split("\n")
+        self.comments = comments
 
 
 class YAMLLanguage(BaseLanguage):
@@ -151,13 +164,15 @@ class YAMLLanguage(BaseLanguage):
         keys in a synthetic "document N" node, since nothing in the source
         names the document itself.
         """
-        src = _Src(source_code)
+        src = _Src(
+            source_code, CommentBlocks(self._full_line_comments(root, source_code), _PREVIEW_LIMIT)
+        )
         documents = [c for c in root.children if c.type == "document"]
         if not documents:
-            return []
+            return src.comments.rest()
         if len(documents) == 1:
-            return self._document_top_level(documents[0], src)
-        return [
+            return self._document_top_level(documents[0], src) + src.comments.rest()
+        nodes = [
             self._make_node(
                 "document",
                 f"document {i}",
@@ -168,6 +183,26 @@ class YAMLLanguage(BaseLanguage):
             )
             for i, doc in enumerate(documents, start=1)
         ]
+        nodes[-1].children.extend(src.comments.rest())
+        return nodes
+
+    def _full_line_comments(self, root: Node, source_code: bytes) -> list[tuple[int, str]]:
+        """(line, text) of every comment that has a line to itself, in source
+        order. A comment sharing its line with a key (trailing comment) is
+        skipped, as is anything inside a flow collection."""
+        comments: list[tuple[int, str]] = []
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if node.type == "comment":
+                prev = node.prev_sibling
+                on_own_line = prev is None or prev.end_point[0] < node.start_point[0]
+                if on_own_line and not (node.parent and node.parent.type.startswith("flow_")):
+                    text = self._get_node_text(node, source_code).lstrip("#").strip()
+                    comments.append((node.start_point[0] + 1, text))
+            else:
+                stack.extend(reversed(node.children))
+        return comments
 
     def _document_top_level(self, doc_node: Node, src: "_Src") -> list[StructureNode]:
         content = next((c for c in doc_node.children if c.type in _WRAPPER_TYPES), None)
@@ -265,17 +300,19 @@ class YAMLLanguage(BaseLanguage):
                 if value_node is not None
                 else (None, None, None)
             )
-            children.append(
-                self._value_to_node(
-                    inner,
-                    key_text,
-                    pair.start_point[0] + 1,
-                    pair.end_point[0] + 1,
-                    src,
-                    anchor,
-                    tag,
-                )
+            leading, docstring = src.comments.before(pair.start_point[0] + 1)
+            children.extend(leading)
+            node = self._value_to_node(
+                inner,
+                key_text,
+                pair.start_point[0] + 1,
+                pair.end_point[0] + 1,
+                src,
+                anchor,
+                tag,
             )
+            node.docstring = docstring
+            children.append(node)
         return children
 
     def _value_to_node(
@@ -360,7 +397,10 @@ class YAMLLanguage(BaseLanguage):
         children: list[StructureNode] = []
         scalars: list[str] = []
         for item_inner, item_anchor, item_tag, item_start, item_end in items:
-            if item_inner is not None and item_inner.type in _MAPPING_TYPES:
+            is_mapping = item_inner is not None and item_inner.type in _MAPPING_TYPES
+            leading, docstring = src.comments.before(item_start, attachable=is_mapping)
+            children.extend(leading)
+            if item_inner is not None and is_mapping:
                 label = self._item_label(item_inner, src)
                 item_modifiers = []
                 if item_anchor:
@@ -373,12 +413,13 @@ class YAMLLanguage(BaseLanguage):
                 children.append(
                     self._make_node(
                         "item",
-                        label or f"[{len(children)}]",
+                        label or f"[{sum(c.type == 'item' for c in children)}]",
                         item_start,
                         item_end,
                         src,
                         children=item_children,
                         modifiers=item_modifiers,
+                        docstring=docstring,
                     )
                 )
             else:
@@ -387,7 +428,7 @@ class YAMLLanguage(BaseLanguage):
                     scalars.append(text)
 
         n = len(items)
-        if children:
+        if any(c.type == "item" for c in children):
             signature = f"{n} item{'' if n == 1 else 's'}"
         else:
             signature = self._sequence_signature(n, scalars)

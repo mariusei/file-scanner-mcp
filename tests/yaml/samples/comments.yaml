@@ -1,0 +1,28 @@
+# ======================================================================
+# Runtime table for the launcher
+# ======================================================================
+#
+# `promoted` is the version every new install gets; `default` is the
+# version an existing install keeps until it opts in.
+#
+# DO NOT EDIT BY HAND: tools/release.py regenerates this file.
+
+# The version new installs get
+promoted: 0.2.0  # trailing comment: left alone
+default: 0.1.2
+# ---
+# Kept for one release so old installs can roll back
+# to the previous runtime without a reinstall.
+versions:
+  # Newest first; the launcher takes the first entry it can find
+  - 0.2.0
+  - 0.1.2
+steps:
+  # Checkout must run first: later steps assume a populated workspace
+  - name: Checkout
+    uses: actions/checkout@v4
+  - name: Build
+    run: make build
+# TODO
+tags: [prod, critical]
+# Trailing note after the last key, nothing follows it
