@@ -19,6 +19,18 @@ SCOPE:
     treatment as a JSON object); an array value is always a leaf annotated
     with its item count — see _extract_structure for the documented nesting
     decision.
+  - Full-line comments are structure too (in a config file they carry the
+    explanation): a single comment line directly above a pair or table
+    header is that node's docstring; every other block of consecutive
+    comment lines (or a lone line of at least COMMENT_BLOCK_MIN_CHARS)
+    becomes a `comment` node placed right before the pair or table that
+    follows it — inside the table when a pair follows, top-level when a
+    header follows — so a file header separated from the first key by a
+    blank line is a `comment` node and focus= prints it verbatim. A comment
+    trailing a pair on the same line is left alone (neither a block nor a
+    docstring), and comments inside multi-line arrays or inline tables are
+    ignored. The rule and the node shape live in base.CommentBlocks, shared
+    with YAML.
   - Does not evaluate TOML type/range validity beyond what the grammar parses.
 """
 
@@ -28,7 +40,7 @@ from pathlib import Path
 from tree_sitter import Node, Parser
 from tree_sitter_language_pack import get_language as get_packed_grammar
 
-from .base import BaseLanguage
+from .base import BaseLanguage, CommentBlocks
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -140,27 +152,54 @@ class TOMLLanguage(BaseLanguage):
         same rule as JSON. Pairs written before the first table header are
         top-level nodes, matching how they read in the file.
         """
+        comments = CommentBlocks(self._full_line_comments(root, source_code), _MAX_SIGNATURE_LEN)
         structures: list[StructureNode] = []
         for child in root.children:
+            if child.type not in ("pair", "table", "table_array_element"):
+                continue
+            leading, docstring = comments.before(child.start_point[0] + 1)
+            structures.extend(leading)
             if child.type == "pair":
-                structures.append(self._pair_node(child, source_code))
-            elif child.type == "table":
-                structures.append(self._table_node(child, source_code, is_array=False))
-            elif child.type == "table_array_element":
-                structures.append(self._table_node(child, source_code, is_array=True))
+                node = self._pair_node(child, source_code)
+            else:
+                node = self._table_node(child, source_code, child.type != "table", comments)
+            node.docstring = docstring
+            structures.append(node)
+        structures.extend(comments.rest())
         return structures
 
-    def _table_node(self, node: Node, source_code: bytes, is_array: bool) -> StructureNode:
+    def _full_line_comments(self, root: Node, source_code: bytes) -> list[tuple[int, str]]:
+        """(line, text) of every comment that has a line to itself, in source
+        order: the grammar puts a trailing comment inside its pair, and a
+        comment inside an array or inline table under that value, so only
+        the document's and the tables' own comment children qualify."""
+        comments: list[tuple[int, str]] = []
+        for parent in [root, *(c for c in root.children if c.type != "pair")]:
+            for node in parent.children:
+                if node.type != "comment":
+                    continue
+                prev = node.prev_sibling
+                if prev is None or prev.end_point[0] < node.start_point[0]:
+                    text = self._get_node_text(node, source_code).lstrip("#").strip()
+                    comments.append((node.start_point[0] + 1, text))
+        return sorted(comments)
+
+    def _table_node(
+        self, node: Node, source_code: bytes, is_array: bool, comments: CommentBlocks
+    ) -> StructureNode:
         key_node: Node | None = None
-        pairs: list[Node] = []
+        children: list[StructureNode] = []
         for child in node.named_children:
             if child.type in _KEY_NODE_TYPES and key_node is None:
                 key_node = child
             elif child.type == "pair":
-                pairs.append(child)
+                leading, docstring = comments.before(child.start_point[0] + 1)
+                children.extend(leading)
+                pair = self._pair_node(child, source_code)
+                pair.docstring = docstring
+                children.append(pair)
 
         start_line = node.start_point[0] + 1
-        children = [self._pair_node(pair, source_code) for pair in pairs]
         # The TOML grammar extends a table's span through trailing blank
         # lines and comments up to the next header — use the header and the
         # last pair instead, so end_line reflects actual content.

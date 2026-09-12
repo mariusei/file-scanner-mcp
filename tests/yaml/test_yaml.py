@@ -27,6 +27,14 @@ def broken_yaml():
     return path.read_bytes()
 
 
+@pytest.fixture
+def comments_yaml():
+    """Load comments.yaml: a header block, attached doc lines, mid-file
+    blocks, a trailing comment and a comment inside a sequence."""
+    path = Path(__file__).parent / "samples" / "comments.yaml"
+    return path.read_bytes()
+
+
 class TestYAMLScanner:
     """Tests for YAMLLanguage structure extraction."""
 
@@ -144,6 +152,77 @@ class TestYAMLScanner:
     def test_scan_broken_yaml_does_not_crash(self, yaml_language, broken_yaml):
         structures = yaml_language.scan(broken_yaml)
         assert structures is not None
+
+
+class TestYAMLCommentBlocks:
+    """Full-line comments are structure: blocks become `comment` nodes,
+    an attached single line becomes the key's docstring."""
+
+    def test_leading_header_separated_by_a_blank_line_is_a_comment_node(
+        self, yaml_language, comments_yaml
+    ):
+        structures = yaml_language.scan(comments_yaml)
+        header = structures[0]
+        assert header.type == "comment"
+        assert (header.start_line, header.end_line) == (1, 8)
+        # Named by the first line of prose, not the banner on line 1
+        assert header.name == "Runtime table for the launcher"
+        assert header.signature == "8 lines"
+
+    def test_synthetic_follows_whether_the_name_is_on_the_first_line(
+        self, yaml_language, comments_yaml
+    ):
+        structures = yaml_language.scan(comments_yaml)
+        header, trailing = structures[0], structures[-1]
+        assert header.synthetic is True  # named from line 2, a banner is line 1
+        assert trailing.type == "comment"
+        assert trailing.start_line == trailing.end_line == 28
+        assert trailing.name.startswith("Trailing note after the last key")
+        assert trailing.synthetic is False  # its name is the first line itself
+
+    def test_attached_single_line_becomes_the_docstring(self, yaml_language, comments_yaml):
+        structures = yaml_language.scan(comments_yaml)
+        promoted = next(s for s in structures if s.name == "promoted")
+        assert promoted.docstring == "The version new installs get"
+        assert promoted.signature == "0.2.0"  # the trailing comment is left alone
+        default = next(s for s in structures if s.name == "default")
+        assert default.docstring is None
+
+    def test_mid_file_block_sits_before_the_key_that_follows_it(self, yaml_language, comments_yaml):
+        structures = yaml_language.scan(comments_yaml)
+        names = [s.name for s in structures]
+        block = next(s for s in structures if s.type == "comment" and s.start_line == 13)
+        assert block.end_line == 15
+        assert block.name == "Kept for one release so old installs can roll back"
+        assert names.index(block.name) == names.index("versions") - 1
+        # A multi-line block directly above a key is a node, not a docstring
+        assert next(s for s in structures if s.name == "versions").docstring is None
+
+    def test_comments_inside_sequences(self, yaml_language, comments_yaml):
+        structures = yaml_language.scan(comments_yaml)
+        versions = next(s for s in structures if s.name == "versions")
+        # Above a scalar item there is nothing to attach to: an ordinary block
+        assert [c.type for c in versions.children] == ["comment"]
+        assert versions.signature == "[2] 0.2.0, 0.1.2"
+        steps = next(s for s in structures if s.name == "steps")
+        checkout = next(c for c in steps.children if c.name == "Checkout")
+        assert checkout.docstring.startswith("Checkout must run first")
+        assert steps.signature == "2 items"
+
+    def test_short_lone_line_is_dropped(self, yaml_language, comments_yaml):
+        structures = yaml_language.scan(comments_yaml)
+        assert not any(s.name == "TODO" for s in structures)
+        tags = next(s for s in structures if s.name == "tags")
+        assert tags.docstring == "TODO"  # attached, so it documents the key
+
+    def test_comment_only_file(self, yaml_language):
+        structures = yaml_language.scan(b"# Placeholder: filled in by the generator\n")
+        assert [(s.type, s.start_line) for s in structures] == [("comment", 1)]
+
+    def test_no_comments_no_change(self, yaml_language, basic_yaml):
+        structures = yaml_language.scan(basic_yaml)
+        assert not any(s.type == "comment" for s in structures)
+        assert all(s.docstring is None for s in structures)
 
 
 class TestYAMLAnalyzer:

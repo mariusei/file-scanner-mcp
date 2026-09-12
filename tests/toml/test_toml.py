@@ -34,6 +34,14 @@ def broken_toml():
     return path.read_bytes()
 
 
+@pytest.fixture
+def comments_toml():
+    """Load comments.toml: a header block, attached doc lines, a block inside
+    a table, a comment inside an array and a trailing comment."""
+    path = Path(__file__).parent / "samples" / "comments.toml"
+    return path.read_bytes()
+
+
 class TestTOMLScanner:
     """Tests for TOMLLanguage.scan()."""
 
@@ -125,3 +133,60 @@ class TestTOMLScanner:
     def test_scan_broken_toml_does_not_crash(self, toml_language, broken_toml):
         structures = toml_language.scan(broken_toml)
         assert isinstance(structures, list)
+
+
+class TestTOMLCommentBlocks:
+    """Full-line comments are structure: blocks become `comment` nodes,
+    an attached single line becomes the pair's or table's docstring."""
+
+    def test_leading_header_separated_by_a_blank_line_is_a_comment_node(
+        self, toml_language, comments_toml
+    ):
+        structures = toml_language.scan(comments_toml)
+        header = structures[0]
+        assert header.type == "comment"
+        assert (header.start_line, header.end_line) == (1, 2)
+        assert header.name == "Build configuration for the demo app."
+        assert header.signature == "2 lines"
+        assert header.synthetic is False
+
+    def test_attached_single_line_becomes_the_docstring(self, toml_language, comments_toml):
+        structures = toml_language.scan(comments_toml)
+        name = next(s for s in structures if s.name == "name")
+        assert name.docstring == "Package identity"
+        version = next(s for s in structures if s.name == "version")
+        assert version.docstring is None
+        assert version.signature == '"1.2.3"'  # the trailing comment is left alone
+        tls = next(s for s in structures if s.name == "server.tls")
+        assert tls.docstring == "TLS is off in development"
+
+    def test_block_inside_a_table_is_a_child_of_the_table(self, toml_language, comments_toml):
+        structures = toml_language.scan(comments_toml)
+        server = next(s for s in structures if s.name == "server")
+        host = next(c for c in server.children if c.name == "host")
+        assert host.docstring == "Listening address; 0.0.0.0 in containers"
+        # A block after the last pair, blank line before the next header:
+        # placed before that header at top level, named past the "---" line
+        block = next(s for s in structures if s.type == "comment" and s.start_line == 12)
+        assert block.end_line == 14
+        assert block.name == "Ports below 1024 need CAP_NET_BIND_SERVICE on L..."
+        assert block.synthetic is True
+        assert (
+            structures.index(block)
+            == structures.index(next(s for s in structures if s.name == "server.tls")) - 1
+        )
+
+    def test_comment_inside_an_array_is_ignored_and_short_lone_lines_dropped(
+        self, toml_language, comments_toml
+    ):
+        structures = toml_language.scan(comments_toml)
+        assert not any("inside arrays" in s.name for s in structures)
+        assert not any(s.name == "TODO" for s in structures)
+        trailing = structures[-1]
+        assert trailing.type == "comment"
+        assert trailing.start_line == trailing.end_line == 25
+        assert trailing.name.startswith("Trailing note after the last pair")
+
+    def test_no_comments_no_change(self, toml_language, edge_cases_toml):
+        structures = toml_language.scan(edge_cases_toml)
+        assert not any(s.type == "comment" for s in structures)
