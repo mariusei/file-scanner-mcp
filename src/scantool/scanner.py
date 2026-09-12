@@ -201,7 +201,25 @@ class FileScanner:
                 line_edits=line_edits,
                 mode=mode,
             )
+            if budget is None:
+                self._expand_values(structures, source_code, scanner)
         return structures
+
+    @staticmethod
+    def _expand_values(structures: list[StructureNode], source_code: bytes, language) -> None:
+        """Deep (no budget) is "everything": value nodes, which never compete
+        for the excerpt tiers (entropy._SKIP_TYPES) and so show only their
+        width-cut signature, get their whole value. The language decides the
+        form — multi-line verbatim, single-line re-rendered untruncated."""
+        source_lines = source_code.decode("utf-8", errors="replace").split("\n")
+
+        def walk(nodes):
+            for node in nodes:
+                if node.type == "variable":
+                    language.expand_value(node, source_lines[node.start_line - 1 : node.end_line])
+                walk(node.children)
+
+        walk(structures)
 
     def scan_file(
         self,

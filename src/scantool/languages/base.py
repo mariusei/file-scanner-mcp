@@ -308,6 +308,22 @@ class BaseLanguage(ABC):
         """Prefix needed for a detached excerpt to parse (e.g. PHP's '<?php')."""
         return ""
 
+    def expand_value(self, node: StructureNode, excerpt: list[str]) -> None:
+        """Show a value node whole — a deep scan, where nothing is budgeted.
+
+        A value never competes for the excerpt tiers: its rendered signature,
+        cut to a width by the handler, is all a budgeted scan shows. Here a
+        multi-line value becomes the node's verbatim excerpt; a single-line
+        one keeps the handler's signature, which a language overrides when it
+        can re-render the value untruncated.
+
+        Args:
+            node: The value node (type "variable")
+            excerpt: Its source lines, start to end
+        """
+        if len(excerpt) > 1:
+            node.code_excerpt = excerpt
+
     def condense_excerpt(self, excerpt_lines: list[str]) -> list[str] | None:
         """Condense a salient code excerpt into a compact skeleton.
 

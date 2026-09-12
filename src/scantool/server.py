@@ -560,7 +560,8 @@ def scan_file(
                 important code keeps its depth (default: None = no cap).
                 Presets for the exploration funnel — use instead of grep:
                 budget=300 ≈ file preview (top functions only), budget=1500 ≈
-                compact overview, None = full two-tier detail
+                compact overview, None = full two-tier detail with module
+                values (constants, tables, __all__) shown whole
             depth: Convenience alias for budget, mirroring preview_directory's
                 knob — "quick"≈300, "normal"≈1500, "deep"=full. budget= is the
                 native lever and wins if both are given (default: None)

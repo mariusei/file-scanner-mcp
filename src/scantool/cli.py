@@ -64,7 +64,8 @@ COMMANDS
   scan      Skeleton of files or a directory: every structure with path:line,
             signature or title, condensed excerpt within the budget.
             Directory → tree with one-line gists. --depth quick ≈ 300
-            tokens/file, normal ≈ 1500, deep = everything (files only).
+            tokens/file, normal ≈ 1500, deep = everything, module values
+            whole (files only).
             Elided content is marked ⟨…⟩ +N; ask with focus to see it.
   focus     One structure verbatim with parent context. Name, qualified name
             (Class.method), heading, or a substring of a heading. Several
