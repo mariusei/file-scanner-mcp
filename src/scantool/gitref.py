@@ -77,6 +77,18 @@ def blob(top: str, ref: str, rel: str) -> str:
 
 
 @contextmanager
+def materialised_file(top: str, ref: str, rel: str, name: str) -> Iterator[str]:
+    """The blob at ref written to a temporary directory under `name`, for a
+    tool that reads files from disk (search reads content by path)."""
+    content = blob(top, ref, rel)
+    with tempfile.TemporaryDirectory(prefix="sct-ref-") as scratch:
+        target = os.path.join(scratch, name)
+        with open(target, "w", encoding="utf-8", newline="") as handle:
+            handle.write(content)
+        yield target
+
+
+@contextmanager
 def materialised(top: str, ref: str, rel: str, name: str) -> Iterator[str]:
     """The tree at ref unpacked into a temporary directory under `name`, so
     the directory answer carries the caller's own name for it."""

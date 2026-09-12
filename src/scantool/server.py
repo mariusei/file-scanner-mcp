@@ -31,6 +31,7 @@ from .git_signals import (
     repo_root,
 )
 from .languages import StructureNode, is_file_info_stub
+from .languages.models import Sweep
 from .launcher import ensure_launcher, shell_hint, shell_instructions
 from .preview import preview_directory as preview_dir_func
 from .ref_diff import diff_against_ref
@@ -1107,8 +1108,7 @@ def search_structures(
         search_structures("./src", type_filter="class", name_pattern=".*Manager$")
     """
     try:
-        # Scan directory (recursively scan all files)
-        sweep = scanner.sweep(directory, "**/*")
+        sweep = _search_scope(directory)
         results = sweep.results
         if not include_metadata:
             results = {path: _without_file_info(nodes) for path, nodes in results.items()}
@@ -1169,9 +1169,10 @@ def search_structures(
                 matching[file_path] = filtered
 
         if not matching:
-            return [
-                TextContent(type="text", text=header + "No structures found matching the criteria")
-            ]
+            text = "No structures found matching the criteria"
+            if name_pattern:
+                text += _paths_matching(results, name_pattern, directory)
+            return [TextContent(type="text", text=header + text)]
 
         # Format output
         if output_format == "json":
@@ -1191,6 +1192,51 @@ def search_structures(
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error searching: {e}")]
+
+
+def _search_scope(path: str) -> Sweep:
+    """The files a search covers: a directory swept recursively, or the one
+    file named (search reads content by path, so a file is a scope too)."""
+    if not os.path.isfile(path):
+        return scanner.sweep(path, "**/*")
+    structures = scanner.scan_file(path)
+    sweep = Sweep(directory=path, results={})
+    if structures is None:
+        sweep.unsupported[os.path.splitext(path)[1].lower() or "(no ext)"] += 1
+    else:
+        sweep.results[path] = structures
+    return sweep
+
+
+_PATHS_BY_NAME_CAP = 10
+
+
+def _paths_matching(results: dict, name_pattern: str, scope: str) -> str:
+    """Files and directories in the scope whose own name matches the name
+    pattern, spelled from the scope as the caller typed it: a Python name
+    that is a module or a package has no structure named after it, and a
+    bare "no structures" would hide that it exists."""
+    regex = re.compile(name_pattern)
+    root = Path(scope).resolve()
+    seen: list[str] = []
+    for file_path in sorted(results):
+        try:
+            parts = Path(file_path).resolve().relative_to(root).parts
+        except ValueError:
+            parts = Path(file_path).parts
+        for depth, part in enumerate(parts):
+            is_file = depth == len(parts) - 1
+            name = Path(part).stem if is_file else part
+            if regex.search(name) or (is_file and regex.search(part)):
+                shown = os.path.join(scope, *parts[: depth + 1]) + ("" if is_file else os.sep)
+                if shown not in seen:
+                    seen.append(shown)
+    if not seen:
+        return ""
+    listed = ", ".join(seen[:_PATHS_BY_NAME_CAP])
+    more = f", … {len(seen) - _PATHS_BY_NAME_CAP} more" if len(seen) > _PATHS_BY_NAME_CAP else ""
+    verb = "matches" if len(seen) == 1 else "match"
+    return f"; {len(seen)} path{'' if len(seen) == 1 else 's'} {verb} by name: {listed}{more}"
 
 
 def _filter_structures(
