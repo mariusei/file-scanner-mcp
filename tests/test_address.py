@@ -78,6 +78,27 @@ def test_every_printed_address_is_accepted_back_by_focus(sample, quote, capsys):
             assert header == f"{address} ({start}-{header.rsplit('-', 1)[1].rstrip(')')})"
 
 
+def test_ambiguity_lists_ranges_and_a_range_picks_the_node(tmp_path, capsys):
+    """Two nodes with one name: the message lists each with its range, the
+    range is accepted back (§9 item 1: what is printed is what is accepted),
+    alone and inside the address form after the ref."""
+    path = tmp_path / "mod.py"
+    path.write_text(
+        "class A:\n    def run(self):\n        return 2\n\n\n"
+        "class B:\n    def run(self):\n        return 3\n"
+    )
+    out, _, code = run("focus", str(path), "run", capsys=capsys)
+    assert code == 1 and "pick one by its range" in out
+    assert "  A.run (2-3)" in out and "  B.run (7-8)" in out
+    for name in ("run (7-8)", "run (7)", "B.run (7-8)"):
+        out, _, code = run("focus", str(path), name, capsys=capsys)
+        assert code == 0 and out.splitlines()[0] == f"{path}::B.run (7-8)", (name, out)
+    out, _, code = run("focus", f"{path}::run (2-3)", capsys=capsys)
+    assert code == 0 and out.splitlines()[0] == f"{path}::A.run (2-3)"
+    assert cli._split_address("p.py::A.run@main (1-3)") == ("p.py", "A.run (1-3)", "main")
+    assert cli._split_address('d.md::"Notes"@v1 (4-9)') == ("d.md", '"Notes" (4-9)', "v1")
+
+
 def test_next_trailer_is_a_focus_call_that_hits(capsys):
     out, _, _ = run("scan", str(PYTHON_SAMPLE), "--budget", "30", capsys=capsys)
     trailer = out.splitlines()[-1]

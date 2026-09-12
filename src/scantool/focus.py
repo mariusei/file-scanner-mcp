@@ -86,9 +86,26 @@ def _walk(structures: list[StructureNode], ancestors: tuple = ()):
         yield from _walk(node.children, (*ancestors, node))
 
 
+_RANGE = re.compile(r" \((\d+)(?:-(\d+))?\)$")
+
+
 def _resolve(structures: list[StructureNode], focus: str) -> list[tuple[StructureNode, tuple]]:
     """Match tiers: exact name, qualified path, case-insensitive substring.
-    A quoted name (a heading address) is matched without its quotes."""
+    A quoted name (a heading address) is matched without its quotes. A
+    trailing ` (a-b)` or ` (a)` keeps only the match starting at line a: it
+    is how the caller picks one of several nodes with the same name, in the
+    form the ambiguity message and the focus header print."""
+    span = _RANGE.search(focus)
+    if span:
+        focus = focus[: span.start()]
+    matches = _resolve_name(structures, focus)
+    if span:
+        start = int(span.group(1))
+        matches = [(n, a) for n, a in matches if n.start_line == start]
+    return matches
+
+
+def _resolve_name(structures: list[StructureNode], focus: str) -> list[tuple[StructureNode, tuple]]:
     if len(focus) >= 2 and focus[0] == focus[-1] == '"':
         focus = focus[1:-1]
     nodes = list(_walk(structures))
@@ -119,12 +136,12 @@ def _resolution_error(
 ) -> str:
     if matches:
         listed = "\n".join(
-            f"  {'.'.join(node.name for node in (*anc, n))} @{n.start_line}"
+            f"  {'.'.join(node.name for node in (*anc, n))} ({n.start_line}-{n.end_line})"
             for n, anc in matches[:10]
         )
         return (
             f"focus '{focus}' is ambiguous ({len(matches)} matches) — "
-            f"use a qualified path:\n{listed}"
+            f"pick one by its range, as listed:\n{listed}"
         )
     available = ", ".join(n.name for n, a in _walk(structures) if not a)
     return f"focus '{focus}' matches no node. Top-level nodes: {available}"

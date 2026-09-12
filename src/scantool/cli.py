@@ -23,10 +23,11 @@ SCOPE:
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Callable, Sequence
 
-from .gitref import RefError, blob, materialised, ref_kind, repo_and_rel, spec
+from .gitref import RefError, blob, materialised, materialised_file, ref_kind, repo_and_rel, spec
 
 HELP = """\
 sct — structure-first reader for code and documents
@@ -190,7 +191,10 @@ class UsageError(Exception):
 def _relabel(text: str, scratch_path: str, shown: str) -> str:
     """Every spelling of the temporary directory becomes the path the caller
     typed: the tools resolve paths, so the real path is replaced too."""
-    for spelling in {os.path.realpath(scratch_path), scratch_path}:
+    spellings = {os.path.realpath(scratch_path), scratch_path}
+    # longest first: on macOS the real path is /private + the short one, and
+    # replacing the short one inside it would leave "/private" glued to the answer
+    for spelling in sorted(spellings, key=len, reverse=True):
         text = text.replace(spelling, shown).replace(spelling.replace(os.sep, "/"), shown)
     return text
 
@@ -235,10 +239,17 @@ def _typed_path_header(text: str, path: str) -> str:
     return "\n".join(lines)
 
 
+_RANGE_SUFFIX = re.compile(r" \((\d+)(?:-(\d+))?\)$")
+
+
 def _split_address(address: str) -> tuple[str, str, str | None]:
-    """`path::name[@ref]` -> (path, name, ref). A quoted name keeps its quotes
-    and any `@` inside them; the ref is what follows the closing quote or
-    the last `@`."""
+    """`path::name[@ref][ (a-b)]` -> (path, name[ (a-b)], ref). A quoted name
+    keeps its quotes and any `@` inside them; the ref is what follows the
+    closing quote or the last `@`; a trailing range stays with the name, it
+    is how focus picks one of several nodes with the same name."""
+    span = _RANGE_SUFFIX.search(address)
+    if span:
+        address = address[: span.start()]
     path, sep, name = address.rpartition("::")
     if not sep:
         raise UsageError("sct focus: give <path> <name>, or one address path::Qualified.name[@ref]")
@@ -250,6 +261,8 @@ def _split_address(address: str) -> tuple[str, str, str | None]:
             name = name[: closing + 1]
     elif "@" in name:
         name, _, ref = name.rpartition("@")
+    if span:
+        name += span.group(0)
     return path, name, ref or None
 
 
@@ -439,15 +452,17 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
     )
     if args.ref:
         top, rel = repo_and_rel(args.directory)
-        if ref_kind(top, args.ref, rel) != "tree":
-            raise RefError(f"{spec(args.ref, rel)} is a file; search reads a directory")
+        kind = ref_kind(top, args.ref, rel)
         shown = args.directory.rstrip("/\\") or args.directory
         name = os.path.basename(os.path.abspath(args.directory))
-        with materialised(top, args.ref, rel, name) as tree:
-            text = _relabel(_text(server.search_structures(directory=tree, **kwargs)), tree, shown)
+        materialise = materialised if kind == "tree" else materialised_file
+        with materialise(top, args.ref, rel, name) as scope:
+            text = _relabel(
+                _text(server.search_structures(directory=scope, **kwargs)), scope, shown
+            )
         text = _stamp_ref(text, args.ref, args.json)
-    elif not os.path.isdir(args.directory):
-        return [f"sct search: no such directory: {args.directory}"], 1
+    elif not os.path.exists(args.directory):
+        return [f"sct search: no such file or directory: {args.directory}"], 1
     else:
         text = _text(server.search_structures(directory=args.directory, **kwargs))
     return [text], 1 if _not_found(text) else 0

@@ -60,6 +60,18 @@ def run(*argv, capsys):
     return captured.out, captured.err, code
 
 
+def test_relabel_replaces_the_real_path_before_its_short_spelling(monkeypatch):
+    """macOS: the temporary directory is /var/…, its real path /private/var/…;
+    the answer prints the real path, and replacing the short spelling first
+    left "/private" glued to every search path."""
+    monkeypatch.setattr(
+        cli.os.path, "realpath", lambda p: "/private" + p if p.startswith("/var") else p
+    )
+    scratch = "/var/folders/x/sct-ref-1/src"
+    text = f"/private{scratch}/gone.py:3\n{scratch}/mod.py:1"
+    assert cli._relabel(text, scratch, "src") == "src/gone.py:3\nsrc/mod.py:1"
+
+
 @requires_git
 class TestRef:
     def test_file_at_ref_is_the_committed_content(self, repo, capsys):
@@ -93,7 +105,17 @@ class TestRef:
         assert out.splitlines()[0].endswith(" @HEAD")
         # the caller typed "."; below it the OS separator is the one the
         # working-tree search prints too
-        assert "src/gone.py" in out.replace("\\", "/") and "sct-ref" not in out
+        paths = [line for line in out.splitlines() if line.replace("\\", "/").endswith("gone.py")]
+        assert paths and all(
+            p.replace("\\", "/") in ("./src/gone.py", "src/gone.py") for p in paths
+        ), out
+        assert "sct-ref" not in out and "/private" not in out
+
+    def test_search_at_ref_reads_one_file(self, repo, capsys):
+        out, _, code = run("search", "src/gone.py", "vanishing", "--ref", "HEAD", capsys=capsys)
+        assert code == 0
+        assert out.splitlines()[0] == "<1 file seen, 1 structure shown> @HEAD", out
+        assert "\nsrc/gone.py\n" in out and "sct-ref" not in out
 
     def test_json_coverage_carries_the_ref(self, repo, capsys):
         out, _, code = run("scan", "src/mod.py", "--ref", "HEAD", "--json", capsys=capsys)

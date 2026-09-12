@@ -122,7 +122,7 @@ def test_focus_hit_miss_and_ambiguity(capsys):
     assert code == 1 and "matches no node" in out
 
     out, _, code = run("focus", str(FOCUS_MODULE), "_", capsys=capsys)
-    assert code == 1 and "is ambiguous" in out and "_resolve @" in out
+    assert code == 1 and "is ambiguous" in out and "_resolve (" in out
 
     out, _, code = run("focus", "no-such-file.py", "x", capsys=capsys)
     assert code == 1 and "no such file" in out
@@ -159,7 +159,7 @@ def test_search_text_names_type_json_and_no_match(capsys):
     assert code == 1 and out.startswith("<") and "No content matches" in out
 
     out, _, code = run("search", "no-such-dir", "x", capsys=capsys)
-    assert code == 1 and "no such directory" in out
+    assert code == 1 and "no such file or directory" in out
 
 
 def test_directory_without_command_is_orientation(capsys):
