@@ -454,6 +454,7 @@ def scan_file_content(
             include_metadata=include_metadata,
             budget=_budget_for(budget, depth),
             mode=mode,
+            expand_values=depth == "deep",
         )
 
         if structures is None:
@@ -560,11 +561,12 @@ def scan_file(
                 important code keeps its depth (default: None = no cap).
                 Presets for the exploration funnel — use instead of grep:
                 budget=300 ≈ file preview (top functions only), budget=1500 ≈
-                compact overview, None = full two-tier detail with module
-                values (constants, tables, __all__) shown whole
+                compact overview, None = full two-tier detail
             depth: Convenience alias for budget, mirroring preview_directory's
-                knob — "quick"≈300, "normal"≈1500, "deep"=full. budget= is the
-                native lever and wins if both are given (default: None)
+                knob — "quick"≈300, "normal"≈1500, "deep"=full, and only
+                "deep" shows module values (constants, tables, __all__)
+                whole. budget= is the native lever and wins if both are
+                given (default: None)
             delta: Re-scans show only what changed since YOUR previous scan of
                 the same file in this session: unchanged file → one line;
                 modified file → full structure but code detail only for new or
@@ -651,6 +653,7 @@ def scan_file(
             budget=budget,
             line_edits=line_edits,
             mode=mode,
+            expand_values=depth == "deep",
         )
 
         if structures is None:
