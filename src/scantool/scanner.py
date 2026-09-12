@@ -129,6 +129,7 @@ class FileScanner:
         include_metadata: bool = False,
         budget: int | None = None,
         mode: str = "balanced",
+        expand_values: bool = False,
     ) -> list[StructureNode] | None:
         """
         Scan file content directly without requiring a file path.
@@ -143,6 +144,7 @@ class FileScanner:
             include_metadata: Include basic metadata node (just filename and size)
             budget: Approximate token cap for code skeletons (see scan_file)
             mode: Saliency weight profile — "balanced" or "active"
+            expand_values: Show module values whole (see scan_file)
 
         Returns:
             List of StructureNode objects, or None if file type not supported
@@ -154,7 +156,12 @@ class FileScanner:
 
         source_code = content.encode("utf-8") if isinstance(content, str) else content
         structures = self._scan_source(
-            scanner_class, source_code, filename, budget=budget, mode=mode
+            scanner_class,
+            source_code,
+            filename,
+            budget=budget,
+            mode=mode,
+            expand_values=expand_values,
         )
 
         if include_metadata and structures is not None:
@@ -183,6 +190,7 @@ class FileScanner:
         budget: int | None,
         mode: str,
         line_edits: dict[int, str] | None = None,
+        expand_values: bool = False,
     ) -> list[StructureNode] | None:
         """Parse bytes with a language handler and annotate salient code: the
         step scan_file and scan_content share. label names the source in
@@ -201,7 +209,26 @@ class FileScanner:
                 line_edits=line_edits,
                 mode=mode,
             )
+            if expand_values:
+                self._expand_values(structures, source_code, scanner)
         return structures
+
+    @staticmethod
+    def _expand_values(structures: list[StructureNode], source_code: bytes, language) -> None:
+        """An explicit deep request is "everything": value nodes, which never
+        compete for the excerpt tiers (entropy._SKIP_TYPES) and so show only
+        their width-cut signature, get their whole value. The language decides
+        the form — multi-line verbatim, single-line re-rendered untruncated.
+        Never the flag-less default: that output is the frozen contract."""
+        source_lines = source_code.decode("utf-8", errors="replace").split("\n")
+
+        def walk(nodes):
+            for node in nodes:
+                if node.type == "variable":
+                    language.expand_value(node, source_lines[node.start_line - 1 : node.end_line])
+                walk(node.children)
+
+        walk(structures)
 
     def scan_file(
         self,
@@ -211,6 +238,7 @@ class FileScanner:
         line_edits: dict[int, str] | None = None,
         mode: str = "balanced",
         max_bytes: int | None = None,
+        expand_values: bool = False,
     ) -> list[StructureNode] | None:
         """
         Scan a single file and return its structure.
@@ -225,6 +253,8 @@ class FileScanner:
                 (from git_signals.recent_line_edits); boosts actively-worked
                 nodes in selection and sets "[N edits/90d]" labels
             mode: Saliency weight profile — "balanced" or "active"
+            expand_values: Show module values (constants, tables, __all__)
+                whole — an explicit deep request; never the default
             max_bytes: Sweep guard — over this size the file is returned as a
                 name+size stub instead of parsed (a data dump has no source
                 structure worth the ~seconds/GB cost). None = no cap, so an
@@ -256,7 +286,13 @@ class FileScanner:
             source_code = f.read()
 
         structures = self._scan_source(
-            scanner_class, source_code, file_path, budget=budget, mode=mode, line_edits=line_edits
+            scanner_class,
+            source_code,
+            file_path,
+            budget=budget,
+            mode=mode,
+            line_edits=line_edits,
+            expand_values=expand_values,
         )
 
         # Prepend file metadata if requested and structures exist

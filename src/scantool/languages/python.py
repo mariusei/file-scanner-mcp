@@ -291,6 +291,21 @@ class PythonLanguage(BaseLanguage):
             signature=f"= {_render_value(self._get_node_text(right, source_code))}",
         )
 
+    def expand_value(self, node: StructureNode, excerpt: list[str]) -> None:
+        """A single-line value re-rendered without the width cut; multi-line
+        values are verbatim excerpts like everywhere else."""
+        if len(excerpt) > 1:
+            super().expand_value(node, excerpt)
+            return
+        try:
+            stmt = ast.parse(textwrap.dedent(excerpt[0])).body[0]
+        except (SyntaxError, IndexError):
+            return
+        value = getattr(stmt, "value", None)
+        if value is not None:
+            rendered = " ".join(ast.unparse(value).split())
+            node.signature = f"= {rendered}"
+
     def _extract_class(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
         """Extract class with full metadata."""
         name_node = node.child_by_field_name("name")
