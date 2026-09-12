@@ -108,6 +108,10 @@ class TestOverlap:
         assert "mod.py::newfn" in out and "feat-a(+)  feat-c(+)\n" in out
         assert "colliding new names (added independently on 2+ branches): 1" in out
         assert "newfn" in out and "feat-a:mod.py:9" in out and "feat-b:other.py:5" in out
+        # feat-c and feat-e got newfn through the commits they share with
+        # feat-a: added once, not a collision between them and feat-a
+        row = next(line for line in out.splitlines() if line.startswith("  newfn"))
+        assert "feat-c:" not in row and "feat-e:" not in row, row
         # feat-a and feat-b each share only alpha with a branch they do not
         # stack on (newfn is feat-a/feat-c shared history) and touch 2 each
         assert "merge order (a hint, not a verdict): feat-a < feat-b < feat-c   (all share 1" in out
@@ -170,6 +174,10 @@ class TestOverlap:
         assert {o["address"] for o in document["overlap"]} == {"mod.py::alpha"}
         assert set(document["colliding_names"]) == {"newfn"}
         assert {site["kind"] for site in document["colliding_names"]["newfn"]} == {"function"}
+        assert {site["branch"] for site in document["colliding_names"]["newfn"]} == {
+            "feat-a",
+            "feat-b",
+        }
 
     def test_unknown_ref_and_no_repo(self, repo, tmp_path_factory, monkeypatch, capsys):
         _, err, code = run("overlap", "main", "nope", capsys=capsys)

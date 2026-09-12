@@ -7,7 +7,9 @@ PROBLEM:
   which are stacked on each other so their overlap is expected, and which
   are already in the base? git answers per file and per commit; the study's
   merge-plan assignment needed the answer per structure, and needed the
-  "already in base" question answered by a named criterion. Two more
+  "already in base" question answered by a named criterion. A name that
+  reached a stacked branch through shared commits was added once, so it
+  is not a collision between the two. Two more
   questions decide a merge recommendation and were missing at structure
   level: has the base itself moved a shared structure since the branches
   forked (both branches are then behind, not just each other), and for a
@@ -220,19 +222,21 @@ def _base_moved(
     return moved
 
 
-def _residual(scanner: FileScanner, top: str, a: str, b: str) -> dict[Site, str]:
-    """Structures both branches touch beyond their mutual merge-base: what
-    stays shared once one of them is merged."""
+def _residual(scanner: FileScanner, top: str, a: str, b: str) -> tuple[dict[Site, str], set[str]]:
+    """Structures both branches touch beyond their mutual merge-base (what
+    stays shared once one of them is merged), and the new names both added
+    beyond it: those are the only names the pair chose independently."""
     mutual = merge_base(top, a, b)
     if mutual is None:
-        return {}
+        return {}, set()
     sides = []
     for branch in (a, b):
         side = BranchReport(branch, mutual)
         _diff_structures(scanner, top, mutual, branch, side)
         sides.append(side)
     common = sides[0].touched.keys() & sides[1].touched.keys()
-    return {site: sides[0].names[site] for site in sorted(common)}
+    both_added = sides[0].added_names.keys() & sides[1].added_names.keys()
+    return {site: sides[0].names[site] for site in sorted(common)}, set(both_added)
 
 
 def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
@@ -250,19 +254,35 @@ def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
     shared = {site: hits for site, hits in by_structure.items() if len(hits) > 1}
     base_moved = _base_moved(scanner, top, base, shared)
 
-    by_name: dict[str, list[tuple[str, str, int, str]]] = {}
-    for report in reports:
-        for name, (path, line, kind) in report.added_names.items():
-            by_name.setdefault(name, []).append((report.branch, path, line, kind))
-    colliding = {name: hits for name, hits in by_name.items() if len(hits) > 1}
-
     stacked = []
+    inherited: dict[tuple[str, str], set[str]] = {}  # (a, b) -> names b got from a's commits
     for i, a in enumerate(reports):
         for b in reports[i + 1 :]:
             common = len(a.commits & b.commits)
             if common:
-                residual = _residual(scanner, top, a.branch, b.branch)
+                residual, independent = _residual(scanner, top, a.branch, b.branch)
                 stacked.append(SharedHistory(a.branch, b.branch, common, residual))
+                shared_names = a.added_names.keys() & b.added_names.keys()
+                inherited[(a.branch, b.branch)] = shared_names - independent
+
+    by_name: dict[str, list[tuple[str, str, int, str]]] = {}
+    for report in reports:
+        for name, (path, line, kind) in report.added_names.items():
+            by_name.setdefault(name, []).append((report.branch, path, line, kind))
+    colliding = {}
+    for name, hits in by_name.items():
+        # a name that reached a stacked branch through the commits it shares
+        # with an earlier one was added once, not independently: the later
+        # branch's entry is dropped, the earlier one stays
+        added_by = [hit[0] for hit in hits]
+        dropped = {
+            later
+            for (earlier, later), names in inherited.items()
+            if name in names and earlier in added_by and later in added_by
+        }
+        kept = [hit for hit in hits if hit[0] not in dropped]
+        if len(kept) > 1:
+            colliding[name] = kept
 
     return OverlapResult(
         base, short(top, base), reports, shared, names, kinds, base_moved, colliding, stacked
