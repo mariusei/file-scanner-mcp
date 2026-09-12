@@ -60,6 +60,19 @@ def test_default_surface_is_top_level_definitions_not_marked_private(tmp_path):
     assert all(e.path.endswith("lib.rb") and e.line for e in surface.exports)
 
 
+def test_default_surface_skips_comment_blocks(tmp_path):
+    """A comment block is a node so focus can print it, but it is prose, not
+    a name the directory exports (reported by a #42 review on a config dir)."""
+    (tmp_path / "runtimes.yaml").write_text(
+        "# Runtime table for the launcher, kept for one release\n"
+        "# so old installs can roll back; do not edit by hand\n\n"
+        "promoted: 0.2.0\ndefault: 0.1.1\n"
+    )
+    names = [(e.name, e.kind) for e in read_surface(str(tmp_path)).exports]
+    assert ("promoted", "key") in names or any(name == "promoted" for name, _ in names)
+    assert not any(kind == "comment" for _, kind in names), names
+
+
 def test_python_surface_is_the_python_handlers(tmp_path):
     (tmp_path / "__init__.py").write_text("from .core import Thing\n__all__ = ['Thing']\n")
     (tmp_path / "core.py").write_text("class Thing:\n    def go(self):\n        return 1\n")

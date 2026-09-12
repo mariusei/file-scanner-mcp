@@ -748,6 +748,9 @@ class BaseLanguage(ABC):
     #: languages/ joins and splits qualified names with this, never with a
     #: literal ".".
     QUALIFIER: str = "."
+    # Node types that are never a public name even when their name is on the
+    # declaring line: a comment block or a docstring is prose, not an export
+    NON_EXPORT_TYPES: frozenset[str] = frozenset({"file-info", "comment", "docstring"})
 
     def is_private_name(self, name: str) -> bool:
         """Whether the language's convention marks this bare name as not part
@@ -774,7 +777,11 @@ class BaseLanguage(ABC):
             content = read_file(path)
             structures = self.scan(content.encode("utf-8")) if content is not None else None
             for node in structures or []:
-                if node.synthetic or node.type == "file-info" or self.is_private_name(node.name):
+                if (
+                    node.synthetic
+                    or node.type in self.NON_EXPORT_TYPES
+                    or self.is_private_name(node.name)
+                ):
                     continue
                 exports.append(
                     Export(
