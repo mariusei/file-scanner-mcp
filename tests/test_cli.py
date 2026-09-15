@@ -257,3 +257,17 @@ def test_focus_qualified_path_through_a_dotted_ancestor(tmp_path, capsys):
     assert code == 0 and "::MyApp.Services.Widget.Run (4-4)" in out
     out, _, code = run("focus", str(sample), "Other.Widget.Run", capsys=capsys)
     assert code == 1 and "matches no node" in out
+
+
+def test_a_file_with_an_invalid_escape_leaves_stderr_empty(tmp_path, capsys):
+    """Brief §9 item 6: nothing on stderr but an error for a non-zero exit.
+    Python warns on `"\\("` in a string; the scanned file's warning is not
+    the agent's business (seen on `sct diff` over a real repository)."""
+    path = tmp_path / "esc.py"
+    path.write_text('import re\nX = re.compile("\\(foo")\n\n\ndef f():\n    return X\n')
+    code = cli.main(["scan", str(path), "--depth", "deep"])
+    out, err = capsys.readouterr()
+    assert code == 0 and "X = " in out and err == ""
+    code = cli.main(["surface", str(tmp_path)])
+    out, err = capsys.readouterr()
+    assert code == 0 and "f" in out and err == ""
