@@ -425,6 +425,35 @@ def file_rows(a: dict[str, NodeRecord], b: dict[str, NodeRecord]) -> list[Row]:
 # ── the whole diff ───────────────────────────────────────────────────────────
 
 
+def diff_with_note(
+    top: str,
+    side_a: str,
+    side_b: str,
+    use_merge_base: bool = True,
+    pathspec: str | None = None,
+    budget: int | None = None,
+) -> DiffResult:
+    """diff_refs, plus the merge-base note every caller needs when two real
+    refs (not the working tree) are compared: A...B against their
+    merge-base by default, so a stale branch does not report everything the
+    base did afterwards as removals. use_merge_base=False compares the tips
+    (side_a as given); the caller states which in its own note."""
+    note = None
+    if side_b != WORKTREE and use_merge_base:
+        base = merge_base(top, side_a, side_b)
+        if base and short(top, base) != short(top, side_a):
+            ahead, behind = ahead_behind(top, side_a, side_b)
+            note = (
+                f"note: {side_a} and {side_b} diverged at {short(top, base)}; "
+                f"{side_a} is {ahead} ahead, {side_b} is {behind}; comparing "
+                f"{short(top, base)} → {side_b} (--no-merge-base compares the tips)"
+            )
+            side_a = short(top, base)
+    result = diff_refs(top, side_a, side_b, pathspec, budget)
+    result.note = note
+    return result
+
+
 def diff_refs(
     top: str, side_a: str, side_b: str, pathspec: str | None = None, budget: int | None = None
 ) -> DiffResult:

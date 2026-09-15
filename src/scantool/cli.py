@@ -88,7 +88,9 @@ COMMANDS
             follow a renamed class), - removed; identical signature deltas
             in 3+ functions fold into one row; new files as skeletons. The
             coverage line counts files changed without structural rows and
-            names the reason for each.
+            names the reason for each. --review appends candidate
+            dead/orphan/drift the changed files introduced (same check the
+            MCP scan_diff tool runs by default).
   surface   The public surface of a Python package at a ref: every exported
             name with its signature, how it is exported (__all__, lazy table,
             re-export, TYPE_CHECKING) and where it is defined after following
@@ -472,15 +474,13 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
 
 
 def run_diff(args: argparse.Namespace) -> tuple[list[str], int]:
+    from .ref_diff import changed_files_review
     from .structural_diff import (
         WORKTREE,
-        ahead_behind,
-        diff_refs,
         diff_to_json,
+        diff_with_note,
         format_diff,
-        merge_base,
         repo_top,
-        short,
         verify_ref,
     )
 
@@ -492,22 +492,21 @@ def run_diff(args: argparse.Namespace) -> tuple[list[str], int]:
     for ref in (side_a, side_b):
         if not verify_ref(top, ref):
             raise RefError(f"unknown ref {ref!r} in {top}")
-    note = None
-    if args.ref_b and not args.no_merge_base:
-        base = merge_base(top, side_a, side_b)
-        if base and short(top, base) != short(top, side_a):
-            ahead, behind = ahead_behind(top, side_a, side_b)
-            note = (
-                f"note: {side_a} and {side_b} diverged at {short(top, base)}; "
-                f"{side_a} is {ahead} ahead, {side_b} is {behind}; comparing "
-                f"{short(top, base)} → {side_b} (--no-merge-base compares the tips)"
-            )
-            side_a = short(top, base)
-    result = diff_refs(top, side_a, side_b, args.path)
-    result.note = note
+    result = diff_with_note(top, side_a, side_b, not args.no_merge_base, args.path)
+    review = (
+        changed_files_review(top, {f.path for f in result.files if not f.deleted})
+        if args.review
+        else ""
+    )
     if args.json:
-        return [json.dumps(diff_to_json(result), indent=2)], 0
-    return [format_diff(result)], 0
+        document = diff_to_json(result)
+        if args.review:
+            document["review"] = review or None
+        return [json.dumps(document, indent=2)], 0
+    text = format_diff(result)
+    if review:
+        text += "\n\n" + review
+    return [text], 0
 
 
 def _surface_at(package_dir: str, ref: str | None):
@@ -710,6 +709,11 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     diff.add_argument("--path", metavar="PATH", help="a file or directory, relative to the repo")
     diff.add_argument(
         "--no-merge-base", action="store_true", help="compare the tips, not merge-base...refB"
+    )
+    diff.add_argument(
+        "--review",
+        action="store_true",
+        help="append candidate dead/orphan/drift introduced by the changed files",
     )
 
     surface = parser("surface", "The public surface of a Python package at a ref.", True)
