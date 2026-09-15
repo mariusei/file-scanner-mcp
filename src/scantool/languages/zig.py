@@ -451,6 +451,26 @@ class ZigLanguage(BaseLanguage):
         return structures
 
     # ===========================================================================
+    # Naming conventions and the public surface
+    # ===========================================================================
+    #: What puts a declaration on the surface: `pub` makes it importable from
+    #: another Zig file, `export` gives it a C-ABI symbol under its own name.
+    #: `extern` declares a symbol defined elsewhere — reachable (see
+    #: _ZIG_PUBLIC) but not something this package exports.
+    _SURFACE_MODIFIERS = frozenset({"pub", "export"})
+
+    def is_private(self, node) -> bool:
+        """Outside the surface unless `pub` or `export`: Zig has no naming
+        convention for privacy, a bare `fn`/`const` is private to its file
+        whatever it is called, and a `test "..."` block is never a name.
+        The public surface stays the default walk with this rule: Zig's root
+        file is whatever build.zig names (root_source_file), and a
+        `pub const x = @import("x.zig")` re-exports a namespace, not names —
+        so the directory's files are the modules and each file's pub
+        declarations are the faithful answer."""
+        return not (self._SURFACE_MODIFIERS & set(node.modifiers))
+
+    # ===========================================================================
     # Semantic Analysis - Layer 1 (from ZigAnalyzer)
     # ===========================================================================
 
