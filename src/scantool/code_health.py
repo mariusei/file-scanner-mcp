@@ -206,7 +206,7 @@ def _find_unreferenced(definitions, rooted, results, contents) -> list[Definitio
             not d.flaggable
             or len(name) < _MIN_NAME_LENGTH
             or name in roots
-            or (lang is not None and lang.is_exempt_from_unreferenced(name))
+            or (lang is not None and lang.is_exempt_from_unreferenced(d))
             or def_counts[name] > 1
         ):  # overrides/impls share names
             continue

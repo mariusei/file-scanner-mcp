@@ -225,7 +225,9 @@ def records(
     the defaults ("." and a leading underscore) apply."""
     out: dict[str, NodeRecord] = {}
     qualifier = language.QUALIFIER if language else BaseLanguage.QUALIFIER
-    is_private = language.is_private_name if language else default_is_private_name
+    is_private = (
+        language.is_private if language else (lambda node: default_is_private_name(node.name))
+    )
 
     def walk(nodes, chain: str, names: list[str]):
         for node in nodes or []:
@@ -258,7 +260,7 @@ def records(
                     digest=hashlib.sha1("\n".join(body).encode()).hexdigest(),
                     type=node.type,
                     qualifier=qualifier,
-                    private=bool(is_private(node.name)),
+                    private=bool(is_private(node)),
                 )
             walk(node.children, key, dotted)
 

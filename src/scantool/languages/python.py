@@ -133,7 +133,7 @@ class PythonLanguage(BaseLanguage):
     #: and must not get this exemption.
     _DUNDER_NAME = re.compile(r"^__.+__$")
 
-    def is_exempt_from_unreferenced(self, name: str) -> bool:
+    def is_exempt_from_unreferenced(self, definition) -> bool:
         """Two Python-specific reasons a definition can be invoked without
         ever appearing as a textual reference: a dunder method, which the
         object model calls implicitly, and a name matching pytest's default
@@ -144,6 +144,7 @@ class PythonLanguage(BaseLanguage):
         files picked up by `go test`, Rust's `#[test]` attribute, JS/Jest's
         `test()`/`it()` calls) — applying this Python/pytest convention to
         their names would exempt unrelated, genuinely dead code."""
+        name = definition.name
         return bool(self._DUNDER_NAME.match(name)) or name.lower().startswith("test")
 
     def public_surface(self, package_dir: str, read_file) -> list[Export]:
