@@ -14,6 +14,7 @@ import textwrap
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from .. import parse_cache
 from .models import (
@@ -759,9 +760,20 @@ class BaseLanguage(ABC):
         JavaScript by convention). Go would say "not capitalised"."""
         return default_is_private_name(name)
 
-    def is_exempt_from_unreferenced(self, name: str) -> bool:
+    def is_private(self, node: Any) -> bool:
+        """Whether this definition is outside the language's public surface.
+        node is a StructureNode or a DefinitionInfo: both carry name,
+        modifiers and decorators. Default: the name rule (is_private_name).
+        A language whose visibility is a keyword the handler records in
+        modifiers ("pub", "export", "private", Go's capitalisation as
+        "public") overrides this and reads the modifiers, so `sct surface`,
+        overlap's colliding names and CODE HEALTH agree with the compiler."""
+        return self.is_private_name(node.name)
+
+    def is_exempt_from_unreferenced(self, definition: Any) -> bool:
         """Whether CODE HEALTH's UNREFERENCED check must skip this definition
-        name regardless of how many times it occurs elsewhere in the corpus.
+        (a DefinitionInfo: name, modifiers, decorators, parent) regardless of
+        how many times its name occurs elsewhere in the corpus.
         Default: no exemption — every definition earns its keep by an actual
         textual reference (a call, a string, a comment, a doc). A language
         overrides this where its runtime or tooling invokes definitions by
@@ -794,11 +806,7 @@ class BaseLanguage(ABC):
                 parse_cache.scan(self, content.encode("utf-8")) if content is not None else None
             )
             for node in structures or []:
-                if (
-                    node.synthetic
-                    or node.type in self.NON_EXPORT_TYPES
-                    or self.is_private_name(node.name)
-                ):
+                if node.synthetic or node.type in self.NON_EXPORT_TYPES or self.is_private(node):
                     continue
                 exports.append(
                     Export(
