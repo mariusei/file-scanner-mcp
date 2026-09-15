@@ -17,21 +17,21 @@ CREATE TABLE products (
 );
 
 -- View for active users
-CREATE VIEW active_users AS
+CREATE VIEW recent_users AS
 SELECT id, username, email
 FROM users
 WHERE created_at > DATE_SUB(NOW(), INTERVAL 30 DAY);
 
 -- Function to calculate discount
-CREATE FUNCTION calculate_discount(price DECIMAL, discount_pct INT)
+CREATE FUNCTION calculate_discount(price DECIMAL, discount_pct INT, min_price DECIMAL)
 RETURNS DECIMAL
 RETURN price * (1 - discount_pct / 100.0);
 
 -- Index on username for faster lookups
 CREATE INDEX idx_username ON users(username);
 
--- Composite index for product queries
-CREATE INDEX idx_product_price ON products(name, price);
+-- Stock lookups for the restock job
+CREATE INDEX idx_products_stock ON products(stock_quantity);
 
 /* Sale prices as the shop shows them: every product with the
    default discount applied through calculate_discount above. */

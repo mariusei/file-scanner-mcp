@@ -1,6 +1,6 @@
 {
   "name": "demo-app",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "private": true,
   "scripts": {
     "build": "node build.js",
@@ -10,12 +10,12 @@
     "react": "^18.0.0",
     "lodash": "^4.17.21"
   },
-  "keywords": ["cli", "tool", "demo"],
-  "config": {
+  "settings": {
     "server": {
       "host": "localhost",
       "port": 8080
     }
   },
+  "license": "MIT",
   "_comment": "JSON has no comments; a leading underscore is the idiom for one"
 }

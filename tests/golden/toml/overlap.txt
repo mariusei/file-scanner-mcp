@@ -1,1 +1,22 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (aaa6403)
+a  merge-base aaa6403  1 ahead 0 behind  1 file, +5 ~1 -4 structures
+b  merge-base aaa6403  1 ahead 0 behind  1 file, +5 ~1 -4 structures
+overlap (structures touched by 2+ branches): 10 in 1 file
+  basic.toml::limits               a(-)  b(-)
+  basic.toml::limits.pool_size     a(-)  b(-)
+  basic.toml::limits.queue_depth   a(-)  b(-)
+  basic.toml::logging              a(+)  b(+)
+  basic.toml::logging.level        a(+)  b(+)
+  basic.toml::quotas               a(+)  b(+)
+  basic.toml::quotas.pool_size     a(+)  b(+)
+  basic.toml::quotas.queue_depth   a(+)  b(+)
+  basic.toml::server.port          a(~)  b(~)
+  basic.toml::server.tls.cert      a(-)  b(-)
+colliding new names (added independently on 2+ branches): 5
+  level         a:basic.toml:27  b:basic.toml:27
+  logging       a:basic.toml:26  b:basic.toml:26
+  pool_size     a:basic.toml:23  b:basic.toml:23
+  queue_depth   a:basic.toml:24  b:basic.toml:24
+  quotas        a:basic.toml:22  b:basic.toml:22
+merge order (a hint, not a verdict): a < b   (all share 10 structures; ordered by change size, a touches 10 and b touches 10)
+[exit 0]

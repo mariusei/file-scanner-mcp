@@ -1,1 +1,16 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.toml  (+5 ~1 -4)
+  + quotas                                 B:22
+  + quotas.pool_size 8                     B:23
+  + quotas.queue_depth 64                  B:24
+  + logging                                B:26
+  + logging.level "info"                   B:27
+  ~ server.port 8443                       A:7 → B:7   [signature: 8080 → 8443]
+  - server.tls.cert "./certs/server.pem"   A:11
+  - limits                                 A:23
+  - limits.pool_size 8                     A:24
+  - limits.queue_depth 64                  A:25
+
+summary: 1 file, +5 ~1 -4 structures
+[exit 0]

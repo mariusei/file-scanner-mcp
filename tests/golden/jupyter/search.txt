@@ -1,10 +1,9 @@
-<1 file seen, 9 structures shown, 1 excluded (.git/)>
-2 hits in 1 structures for /mean/
+<1 file seen, 14 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /report/
 
 ./basic.ipynb
-- cell 2 (code) > Ledger > mean (self) @32-33  (2 hits)
-   32 | "    def mean(self):\n",
-   33 | "        return statistics.mean(amount for _, amount in self.rows)\n"
+- cell 4 (code) > report (ledger) @62-64  (1 hit)
+   62 | "def report(ledger):\n",
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

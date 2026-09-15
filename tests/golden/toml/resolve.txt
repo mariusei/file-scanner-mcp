@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.toml::server.host@v1 (6-6)
+basic.toml::server.host@v2 (6-6)
+[exit 0]

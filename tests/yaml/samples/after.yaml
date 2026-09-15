@@ -35,16 +35,14 @@ notes: >
 ---
 service:
   name: worker
-  replicas: 3
-  tags:
-    - prod
-    - critical
+  replicas: 5
 
 # Retry policy for the worker's outbound calls;
 # exponential backoff between attempts.
-retry:
+retries:
   attempts: 3
   backoff: exponential
 
 # Seconds before a stuck job is killed
 kill_after: 120
+metrics_port: 9090

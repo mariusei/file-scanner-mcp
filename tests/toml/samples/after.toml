@@ -4,11 +4,10 @@ version = "1.2.3"
 
 [server]
 host = "localhost"
-port = 8080
+port = 8443
 
 [server.tls]
 enabled = true
-cert = "./certs/server.pem"
 
 [[plugins]]
 name = "auth"
@@ -20,6 +19,9 @@ enabled = false
 
 # Limits applied to every worker.
 # Raise them together; the queue depth follows the pool size.
-[limits]
+[quotas]
 pool_size = 8
 queue_depth = 64
+
+[logging]
+level = "info"

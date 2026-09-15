@@ -219,8 +219,8 @@ class TestYAMLCommentBlocks:
         structures = yaml_language.scan(b"# Placeholder: filled in by the generator\n")
         assert [(s.type, s.start_line) for s in structures] == [("comment", 1)]
 
-    def test_no_comments_no_change(self, yaml_language, basic_yaml):
-        structures = yaml_language.scan(basic_yaml)
+    def test_no_comments_no_change(self, yaml_language):
+        structures = yaml_language.scan(b"name: worker\nservice:\n  replicas: 3\n")
         assert not any(s.type == "comment" for s in structures)
         assert all(s.docstring is None for s in structures)
 

@@ -1,5 +1,5 @@
-<1 file seen, 9 structures shown>
-basic.ipynb (7-40)
+<1 file seen, 14 structures shown>
+basic.ipynb (7-64)
 - cell 1 (markdown) in-cell 1-3 at 7-9 @7
    # Sales ledger
    
@@ -16,3 +16,11 @@ basic.ipynb (7-40)
     - mean (self) @32
        return statistics.mean((amount for _, amount in self.rows))
 - cell 3 (raw) in-cell 1-1 at 40-40 @40
+- cell 4 (code) in-cell 1-16 at 49-64 @49
+  - DEFAULT_REGION = 'north' @49
+  - _rows_for (ledger, region=DEFAULT_REGION) @52 # Rows of one region (internal).
+     return [amount for row_region, amount in ledger.rows if row_region == region]
+  - describe (ledger) @57 # One line per row.
+     return [f'{region}: {amount}' for region, amount in ledger.rows]
+  - report (ledger) @62 # Total of the default region.
+     return total(_rows_for(ledger))

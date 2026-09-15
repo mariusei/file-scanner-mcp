@@ -1,1 +1,11 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.yaml  (+1 ~2 =1 -1)
+  + document 2.metrics_port 9090                 B:48
+  ~ document 2.service 2 keys                    A:36 → B:36   [signature: 3 keys → 2 keys]
+  ~ document 2.service.replicas 5                A:38 → B:38   [signature: 3 → 5]
+  = document 2.retries 2 keys                    A:45 → B:42   [renamed from document 2.retry; 2 members follow]
+  - document 2.service.tags [2] prod, critical   A:39
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]

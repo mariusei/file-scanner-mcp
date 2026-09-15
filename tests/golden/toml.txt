@@ -1,11 +1,8 @@
-<1 file seen, 14 structures shown>
-basic.toml (2-19)
+<1 file seen, 18 structures shown>
+basic.toml (2-25)
 - name "demo-app" @2 # Project configuration
 - version "1.2.3" @3
 - server @5
-   5 | [server]
-   6 | host = "localhost"
-   7 | port = 8080
   - host "localhost" @6
   - port 8080 @7
 - server.tls @9
@@ -17,3 +14,9 @@ basic.toml (2-19)
 - plugins @17
   - name "cache" @18
   - enabled false @19
+- Limits applied to every worker. 2 lines @21
+   21 | # Limits applied to every worker.
+   22 | # Raise them together; the queue depth follows the pool size.
+- limits @23
+  - pool_size 8 @24
+  - queue_depth 64 @25
