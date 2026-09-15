@@ -237,3 +237,23 @@ def test_stdin_usage_errors_exit_2(monkeypatch, capsys):
     monkeypatch.setattr("sys.stdin", io.StringIO("x"))
     assert cli.main(["focus", "-", "name"]) == 2  # `-` without --as
     _, err, _ = run("--help", capsys=capsys)  # drain
+
+
+def test_focus_qualified_path_through_a_dotted_ancestor(tmp_path, capsys):
+    """A C# namespace is one node named `MyApp.Services`; the address the
+    scan prints for a type inside it is `MyApp.Services.IConfig`, and the
+    qualified tier must match that back segment by segment rather than
+    treat the namespace's own dots as two ancestors."""
+    sample = tmp_path / "Lib.cs"
+    sample.write_text(
+        "namespace MyApp.Services\n{\n"
+        "    public interface IConfig { string ApiKey { get; } }\n"
+        "    public class Widget { public void Run() {} }\n"
+        "}\n"
+    )
+    out, _, code = run("focus", str(sample), "MyApp.Services.IConfig", capsys=capsys)
+    assert code == 0 and out.startswith(f"{sample}::MyApp.Services.IConfig (3-3)")
+    out, _, code = run("focus", str(sample), "Services.Widget.Run", capsys=capsys)
+    assert code == 0 and "::MyApp.Services.Widget.Run (4-4)" in out
+    out, _, code = run("focus", str(sample), "Other.Widget.Run", capsys=capsys)
+    assert code == 1 and "matches no node" in out
