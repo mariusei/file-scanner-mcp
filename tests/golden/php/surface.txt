@@ -1,6 +1,5 @@
-<8 public names, 8 via definition> package php @WORKTREE
+<7 public names, 7 via definition> package php @WORKTREE
 basic
-  App\Database                                               php/basic.php:6
   DatabaseConfig                                             php/basic.php:15
   DatabaseManager                                            php/basic.php:24
   Loggable                                                   php/basic.php:63

@@ -628,8 +628,8 @@ use them instead of implementing a rule of their own:
 - `SURFACE_CONTAINER_TYPES` — node types the default surface looks through
   rather than lists: a grouping a file wraps its definitions in (a C#, C++
   or PHP `namespace`, a Ruby `module`) is not itself an exported name, its
-  members are, each qualified with the container's name. A private
-  container is not entered. Default: empty.
+  members are, each qualified with the container's name and judged on its
+  own. Default: empty.
 - `public_surface(package_dir, read_file)` — the names a package exports,
   as `Export` records (`models.py`). Default: the top-level definitions in
   the package's files (through `SURFACE_CONTAINER_TYPES`) that `is_private`

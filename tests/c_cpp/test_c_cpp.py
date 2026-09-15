@@ -406,8 +406,9 @@ def test_main_is_exempt_from_unreferenced():
 
 
 def test_surface_lists_namespace_members_and_drops_internal_linkage(tmp_path):
-    """One level into a named namespace, joined with the qualifier; a
-    static function and an anonymous namespace are not on the surface."""
+    """Through a named namespace, members qualified with the container's
+    name (recursively); a static function and the members of an anonymous
+    namespace are not on the surface; the namespace itself is not a name."""
     (tmp_path / "lib.cpp").write_text(
         "namespace utils {\nint shown() { return 1; }\nstatic int hidden() { return 2; }\n"
         "namespace deep { int far() { return 3; } }\n}\n"
@@ -415,4 +416,4 @@ def test_surface_lists_namespace_members_and_drops_internal_linkage(tmp_path):
         "static int file_local() { return 5; }\nint api() { return 6; }\n"
     )
     names = [e.name for e in read_surface(str(tmp_path)).exports]
-    assert names == ["utils", "utils.shown", "utils.deep", "api"]
+    assert names == ["utils.shown", "utils.deep.far", "api"]

@@ -418,4 +418,4 @@ def test_surface_lists_braced_namespace_members(tmp_path):
         "    interface Contract {}\n}\n"
     )
     names = [e.name for e in read_surface(str(tmp_path)).exports]
-    assert names == ["App", "App.Shown", "App.Contract"]
+    assert names == ["App.Shown", "App.Contract"]

@@ -367,10 +367,10 @@ def test_unreferenced_exemption_is_minitest_and_the_object_model():
     assert not language.is_exempt_from_unreferenced(_definition("_helper"))
 
 
-def test_surface_lists_module_members_one_level(tmp_path):
+def test_surface_lists_module_members_qualified(tmp_path):
     (tmp_path / "lib.rb").write_text(
         "module Outer\n  class Shown\n    def run; end\n  end\n  module Inner\n    def deep; end\n  end\n"
         "  def helper; end\n  private\n  def hidden; end\nend\n"
     )
     names = [e.name for e in read_surface(str(tmp_path)).exports]
-    assert names == ["Outer", "Outer.Shown", "Outer.Inner", "Outer.helper"]
+    assert names == ["Outer.Shown", "Outer.Inner.deep", "Outer.helper"]

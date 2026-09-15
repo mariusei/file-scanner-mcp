@@ -1,9 +1,7 @@
-<9 public names, 9 via definition> package cpp @WORKTREE
+<7 public names, 7 via definition> package cpp @WORKTREE
 basic
-  utils                                                                                cpp/basic.cpp:9
   utils.validate_email  bool (const std::string& email)                                cpp/basic.cpp:12
   utils.format_name  std::string (const std::string& first, const std::string& last)   cpp/basic.cpp:17
-  database                                                                             cpp/basic.cpp:24
   database.DatabaseManager                                                             cpp/basic.cpp:27
   UserService                                                                          cpp/basic.cpp:71
   Status                                                                               cpp/basic.cpp:113

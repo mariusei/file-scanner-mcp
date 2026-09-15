@@ -756,8 +756,8 @@ class BaseLanguage(ABC):
     #: Node types the default surface looks through rather than lists: a
     #: grouping a file wraps its definitions in (a C#, C++ or PHP namespace,
     #: a Ruby module) is not itself an exported name, its members are, each
-    #: qualified with the container's name and QUALIFIER. A private container
-    #: is not entered. Empty by default: a class's methods belong to the
+    #: qualified with the container's name and QUALIFIER; each member is
+    #: judged on its own. Empty by default: a class's methods belong to the
     #: class, not to the package's surface.
     SURFACE_CONTAINER_TYPES: frozenset[str] = frozenset()
 
@@ -819,33 +819,35 @@ class BaseLanguage(ABC):
         and not private by the language's own rule."""
         return not (node.synthetic or node.type in self.NON_EXPORT_TYPES or self.is_private(node))
 
-    def _surface_nodes(self, content: str | None) -> list[tuple[StructureNode, str]]:
+    def _surface_entries(self, content: str | None) -> list[tuple[StructureNode, str]]:
         """A file's definitions on the public surface with their qualified
         names: top-level nodes, and the members of a SURFACE_CONTAINER_TYPES
-        node (looked through, never listed, not entered when private)."""
+        node (looked through, never listed; each member judged on its own)."""
         structures = (
             parse_cache.scan(self, content.encode("utf-8")) if content is not None else None
         )
 
-        def definitions(
-            nodes: list[StructureNode], prefix: str
-        ) -> Iterator[tuple[StructureNode, str]]:
+        def entries(nodes: list[StructureNode], prefix: str) -> Iterator[tuple[StructureNode, str]]:
             for node in nodes:
-                if not self._on_surface(node):
-                    continue
-                qualified = prefix + node.name
                 if node.type in self.SURFACE_CONTAINER_TYPES:
-                    yield from definitions(node.children, qualified + self.QUALIFIER)
-                else:
-                    yield node, qualified
+                    if node.name and not node.synthetic:
+                        yield from entries(node.children, prefix + node.name + self.QUALIFIER)
+                    else:
+                        yield from entries(node.children, prefix)
+                elif self._on_surface(node):
+                    yield node, prefix + node.name
 
-        return list(definitions(structures or [], ""))
+        return list(entries(structures or [], ""))
+
+    def _surface_nodes(self, content: str | None) -> list[StructureNode]:
+        """The nodes of _surface_entries, for a facade that keys on them."""
+        return [node for node, _ in self._surface_entries(content)]
 
     def _definition_exports(self, path: str, root: str, content: str | None) -> list[Export]:
         """One Export per public definition of the file, in file order."""
         return [
             self._export(node, path, root, name=qualified)
-            for node, qualified in self._surface_nodes(content)
+            for node, qualified in self._surface_entries(content)
         ]
 
     @staticmethod

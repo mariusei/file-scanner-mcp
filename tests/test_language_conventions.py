@@ -60,11 +60,12 @@ def test_default_surface_is_top_level_definitions_not_marked_private(tmp_path):
     assert all(e.path.endswith("lib.rb") and e.line for e in surface.exports)
 
 
-def test_default_surface_descends_container_types_one_level(tmp_path):
+def test_default_surface_looks_through_container_types(tmp_path):
     """SURFACE_CONTAINER_TYPES is empty on the base (a class's methods are
-    the class's); a language that names its container type gets one level
-    of members, qualified with QUALIFIER, and a private container is not
-    entered. C++ is the language here because its namespace is such a type."""
+    the class's); a language that names its container type gets the
+    members, qualified with the container chain and QUALIFIER, the
+    container itself never listed, each member judged on its own. C++ is
+    the language here because its namespace is such a type."""
     assert not BaseLanguage.SURFACE_CONTAINER_TYPES
     (tmp_path / "lib.cpp").write_text(
         "namespace outer {\nint one() { return 1; }\nnamespace inner { int two() { return 2; } }\n"
@@ -72,9 +73,8 @@ def test_default_surface_descends_container_types_one_level(tmp_path):
     )
     names = [(e.name, e.kind) for e in read_surface(str(tmp_path)).exports]
     assert names == [
-        ("outer", "namespace"),
         ("outer.one", "function"),
-        ("outer.inner", "namespace"),
+        ("outer.inner.two", "function"),
         ("outer.K", "class"),
     ]
 
@@ -321,8 +321,10 @@ def test_csharp_surface_is_the_public_types_inside_the_namespace(tmp_path):
     )
     names = [(e.name, e.kind, e.module) for e in read_surface(str(tmp_path)).exports]
     assert names == [
-        ("IApi", "interface", "Lib"),
-        ("Widget", "class", "Lib"),
+        ("MyApp.Core.IApi", "interface", "Lib"),
+        ("MyApp.Core.Widget", "class", "Lib"),
+        # a file-scoped `namespace X;` has no block, so the handler yields the
+        # declarations as siblings, not members: bare here (handler candidate)
         ("Token", "record", "Scoped"),
     ]
     assert not BaseLanguage.SURFACE_CONTAINER_TYPES
