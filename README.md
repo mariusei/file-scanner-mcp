@@ -143,6 +143,10 @@ If the bin directory is not on the agent's PATH, every tool description carries 
 
 Opt out with `SCANTOOL_NO_CLI=1` in the server's environment, for example `"env": {"SCANTOOL_NO_CLI": "1"}` in the `mcpServers` entry. Without a running server, `uv tool install scantool` or `pipx install scantool` gives `sct` as a regular console script.
 
+### Parse cache
+
+Parsed structures are cached under your user cache directory (`~/.cache/scantool`, `%LOCALAPPDATA%\scantool` on Windows), keyed on the git blob id of the bytes, the handler and the scantool version, so a file at a ref, the same bytes on stdin and the next `sct` process all hit. `SCANTOOL_CACHE_DIR` relocates it; `SCANTOOL_NO_CACHE=1` turns the disk layer off. The answer is the same with or without it; the cache only decides whether the parse runs.
+
 ### Troubleshooting: `uvx` not found
 
 `uvx` comes with [uv](https://docs.astral.sh/uv/), the Python package manager. Install it first:

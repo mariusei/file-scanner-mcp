@@ -1,11 +1,25 @@
 """Shared fixtures for all tests."""
 
+import os
 from pathlib import Path
 
 import pytest
 
+from scantool import parse_cache
 from scantool.formatter import TreeFormatter
 from scantool.scanner import FileScanner
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _parse_cache_in_a_temporary_directory(tmp_path_factory):
+    """The suite never reads or writes the developer's own cache: the disk
+    layer lives in a per-session directory, warm across tests so hits are
+    exercised, and the goldens prove the cache changes nothing."""
+    os.environ[parse_cache.CACHE_DIR_ENV] = str(tmp_path_factory.mktemp("parse-cache"))
+    os.environ.pop(parse_cache.NO_CACHE_ENV, None)
+    parse_cache.clear()
+    yield
+    parse_cache.clear()
 
 
 @pytest.fixture
