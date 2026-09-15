@@ -40,16 +40,6 @@ class DatabaseManager {
     }
 
     /**
-     * Closes the database connection.
-     */
-    public function disconnect(): void {
-        if ($this->connection !== null) {
-            echo "Disconnecting\n";
-            $this->connection = null;
-        }
-    }
-
-    /**
      * Executes a SQL query and returns the results.
      */
     public function query(string $sql): array {
@@ -111,7 +101,7 @@ class UserService {
     /**
      * Deletes a user from the system.
      */
-    public function deleteUser(int $userId): bool {
+    public function removeUser(int $userId): bool {
         $this->log("Deleting user: {$userId}");
         return true;
     }
@@ -120,7 +110,7 @@ class UserService {
 /**
  * Validates an email address format.
  */
-function validateEmail(string $email): bool {
+function validateEmail(string $email, bool $strict = false): bool {
     return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
 }
 
@@ -132,9 +122,16 @@ function formatName(string $firstName, string $lastName): string {
 }
 
 /**
+ * Liveness probe.
+ */
+function health(): bool {
+    return DEFAULT_ATTEMPTS > 0;
+}
+
+/**
  * Default number of connection attempts.
  */
-const DEFAULT_ATTEMPTS = 3;
+const DEFAULT_ATTEMPTS = 5;
 
 /**
  * Retries an action a bounded number of times.

@@ -1,9 +1,22 @@
-<1 file seen, 21 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /formatName/
+<1 file seen, 25 structures shown, 1 excluded (.git/)>
+10 hits in 5 structures for /attempt/
 
 ./basic.php
-- formatName (string $firstName, string $lastName) string @130-132  (1 hit)
-   130 | function formatName(string $firstName, string $lastName): string {
+- Retrier @142-167  (3 hits)
+   143 | private int $attempts;
+   150 | * Runs the action until it returns true or the attempts are spent.
+   162 | * Executes one attempt (internal).
+- (module level) @135-135  (2 hits)
+   135 | * Default number of connection attempts.
+   137 | const DEFAULT_ATTEMPTS = 3;
+- Retrier > __construct (int $attempts = DEFAULT_ATTEMPTS) @145-147  (2 hits)
+   145 | public function __construct(int $attempts = DEFAULT_ATTEMPTS) {
+   146 | $this->attempts = $attempts;
+- Retrier > run (callable $action) bool @152-159  (2 hits)
+   153 | for ($i = 0; $i < $this->attempts; $i++) {
+   154 | if ($this->attempt($action)) {
+- Retrier > attempt (callable $action) bool @164-166  (1 hit)
+   164 | private function attempt(callable $action): bool {
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]
