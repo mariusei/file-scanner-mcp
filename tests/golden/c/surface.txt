@@ -1,4 +1,4 @@
-<10 public names, 10 via definition> package c @WORKTREE
+<9 public names, 9 via definition> package c @WORKTREE
 basic
   User                                                            c/basic.c:8
   DatabaseConfig                                                  c/basic.c:15
@@ -8,6 +8,5 @@ basic
   free_user  void (struct User *user)                             c/basic.c:40
   Status                                                          c/basic.c:45
   Pool                                                            c/basic.c:55
-  retry_connect  int (struct DatabaseConfig *config)              c/basic.c:64
   main  int (void)                                                c/basic.c:74
 [exit 0]

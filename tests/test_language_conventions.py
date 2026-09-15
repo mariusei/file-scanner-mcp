@@ -60,6 +60,25 @@ def test_default_surface_is_top_level_definitions_not_marked_private(tmp_path):
     assert all(e.path.endswith("lib.rb") and e.line for e in surface.exports)
 
 
+def test_default_surface_descends_container_types_one_level(tmp_path):
+    """SURFACE_CONTAINER_TYPES is empty on the base (a class's methods are
+    the class's); a language that names its container type gets one level
+    of members, qualified with QUALIFIER, and a private container is not
+    entered. C++ is the language here because its namespace is such a type."""
+    assert not BaseLanguage.SURFACE_CONTAINER_TYPES
+    (tmp_path / "lib.cpp").write_text(
+        "namespace outer {\nint one() { return 1; }\nnamespace inner { int two() { return 2; } }\n"
+        "class K { public: int three() { return 3; } };\n}\n"
+    )
+    names = [(e.name, e.kind) for e in read_surface(str(tmp_path)).exports]
+    assert names == [
+        ("outer", "namespace"),
+        ("outer.one", "function"),
+        ("outer.inner", "namespace"),
+        ("outer.K", "class"),
+    ]
+
+
 def test_default_surface_skips_comment_blocks(tmp_path):
     """A comment block is a node so focus can print it, but it is prose, not
     a name the directory exports (reported by a #42 review on a config dir)."""

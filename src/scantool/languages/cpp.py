@@ -58,10 +58,44 @@ class CCppLanguage(BaseLanguage):
         if defn.type == "constructor":
             return True
         if defn.enclosing_kind in (None, "namespace"):
-            return "static" not in defn.modifiers  # external linkage -> cross-TU reachable
+            # external linkage -> cross-TU reachable; static or an anonymous namespace is not
+            return not (set(defn.modifiers) & self._INTERNAL_LINKAGE)
         if "virtual" in defn.modifiers:
             return True
         return "private" not in defn.modifiers
+
+    # ── Naming conventions and the public surface ─────────────────────────────
+    # C/C++ visibility is linkage and access, and the handler records both in
+    # modifiers: `static` on a file-scope definition, `internal` stamped on
+    # the members of an anonymous namespace (the same internal linkage,
+    # without a keyword on the line), and the access label on every member
+    # (see traverse_members: struct default public, class default private).
+    _ACCESS_LABELS = frozenset({"public", "private", "protected"})
+    _INTERNAL_LINKAGE = frozenset({"static", "internal"})
+    _ANONYMOUS_NAMESPACE = "<anonymous>"
+    #: A namespace's members are the package's names: the surface lists
+    #: `utils` and `utils.validate_email` (QUALIFIER, not the source's `::`).
+    #: The anonymous namespace is private itself, so it is not descended.
+    SURFACE_CONTAINER_TYPES = frozenset({"namespace"})
+
+    def is_private(self, node) -> bool:
+        """A member: private or protected by its access label (the label is
+        always stamped, so the name rule never decides a member). File
+        scope: internal linkage (`static`, an anonymous namespace). With no
+        keyword at all the name rule stays (a leading underscore, which the
+        standard reserves for the implementation)."""
+        modifiers = set(node.modifiers or [])
+        if modifiers & self._ACCESS_LABELS:
+            return "private" in modifiers or "protected" in modifiers
+        if node.type == "namespace" and node.name == self._ANONYMOUS_NAMESPACE:
+            return True
+        return bool(modifiers & self._INTERNAL_LINKAGE) or self.is_private_name(node.name)
+
+    def is_exempt_from_unreferenced(self, definition) -> bool:
+        """`main` is called by the runtime, never by name in the sources. The
+        platform entry points (WinMain, DllMain) are entry points the handler
+        finds, and CODE HEALTH roots those generically."""
+        return definition.name == "main"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -249,6 +283,11 @@ class CCppLanguage(BaseLanguage):
                     if body:
                         for child in body.children:
                             traverse(child, namespace_node.children)
+                    if namespace_node.name == self._ANONYMOUS_NAMESPACE:
+                        # internal linkage for the whole body, as `static` would say
+                        for member in namespace_node.children:
+                            if not member.synthetic:
+                                member.modifiers.append("internal")
 
             # Functions (both declarations and definitions)
             elif node.type == "function_definition":
@@ -357,8 +396,7 @@ class CCppLanguage(BaseLanguage):
         """Extract C++ namespace declaration."""
         name_node = node.child_by_field_name("name")
         if not name_node:
-            # Anonymous namespace
-            name = "<anonymous>"
+            name = self._ANONYMOUS_NAMESPACE
         else:
             name = self._get_node_text(name_node, source_code)
 

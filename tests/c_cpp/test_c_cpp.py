@@ -1,6 +1,9 @@
 """Tests for C/C++ scanner."""
 
+from scantool.languages import get_language
+from scantool.languages.models import DefinitionInfo, StructureNode
 from scantool.scanner import FileScanner
+from scantool.surface import read_surface
 
 
 def test_c_parsing(file_scanner):
@@ -339,3 +342,77 @@ def test_includes(file_scanner):
     assert includes is not None, "Should find includes group"
     assert includes.start_line > 0, "Should have valid start line"
     assert includes.end_line >= includes.start_line, "End line should be >= start line"
+
+
+# ── Naming conventions and the public surface ────────────────────────────────
+
+
+def _by_name(nodes):
+    return {n.name: n for n in nodes}
+
+
+def test_privacy_is_linkage_at_file_scope(file_scanner):
+    """`static` is internal linkage, hence private; without a keyword the
+    name rule (leading underscore) is all that is left."""
+    language = get_language(".c")
+    top = _by_name(file_scanner.scan_file("tests/c_cpp/samples/basic.c"))
+    assert language.is_private(top["retry_connect"]) and "static" in top["retry_connect"].modifiers
+    assert not language.is_private(top["validate_email"])
+    assert not language.is_private(top["main"])
+    assert language.is_private(
+        StructureNode(type="function", name="_reserved", start_line=1, end_line=1)
+    )
+
+
+def test_privacy_is_the_access_label_for_members(file_scanner):
+    """A member's access label decides — `static` inside a class is not
+    linkage, and a public `_name` is public; class default private,
+    struct default public."""
+    language = get_language(".cpp")
+    top = _by_name(file_scanner.scan_file("tests/c_cpp/samples/basic.cpp"))
+    service = _by_name(top["UserService"].children)
+    assert not language.is_private(service["get_version"])  # public: static
+    assert "static" in service["get_version"].modifiers
+    hidden = language.scan(
+        b"class K {\n  void a();\npublic:\n  void _b();\nprotected:\n  void c();\n};\nstruct S {\n  void d();\n};\n"
+    )
+    k = _by_name(_by_name(hidden)["K"].children)
+    assert language.is_private(k["a"]) and language.is_private(k["c"])
+    assert not language.is_private(k["_b"])
+    assert not language.is_private(_by_name(_by_name(hidden)["S"].children)["d"])
+
+
+def test_anonymous_namespace_is_internal_linkage(file_scanner):
+    """The namespace node is private and its members carry `internal`, the
+    same fact `static` states without a keyword on the line."""
+    language = get_language(".cpp")
+    top = _by_name(file_scanner.scan_file("tests/c_cpp/samples/edge_cases.cpp"))
+    anonymous = top["<anonymous>"]
+    assert language.is_private(anonymous)
+    helper = _by_name(anonymous.children)["internal_helper"]
+    assert "internal" in helper.modifiers and language.is_private(helper)
+    named = _by_name(top["outer"].children)["inner"]
+    assert not language.is_private(named)
+
+
+def test_main_is_exempt_from_unreferenced():
+    language = get_language(".c")
+    assert language.is_exempt_from_unreferenced(
+        DefinitionInfo(file="f.c", type="function", name="main", line=1)
+    )
+    assert not language.is_exempt_from_unreferenced(
+        DefinitionInfo(file="f.c", type="function", name="retry_connect", line=1)
+    )
+
+
+def test_surface_lists_namespace_members_and_drops_internal_linkage(tmp_path):
+    """One level into a named namespace, joined with the qualifier; a
+    static function and an anonymous namespace are not on the surface."""
+    (tmp_path / "lib.cpp").write_text(
+        "namespace utils {\nint shown() { return 1; }\nstatic int hidden() { return 2; }\n"
+        "namespace deep { int far() { return 3; } }\n}\n"
+        "namespace {\nint local() { return 4; }\n}\n"
+        "static int file_local() { return 5; }\nint api() { return 6; }\n"
+    )
+    names = [e.name for e in read_surface(str(tmp_path)).exports]
+    assert names == ["utils", "utils.shown", "utils.deep", "api"]

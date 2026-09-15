@@ -617,15 +617,19 @@ use them instead of implementing a rule of their own:
   `modifiers` and `decorators`. Default: `is_private_name(node.name)`. A
   language whose visibility is a keyword the handler records in
   `modifiers` (`pub`, `export`, `private`, Go's capitalisation as
-  `public`) overrides this one and reads the modifiers. `surface`,
-  `overlap`'s colliding names and `structural_diff.records` ask it.
+  `public`, C's `static`, the access label C++ stamps on every member)
+  overrides this one and reads the modifiers. `surface`, `overlap`'s
+  colliding names and `structural_diff.records` ask it.
 - `is_exempt_from_unreferenced(definition)` — whether CODE HEALTH must skip a
   definition its runtime or test runner invokes without a textual
-  reference (Python: dunders, pytest's `test_*`). Default: no exemption.
+  reference (Python: dunders, pytest's `test_*`; C/C++: `main`). Default:
+  no exemption. The definition carries `name`, `parent` (the enclosing
+  definition's name), `modifiers` and `decorators`.
 - `SURFACE_CONTAINER_TYPES` — node types the default surface looks through
-  rather than lists: a grouping a file wraps its definitions in (C#'s
-  `namespace`) is not a name the package exports, the types inside it are.
-  Default: empty.
+  rather than lists: a grouping a file wraps its definitions in (a C#, C++
+  or PHP `namespace`, a Ruby `module`) is not itself an exported name, its
+  members are, each qualified with the container's name. A private
+  container is not entered. Default: empty.
 - `public_surface(package_dir, read_file)` — the names a package exports,
   as `Export` records (`models.py`). Default: the top-level definitions in
   the package's files (through `SURFACE_CONTAINER_TYPES`) that `is_private`
@@ -635,6 +639,11 @@ use them instead of implementing a rule of their own:
   signatures with `ast` — the only place `ast` is used. TypeScript
   (`export`), Go (capitalised names) and Rust (`pub use`) are the same
   override, written per language.
+- `SURFACE_CONTAINER_TYPES` — node types whose members are the package's
+  names as much as the container is (a C++ namespace: the surface lists
+  `utils` and `utils.validate_email`, joined with `QUALIFIER`). Default
+  empty: a class's methods belong to the class. A private container (an
+  anonymous namespace) is not descended.
 
 The feature × language golden (`tests/test_feature_golden.py`,
 `tests/golden/<language>/<command>.txt`) shows for every language whether
