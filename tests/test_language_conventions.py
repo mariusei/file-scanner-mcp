@@ -81,20 +81,46 @@ def test_python_surface_is_the_python_handlers(tmp_path):
     assert surface.exports[0].path.endswith("core.py")
 
 
+def test_default_unreferenced_exemption_is_none(tmp_path):
+    """CODE HEALTH's UNREFERENCED check must not assume any language's
+    naming convention by default (brief §9e) — a leading-underscore or
+    "test"-prefixed name is only exempt where a language says so."""
+    ruby = get_language(".rb")
+    assert not ruby.is_exempt_from_unreferenced("__init__")
+    assert not ruby.is_exempt_from_unreferenced("test_something")
+    assert not ruby.is_exempt_from_unreferenced("plain")
+
+
+def test_python_unreferenced_exemption_covers_dunders_and_pytest_names():
+    """Python overrides the default for two reasons a name is invoked
+    without a textual reference: dunder methods (object-model machinery)
+    and pytest's discovery convention — two different mechanisms, so the
+    hook checks both rather than reusing is_private_name (which would
+    treat name-mangled-private helpers like __secret as exempt too, even
+    though those are ordinary, possibly-dead code)."""
+    python = get_language(".py")
+    assert python.is_exempt_from_unreferenced("__init__")
+    assert python.is_exempt_from_unreferenced("__eq__")
+    assert python.is_exempt_from_unreferenced("test_compute_behaviour")
+    assert python.is_exempt_from_unreferenced("TestWidget")
+    assert not python.is_exempt_from_unreferenced("__secret")  # mangled-private, not a dunder
+    assert not python.is_exempt_from_unreferenced("plain_helper")
+    # Same name, non-Python file: the Python-shaped convention must not leak.
+    ruby = get_language(".rb")
+    assert not ruby.is_exempt_from_unreferenced("__secret")
+
+
 # Named exemptions, each with its reason. The boundary itself: the
 # extension -> handler registry (scanner.py) and the ignore patterns
 # (gitignore.py) must name file types. connectivity.py and reference_map.py
 # hold corpus-scan policies (which file types can carry a handler name or a
 # route literal); those tables include file types with no handler (.kt, .vue,
-# .properties), so they cannot live behind a language. code_health.py's
-# UNREFERENCED exemptions (dunder and test-prefixed names) predate §9e;
-# moving them behind BaseLanguage is a separate change.
+# .properties), so they cannot live behind a language.
 BOUNDARY_ALLOWLIST = {
     "scanner.py",
     "gitignore.py",
     "connectivity.py",
     "reference_map.py",
-    "code_health.py",
 }
 BOUNDARY_RED_FLAGS = (
     ("import ast", re.compile(r"^\s*(import ast\b|from ast\b)", re.M)),

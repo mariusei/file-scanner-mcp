@@ -758,6 +758,20 @@ class BaseLanguage(ABC):
         JavaScript by convention). Go would say "not capitalised"."""
         return default_is_private_name(name)
 
+    def is_exempt_from_unreferenced(self, name: str) -> bool:
+        """Whether CODE HEALTH's UNREFERENCED check must skip this definition
+        name regardless of how many times it occurs elsewhere in the corpus.
+        Default: no exemption — every definition earns its keep by an actual
+        textual reference (a call, a string, a comment, a doc). A language
+        overrides this where its runtime or tooling invokes definitions by
+        name through a convention a text scan cannot see (a magic method the
+        object model calls implicitly, a test runner's discovery rule) — see
+        PythonLanguage for both. This is deliberately narrower than
+        `is_private_name`: privacy and "invoked without a visible reference"
+        are different reasons, and conflating them exempts private helpers
+        that are genuinely unreferenced dead code."""
+        return False
+
     def public_surface(
         self, package_dir: str, read_file: Callable[[str], str | None]
     ) -> list[Export]:

@@ -17,8 +17,9 @@ SOLUTION:
     — skeletons fold details and cannot carry the duplicate claim.
 
   Roots that are never flagged: decorated nodes (@mcp.tool, @app.route, ...),
-  override-modified, entry points (per language where available), dunders,
-  test functions, short names (< 4 chars).
+  override-modified, entry points (per language where available), names the
+  language's own `is_exempt_from_unreferenced` hook exempts (Python: dunders
+  and pytest-discovered test names), short names (< 4 chars).
 
 SCOPE:
   ✓ Directory level (references counted within the scanned set — stated explicitly)
@@ -190,16 +191,22 @@ def _find_unreferenced(definitions, rooted, results, contents) -> list[Definitio
 
     roots = set(_UNIVERSAL_ROOTS) | rooted | _entry_point_names(results, contents)
     def_counts = Counter(d.name for d in definitions)
+    # Per-file language, for the naming-exemption hook below. A file with no
+    # registered handler (or an unknown suffix) contributes no exemption —
+    # language gaps only mean fewer exclusions, never a wrong flag.
+    languages = {}
+    for file_path in results:
+        languages[file_path] = get_language(Path(file_path).suffix.lower())
 
     flagged = []
     for d in definitions:
         name = d.name
+        lang = languages.get(d.file)
         if (
             not d.flaggable
             or len(name) < _MIN_NAME_LENGTH
             or name in roots
-            or name.startswith("__")
-            or name.lower().startswith("test")
+            or (lang is not None and lang.is_exempt_from_unreferenced(name))
             or def_counts[name] > 1
         ):  # overrides/impls share names
             continue

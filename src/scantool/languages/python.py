@@ -127,6 +127,25 @@ class PythonLanguage(BaseLanguage):
     # Public surface: the facade conventions of a Python package
     # ===========================================================================
 
+    #: A true dunder/magic method: leading AND trailing double underscore
+    #: (__init__, __repr__, __eq__, ...). A name with only a leading double
+    #: underscore (__secret) is name-mangled-private, not implicitly invoked,
+    #: and must not get this exemption.
+    _DUNDER_NAME = re.compile(r"^__.+__$")
+
+    def is_exempt_from_unreferenced(self, name: str) -> bool:
+        """Two Python-specific reasons a definition can be invoked without
+        ever appearing as a textual reference: a dunder method, which the
+        object model calls implicitly, and a name matching pytest's default
+        discovery convention (`python_functions = test_*`, `python_classes
+        = Test*`), which the test runner calls by rule rather than by a
+        reference in source. Neither generalises: other languages' test
+        runners use different mechanisms (Go's `TestXxx` in `_test.go`
+        files picked up by `go test`, Rust's `#[test]` attribute, JS/Jest's
+        `test()`/`it()` calls) — applying this Python/pytest convention to
+        their names would exempt unrelated, genuinely dead code."""
+        return bool(self._DUNDER_NAME.match(name)) or name.lower().startswith("test")
+
     def public_surface(self, package_dir: str, read_file) -> list[Export]:
         """The package's public names in the facade's own order — __all__,
         else what __init__.py defines plus its lazy-import table — each
