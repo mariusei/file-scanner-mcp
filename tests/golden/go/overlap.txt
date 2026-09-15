@@ -1,1 +1,14 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (8c8db1e)
+a  merge-base 8c8db1e  1 ahead 0 behind  1 file, +2 ~1 -2 structures
+b  merge-base 8c8db1e  1 ahead 0 behind  1 file, +2 ~1 -2 structures
+overlap (structures touched by 2+ branches): 5 in 1 file
+  basic.go::DeleteUser      a(-)  b(-)
+  basic.go::Disconnect      a(-)  b(-)
+  basic.go::Health          a(+)  b(+)
+  basic.go::RemoveUser      a(+)  b(+)
+  basic.go::ValidateEmail   a(~)  b(~)
+colliding new names (added independently on 2+ branches): 2
+  Health       a:basic.go:43  b:basic.go:43
+  RemoveUser   a:basic.go:68  b:basic.go:68
+merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
+[exit 0]

@@ -1,5 +1,5 @@
 basic.go::Config (10-13)
-basic.go (4-90)
+basic.go (4-104)
 - import statements @4
 - Config @10 [public] # Config holds application configuration
    10 | type Config struct {
@@ -19,4 +19,5 @@ basic.go (4-90)
 - ValidateEmail (email string) bool @76 [public] # ValidateEmail validates email format
 - FormatTimestamp (t time.Time) string @81 [public] # FormatTimestamp formats a timestamp to string
 - main () @86 # main is the entry point
+- retryConnect (db *DatabaseManager) error @96 # retryConnect retries the connection until it succeeds or the budget is spent (internal)
 [exit 0]

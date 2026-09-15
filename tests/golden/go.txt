@@ -1,5 +1,5 @@
-<1 file seen, 15 structures shown>
-basic.go (4-90)
+<1 file seen, 16 structures shown>
+basic.go (4-104)
 - import statements @4
 - Config @10 [public] # Config holds application configuration
    type Config struct {
@@ -48,5 +48,12 @@ basic.go (4-90)
 - main () @86 # main is the entry point
    func main() {
    	db := NewDatabaseManager("postgresql://localhost/mydb")
-   	db.Connect()
+   	retryConnect(db)
    	fmt.Println("Application started")
+- retryConnect (db *DatabaseManager) error @96 # retryConnect retries the connection until it succeeds or the budget is spent (internal)
+   func retryConnect(db *DatabaseManager) error {
+    …
+   	for attempt := 0; attempt < MaxRetries; attempt++ {
+   		if err = db.Connect(); err == nil {
+   			return nil
+   	return err

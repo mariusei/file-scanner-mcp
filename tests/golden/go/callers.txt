@@ -2,5 +2,5 @@
 defined: basic.go::Connect (method) basic.go:36
 
 basic.go  (1 site)
-  - main basic.go:88   db.Connect()
+  - retryConnect basic.go:99   if err = db.Connect(); err == nil {
 [exit 0]
