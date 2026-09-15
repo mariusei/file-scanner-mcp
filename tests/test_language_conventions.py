@@ -227,3 +227,36 @@ def test_swift_unreferenced_exemption_is_xctest_discovery():
     assert not swift.is_exempt_from_unreferenced(method("connect", "DatabaseManagerTests"))
     assert not swift.is_exempt_from_unreferenced(method("testConnect", "LoggerTests", "protocol"))
     assert not swift.is_exempt_from_unreferenced(_definition("testConnect"))
+
+
+def test_java_privacy_is_public_only():
+    """A package's surface is what other packages can name: `public` only.
+    No keyword is package-private, `protected` is subclass API, `private`
+    hides; a name's spelling means nothing to the compiler."""
+    from scantool.languages.models import StructureNode
+
+    java = get_language(".java")
+
+    def node(name, *modifiers):
+        return StructureNode(
+            type="method", name=name, start_line=1, end_line=1, modifiers=list(modifiers)
+        )
+
+    assert not java.is_private(node("connect", "public"))
+    assert not java.is_private(node("validateEmail", "public", "static"))
+    assert java.is_private(node("tryConnect", "private", "static"))
+    assert java.is_private(node("onLoad", "protected"))
+    assert java.is_private(node("helper"))  # package-private
+    assert not java.is_private(node("_odd", "public"))
+    assert java.is_private(_definition("helper"))
+
+
+def test_java_surface_is_the_public_types_without_the_package_line(tmp_path):
+    (tmp_path / "Lib.java").write_text(
+        "package com.example;\n\n"
+        "public interface Api {\n    String name();\n}\n\n"
+        'class Impl implements Api {\n    public String name() { return "x"; }\n}\n\n'
+        "public class Widget {\n    private static int count;\n}\n"
+    )
+    names = [(e.name, e.kind, e.via) for e in read_surface(str(tmp_path)).exports]
+    assert names == [("Api", "interface", "definition"), ("Widget", "class", "definition")]

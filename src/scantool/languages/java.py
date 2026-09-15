@@ -45,6 +45,19 @@ class JavaLanguage(BaseLanguage):
     def is_offgraph_reachable(self, defn, content: str) -> bool:
         return self._public_by_modifier(defn)
 
+    # ── Naming conventions and the public surface ─────────────────────────────
+    # Java's visibility is a keyword the handler records in modifiers. The
+    # surface of a package is what other packages can name, so only `public`
+    # is public here: a declaration without a keyword is package-private,
+    # `protected` is API to subclasses rather than to the package's users, and
+    # `private` hides. Interface members carry no keyword yet are public by the
+    # language; the handler records that `public` (see _extract_structure).
+    # A package declaration names the package, not something it exports.
+    NON_EXPORT_TYPES = BaseLanguage.NON_EXPORT_TYPES | {"package"}
+
+    def is_private(self, node) -> bool:
+        return "public" not in node.modifiers
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -154,6 +167,7 @@ class JavaLanguage(BaseLanguage):
                 if body:
                     for child in body.children:
                         traverse(child, interface_node.children)
+                self._record_implicit_public(interface_node.children)
 
             # Enums
             elif node.type == "enum_declaration":
@@ -396,6 +410,16 @@ class JavaLanguage(BaseLanguage):
 
         signature = " ".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
+
+    _VISIBILITY = ("public", "protected", "private")
+
+    def _record_implicit_public(self, members: list[StructureNode]) -> None:
+        """Interface members are public by the language without writing the
+        keyword (Java 9 lets one write `private`, which stays); record what
+        the compiler sees so the privacy hook reads one rule for every node."""
+        for member in members:
+            if not any(m in self._VISIBILITY for m in member.modifiers):
+                member.modifiers.insert(0, "public")
 
     def _extract_modifiers(self, node: Node, source_code: bytes) -> list[str]:
         """Extract modifiers like public, private, static, final, abstract, synchronized."""

@@ -317,3 +317,28 @@ def test_method_parameters(file_scanner):
     assert "input" in sig or "mapper" in sig or "filter" in sig, (
         f"Should include parameters in signature: {sig}"
     )
+
+
+def test_interface_members_record_their_implicit_public():
+    """An interface member has no keyword yet is public by the language;
+    the handler records what the compiler sees. A Java 9 `private` interface
+    method keeps its own keyword."""
+    source = (
+        "public interface Api {\n"
+        "    String name();\n"
+        "    static int version() { return 1; }\n"
+        '    private String secret() { return ""; }\n'
+        "    class Nested {}\n"
+        "}\n"
+        "class Plain {\n"
+        "    void helper() {}\n"
+        "}\n"
+    )
+    structures = FileScanner().scan_content(source, "Api.java")
+    api = {node.name: node.modifiers for node in structures[0].children}
+    assert api["name"] == ["public"]
+    assert api["version"] == ["public", "static"]
+    assert api["secret"] == ["private"]
+    assert api["Nested"] == ["public"]
+    plain = {node.name: node.modifiers for node in structures[1].children}
+    assert plain["helper"] == []
