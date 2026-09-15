@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from .. import parse_cache
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -789,7 +790,9 @@ class BaseLanguage(ABC):
             if not (os.path.isfile(path) and name.lower().endswith(extensions)):
                 continue
             content = read_file(path)
-            structures = self.scan(content.encode("utf-8")) if content is not None else None
+            structures = (
+                parse_cache.scan(self, content.encode("utf-8")) if content is not None else None
+            )
             for node in structures or []:
                 if (
                     node.synthetic

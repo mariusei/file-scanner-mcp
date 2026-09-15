@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from . import parse_cache
 from .gitignore import GitignoreParser, load_gitignore
 from .glob_expander import expand_braces
 from .languages import StructureNode, get_registry
@@ -198,20 +199,38 @@ class FileScanner:
         scanner = scanner_class(
             show_errors=self.show_errors, fallback_on_errors=self.fallback_on_errors
         )
-        structures = scanner.scan(source_code)
-        if structures is not None and Path(label).suffix.lower() not in self.BINARY_EXTENSIONS:
-            self._annotate_salient_code(
-                structures,
-                label,
-                source_code,
-                language=scanner,
-                budget=budget,
-                line_edits=line_edits,
-                mode=mode,
-            )
-            if expand_values:
-                self._expand_values(structures, source_code, scanner)
-        return structures
+        suffix = Path(label).suffix.lower()
+
+        def annotated() -> list[StructureNode] | None:
+            structures = parse_cache.scan(scanner, source_code)
+            if structures is not None and suffix not in self.BINARY_EXTENSIONS:
+                self._annotate_salient_code(
+                    structures,
+                    label,
+                    source_code,
+                    language=scanner,
+                    budget=budget,
+                    line_edits=line_edits,
+                    mode=mode,
+                )
+                if expand_values:
+                    self._expand_values(structures, source_code, scanner)
+            return structures
+
+        if line_edits:  # per-line git signals belong to one checkout, not to the blob
+            return annotated()
+        key = (
+            "annotated",
+            parse_cache.blob_id(source_code),
+            scanner_class.__name__,
+            self.show_errors,
+            self.fallback_on_errors,
+            suffix,
+            budget,
+            mode,
+            expand_values,
+        )
+        return parse_cache.memo(key, annotated)
 
     @staticmethod
     def _expand_values(structures: list[StructureNode], source_code: bytes, language) -> None:
