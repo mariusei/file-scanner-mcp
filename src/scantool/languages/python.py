@@ -22,6 +22,7 @@ import os
 import re
 import textwrap
 import tokenize
+import warnings
 from pathlib import Path
 
 import tree_sitter_python
@@ -36,6 +37,22 @@ from .models import (
     ImportInfo,
     StructureNode,
 )
+
+
+def _parse(source: str) -> ast.Module:
+    """ast.parse with Python's SyntaxWarnings kept off stderr: a scanned
+    file's invalid escape sequence is that file's business, not a line in
+    the agent's context (brief §9 item 6, no noise on stderr)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(source)
+
+
+def _parse_expression(source: str) -> ast.Expression:
+    """The eval-mode twin of _parse, for a value's text."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(source, mode="eval")
 
 
 class PythonLanguage(BaseLanguage):
@@ -184,7 +201,7 @@ class PythonLanguage(BaseLanguage):
         """
         source = textwrap.dedent("\n".join(excerpt_lines))
         try:
-            tree = ast.parse(source)
+            tree = _parse(source)
         except SyntaxError:
             return None
 
@@ -318,7 +335,7 @@ class PythonLanguage(BaseLanguage):
             super().expand_value(node, excerpt)
             return
         try:
-            stmt = ast.parse(textwrap.dedent(excerpt[0])).body[0]
+            stmt = _parse(textwrap.dedent(excerpt[0])).body[0]
         except (SyntaxError, IndexError):
             return
         value = getattr(stmt, "value", None)
@@ -941,7 +958,7 @@ def _render_value(source_text: str) -> str:
     is the fallback, cut to the same width.
     """
     try:
-        return _trunc(ast.parse(source_text, mode="eval").body)
+        return _trunc(_parse_expression(source_text).body)
     except SyntaxError:
         flat = " ".join(source_text.split())
         return flat if len(flat) <= _MAX_EXPR_LEN else flat[: _MAX_EXPR_LEN - 1] + "…"
@@ -1241,7 +1258,7 @@ class _FacadeResolver:
         if path not in self.trees:
             content = self.read_file(path)
             try:
-                self.trees[path] = ast.parse(content) if content is not None else None
+                self.trees[path] = _parse(content) if content is not None else None
             except (SyntaxError, ValueError):
                 self.trees[path] = None
         return self.trees[path]
