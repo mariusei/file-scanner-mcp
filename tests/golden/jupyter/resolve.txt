@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.ipynb::cell 2 (code).Ledger.__init__@v1 (29-30)
+basic.ipynb::cell 2 (code).Ledger.__init__@v2 (29-30)
+[exit 0]

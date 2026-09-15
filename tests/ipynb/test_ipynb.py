@@ -46,6 +46,7 @@ def test_cells_become_nodes(structures):
         "cell 1 (markdown)",
         "cell 2 (code)",
         "cell 3 (raw)",
+        "cell 4 (code)",
     ]
     # a made-up label is never an identity a consumer may pair files on
     assert all(node.synthetic for node in structures)

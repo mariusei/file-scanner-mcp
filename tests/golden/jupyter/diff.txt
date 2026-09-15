@@ -1,1 +1,11 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.ipynb  (+1 ~2 =1 -1)
+  + cell 4 (code).count(ledger)                           B:62
+  ~ cell 4 (code).DEFAULT_REGION = 'south'                A:49 → B:49   [value: 'north' → 'south']
+  ~ cell 4 (code).report(ledger, region=DEFAULT_REGION)   A:62 → B:57   [signature: (ledger) → (ledger, region=DEFAULT_REGION)]
+  = cell 2 (code).Ledger.average(self)                    A:32 → B:32   [renamed from cell 2 (code).Ledger.mean]
+  - cell 4 (code).describe(ledger)                        A:57
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]
