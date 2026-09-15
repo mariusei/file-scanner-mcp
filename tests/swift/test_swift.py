@@ -355,3 +355,20 @@ def test_swiftui_patterns(file_scanner):
         ]
         # It's OK if we don't capture all @Published - just verify structure is found
         assert view_model.children, "ViewModel should have children (properties/methods)"
+
+
+def test_setter_restriction_is_not_the_declaration_visibility():
+    """`private(set) var` is readable at the declaration's own level; the
+    handler records the restriction whole, never as `private`."""
+    source = (
+        "public class Store {\n"
+        "    private(set) var count: Int = 0\n"
+        "    private var secret: Int = 0\n"
+        '    fileprivate(set) public var name = ""\n'
+        "}\n"
+    )
+    structures = FileScanner().scan_content(source, "store.swift")
+    members = {node.name: node.modifiers for node in structures[0].children}
+    assert members["count"] == ["private(set)"]
+    assert members["secret"] == ["private"]
+    assert members["name"] == ["fileprivate(set)", "public"]

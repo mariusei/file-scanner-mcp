@@ -187,3 +187,43 @@ def test_boundary_nothing_outside_languages_knows_a_syntax():
                 line = text.count("\n", 0, match.start()) + 1
                 offenders.append(f"{path.name}:{line}: {label}: {match.group(0).strip()}")
     assert not offenders, "\n".join(offenders)
+
+
+def test_swift_privacy_reads_the_visibility_keyword():
+    """Swift hides a name with `private`/`fileprivate` only: `internal`, the
+    default, is API to every file of the module, and a setter restriction
+    (`private(set)`) restricts writing, not the name. A leading underscore
+    means nothing to the compiler."""
+    from scantool.languages.models import StructureNode
+
+    swift = get_language(".swift")
+
+    def node(name, *modifiers):
+        return StructureNode(
+            type="function", name=name, start_line=1, end_line=1, modifiers=list(modifiers)
+        )
+
+    assert swift.is_private(node("retry", "private"))
+    assert swift.is_private(node("helper", "fileprivate"))
+    assert not swift.is_private(node("validateEmail"))
+    assert not swift.is_private(node("connect", "public"))
+    assert not swift.is_private(node("isConnected", "private(set)"))
+    assert not swift.is_private(node("_underscored"))
+    assert swift.is_private(_definition("retry", modifiers=["private"]))
+
+
+def test_swift_unreferenced_exemption_is_xctest_discovery():
+    """XCTest runs `test…` methods of XCTestCase subclasses by name. The hook
+    cannot see the superclass, so the enclosing class's conventional name
+    is the proxy; the same method name elsewhere is a normal definition."""
+    swift = get_language(".swift")
+
+    def method(name, parent, kind="class"):
+        return _definition(name, parent=parent, enclosing_kind=kind)
+
+    assert swift.is_exempt_from_unreferenced(method("testConnect", "DatabaseManagerTests"))
+    assert swift.is_exempt_from_unreferenced(method("testRetry", "RetryTest"))
+    assert not swift.is_exempt_from_unreferenced(method("testConnect", "DatabaseManager"))
+    assert not swift.is_exempt_from_unreferenced(method("connect", "DatabaseManagerTests"))
+    assert not swift.is_exempt_from_unreferenced(method("testConnect", "LoggerTests", "protocol"))
+    assert not swift.is_exempt_from_unreferenced(_definition("testConnect"))

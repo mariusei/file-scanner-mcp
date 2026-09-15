@@ -1,14 +1,13 @@
-<11 public names, 11 via definition> package swift @WORKTREE
+<10 public names, 10 via definition> package swift @WORKTREE
 basic
-  Config                                                 swift/basic.swift:7
-  Logger                                                 swift/basic.swift:14
-  UserStatus  : String                                   swift/basic.swift:23
-  DatabaseManager                                        swift/basic.swift:39
-  DatabaseManager  : Logger                              swift/basic.swift:69
-  UserService                                            swift/basic.swift:80
-  validateEmail  (_ email: String) -> Bool               swift/basic.swift:104
-  formatTimestamp  (_ date: Date) -> String              swift/basic.swift:109
-  UserID  = Int                                          swift/basic.swift:116
-  CompletionHandler  = (Result<Bool, Error>) -> Void     swift/basic.swift:117
-  retry  (_ action: () -> Bool, attempts: Int) -> Bool   swift/basic.swift:123
+  Config                                               swift/basic.swift:7
+  Logger                                               swift/basic.swift:14
+  UserStatus  : String                                 swift/basic.swift:23
+  DatabaseManager                                      swift/basic.swift:39
+  DatabaseManager  : Logger                            swift/basic.swift:69
+  UserService                                          swift/basic.swift:80
+  validateEmail  (_ email: String) -> Bool             swift/basic.swift:104
+  formatTimestamp  (_ date: Date) -> String            swift/basic.swift:109
+  UserID  = Int                                        swift/basic.swift:116
+  CompletionHandler  = (Result<Bool, Error>) -> Void   swift/basic.swift:117
 [exit 0]
