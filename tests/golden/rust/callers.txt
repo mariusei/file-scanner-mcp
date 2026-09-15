@@ -1,6 +1,7 @@
-<1 call site in 1 file, 1 definition, 1 file scanned> callers of connect
+<2 call sites in 1 file, 1 definition, 1 file scanned> callers of connect
 defined: basic.rs::DatabaseManager.connect (method) basic.rs:30
 
-basic.rs  (1 site)
+basic.rs  (2 sites)
   - main basic.rs:87   db.connect().unwrap();
+  - main basic.rs:89   retry(&mut || db.connect().is_ok(), MAX_ATTEMPTS);
 [exit 0]

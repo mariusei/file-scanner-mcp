@@ -1,18 +1,17 @@
-<1 file seen, 17 structures shown>
-basic.rs (3-89)
+<1 file seen, 18 structures shown>
+basic.rs (3-105)
 - use statements @3
 - User @8 [pub] # User account with basic information.
    #[derive(Debug, Clone)]
    pub struct User {
-       …
+    …
 - DatabaseManager @15 [pub] # Database connection manager.
    pub struct DatabaseManager {
-       …
+    …
 - DatabaseManager @20
   - new (connection_string: String) -> Self @22 [pub] # Create a new database manager.
      pub fn new(connection_string: String) -> Self {
-         Self {
-       …
+      …
   - connect (&mut self) -> Result<(), String> @30 [pub] # Connect to the database.
      pub fn connect(&mut self) -> Result<(), String> {
          println!("Connecting to {}", self.connection_string);
@@ -22,17 +21,17 @@ basic.rs (3-89)
          vec![]
 - UserService @42 [pub] # Service for user operations.
    pub struct UserService {
-       …
+    …
 - UserService @46
   - create_user (&self, name: String, email: String) -> Result<u64, String> @48 [pub] # Create a user.
      pub fn create_user(&self, name: String, email: String) -> Result<u64, String> {
          Ok(1)
   - get_user (&self, user_id: u64) -> Option<User> @53 [pub] # Get user by ID.
      pub fn get_user(&self, user_id: u64) -> Option<User> {
-         …
+      …
   - delete_user (&self, user_id: u64) -> bool @58 [pub] # Delete a user.
      pub fn delete_user(&self, user_id: u64) -> bool {
-         …
+      …
 - Validate @64 [pub] # Trait for objects that can be validated.
    pub trait Validate {
        …
@@ -51,5 +50,12 @@ basic.rs (3-89)
    fn main() {
        let mut db = DatabaseManager::new("postgresql://localhost/mydb".to_string());
        db.connect().unwrap();
+       if validate_email("ada@example.com") {
+     …
        println!("Application started");
+- retry (action: &mut dyn FnMut() -> bool, attempts: u32) -> bool @98 # Run `action` until it returns true or the attempts are spent (private).
+   fn retry(action: &mut dyn FnMut() -> bool, attempts: u32) -> bool {
+       for _ in 0..attempts {
+     …
+       …
 [exit 0]

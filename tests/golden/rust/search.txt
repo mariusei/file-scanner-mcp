@@ -1,9 +1,11 @@
-<1 file seen, 17 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /main/
+<1 file seen, 18 structures shown, 1 excluded (.git/)>
+2 hits in 2 structures for /retry/
 
 ./basic.rs
-- main () @85-89  (1 hit)
-   85 | fn main() {
+- main () @85-92  (1 hit)
+   89 | retry(&mut || db.connect().is_ok(), MAX_ATTEMPTS);
+- retry (action: &mut dyn FnMut() -> bool, attempts: u32) -> bool @98-105  (1 hit)
+   98 | fn retry(action: &mut dyn FnMut() -> bool, attempts: u32) -> bool {
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]
