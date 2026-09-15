@@ -1,4 +1,4 @@
-<15 public names, 15 via definition> package go @WORKTREE
+<13 public names, 13 via definition> package go @WORKTREE
 basic
   Config                                                                        go/basic.go:10
   Logger                                                                        go/basic.go:16
@@ -13,6 +13,4 @@ basic
   DeleteUser  (s *UserService) (userID int) error                               go/basic.go:71
   ValidateEmail  (email string) bool                                            go/basic.go:76
   FormatTimestamp  (t time.Time) string                                         go/basic.go:81
-  main  ()                                                                      go/basic.go:86
-  retryConnect  (db *DatabaseManager) error                                     go/basic.go:96
 [exit 0]

@@ -197,3 +197,66 @@ def test_multiple_return_values(file_scanner):
     assert "username" in create_user.signature or "string" in create_user.signature, (
         f"Should show parameters, got: {create_user.signature}"
     )
+
+
+def test_privacy_is_capitalisation_not_the_underscore():
+    """The handler records a capitalised identifier as "public"; that is the
+    whole rule, so is_private reads it and ignores the name's first letter."""
+    from scantool.languages import get_language
+    from scantool.languages.models import StructureNode
+
+    go = get_language(".go")
+
+    def node(name, modifiers):
+        return StructureNode(
+            type="function", name=name, start_line=1, end_line=1, modifiers=modifiers
+        )
+
+    assert not go.is_private(node("Exported", ["public"]))
+    assert go.is_private(node("unexported", []))
+    assert go.is_private(node("main", []))
+    assert go.is_private(node("_unexported", []))
+
+
+def test_go_test_runs_test_functions_by_rule():
+    from scantool.languages import get_language
+    from scantool.languages.models import DefinitionInfo
+
+    go = get_language(".go")
+
+    def definition(name, file="pkg/thing_test.go"):
+        return DefinitionInfo(file=file, type="function", name=name, line=1)
+
+    for name in (
+        "TestParse",
+        "Test",
+        "TestMain",
+        "Benchmark_x",
+        "ExampleParse",
+        "FuzzParse",
+        "Test1",
+    ):
+        assert go.is_exempt_from_unreferenced(definition(name)), name
+    assert not go.is_exempt_from_unreferenced(definition("Testing"))  # lower-case after the prefix
+    assert not go.is_exempt_from_unreferenced(definition("Fuzzy"))
+    assert not go.is_exempt_from_unreferenced(definition("helper"))
+    assert not go.is_exempt_from_unreferenced(definition("TestParse", file="pkg/thing.go"))
+
+
+def test_surface_is_the_exported_identifiers_outside_test_files(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "a.go").write_text(
+        "package p\n\ntype Thing struct{}\n\nfunc (t *Thing) Run() {}\n\nfunc (t *Thing) hide() {}\n\n"
+        "func New() *Thing { return nil }\n\nfunc helper() {}\n"
+    )
+    (tmp_path / "a_test.go").write_text(
+        "package p\n\nfunc TestNew(t *testing.T) {}\n\nfunc Helper() {}\n"
+    )
+    rows = [(e.name, e.kind, e.path) for e in read_surface(str(tmp_path)).exports]
+    pkg = tmp_path.name
+    assert rows == [
+        ("Thing", "struct", f"{pkg}/a.go"),
+        ("Run", "method", f"{pkg}/a.go"),
+        ("New", "function", f"{pkg}/a.go"),
+    ]
