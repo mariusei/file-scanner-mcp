@@ -1,0 +1,328 @@
+"""
+FILE: capabilities.py
+
+PROBLEM:
+  Three texts described the same commands separately: the server
+  instructions block (launcher.py), the `sct --help` text (cli.py) and the
+  MCP tool descriptions (server.py), plus the README. They drifted: the
+  help called `surface` a Python-package command after every language got
+  one, said `--json` was for scan and search only, credited scan_diff with
+  a review tail it no longer runs by default, and listed neither
+  `divergence` nor `history` under COMMANDS. The M4 experiment (2026-09-14)
+  named this as the first thing an installation should fix: one versioned
+  description of the capabilities, the client texts generated from it.
+
+SOLUTION:
+  One table, CAPABILITIES, one entry per capability: the shell usage, the
+  one-line summary the instructions block carries, the paragraph the help
+  and the tool descriptions carry, the MCP tools that expose it and what
+  each adds, the shell commands it substitutes. launcher.shell_instructions,
+  cli.HELP and every @mcp.tool description are built from it; a test
+  asserts that every registered tool, every help entry and the README's
+  usage block agree with the table, and that the table's version is the
+  package's.
+
+SCOPE:
+  ✓ the texts; the instructions block's character cap is enforced by test
+  ✗ no behaviour: a capability's parameters live with its tool and parser
+"""
+
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class Capability:
+    command: str  # "" is the bare `sct <dir>`
+    usage: tuple[str, ...]  # `sct …` lines for USAGE and the README
+    short: str  # one line for the instructions block (keep it under ~60 characters)
+    long: str  # the paragraph for --help COMMANDS and the MCP tool descriptions
+    tools: dict[str, str] = field(default_factory=dict)  # MCP tool -> what that tool adds
+    hints: tuple[str, ...] = ()  # shell forms the tool descriptions carry
+    json: bool = True
+    substitutes: tuple[tuple[str, str], ...] = ()  # (shell habit, sct form) for the block
+
+
+CAPABILITIES: tuple[Capability, ...] = (
+    Capability(
+        command="",
+        usage=("sct <dir>",),
+        short="orientation: entry points, hot functions, call map",
+        long=(
+            "No command on a directory = orientation: size and language mix, entry "
+            "points, hot functions, the call-graph map (~3-5k tokens; for first-time "
+            "orientation of an unknown codebase, not for targeted questions). The file "
+            "tree is the tier below (scan)."
+        ),
+        tools={"preview_directory": ""},
+        hints=("<dir>",),
+        json=False,
+        substitutes=(("ls <dir>, find <dir>", "sct <dir>"),),
+    ),
+    Capability(
+        command="scan",
+        usage=(
+            "sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]",
+            "sct scan     - [...]                     paths from stdin, one per line",
+            "sct scan     - --as <path> [...]         stdin content scanned as <path>",
+        ),
+        short="skeleton with path:line; `-` reads paths on stdin",
+        long=(
+            "Skeleton of files or a directory: every structure with path:line, "
+            "signature or title, a condensed excerpt within the budget. A directory "
+            "gives the tree with one-line gists. --depth quick is about 300 tokens per "
+            "file, normal 1500, deep everything with module values whole (files only). "
+            "Elided content is marked ⟨…⟩ +N; focus reads it."
+        ),
+        tools={
+            "scan_file": (
+                " One file; budget=1500 for exploration, 300 for a quick look; focus='name' "
+                "(or 'Class.method') reads one node verbatim instead of guessing line ranges; "
+                "ref= reads it at a git ref. May append a self-levelling CONNECTIVITY note "
+                "(candidate dead/orphan/drift across the corpus, silent when clean)."
+            ),
+            "scan_directory": (
+                " A directory: the file tree with one-line gists per file, code health and "
+                "churn labels; ref= reads it at a git ref. Replaces Glob/ls for all file types."
+            ),
+            "scan_file_content": (
+                " Content given directly (remote files, APIs, a git blob, stdin), same "
+                "budget/depth and focus as scan_file."
+            ),
+            "list_directories": " Folders only, no files: the directory hierarchy.",
+        },
+        hints=("scan <path>", "focus <path> <name>"),
+        substitutes=(("cat f | head, sed -n a,bp f", "sct scan f --depth quick"),),
+    ),
+    Capability(
+        command="focus",
+        usage=(
+            "sct focus    <path> <name|heading> [--ref REF] [--json]",
+            "sct focus    <path>::<name>[@REF]        the address form, one argument",
+            "sct focus    - --as <path> <name>        stdin content, one node",
+        ),
+        short="one function/class/section verbatim; takes its address back",
+        long=(
+            "One structure verbatim with parent context: a name, a qualified name "
+            "(Class.method), a heading or a substring of a heading. Several matches "
+            "list themselves with their ranges and a range picks one; none lists the "
+            "top-level names. The answer opens with the node's address, "
+            "`path::Qualified.name (a-b)`, which focus accepts back."
+        ),
+        hints=("focus <path> <name>", "focus <path>::<name>@REF"),
+        substitutes=(("git show REF:f | sed -n", "sct focus f::name@REF"),),
+    ),
+    Capability(
+        command="search",
+        usage=(
+            "sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]",
+        ),
+        short="hits with their enclosing structure, leads; --names",
+        long=(
+            "Text across a directory (or one file) with structural context: each hit "
+            "shows its enclosing structure, plus leads to where matched names are "
+            "defined; when no lead exists it says so. --names matches structure names "
+            "instead of text, and an empty answer names the paths that match. The "
+            "pattern is a Python regex; grep's `\\|` is read as alternation with a note. "
+            "--type filters which structures are reported. 40 structures per page, "
+            "--limit/--offset for the rest, and the page is stated."
+        ),
+        tools={
+            "search_structures": (
+                " content_pattern finds text with its enclosing function/class/section "
+                "plus leads to definitions; name_pattern/type_filter/has_decorator find "
+                "structures; ref= searches at a git ref. Best first call for a targeted "
+                "question; use instead of Grep."
+            )
+        },
+        hints=("search <dir> <pattern>",),
+        substitutes=(("grep -rn p", "sct search . p"),),
+    ),
+    Capability(
+        command="diff",
+        usage=(
+            "sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]",
+        ),
+        short="+ ~ = - per structure, both sides",
+        long=(
+            "Structural diff between refs. One ref = that ref vs the working tree. Two "
+            "refs = A...B against their merge-base by default (--no-merge-base compares "
+            "the tips; a note says which). Per file: + added, ~ changed (signature: old "
+            "→ new; or body: N code / M doc lines), = renamed (paired by identical body; "
+            "children follow a renamed class), - removed; identical signature deltas in "
+            "3+ functions fold into one row; new files as skeletons; a + or ~ function "
+            "says how many other changed functions call it. The coverage line counts "
+            "files changed without structural rows and names the reason for each. "
+            "--review appends candidate dead/orphan/drift the changed files introduced; "
+            "off by default on both doors."
+        ),
+        tools={
+            "scan_diff": (
+                " ref vs the working tree, or ref vs ref2; review=True appends the review "
+                "tail. Use instead of git diff for review and 'what changed' questions."
+            )
+        },
+        hints=("diff <ref>", "diff <refA> <refB>"),
+        substitutes=(("git diff A..B, git log -L", "sct diff A B, sct history f::name"),),
+    ),
+    Capability(
+        command="surface",
+        usage=("sct surface  <package-dir> [--ref REF] [--against REF]",),
+        short="public names and where each is defined; --against REF",
+        long=(
+            "The public surface of a package directory at a ref: every exported name "
+            "with its signature, how it is exported and where it is defined. Each "
+            "language applies its own rule: Python's __all__, lazy tables and re-export "
+            "chains; Rust's pub and lib.rs re-exports; TypeScript's index exports; Go's "
+            "exported identifiers; visibility keywords elsewhere; a namespace or module "
+            "is looked through. --against REF prints the surface diff; the header states "
+            "the direction (A → B)."
+        ),
+        tools={"surface": ""},
+        hints=("surface <package-dir>", "surface <package-dir> --against REF"),
+    ),
+    Capability(
+        command="overlap",
+        usage=("sct overlap  <base> <branch>... [--repo DIR]",),
+        short="structures 2+ branches touch, collisions, merge order",
+        long=(
+            "N branches against one base, each at its own merge-base: structures "
+            "touched by 2+ branches (marked base(~/+/-) when the base itself changed "
+            "them since the branches forked), new names introduced independently by 2+ "
+            "branches, commits two branches share (a stack: overlap between them is "
+            "expected; the residual beyond their shared commits is what stays), and per "
+            "branch whether it is already in the base and by which criterion (ancestor / "
+            "patch-equivalent / tree-equal; patch-equivalence proves it can be deleted, "
+            "not that its content is in the current tree). Ends with a merge-order hint, "
+            "not a verdict."
+        ),
+        tools={"overlap": ""},
+        hints=("overlap <base> <branch>...",),
+    ),
+    Capability(
+        command="callers",
+        usage=("sct callers  <name> [--dir DIR] [--ref REF]",),
+        short="actual call sites and their calling function",
+        long=(
+            "Actual call sites of a function or method across a directory, never a "
+            "mention in prose, a comment, a docstring or a string literal; each with "
+            "its enclosing function and path:line, the definition(s) first. A qualified "
+            "name (Class.method) narrows the definitions; which definition a site binds "
+            "to is not resolved, and the answer says so."
+        ),
+        tools={"callers": ""},
+        hints=("callers <name>", "callers <name> --dir <dir>"),
+    ),
+    Capability(
+        command="resolve",
+        usage=("sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]",),
+        short="a line or name carried to another ref",
+        long=(
+            "Translate path:line or path::name from one ref to another: the enclosing "
+            "structure with start and end at --from, and where it is at --to (same "
+            "place, renamed with an identical body, or gone, with the nearest names)."
+        ),
+        tools={"resolve": ""},
+        hints=("resolve <path:line> --from REF", "resolve <path::name> --from REF --to REF"),
+    ),
+    Capability(
+        command="divergence",
+        usage=("sct divergence <dir> [--max-findings N]",),
+        short="functions breaking a sibling call pattern",
+        long=(
+            "Peer divergence across a directory: functions that break a call pattern "
+            "their siblings follow (peers calling X also call Y, this one does not). A "
+            "review hint, not a verified bug list; silent on a consistent codebase, and "
+            "that silence is the answer."
+        ),
+        tools={"find_divergence": ""},
+        hints=("divergence <dir>",),
+        json=False,
+    ),
+    Capability(
+        command="history",
+        usage=("sct history  <path::name | path:line> [--ref REF] [--repo DIR]",),
+        short="commits that changed one structure",
+        long=(
+            "One structure followed backwards through the commits that touched its "
+            "file: a signature or body change, a rename (paired by identical body, the "
+            "earlier name followed), the commit that introduced it; a file move is "
+            "followed. Commits that touched the file but not the structure are counted, "
+            "not listed. What git log -L gives for a line range, keyed on the structure."
+        ),
+        tools={"history": ""},
+        hints=("history <path::name>", "history <path:line> --ref REF"),
+    ),
+)
+
+
+def capability(command: str) -> Capability:
+    for entry in CAPABILITIES:
+        if entry.command == command:
+            return entry
+    raise KeyError(command)
+
+
+def capability_of_tool(tool: str) -> Capability:
+    for entry in CAPABILITIES:
+        if tool in entry.tools:
+            return entry
+    raise KeyError(tool)
+
+
+def tool_description(tool: str) -> str:
+    """The MCP tool's description: the capability's paragraph, what this
+    tool adds, and (appended by the server) the shell hint."""
+    entry = capability_of_tool(tool)
+    return entry.long + entry.tools[tool]
+
+
+def shell_summary() -> str:
+    """The per-command block of the server instructions: the shell habits
+    each capability substitutes, then every command on one line."""
+    lines = ["Per command:"]
+    for entry in CAPABILITIES:
+        for habit, form in entry.substitutes:
+            lines.append(f"  {habit:29s} -> {form}")
+    lines.append("Commands:")
+    for entry in CAPABILITIES:
+        lines.append(f"  {_block_form(entry):33s} {entry.short}")
+    return "\n".join(lines)
+
+
+def _block_form(entry: Capability) -> str:
+    """The compact form of a command for the instructions block."""
+    forms = {
+        "": "sct <dir>",
+        "scan": "sct scan <path>... [--ref R]",
+        "focus": "sct focus <path> <name> [--ref R]",
+        "search": "sct search <dir> <regex>",
+        "diff": "sct diff <refA> [<refB>]",
+        "surface": "sct surface <package-dir>",
+        "overlap": "sct overlap <base> <branch>...",
+        "callers": "sct callers <name>",
+        "resolve": "sct resolve <path:line> --from R",
+        "divergence": "sct divergence <dir>",
+        "history": "sct history <path::name>",
+    }
+    return forms[entry.command]
+
+
+def help_usage() -> str:
+    return "\n".join(f"  {line}" for entry in CAPABILITIES for line in entry.usage)
+
+
+def help_commands(width: int = 78) -> str:
+    """The COMMANDS section of --help: each capability's paragraph, wrapped
+    under its name."""
+    import textwrap
+
+    out = []
+    for entry in CAPABILITIES:
+        name = entry.command or "<dir>"
+        body = textwrap.fill(entry.long, width=width, initial_indent="", subsequent_indent=" " * 12)
+        out.append(f"  {name:9s} {body.lstrip()}")
+    return "\n".join(out)
+
+
+def json_commands() -> list[str]:
+    return [entry.command for entry in CAPABILITIES if entry.json]

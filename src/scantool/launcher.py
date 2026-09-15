@@ -73,28 +73,14 @@ def shell_instructions() -> str:
     for an agent with a shell, so it comes first. Clients cap the whole
     instructions text (measured: ~2 047 characters in one of them, the rest
     silently gone), so this is a per-command substitution table and every
-    command on one line, nothing deferred to --help."""
+    command on one line, nothing deferred to --help. The lines come from
+    capabilities.CAPABILITIES, the one description every door shares."""
+    from .capabilities import shell_summary
+
     return (
-        "Per command:\n"
-        "  ls <dir>, find <dir>          -> sct <dir>\n"
-        "  cat f | head, sed -n a,bp f   -> sct scan f --depth quick\n"
-        "  grep -rn p                    -> sct search . p\n"
-        "  git show REF:f | sed -n       -> sct focus f::name@REF\n"
-        "  git diff A..B, git log -L     -> sct diff A B, sct history f::name\n"
-        "Commands:\n"
-        "  sct <dir>                         orientation: entry points, hot functions, call map\n"
-        "  sct scan <path>... [--ref R]      skeleton with path:line; `-` reads paths on stdin\n"
-        "  sct focus <path> <name> [--ref R] one function/class/section verbatim; takes its address back\n"
-        "  sct search <dir> <regex>          hits with their enclosing structure, leads; --names\n"
-        "  sct diff <refA> [<refB>]          + ~ = - per structure, both sides\n"
-        "  sct surface <package-dir>         public names and where each is defined; --against REF\n"
-        "  sct overlap <base> <branch>...    structures 2+ branches touch, collisions, merge order\n"
-        "  sct callers <name>                actual call sites and their calling function\n"
-        "  sct resolve <path:line> --from R  a line or name carried to another ref\n"
-        "  sct divergence <dir>              functions breaking a sibling call pattern\n"
-        "  sct history <path::name>          commits that changed one structure\n"
-        "  --json/--ascii on all. "
-        f"No sct on PATH? {quoted_interpreter()} -m scantool.cli."
+        shell_summary()
+        + "\n  --json/--ascii on all. "
+        + f"No sct on PATH? {quoted_interpreter()} -m scantool.cli."
     )
 
 
