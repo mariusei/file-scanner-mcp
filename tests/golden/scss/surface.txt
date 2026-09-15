@@ -1,4 +1,4 @@
-<20 public names, 20 via definition> package scss @WORKTREE
+<22 public names, 22 via definition> package scss @WORKTREE
 basic
   base/variables  @use                                           scss/basic.scss:3
   base/mixins  @use                                              scss/basic.scss:4
@@ -20,4 +20,6 @@ basic
   .container  1 sel, 2 decl                                      scss/basic.scss:99
   screen and (max-width: 768px)  screen and (max-width: 768px)   scss/basic.scss:110
   fadeIn                                                         scss/basic.scss:117
+  $accent-color  #e67e22                                         scss/basic.scss:128
+  .theme-dark  1 sel, 2 decl                                     scss/basic.scss:130
 [exit 0]

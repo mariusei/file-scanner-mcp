@@ -1,4 +1,4 @@
-<8 public names, 8 via definition> package text @WORKTREE
+<9 public names, 9 via definition> package text @WORKTREE
 basic
   PROJECT OVERVIEW               text/basic.txt:1
   INTRODUCTION                   text/basic.txt:7
@@ -8,4 +8,5 @@ basic
   PERFORMANCE CONSIDERATIONS     text/basic.txt:47
   FUTURE ENHANCEMENTS            text/basic.txt:57
   CONCLUSION                     text/basic.txt:67
+  REFERENCES                     text/basic.txt:76
 [exit 0]

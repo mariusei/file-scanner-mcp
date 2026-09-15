@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.md::Installation@v1 (5-23)
+basic.md::Installation@v2 (5-23)
+[exit 0]

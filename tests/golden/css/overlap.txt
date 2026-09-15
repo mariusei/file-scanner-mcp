@@ -1,1 +1,15 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (df233b0)
+a  merge-base df233b0  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base df233b0  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
+  basic.css::.btn              a(~)  b(~)
+  basic.css::.card             a(+)  b(+)
+  basic.css::.footer           a(-)  b(-)
+  basic.css::.nav-link:hover   a(-)  b(-)
+  basic.css::.site-footer      a(+)  b(+)
+  basic.css:::root             a(~)  b(~)
+colliding new names (added independently on 2+ branches): 2
+  card          a:basic.css:113  b:basic.css:113
+  site-footer   a:basic.css:106  b:basic.css:106
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+[exit 0]

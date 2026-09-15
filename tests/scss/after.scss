@@ -9,7 +9,7 @@
 $primary-color: #3498db;
 $secondary-color: #2ecc71;
 $font-stack: 'Helvetica Neue', sans-serif;
-$spacing-unit: 8px;
+$spacing-unit: 10px;
 $border-radius: 4px;
 
 // Mixins
@@ -46,10 +46,6 @@ $border-radius: 4px;
 // Functions
 @function shade($color, $amount: 10%) {
     @return darken($color, $amount);
-}
-
-@function tint($color, $amount: 10%) {
-    @return lighten($color, $amount);
 }
 
 // Base styles
@@ -91,12 +87,12 @@ body {
     }
 
     .card-body {
-        color: #666;
+        color: #555;
     }
 }
 
 // Layout
-.container {
+.wrapper {
     @include flex-center;
     max-width: 1200px;
     margin: 0 auto;
@@ -135,4 +131,9 @@ $accent-color: #e67e22;
         background: #333;
         border-left: 4px solid $accent-color;
     }
+}
+
+.alert {
+    padding: $spacing-unit;
+    border-left: 4px solid $accent-color;
 }

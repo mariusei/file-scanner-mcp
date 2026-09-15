@@ -1,4 +1,4 @@
-<6 public names, 6 via definition> package html @WORKTREE
+<7 public names, 7 via definition> package html @WORKTREE
 basic
   DOCTYPE                     html/basic.html:1
   app.js  scripts/app.js      html/basic.html:9
@@ -6,4 +6,5 @@ basic
   content  #content           html/basic.html:22
   main-footer  #main-footer   html/basic.html:65
   style                       html/basic.html:69
+  site-meta  0 items          html/basic.html:82
 [exit 0]

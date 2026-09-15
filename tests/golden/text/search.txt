@@ -1,9 +1,11 @@
-<1 file seen, 26 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /CONCLUSION/
+<1 file seen, 29 structures shown, 1 excluded (.git/)>
+2 hits in 2 structures for /REFERENCES/
 
 ./basic.txt
-- CONCLUSION @67-77  (1 hit)
-   67 | CONCLUSION
+- REFERENCES @76-88  (1 hit)
+   76 | REFERENCES
+- REFERENCES > paragraph (79-81) @79-81  (1 hit)
+   79 | Related material, listed as plain references since text has no link syntax:
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

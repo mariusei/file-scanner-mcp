@@ -1,5 +1,5 @@
-<1 file seen, 26 structures shown>
-basic.txt (1-77)
+<1 file seen, 29 structures shown>
+basic.txt (1-88)
 - PROJECT OVERVIEW @1
   - paragraph (4-5) @4
 - INTRODUCTION @7
@@ -25,5 +25,8 @@ basic.txt (1-77)
 - CONCLUSION @67
   - paragraph (70-71) @70
   - paragraph (73-74) @73
-  - paragraph (76-76) @76
+- REFERENCES @76
+  - paragraph (79-81) @79
+  - paragraph (83-85) @83
+  - paragraph (87-87) @87
 [exit 0]

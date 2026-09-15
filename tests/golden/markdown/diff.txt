@@ -1,1 +1,10 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.md  (+1 ~1 =1 -1)
+  + Linting             B:89
+  ~ License             A:93 → B:93   [body: 1 doc line]
+  = Style Guide         A:81 → B:77   [renamed from Code Style]
+  - FileScanner Class   A:65
+
+summary: 1 file, +1 ~1 =1 -1 structures
+[exit 0]

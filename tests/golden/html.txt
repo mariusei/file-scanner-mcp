@@ -1,5 +1,5 @@
-<1 file seen, 23 structures shown>
-basic.html (1-76)
+<1 file seen, 24 structures shown>
+basic.html (1-87)
 - DOCTYPE @1
 - app.js scripts/app.js @9 [defer]
 - main-header #main-header @12 [header]
@@ -27,3 +27,4 @@ basic.html (1-76)
    71 |         body { margin: 0; }
    72 |     </style>
 - inline inline script @74
+- site-meta 0 items @82 [definition]

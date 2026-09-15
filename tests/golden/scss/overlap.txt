@@ -1,1 +1,15 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (ad45c9f)
+a  merge-base ad45c9f  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base ad45c9f  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
+  basic.scss::$spacing-unit      a(~)  b(~)
+  basic.scss::.alert             a(+)  b(+)
+  basic.scss::.card..card-body   a(~)  b(~)
+  basic.scss::.container         a(-)  b(-)
+  basic.scss::.wrapper           a(+)  b(+)
+  basic.scss::tint               a(-)  b(-)
+colliding new names (added independently on 2+ branches): 2
+  alert     a:basic.scss:136  b:basic.scss:136
+  wrapper   a:basic.scss:95  b:basic.scss:95
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+[exit 0]
