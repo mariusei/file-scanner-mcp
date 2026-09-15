@@ -30,12 +30,14 @@ from .git_signals import (
     recent_line_edits,
     repo_root,
 )
+from .gitref import RefError, repo_and_rel
 from .languages import StructureNode, is_file_info_stub
 from .languages.models import Sweep
 from .launcher import ensure_launcher, shell_hint, shell_instructions
 from .preview import preview_directory as preview_dir_func
-from .ref_diff import diff_against_ref
+from .ref_diff import changed_files_review
 from .scanner import FileScanner
+from .structural_diff import WORKTREE, diff_to_json, diff_with_note, format_diff, verify_ref
 
 # Injected into context at session start even when tools are deferred behind
 # ToolSearch. Clients cap this text (measured ~2 047 characters in one; the
@@ -952,44 +954,92 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "diff", "review"},
-    description="Structural diff against a git ref - which functions are new/changed/removed since HEAD/main/a release, with condensed skeletons. USE THIS INSTEAD of git diff for review and 'what changed' questions"
+    description="Structural diff between a git ref and the working tree, or between two refs (A...B against their merge-base): which functions/classes/sections are added, changed (signature old → new, or body as code/doc line counts), renamed (paired by identical body) or removed, with a coverage line for files changed without structural rows. USE THIS INSTEAD of git diff for review and 'what changed' questions. The same table sct diff prints"
     + shell_hint("diff <ref>", "diff <refA> <refB>"),
 )
-def scan_diff(directory: str, ref: str = "HEAD", budget: int | None = 1500) -> list[TextContent]:
+def scan_diff(
+    directory: str,
+    ref: str = "HEAD",
+    ref2: str | None = None,
+    no_merge_base: bool = False,
+    review: bool = False,
+    budget: int | None = 1500,
+    output_format: str = "tree",
+) -> list[TextContent]:
     """
-    Structural diff of the working tree against a git ref.
+    Structural diff between refs, or a ref and the working tree.
 
     **When to use this vs other tools:**
-    - Use scan_diff() INSTEAD of git diff → review-oriented view: WHICH
-      functions/classes/sections are new, changed or removed, with their
-      condensed method skeletons — not line noise
-    - ref="HEAD" (default) shows uncommitted work; ref="main" shows the
-      whole branch; ref="HEAD~5" the last five commits
+    - Use scan_diff() INSTEAD of git diff → WHICH functions/classes/sections
+      changed and how, one row per structure — not line noise
+    - ref="HEAD" (default) shows uncommitted work; ref="main" the whole
+      branch; ref="HEAD~5" the last five commits — each against the working
+      tree
+    - ref="main", ref2="feature" compares two refs, against their merge-base
+      by default so main's later work does not read as feature's removals;
+      a note says where they diverged
 
-    Per changed file: new/changed nodes carry [new]/[changed] labels and show
-    code detail; unchanged nodes keep headers only; removed nodes are
-    listed by name. Files changed without structural impact (whitespace,
-    comments) are reported as exactly that. Works for any file type —
-    markdown diffs show changed sections.
-
-    A PEER DIVERGENCE tail may follow when a changed function breaks a call
-    pattern its siblings across the repo follow (e.g. peers calling X also call
-    Y, this one doesn't) — a REVIEW HINT to look at, not a verified bug. Peers
-    can legitimately differ; adjudicate by reading. Silent when nothing changed
-    breaks a strong pattern.
+    Per file: + added (B:line), ~ changed (A:line → B:line; the note says
+    signature old → new, value old → new, or body: N code lines, M doc
+    lines), = renamed (paired by identical body; children follow a renamed
+    class), - removed (A:line); identical signature deltas in 3+ functions
+    fold into one row; new files as skeletons. The coverage line counts
+    files changed without structural rows and names the reason for each.
+    Every row's `path::name` is an address scan_file(focus=) or `sct focus`
+    accepts, so reading a changed body is one call.
 
     Args (tiered — most calls need only Common):
         Common:
-            directory: Directory inside the git repository to diff
-            ref: Git ref to compare the working tree against (default: HEAD)
+            directory: A directory inside the git repository; the diff is
+                restricted to it (the repository root diffs everything)
+            ref: The A side (default: HEAD)
+            ref2: The B side; None (default) is the working tree, including
+                untracked files
         Cost & slicing:
-            budget: Approximate token cap per file's skeletons (default: 1500)
+            no_merge_base: With ref2, compare the tips instead of
+                merge-base...ref2 (default: False)
+            review: Append candidate dead/orphan/drift the changed files
+                introduced, from the repository's whole call graph — a
+                review hint, not a verdict; costs a corpus analysis
+                (default: False)
+            budget: Approximate token cap per new file's skeleton
+                (default: 1500)
+        Semantics & display:
+            output_format: "tree" (default) or "json" (coverage, note, one
+                object per file with its rows; "review" when requested)
 
     Returns:
-        Structural diff with per-node change labels
+        The structural diff table; JSON when output_format="json"
     """
     try:
-        return [TextContent(type="text", text=diff_against_ref(directory, ref, budget))]
+        try:
+            top, rel = repo_and_rel(directory)
+        except RefError:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"{directory}: not in a git repo — structural ref diff requires git",
+                )
+            ]
+        side_a, side_b = ref, ref2 or WORKTREE
+        for side in (side_a, side_b):
+            if not verify_ref(top, side):
+                return [TextContent(type="text", text=f"Unknown ref: {side!r} in {top}")]
+        result = diff_with_note(top, side_a, side_b, not no_merge_base, rel or None, budget)
+        tail = (
+            changed_files_review(top, {f.path for f in result.files if not f.deleted})
+            if review
+            else ""
+        )
+        if output_format == "json":
+            document = diff_to_json(result)
+            if review:
+                document["review"] = tail or None
+            return [TextContent(type="text", text=json.dumps(document, indent=2))]
+        text = format_diff(result)
+        if tail:
+            text += "\n\n" + tail
+        return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error diffing: {e}")]
 
