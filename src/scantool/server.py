@@ -30,7 +30,7 @@ from .git_signals import (
     recent_line_edits,
     repo_root,
 )
-from .gitref import RefError, repo_and_rel
+from .gitref import RefError, materialised, ref_kind, repo_and_rel, spec
 from .languages import StructureNode, is_file_info_stub
 from .languages.models import Sweep
 from .launcher import ensure_launcher, shell_hint, shell_instructions
@@ -53,10 +53,10 @@ by sct: sct IS the shell.
 
 {shell}
 
-MCP TOOLS, the same reader for clients without a shell or when a call needs \
-JSON; parameters in each description: search_structures, scan_directory, \
-scan_file (focus= reads one node), scan_diff, preview_directory, \
-find_divergence, list_directories, scan_file_content.
+MCP TOOLS (no shell, or JSON output); parameters in each description: \
+search_structures, scan_directory, scan_file (focus= reads one node), \
+scan_diff, preview_directory, find_divergence, list_directories, \
+scan_file_content, surface, overlap, callers, resolve.
 """
 
 mcp = FastMCP(
@@ -1336,6 +1336,328 @@ def _filter_structures(
             results.extend(filtered_children)
 
     return results
+
+
+def _surface_at(package_dir: str, ref: str | None):
+    """The surface of the package as typed, or as it is at ref; paths are
+    prefixed with the directory the caller typed, so each row is runnable.
+    Mirrors cli.py's `_surface_at` — the same helper `sct surface` uses."""
+    from .surface import read_surface
+
+    typed = package_dir.rstrip("/\\") or package_dir
+    if ref is None:
+        if not os.path.isdir(typed):
+            raise RefError(f"{package_dir} is not a directory")
+        found = read_surface(typed)
+    else:
+        top, rel = repo_and_rel(typed)
+        if ref_kind(top, ref, rel) != "tree":
+            raise RefError(f"{spec(ref, rel)} is not a directory; surface reads a package")
+        with materialised(top, ref, rel, os.path.basename(os.path.abspath(typed))) as tree:
+            found = read_surface(tree)
+    parent = os.path.dirname(typed)
+    for export in found.exports:
+        if export.path:
+            export.path = (
+                os.path.join(parent, export.path).replace(os.sep, "/") if parent else export.path
+            )
+    return found
+
+
+@mcp.tool(
+    tags={"local", "surface", "api"},
+    description="The public surface of a package (exports and where each is really defined, following __all__, lazy-import tables and re-export chains) at a ref, or the surface diff between two refs when against is given"
+    + shell_hint("surface <package-dir>", "surface <package-dir> --against REF"),
+)
+def surface(
+    package_dir: str,
+    ref: str | None = None,
+    against: str | None = None,
+    output_format: str = "tree",
+) -> list[TextContent]:
+    """
+    The public surface of a package at a ref, or the surface diff between two refs.
+
+    **When to use this vs other tools:**
+    - Use this INSTEAD of reading __init__.py by hand → follows __all__, a
+      lazy-import table (`__getattr__`), TYPE_CHECKING imports and re-export
+      chains to each name's real definition; inherited members are marked
+    - Pass against=REF → names added, removed, changed signature, or moved
+      to a different module between ref and against
+    - ref=None reads the working tree; ref="v1.0"/"HEAD~5"/a branch reads the
+      package as committed there, with no checkout
+
+    The package's dominant file extension picks which language's export
+    rules apply (Python's __all__ and lazy-import conventions today).
+
+    Args (tiered — most calls need only Common):
+        Common:
+            package_dir: Directory of the package (contains __init__.py for Python)
+            against: Diff the surface against this second ref (the "B" side)
+        Semantics & display:
+            ref: Read the package as of this git ref (default: the working tree)
+            output_format: Output format - "tree" or "json" (default: "tree")
+
+    Returns:
+        Public names grouped by defining module, or an added/removed/changed/moved diff
+    """
+    try:
+        from .surface import format_surface, format_surface_diff, surface_to_json
+
+        label_a = f"@{ref}" if ref else "@WORKTREE"
+        surface_a = _surface_at(package_dir, ref)
+        if against:
+            surface_b = _surface_at(package_dir, against)
+            if output_format == "json":
+                document = {
+                    "direction": f"{label_a} → @{against}",
+                    "a": surface_to_json(surface_a, label_a),
+                    "b": surface_to_json(surface_b, f"@{against}"),
+                }
+                return [TextContent(type="text", text=json.dumps(document, indent=2))]
+            text = format_surface_diff(surface_a, surface_b, label_a, f"@{against}")
+            return [TextContent(type="text", text=text)]
+        if output_format == "json":
+            return [
+                TextContent(
+                    type="text", text=json.dumps(surface_to_json(surface_a, label_a), indent=2)
+                )
+            ]
+        return [TextContent(type="text", text=format_surface(surface_a, label_a))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error reading surface: {e}")]
+
+
+@mcp.tool(
+    tags={"local", "overlap", "review"},
+    description="N branches against one base, each diffed at its own merge-base: structures every branch shares, colliding new names, and a suggested merge order"
+    + shell_hint("overlap <base> <branch>..."),
+)
+def overlap(
+    base: str,
+    branches: list[str],
+    repo: str | None = None,
+    output_format: str = "tree",
+) -> list[TextContent]:
+    """
+    N branches compared against one base, each at its own merge-base with base.
+
+    **When to use this vs other tools:**
+    - Use this BEFORE merging several branches → structures two or more
+      branches changed the same way (safe to merge in any order), branches
+      that add the same new name in different files (a collision to resolve
+      before merging), and branches that already share commits (stacked, not
+      independent)
+    - Use scan_diff for one ref against the working tree; use this once you
+      have several candidate branches and a common base
+
+    Each branch is diffed against its OWN merge-base with base, not base's
+    tip, so a branch's own commits are never confused with what base moved
+    afterward; base_moved marks structures base itself changed since branches
+    forked. A branch already an ancestor of base (or patch-equivalent to it)
+    is flagged, not silently folded in.
+
+    Args (tiered — most calls need only Common):
+        Common:
+            base: The base ref every branch is compared against
+            branches: Candidate branches (or any refs) to compare against base
+        Semantics & display:
+            repo: Repository directory (default: the one the server's cwd is inside)
+            output_format: Output format - "tree" or "json" (default: "tree")
+
+    Returns:
+        Per-branch merge-base/ahead/behind, structures shared across branches,
+        colliding new names, and a suggested merge order
+    """
+    try:
+        from .overlap import format_overlap, overlap_to_json
+        from .overlap import overlap as compute_overlap
+        from .structural_diff import repo_top, verify_ref
+
+        where = repo or os.getcwd()
+        top = repo_top(where)
+        if top is None:
+            raise RefError(f"{where} is not inside a git repository; pass repo")
+        for candidate in (base, *branches):
+            if not verify_ref(top, candidate):
+                raise RefError(f"unknown ref {candidate!r} in {top}")
+        result = compute_overlap(top, base, branches)
+        if output_format == "json":
+            return [TextContent(type="text", text=json.dumps(overlap_to_json(result), indent=2))]
+        return [TextContent(type="text", text=format_overlap(result))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error computing overlap: {e}")]
+
+
+@mcp.tool(
+    tags={"local", "callers", "search"},
+    description="Actual call sites of a function or method across a directory (never a mention in prose, a comment, a docstring or a string literal), with its definition(s)"
+    + shell_hint("callers <name>", "callers <name> --dir <dir>"),
+)
+def callers(
+    name: str,
+    directory: str = ".",
+    ref: str | None = None,
+    output_format: str = "tree",
+) -> list[TextContent]:
+    """
+    Actual call sites of a function or method, with its definition(s).
+
+    **When to use this vs other tools:**
+    - Use this INSTEAD of search_structures/grep for "who calls X" → only
+      real call sites count, each with its caller (function, method, or
+      "(module level)") and the calling line; a mention in a docstring,
+      comment or string literal never appears
+    - Use search_structures for definitions or free text; use this once you
+      have a name and want its callers
+
+    name may be bare ("target") or qualified with the language's own
+    qualifier ("Box.method") to disambiguate same-named methods on different
+    classes; a bare name matches call sites regardless of which class holds
+    the method.
+
+    Args (tiered — most calls need only Common):
+        Common:
+            name: Function, method, or Class.method to find callers of
+            directory: Directory to scan (default: the current directory)
+        Semantics & display:
+            ref: Read the directory as of this git ref (default: the working tree)
+            output_format: Output format - "tree" or "json" (default: "tree")
+
+    Returns:
+        Definition site(s) plus every real call site, grouped by file
+    """
+    try:
+        from .callers import callers_to_json, find_callers, format_callers
+
+        label = f"@{ref}" if ref else ""
+        if ref:
+            top, rel = repo_and_rel(directory)
+            if ref_kind(top, ref, rel) != "tree":
+                raise RefError(f"{spec(ref, rel)} is not a directory")
+            with materialised(top, ref, rel, os.path.basename(os.path.abspath(directory))) as tree:
+                found = find_callers(tree, name)
+        elif not os.path.isdir(directory):
+            raise RefError(f"{directory} is not a directory")
+        else:
+            found = find_callers(directory, name)
+        if output_format == "json":
+            return [
+                TextContent(type="text", text=json.dumps(callers_to_json(found, label), indent=2))
+            ]
+        return [TextContent(type="text", text=format_callers(found, label))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error finding callers: {e}")]
+
+
+_RESOLVE_RANGE_SUFFIX = re.compile(r" \((\d+)(?:-(\d+))?\)$")
+
+
+def _split_resolve_address(address: str) -> tuple[str, str, str | None]:
+    """`path::name[@ref][ (a-b)]` -> (path, name[ (a-b)], ref). Mirrors
+    cli.py's `_split_address` for the same address form (resolve does not
+    need the quoted-heading case focus does, but accepts it for symmetry)."""
+    span = _RESOLVE_RANGE_SUFFIX.search(address)
+    if span:
+        address = address[: span.start()]
+    path, sep, name = address.rpartition("::")
+    if not sep:
+        raise ValueError("give path:line or path::name")
+    ref = None
+    if name.startswith('"'):
+        closing = name.find('"', 1)
+        if closing > 0 and name[closing + 1 :].startswith("@"):
+            ref = name[closing + 2 :]
+            name = name[: closing + 1]
+    elif "@" in name:
+        name, _, ref = name.rpartition("@")
+    if span:
+        name += span.group(0)
+    return path, name, ref or None
+
+
+@mcp.tool(
+    tags={"local", "resolve", "refs"},
+    description="Translate a path:line or path::name address from one git ref to another - the same structure's new address, a rename, or that it's gone (with the nearest names)"
+    + shell_hint("resolve <path:line> --from REF", "resolve <path::name> --from REF --to REF"),
+)
+def resolve(
+    location: str,
+    ref_from: str | None = None,
+    ref_to: str = "WORKTREE",
+    repo: str | None = None,
+    output_format: str = "tree",
+) -> list[TextContent]:
+    """
+    Translate an address (a line, or a structure's name) from one git ref to another.
+
+    **When to use this vs other tools:**
+    - Use this to carry a location across history → a line number or a
+      structure's name at ref_from resolves to the structure that contains
+      it (for a line) or matches it (for a name), then reports where that
+      SAME structure lives at ref_to: same key, renamed (identical body,
+      different name), or gone (with the nearest names by similarity)
+    - Output is valid input: scan_diff/scan_file/focus print addresses like
+      `path::name` you can hand straight back here
+
+    location is `path:line` (which structure encloses this line at ref_from)
+    or `path::name` (which structure has this name at ref_from); a
+    `path::name@REF` address supplies ref_from itself when ref_from is omitted.
+
+    Args (tiered — most calls need only Common):
+        Common:
+            location: `path:line` or `path::name[@ref_from]` to resolve
+            ref_from: The ref the address is read at (required unless the
+                address itself carries @ref)
+        Semantics & display:
+            ref_to: The ref to resolve the address into (default: the working tree)
+            repo: Repository directory; location is then relative to it
+            output_format: Output format - "tree" or "json" (default: "tree")
+
+    Returns:
+        The resolved address at ref_to (same key or renamed), or "gone" with
+        the nearest names by similarity
+    """
+    try:
+        from .resolve import Resolution, format_resolution, resolution_to_json
+        from .resolve import resolve as resolve_address
+        from .structural_diff import repo_top, verify_ref
+
+        target: str | int
+        if "::" in location:
+            path, name, ref_in_address = _split_resolve_address(location)
+            target = name
+            if ref_in_address and not ref_from:
+                ref_from = ref_in_address
+        else:
+            path, sep, line = location.rpartition(":")
+            if not sep or not line.isdigit():
+                raise ValueError("give path:line or path::name")
+            target = int(line)
+        if not ref_from:
+            raise ValueError("ref_from is required (or an address carrying @REF)")
+        top = repo_top(repo or os.path.dirname(os.path.abspath(path)))
+        if top is None:
+            raise RefError(f"{path} is not inside a git repository; pass repo")
+        rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
+        if repo:
+            rel = path.replace(os.sep, "/")
+        for candidate in (ref_from, ref_to):
+            if not verify_ref(top, candidate):
+                raise RefError(f"unknown ref {candidate!r} in {top}")
+        outcome = resolve_address(top, rel, target, ref_from, ref_to)
+        if not isinstance(outcome, Resolution):
+            return [TextContent(type="text", text=outcome)]
+        text = (
+            json.dumps(resolution_to_json(outcome), indent=2)
+            if output_format == "json"
+            else format_resolution(outcome)
+        )
+        if path != rel:
+            text = text.replace(rel, path, 1)
+        return [TextContent(type="text", text=text)]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error resolving: {e}")]
 
 
 def main():
