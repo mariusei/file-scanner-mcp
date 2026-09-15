@@ -1,4 +1,4 @@
-<6 public names, 6 via definition> package sql @WORKTREE
+<7 public names, 7 via definition> package sql @WORKTREE
 basic
   users                                                                 sql/basic.sql:4
   products                                                              sql/basic.sql:12
@@ -8,4 +8,5 @@ WHERE create...   sql/basic.sql:20
   calculate_discount  (price DECIMAL, discount_pct INT) -> DECIMAL      sql/basic.sql:26
   idx_username  ON users (username)                                     sql/basic.sql:31
   idx_product_price  ON products (name, price)                          sql/basic.sql:34
+  sale_prices  SELECT product_id, name, calculate_discount(price,...    sql/basic.sql:38
 [exit 0]

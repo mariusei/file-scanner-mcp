@@ -1,1 +1,10 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.sql  (+1 ~1 =1 -1)
+  + idx_products_stock ON products (stock_quantity)                    B:34
+  ~ calculate_discount(price DECIMAL, discount_pct INT, min_price DECIMAL) -> DECIMAL   A:26 → B:26   [signature: (price DECIMAL, discount_pct INT) -> DECIMAL → (price DECIMAL, discount_pct INT, min_price DECIMAL) -> DECIMAL]
+  = recent_users SELECT id, username, email FROM users WHERE create...   A:20 → B:20   [renamed from active_users]
+  - idx_product_price ON products (name, price)                        A:34
+
+summary: 1 file, +1 ~1 =1 -1 structures
+[exit 0]

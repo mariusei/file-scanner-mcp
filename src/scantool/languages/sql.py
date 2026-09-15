@@ -564,7 +564,7 @@ class SQLLanguage(BaseLanguage):
 
         # Look for comment immediately before this node
         while prev:
-            if prev.type == "comment":
+            if prev.type in ("comment", "marginalia"):  # -- line, /* */ block
                 comment_text = self._get_node_text(prev, source_code).strip()
 
                 # Handle single-line comments (--)
