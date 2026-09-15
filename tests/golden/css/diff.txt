@@ -1,1 +1,11 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.css  (+1 ~2 =1 -1)
+  + .card 1 sel, 2 decl             B:113
+  ~ :root 1 sel, 5 decl             A:6 → B:6   [body: 1 doc line]
+  ~ .btn 1 sel, 4 decl              A:43 → B:39   [body: 1 code line]
+  = .site-footer 1 sel, 3 decl      A:110 → B:106   [renamed from .footer]
+  - .nav-link:hover 1 sel, 1 decl   A:38
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]

@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.css::screen and (max-width: 768px)..header@v1 (62-64)
+basic.css::screen and (max-width: 768px)..header@v2 (58-60)
+[exit 0]
