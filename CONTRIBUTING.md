@@ -622,9 +622,14 @@ use them instead of implementing a rule of their own:
 - `is_exempt_from_unreferenced(definition)` — whether CODE HEALTH must skip a
   definition its runtime or test runner invokes without a textual
   reference (Python: dunders, pytest's `test_*`). Default: no exemption.
+- `SURFACE_CONTAINER_TYPES` — node types the default surface looks through
+  rather than lists: a grouping a file wraps its definitions in (C#'s
+  `namespace`) is not a name the package exports, the types inside it are.
+  Default: empty.
 - `public_surface(package_dir, read_file)` — the names a package exports,
   as `Export` records (`models.py`). Default: the top-level definitions in
-  the package's files that `is_private` does not reject. A language with an
+  the package's files (through `SURFACE_CONTAINER_TYPES`) that `is_private`
+  does not reject. A language with an
   explicit export mechanism overrides it: `python.py` follows `__all__`, a
   PEP 562 lazy table, `TYPE_CHECKING` and re-export chains and renders
   signatures with `ast` — the only place `ast` is used. TypeScript

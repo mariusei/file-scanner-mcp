@@ -152,7 +152,9 @@ def _resolve_name(structures: list[StructureNode], focus: str) -> list[tuple[Str
         for node, ancestors in nodes:
             if node.name != leaf:
                 continue
-            names = [a.name for a in ancestors]
+            # An ancestor's own name may be dotted (a C# namespace
+            # `MyApp.Services`, a CSS class `.btn`): match segment by segment
+            names = [seg for a in ancestors for seg in a.name.split(".")]
             it = iter(names)
             if all(seg in it for seg in parents):  # subsequence, in order
                 qualified.append((node, ancestors))

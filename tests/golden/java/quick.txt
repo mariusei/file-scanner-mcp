@@ -7,9 +7,9 @@ Basic.java (5-129)
        String getApiKey();
        String getEndpoint();
        int getTimeout();
-  - getApiKey () : String @15
-  - getEndpoint () : String @16
-  - getTimeout () : int @17
+  - getApiKey () : String @15 [public]
+  - getEndpoint () : String @16 [public]
+  - getTimeout () : int @17 [public]
 - DatabaseManager @23 [public] # Manages database connections and queries.
   - DatabaseManager (String connectionString) @30 [public] # Constructs a new DatabaseManager with the given connection string.
      public DatabaseManager(String connectionString) {

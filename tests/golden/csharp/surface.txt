@@ -1,4 +1,10 @@
-<1 public name, 1 via definition> package csharp @WORKTREE
+<7 public names, 7 via definition> package csharp @WORKTREE
 Basic
-  MyApp.Services     csharp/Basic.cs:9
+  IConfig               csharp/Basic.cs:14
+  DatabaseManager       csharp/Basic.cs:24
+  UserService           csharp/Basic.cs:78
+  EmailValidator        csharp/Basic.cs:123
+  Point                 csharp/Basic.cs:137
+  UserRole              csharp/Basic.cs:163
+  ConnectionRetrier     csharp/Basic.cs:173
 [exit 0]

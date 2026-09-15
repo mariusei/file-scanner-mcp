@@ -187,3 +187,122 @@ def test_boundary_nothing_outside_languages_knows_a_syntax():
                 line = text.count("\n", 0, match.start()) + 1
                 offenders.append(f"{path.name}:{line}: {label}: {match.group(0).strip()}")
     assert not offenders, "\n".join(offenders)
+
+
+def test_swift_privacy_reads_the_visibility_keyword():
+    """Swift hides a name with `private`/`fileprivate` only: `internal`, the
+    default, is API to every file of the module, and a setter restriction
+    (`private(set)`) restricts writing, not the name. A leading underscore
+    means nothing to the compiler."""
+    from scantool.languages.models import StructureNode
+
+    swift = get_language(".swift")
+
+    def node(name, *modifiers):
+        return StructureNode(
+            type="function", name=name, start_line=1, end_line=1, modifiers=list(modifiers)
+        )
+
+    assert swift.is_private(node("retry", "private"))
+    assert swift.is_private(node("helper", "fileprivate"))
+    assert not swift.is_private(node("validateEmail"))
+    assert not swift.is_private(node("connect", "public"))
+    assert not swift.is_private(node("isConnected", "private(set)"))
+    assert not swift.is_private(node("_underscored"))
+    assert swift.is_private(_definition("retry", modifiers=["private"]))
+
+
+def test_swift_unreferenced_exemption_is_xctest_discovery():
+    """XCTest runs `test…` methods of XCTestCase subclasses by name. The hook
+    cannot see the superclass, so the enclosing class's conventional name
+    is the proxy; the same method name elsewhere is a normal definition."""
+    swift = get_language(".swift")
+
+    def method(name, parent, kind="class"):
+        return _definition(name, parent=parent, enclosing_kind=kind)
+
+    assert swift.is_exempt_from_unreferenced(method("testConnect", "DatabaseManagerTests"))
+    assert swift.is_exempt_from_unreferenced(method("testRetry", "RetryTest"))
+    assert not swift.is_exempt_from_unreferenced(method("testConnect", "DatabaseManager"))
+    assert not swift.is_exempt_from_unreferenced(method("connect", "DatabaseManagerTests"))
+    assert not swift.is_exempt_from_unreferenced(method("testConnect", "LoggerTests", "protocol"))
+    assert not swift.is_exempt_from_unreferenced(_definition("testConnect"))
+
+
+def test_java_privacy_is_public_only():
+    """A package's surface is what other packages can name: `public` only.
+    No keyword is package-private, `protected` is subclass API, `private`
+    hides; a name's spelling means nothing to the compiler."""
+    from scantool.languages.models import StructureNode
+
+    java = get_language(".java")
+
+    def node(name, *modifiers):
+        return StructureNode(
+            type="method", name=name, start_line=1, end_line=1, modifiers=list(modifiers)
+        )
+
+    assert not java.is_private(node("connect", "public"))
+    assert not java.is_private(node("validateEmail", "public", "static"))
+    assert java.is_private(node("tryConnect", "private", "static"))
+    assert java.is_private(node("onLoad", "protected"))
+    assert java.is_private(node("helper"))  # package-private
+    assert not java.is_private(node("_odd", "public"))
+    assert java.is_private(_definition("helper"))
+
+
+def test_java_surface_is_the_public_types_without_the_package_line(tmp_path):
+    (tmp_path / "Lib.java").write_text(
+        "package com.example;\n\n"
+        "public interface Api {\n    String name();\n}\n\n"
+        'class Impl implements Api {\n    public String name() { return "x"; }\n}\n\n'
+        "public class Widget {\n    private static int count;\n}\n"
+    )
+    names = [(e.name, e.kind, e.via) for e in read_surface(str(tmp_path)).exports]
+    assert names == [("Api", "interface", "definition"), ("Widget", "class", "definition")]
+
+
+def test_csharp_privacy_is_public_only():
+    """An assembly's surface is what other assemblies can name: `public`
+    only. `internal` (a type's default) stays in the assembly, `private`
+    (a member's default) in the type, `protected` is subclass API."""
+    from scantool.languages.models import StructureNode
+
+    csharp = get_language(".cs")
+
+    def node(name, *modifiers):
+        return StructureNode(
+            type="method", name=name, start_line=1, end_line=1, modifiers=list(modifiers)
+        )
+
+    assert not csharp.is_private(node("Connect", "public"))
+    assert not csharp.is_private(node("ValidateEmail", "public", "static"))
+    assert csharp.is_private(node("TryConnect", "private", "static"))
+    assert csharp.is_private(node("Helper", "internal"))
+    assert csharp.is_private(node("OnLoad", "protected"))
+    assert csharp.is_private(node("Plain"))
+    assert not csharp.is_private(node("_odd", "public"))
+    assert csharp.is_private(_definition("Plain"))
+
+
+def test_csharp_surface_is_the_public_types_inside_the_namespace(tmp_path):
+    """A file's types sit inside a namespace node; the namespace is a
+    grouping, not an export, and the default walk looks through it
+    (SURFACE_CONTAINER_TYPES). Block-scoped and file-scoped alike."""
+    (tmp_path / "Lib.cs").write_text(
+        "namespace MyApp.Core\n{\n"
+        "    public interface IApi { string Name(); }\n"
+        '    internal class Impl : IApi { public string Name() => "x"; }\n'
+        "    public class Widget { private int _count; }\n"
+        "}\n"
+    )
+    (tmp_path / "Scoped.cs").write_text(
+        "namespace MyApp.Core;\n\npublic record Token(string Value);\nclass Hidden {}\n"
+    )
+    names = [(e.name, e.kind, e.module) for e in read_surface(str(tmp_path)).exports]
+    assert names == [
+        ("IApi", "interface", "Lib"),
+        ("Widget", "class", "Lib"),
+        ("Token", "record", "Scoped"),
+    ]
+    assert not BaseLanguage.SURFACE_CONTAINER_TYPES

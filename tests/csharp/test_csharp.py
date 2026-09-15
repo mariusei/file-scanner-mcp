@@ -486,3 +486,27 @@ def test_complex_method_signatures(file_scanner):
     assert "Task" in sig or "IEnumerable" in sig or "Func" in sig or "Predicate" in sig, (
         f"Should preserve complex types in: {sig}"
     )
+
+
+def test_interface_members_record_their_implicit_public():
+    """An interface member has no keyword yet is public by the language;
+    the handler records what the compiler sees. A C# 8 member with its own
+    visibility keeps it; a class member with no keyword stays as written
+    (implicitly private, which the privacy hook reads as such)."""
+    source = (
+        "public interface IApi\n{\n"
+        "    string Name { get; }\n"
+        "    int Version();\n"
+        "    private static int Secret() => 1;\n"
+        "}\n"
+        "class Plain\n{\n"
+        "    void Helper() {}\n"
+        "}\n"
+    )
+    structures = FileScanner().scan_content(source, "Api.cs")
+    api = {node.name: node.modifiers for node in structures[0].children}
+    assert api["Name"] == ["public"]
+    assert api["Version"] == ["public"]
+    assert api["Secret"] == ["private", "static"]
+    plain = {node.name: node.modifiers for node in structures[1].children}
+    assert plain["Helper"] == []

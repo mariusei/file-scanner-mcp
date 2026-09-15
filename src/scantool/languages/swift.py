@@ -76,6 +76,32 @@ class SwiftLanguage(BaseLanguage):
             return True
         return defn.enclosing_kind == "protocol"
 
+    # ── Naming conventions and the public surface ─────────────────────────────
+    # Swift's visibility is a keyword the handler records in modifiers. The
+    # surface of a module is what the module's own code can see, so `internal`
+    # (the default when no keyword is written) counts as public here — a Swift
+    # package is compiled as a module, and every internal name is API to every
+    # file in it. Only `private` and `fileprivate` hide a name. A setter
+    # restriction (`private(set)`) restricts writing, not the name: the handler
+    # records it verbatim so it never reads as the declaration's visibility.
+    _PRIVATE_SWIFT = frozenset({"private", "fileprivate"})
+
+    def is_private(self, node) -> bool:
+        return any(m in self._PRIVATE_SWIFT for m in node.modifiers)
+
+    def is_exempt_from_unreferenced(self, definition) -> bool:
+        """XCTest discovers `test…` methods by name on XCTestCase subclasses;
+        nothing in the corpus references them. The hook sees the enclosing
+        class's name (`parent`) but not its superclass, so the proxy is the
+        naming convention the XCTest templates fix: a class called
+        `…Tests`, `…Test` or `…TestCase`. A `test…` method on a class named
+        otherwise stays a normal definition."""
+        return (
+            definition.name.startswith("test")
+            and definition.enclosing_kind == "class"
+            and (definition.parent or "").endswith(("Tests", "Test", "TestCase"))
+        )
+
     @staticmethod
     def _parse_conformances(signature: str | None) -> list[str]:
         """Names in a type's inheritance clause (`: Base, Proto<T> where …`)."""
@@ -698,6 +724,10 @@ class SwiftLanguage(BaseLanguage):
                     # Extract text from the deepest level
                     mod_text = self._get_node_text(mod_child, source_code).strip()
                     if mod_text in modifier_keywords:
+                        modifiers.append(mod_text)
+                    elif mod_text.endswith("(set)"):
+                        # `private(set)`: a setter restriction, recorded whole so
+                        # it never reads as the declaration's own visibility
                         modifiers.append(mod_text)
                     else:
                         # Check leaf nodes

@@ -1,6 +1,5 @@
-<6 public names, 6 via definition> package java @WORKTREE
+<5 public names, 5 via definition> package java @WORKTREE
 Basic
-  com.example.demo      java/Basic.java:5
   Config                java/Basic.java:14
   DatabaseManager       java/Basic.java:23
   UserService           java/Basic.java:62

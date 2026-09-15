@@ -55,6 +55,21 @@ class CSharpLanguage(BaseLanguage):
             return True
         return defn.enclosing_kind == "interface"
 
+    # ── Naming conventions and the public surface ─────────────────────────────
+    # C#'s visibility is a keyword the handler records in modifiers. The surface
+    # of an assembly is what other assemblies can name, so only `public` is
+    # public here: `internal` (the default for a type without a keyword) stays
+    # inside the assembly, `private` (the default for a member) inside the
+    # type, `protected` is API to subclasses rather than to the assembly's
+    # users. Interface members carry no keyword yet are public by the language;
+    # the handler records that `public` (see _extract_structure). A file's
+    # definitions sit inside a namespace node, which is a grouping, not an
+    # export: the surface walk looks through it to the types.
+    SURFACE_CONTAINER_TYPES = frozenset({"namespace"})
+
+    def is_private(self, node) -> bool:
+        return "public" not in node.modifiers
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -183,6 +198,7 @@ class CSharpLanguage(BaseLanguage):
                 if body:
                     for child in body.children:
                         traverse(child, interface_node.children)
+                self._record_implicit_public(interface_node.children)
 
             # Structs
             elif node.type == "struct_declaration":
@@ -598,6 +614,17 @@ class CSharpLanguage(BaseLanguage):
 
         signature = " ".join(parts) if parts else None
         return self._normalize_signature(signature) if signature else None
+
+    _VISIBILITY = ("public", "internal", "protected", "private")
+
+    def _record_implicit_public(self, members: list[StructureNode]) -> None:
+        """Interface members are public by the language without writing the
+        keyword (C# 8 lets one write a visibility on a default-implemented
+        member, which stays); record what the compiler sees so the privacy
+        hook reads one rule for every node."""
+        for member in members:
+            if not any(m in self._VISIBILITY for m in member.modifiers):
+                member.modifiers.insert(0, "public")
 
     def _extract_modifiers(self, node: Node, source_code: bytes) -> list[str]:
         """Extract modifiers like public, private, static, readonly, async, virtual, override, abstract."""

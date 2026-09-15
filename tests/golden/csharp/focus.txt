@@ -1,2 +1,18 @@
-focus 'MyApp.Services.IConfig' matches no node. Top-level nodes: using directives, MyApp.Services
-[exit 1]
+Basic.cs::MyApp.Services.IConfig (14-19)
+Basic.cs (5-201)
+- using directives @5
+- MyApp.Services @9
+  - IConfig @14 [public] # Configuration interface for application settings.
+     14 |     public interface IConfig
+     15 |     {
+     16 |         string ApiKey { get; }
+     17 |         string Endpoint { get; }
+     18 |         int Timeout { get; }
+     19 |     }
+  - DatabaseManager @24 [public] # Manages database connections and queries.
+  - UserService @78 [public] # Handles user-related operations.
+  - EmailValidator @123 [public static] # Utility class for email validation.
+  - Point @137 [public] # Represents a point in 2D space.
+  - UserRole @163 [public] # User role enumeration.
+  - ConnectionRetrier @173 [public static] # Retries a connection until it succeeds or the budget is spent.
+[exit 0]

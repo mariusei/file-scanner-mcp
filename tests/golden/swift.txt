@@ -28,7 +28,7 @@ basic.swift (3-128)
          case .pending: return "Pending"
 - DatabaseManager @39 [public] # Database manager class for handling connections
   - connectionString : String @40 [private]
-  - isConnected : Bool @41 [private]
+  - isConnected : Bool @41 [private(set)]
   - init (connectionString: String) @44 [public] # Initialize with connection string
      public init(connectionString: String) {
          self.connectionString = connectionString
