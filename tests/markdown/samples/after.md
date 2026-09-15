@@ -62,10 +62,6 @@ export SCANTOOL_PATH=/usr/local/bin
 
 Main components of the system.
 
-### FileScanner Class
-
-The main scanner class handles file parsing.
-
 ### TreeFormatter Class
 
 Formats output as a tree structure.
@@ -78,7 +74,7 @@ Multiple formatting options are available.
 
 Guidelines for contributors.
 
-### Code Style
+### Style Guide
 
 Follow PEP 8 for Python code.
 
@@ -90,9 +86,13 @@ Run the test suite:
 pytest tests/
 ```
 
+### Linting
+
+Run `ruff check` before committing.
+
 ## License
 
-MIT License
+Apache License 2.0
 
 Copyright information goes here.
 

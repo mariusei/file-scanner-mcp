@@ -1,1 +1,14 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (2fd9a1e)
+a  merge-base 2fd9a1e  1 ahead 0 behind  1 file, +2 ~1 -2 structures
+b  merge-base 2fd9a1e  1 ahead 0 behind  1 file, +2 ~1 -2 structures
+overlap (structures touched by 2+ branches): 5 in 1 file
+  basic.md::Code Style          a(-)  b(-)
+  basic.md::FileScanner Class   a(-)  b(-)
+  basic.md::License             a(~)  b(~)
+  basic.md::Linting             a(+)  b(+)
+  basic.md::Style Guide         a(+)  b(+)
+colliding new names (added independently on 2+ branches): 2
+  Linting       a:basic.md:89  b:basic.md:89
+  Style Guide   a:basic.md:77  b:basic.md:77
+merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
+[exit 0]

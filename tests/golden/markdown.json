@@ -170,13 +170,13 @@
       "type": "heading-1",
       "name": "Alternative Heading Style",
       "start_line": 99,
-      "end_line": 119,
+      "end_line": 129,
       "children": [
         {
           "type": "heading-2",
           "name": "Subheading with Underline",
           "start_line": 104,
-          "end_line": 119,
+          "end_line": 129,
           "children": [
             {
               "type": "code-block",
@@ -189,7 +189,7 @@
               "type": "heading-3",
               "name": "Final Section",
               "start_line": 116,
-              "end_line": 119
+              "end_line": 129
             }
           ]
         }
