@@ -1,9 +1,12 @@
-<1 file seen, 18 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /validateEmail/
+<1 file seen, 21 structures shown, 1 excluded (.git/)>
+3 hits in 2 structures for /tryConnect/
 
 ./Basic.java
-- EmailValidator > validateEmail (String email) : boolean @101-103  (1 hit)
-   101 | public static boolean validateEmail(String email) {
+- ConnectionRetrier > retryConnect (DatabaseManager db) : boolean @116-123  (2 hits)
+   116 | public static boolean retryConnect(DatabaseManager db) {
+   118 | if (tryConnect(db)) {
+- ConnectionRetrier > tryConnect (DatabaseManager db) : boolean @125-128  (1 hit)
+   125 | private static boolean tryConnect(DatabaseManager db) {
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]
