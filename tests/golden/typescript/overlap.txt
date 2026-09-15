@@ -1,1 +1,15 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (0bd12bc)
+a  merge-base 0bd12bc  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base 0bd12bc  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
+  basic.ts::AuthService              a(~)  b(~)
+  basic.ts::AuthService.logout       a(-)  b(-)
+  basic.ts::UserManager.patchUser    a(+)  b(+)
+  basic.ts::UserManager.updateUser   a(-)  b(-)
+  basic.ts::health                   a(+)  b(+)
+  basic.ts::validateEmail            a(~)  b(~)
+colliding new names (added independently on 2+ branches): 2
+  health      a:basic.ts:112  b:basic.ts:112
+  patchUser   a:basic.ts:80  b:basic.ts:80
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+[exit 0]

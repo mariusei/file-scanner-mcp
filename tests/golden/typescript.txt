@@ -1,5 +1,5 @@
-<1 file seen, 15 structures shown>
-basic.ts (5-114)
+<1 file seen, 16 structures shown>
+basic.ts (5-131)
 - import statements @5
 - Config @11 # Configuration interface for authentication service.
    interface Config {
@@ -15,7 +15,7 @@ basic.ts (5-114)
   - logout (userId: string) : Promise<void> @42 [async] # Logs out a user by their ID.
   - validateToken (token: string) : boolean @49 # Validates an authentication token.
      validateToken(token: string): boolean {
-       return token.length > 0;
+       return retry(() => token.length > 0);
 - UserManager @57 # Manager class for user CRUD operations.
   - constructor (database: Database) @60
      constructor(database: Database) {
@@ -40,5 +40,10 @@ basic.ts (5-114)
 - calculateStats (users: User[]) : { total: number; active: number } @109 # Arrow function to calculate statistics.
    const calculateStats = (users: User[]): { total: number; active: number } => {
      return {
-       …
-       active: users.filter(u => u.isActive).length,
+     …
+- retry (action: () => boolean, attempts: number = MAX_ATTEMPTS) : boolean @124 # Runs `action` until it returns true or the attempts are spent (not exported).
+   function retry(action: () => boolean, attempts: number = MAX_ATTEMPTS): boolean {
+     for (let i = 0; i < attempts; i++) {
+       if (action()) {
+         return true;
+     return false;

@@ -1,5 +1,5 @@
 basic.ts::AuthService.constructor (26-29)
-basic.ts (5-114)
+basic.ts (5-131)
 - import statements @5
 - Config @11 # Configuration interface for authentication service.
 - AuthService @19 # Service for handling user authentication and authorization.
@@ -15,4 +15,5 @@ basic.ts (5-114)
 - generateId () : string @95 # Generates a random unique identifier.
 - validateEmail (email: string) : boolean @102 # Validates an email address format.
 - calculateStats (users: User[]) : { total: number; active: number } @109 # Arrow function to calculate statistics.
+- retry (action: () => boolean, attempts: number = MAX_ATTEMPTS) : boolean @124 # Runs `action` until it returns true or the attempts are spent (not exported).
 [exit 0]

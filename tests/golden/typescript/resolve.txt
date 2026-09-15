@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.ts::AuthService.constructor@v1 (26-29)
+basic.ts::AuthService.constructor@v2 (26-29)
+[exit 0]

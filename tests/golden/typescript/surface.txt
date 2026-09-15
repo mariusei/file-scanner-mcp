@@ -1,9 +1,10 @@
-<6 public names, 6 via definition> package typescript @WORKTREE
+<7 public names, 7 via definition> package typescript @WORKTREE
 basic
-  Config                                                                typescript/basic.ts:11
-  AuthService                                                           typescript/basic.ts:19
-  UserManager                                                           typescript/basic.ts:57
-  generateId  () : string                                               typescript/basic.ts:95
-  validateEmail  (email: string) : boolean                              typescript/basic.ts:102
-  calculateStats  (users: User[]) : { total: number; active: number }   typescript/basic.ts:109
+  Config                                                                      typescript/basic.ts:11
+  AuthService                                                                 typescript/basic.ts:19
+  UserManager                                                                 typescript/basic.ts:57
+  generateId  () : string                                                     typescript/basic.ts:95
+  validateEmail  (email: string) : boolean                                    typescript/basic.ts:102
+  calculateStats  (users: User[]) : { total: number; active: number }         typescript/basic.ts:109
+  retry  (action: () => boolean, attempts: number = MAX_ATTEMPTS) : boolean   typescript/basic.ts:124
 [exit 0]
