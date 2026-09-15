@@ -1,12 +1,9 @@
-<1 file seen, 23 structures shown, 1 excluded (.git/)>
-3 hits in 2 structures for /style/
+<1 file seen, 24 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /site\-meta/
 
 ./basic.html
-- style @69-72  (2 hits)
-   69 | <style>
-   72 | </style>
-- (module level) @7-7  (1 hit)
-   7 | <link rel="stylesheet" href="styles/main.css">
+- site-meta 0 items @82-87  (1 hit)
+   82 | <dl id="site-meta">
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

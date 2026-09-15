@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.html::Main navigation@v1 (13-19)
+basic.html::Main navigation@v2 (13-19)
+[exit 0]

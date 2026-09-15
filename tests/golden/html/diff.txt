@@ -1,1 +1,12 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.html  (+2 ~1 =1 -2)
+  + faq #faq                        B:55
+  + Frequently Asked Questions H2   B:56
+  ~ article                         A:23 → B:23   [body: 1 doc line]
+  = site-footer #site-footer        A:65 → B:62   [renamed from main-footer; signature: #main-footer → #site-footer]
+  - sidebar #sidebar                A:56
+  - Related Links H3                A:57
+
+summary: 1 file, +2 ~1 =1 -2 structures
+[exit 0]
