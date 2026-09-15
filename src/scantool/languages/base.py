@@ -12,7 +12,7 @@ import os
 import re
 import textwrap
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -753,6 +753,11 @@ class BaseLanguage(ABC):
     # Node types that are never a public name even when their name is on the
     # declaring line: a comment block or a docstring is prose, not an export
     NON_EXPORT_TYPES: frozenset[str] = frozenset({"file-info", "comment", "docstring"})
+    # Node types the default surface walk descends through instead of listing:
+    # a grouping the file wraps its definitions in (a C# namespace) is not a
+    # name the package exports, the types inside it are. Empty: the file's
+    # top-level nodes are the definitions.
+    SURFACE_CONTAINER_TYPES: frozenset[str] = frozenset()
 
     def is_private_name(self, name: str) -> bool:
         """Whether the language's convention marks this bare name as not part
@@ -789,14 +794,24 @@ class BaseLanguage(ABC):
         self, package_dir: str, read_file: Callable[[str], str | None]
     ) -> list[Export]:
         """The public surface of a package directory: every top-level
-        definition the language does not mark private, one Export per name,
-        in the files' order. Languages with an explicit export mechanism
-        (__all__, export, pub) override this; read_file(path) returns a
-        file's text or None, so the same walk serves a working tree and a
-        materialised ref."""
+        definition the language does not mark private (looking through
+        SURFACE_CONTAINER_TYPES), one Export per name, in the files' order.
+        Languages with an explicit export mechanism (__all__, export, pub)
+        override this; read_file(path) returns a file's text or None, so
+        the same walk serves a working tree and a materialised ref."""
         exports: list[Export] = []
         root = os.path.dirname(os.path.abspath(package_dir))
         extensions = tuple(self.get_extensions())
+
+        def definitions(nodes: list[StructureNode]) -> Iterator[StructureNode]:
+            for node in nodes:
+                if node.type in self.SURFACE_CONTAINER_TYPES:
+                    yield from definitions(node.children)
+                elif not (
+                    node.synthetic or node.type in self.NON_EXPORT_TYPES or self.is_private(node)
+                ):
+                    yield node
+
         for name in sorted(os.listdir(package_dir)):
             path = os.path.join(package_dir, name)
             if not (os.path.isfile(path) and name.lower().endswith(extensions)):
@@ -805,9 +820,7 @@ class BaseLanguage(ABC):
             structures = (
                 parse_cache.scan(self, content.encode("utf-8")) if content is not None else None
             )
-            for node in structures or []:
-                if node.synthetic or node.type in self.NON_EXPORT_TYPES or self.is_private(node):
-                    continue
+            for node in definitions(structures or []):
                 exports.append(
                     Export(
                         name=node.name,

@@ -260,3 +260,49 @@ def test_java_surface_is_the_public_types_without_the_package_line(tmp_path):
     )
     names = [(e.name, e.kind, e.via) for e in read_surface(str(tmp_path)).exports]
     assert names == [("Api", "interface", "definition"), ("Widget", "class", "definition")]
+
+
+def test_csharp_privacy_is_public_only():
+    """An assembly's surface is what other assemblies can name: `public`
+    only. `internal` (a type's default) stays in the assembly, `private`
+    (a member's default) in the type, `protected` is subclass API."""
+    from scantool.languages.models import StructureNode
+
+    csharp = get_language(".cs")
+
+    def node(name, *modifiers):
+        return StructureNode(
+            type="method", name=name, start_line=1, end_line=1, modifiers=list(modifiers)
+        )
+
+    assert not csharp.is_private(node("Connect", "public"))
+    assert not csharp.is_private(node("ValidateEmail", "public", "static"))
+    assert csharp.is_private(node("TryConnect", "private", "static"))
+    assert csharp.is_private(node("Helper", "internal"))
+    assert csharp.is_private(node("OnLoad", "protected"))
+    assert csharp.is_private(node("Plain"))
+    assert not csharp.is_private(node("_odd", "public"))
+    assert csharp.is_private(_definition("Plain"))
+
+
+def test_csharp_surface_is_the_public_types_inside_the_namespace(tmp_path):
+    """A file's types sit inside a namespace node; the namespace is a
+    grouping, not an export, and the default walk looks through it
+    (SURFACE_CONTAINER_TYPES). Block-scoped and file-scoped alike."""
+    (tmp_path / "Lib.cs").write_text(
+        "namespace MyApp.Core\n{\n"
+        "    public interface IApi { string Name(); }\n"
+        '    internal class Impl : IApi { public string Name() => "x"; }\n'
+        "    public class Widget { private int _count; }\n"
+        "}\n"
+    )
+    (tmp_path / "Scoped.cs").write_text(
+        "namespace MyApp.Core;\n\npublic record Token(string Value);\nclass Hidden {}\n"
+    )
+    names = [(e.name, e.kind, e.module) for e in read_surface(str(tmp_path)).exports]
+    assert names == [
+        ("IApi", "interface", "Lib"),
+        ("Widget", "class", "Lib"),
+        ("Token", "record", "Scoped"),
+    ]
+    assert not BaseLanguage.SURFACE_CONTAINER_TYPES

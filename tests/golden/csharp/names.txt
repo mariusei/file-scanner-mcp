@@ -4,9 +4,9 @@ Basic.cs (9-201)
   - IConfig @14 [public] # Configuration interface for application settings.
      public interface IConfig
      …
-    - ApiKey : string @16
-    - Endpoint : string @17
-    - Timeout : int @18
+    - ApiKey : string @16 [public]
+    - Endpoint : string @17 [public]
+    - Timeout : int @18 [public]
   - DatabaseManager @24 [public] # Manages database connections and queries.
     - DatabaseManager (string connectionString) @32 [public] # Constructs a new DatabaseManager with the given connection string.
        public DatabaseManager(string connectionString)
