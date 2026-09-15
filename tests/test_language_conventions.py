@@ -133,11 +133,12 @@ def test_qualifiers_never_collide_with_the_address_form():
 def test_default_unreferenced_exemption_is_none(tmp_path):
     """CODE HEALTH's UNREFERENCED check must not assume any language's
     naming convention by default (brief §9e) — a leading-underscore or
-    "test"-prefixed name is only exempt where a language says so."""
-    ruby = get_language(".rb")
-    assert not ruby.is_exempt_from_unreferenced(_definition("__init__"))
-    assert not ruby.is_exempt_from_unreferenced(_definition("test_something"))
-    assert not ruby.is_exempt_from_unreferenced(_definition("plain"))
+    "test"-prefixed name is only exempt where a language says so. SQL has
+    no test runner and no magic names, so it keeps the default."""
+    sql = get_language(".sql")
+    assert not sql.is_exempt_from_unreferenced(_definition("__init__"))
+    assert not sql.is_exempt_from_unreferenced(_definition("test_something"))
+    assert not sql.is_exempt_from_unreferenced(_definition("plain"))
 
 
 def test_python_unreferenced_exemption_covers_dunders_and_pytest_names():

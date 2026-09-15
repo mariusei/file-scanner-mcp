@@ -1,8 +1,9 @@
-<5 public names, 5 via definition> package ruby @WORKTREE
+<6 public names, 6 via definition> package ruby @WORKTREE
 basic
-  DataAccess                ruby/basic.rb:8
-  UserService               ruby/basic.rb:42
-  validate_email  (email)   ruby/basic.rb:64
-  Retrier                   ruby/basic.rb:72
-  main  ()                  ruby/basic.rb:92
+  DataAccess                     ruby/basic.rb:8
+  DataAccess.DatabaseManager     ruby/basic.rb:10
+  UserService                    ruby/basic.rb:42
+  validate_email  (email)        ruby/basic.rb:64
+  Retrier                        ruby/basic.rb:72
+  main  ()                       ruby/basic.rb:92
 [exit 0]
