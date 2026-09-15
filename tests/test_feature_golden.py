@@ -56,6 +56,11 @@ _GIT_ENV = {
     "GIT_COMMITTER_EMAIL": "golden@scantool",
     "GIT_AUTHOR_DATE": "2026-01-01T00:00:00Z",
     "GIT_COMMITTER_DATE": "2026-01-01T00:00:00Z",
+    # The fixture's checkout of v1 must give the sample's own bytes: with
+    # core.autocrlf=true (the Windows runners' default) git would write CRLF,
+    # and CRLF changes the answer (the budget tier counts characters; see
+    # CLAUDE.md on .gitattributes). Reproduced on macOS with autocrlf=true.
+    "GIT_CONFIG_PARAMETERS": "'core.autocrlf=false'",
 }
 
 
