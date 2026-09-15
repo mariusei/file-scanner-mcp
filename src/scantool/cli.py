@@ -23,11 +23,11 @@ SCOPE:
 import argparse
 import json
 import os
-import re
 import sys
 from collections.abc import Callable, Sequence
 
-from .gitref import RefError, blob, materialised, materialised_file, ref_kind, repo_and_rel, spec
+from .commands import UsageError
+from .gitref import RefError, ref_kind, repo_and_rel, split_address
 
 HELP = """\
 sct — structure-first reader for code and documents
@@ -46,7 +46,7 @@ USAGE
   sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
   sct scan     - [...]                     paths from stdin, one per line
   sct scan     - --as <path> [...]         stdin content scanned as <path>
-  sct focus    <path> <name|heading> [--ref REF]
+  sct focus    <path> <name|heading> [--ref REF] [--json]
   sct focus    <path>::<name>[@REF]        the address form, one argument
   sct focus    - --as <path> <name>        stdin content, one node
   sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]
@@ -55,6 +55,7 @@ USAGE
   sct overlap  <base> <branch>... [--repo DIR]
   sct callers  <name> [--dir DIR] [--ref REF]
   sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
+  sct divergence <dir> [--max-findings N]
   sct <command> --help
   any command: --json, --ascii
 
@@ -138,7 +139,17 @@ CONVENTIONS
   error. Plain text; one fact per line. Errors on stderr.
 """
 
-COMMANDS = ("scan", "focus", "search", "diff", "surface", "overlap", "callers", "resolve")
+COMMANDS = (
+    "scan",
+    "focus",
+    "search",
+    "diff",
+    "surface",
+    "overlap",
+    "callers",
+    "resolve",
+    "divergence",
+)
 STDIN = "-"
 
 # The glyphs scantool's own formatters emit; --ascii maps these and nothing
@@ -189,45 +200,6 @@ NOT_FOUND_PREFIXES = (
 )
 
 
-class UsageError(Exception):
-    """A usage error found after argparse: printed like argparse's, exit 2."""
-
-
-def _relabel(text: str, scratch_path: str, shown: str) -> str:
-    """Every spelling of the temporary directory becomes the path the caller
-    typed: the tools resolve paths, so the real path is replaced too."""
-    spellings = {os.path.realpath(scratch_path), scratch_path}
-    # longest first: on macOS the real path is /private + the short one, and
-    # replacing the short one inside it would leave "/private" glued to the answer
-    for spelling in sorted(spellings, key=len, reverse=True):
-        text = text.replace(spelling, shown).replace(spelling.replace(os.sep, "/"), shown)
-    return text
-
-
-def _stamp_ref(text: str, ref: str, as_json: bool) -> str:
-    """Every address the answer prints carries the ref it was read at: `@REF`
-    on the coverage line, in a focus header before the range, on the
-    `next:` trailer; coverage.ref in JSON."""
-    if as_json:
-        try:
-            document = json.loads(text)
-        except ValueError:
-            return text
-        if isinstance(document, dict) and isinstance(document.get("coverage"), dict):
-            document["coverage"]["ref"] = ref
-        return json.dumps(document, indent=2)
-    first, newline, rest = text.partition("\n")
-    if first.startswith("<") and first.endswith(">"):
-        first = f"{first} @{ref}"
-    elif "::" in first and first.endswith(")"):
-        name, _, span = first.rpartition(" (")
-        first = f"{name}@{ref} ({span}"
-    head, sep, trailer = rest.rpartition("\nnext: sct focus ")
-    if sep and "\n" not in trailer:
-        rest = f"{head}{sep}{trailer}@{ref}"
-    return f"{first}{newline}{rest}"
-
-
 def _typed_path_header(text: str, path: str) -> str:
     """The file line of an answer names the path the caller typed, so
     `<file line>::<name>` is an address the caller can run. The formatter
@@ -244,31 +216,7 @@ def _typed_path_header(text: str, path: str) -> str:
     return "\n".join(lines)
 
 
-_RANGE_SUFFIX = re.compile(r" \((\d+)(?:-(\d+))?\)$")
-
-
-def _split_address(address: str) -> tuple[str, str, str | None]:
-    """`path::name[@ref][ (a-b)]` -> (path, name[ (a-b)], ref). A quoted name
-    keeps its quotes and any `@` inside them; the ref is what follows the
-    closing quote or the last `@`; a trailing range stays with the name, it
-    is how focus picks one of several nodes with the same name."""
-    span = _RANGE_SUFFIX.search(address)
-    if span:
-        address = address[: span.start()]
-    path, sep, name = address.rpartition("::")
-    if not sep:
-        raise UsageError("sct focus: give <path> <name>, or one address path::Qualified.name[@ref]")
-    ref = None
-    if name.startswith('"'):
-        closing = name.find('"', 1)
-        if closing > 0 and name[closing + 1 :].startswith("@"):
-            ref = name[closing + 2 :]
-            name = name[: closing + 1]
-    elif "@" in name:
-        name, _, ref = name.rpartition("@")
-    if span:
-        name += span.group(0)
-    return path, name, ref or None
+_split_address = split_address  # the address form is gitref's; kept under its old name
 
 
 def to_ascii(text: str) -> str:
@@ -340,16 +288,23 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     outputs, code = [], 0
     for path in paths:
         if args.ref:
-            text = _scan_at_ref(path, args, output_format)
-            if _not_found(text):
-                code = 1
-            outputs.append(text)
+            top, rel = repo_and_rel(path)
+            is_dir = ref_kind(top, args.ref, rel) != "blob"
+        elif os.path.exists(path):
+            is_dir = os.path.isdir(path)
+        else:
+            outputs.append(f"sct scan: no such file or directory: {path}")
+            code = 1
             continue
-        if os.path.isdir(path):
+        if is_dir:
             result = server.scan_directory(
-                directory=path, delta=False, include_metadata=False, output_format=output_format
+                directory=path,
+                delta=False,
+                include_metadata=False,
+                output_format=output_format,
+                ref=args.ref,
             )
-        elif os.path.isfile(path):
+        else:
             result = server.scan_file(
                 file_path=path,
                 budget=args.budget,
@@ -357,11 +312,8 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
                 delta=False,
                 include_metadata=False,
                 output_format=output_format,
+                ref=args.ref,
             )
-        else:
-            outputs.append(f"sct scan: no such file or directory: {path}")
-            code = 1
-            continue
         text = _text(result)
         if _not_found(text):
             code = 1
@@ -369,46 +321,16 @@ def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
     return outputs, code
 
 
-def _scan_at_ref(path: str, args: argparse.Namespace, output_format: str) -> str:
-    from . import server
-
-    top, rel = repo_and_rel(path)
-    if ref_kind(top, args.ref, rel) == "blob":
-        text = _text(
-            server.scan_file_content(
-                content=blob(top, args.ref, rel),
-                filename=path,
-                budget=args.budget,
-                depth=args.depth,
-                include_metadata=False,
-                output_format=output_format,
-            )
-        )
-    else:
-        shown = path.rstrip("/\\") or path
-        with materialised(top, args.ref, rel, os.path.basename(os.path.abspath(path))) as tree:
-            text = _relabel(
-                _text(
-                    server.scan_directory(
-                        directory=tree,
-                        delta=False,
-                        include_metadata=False,
-                        output_format=output_format,
-                    )
-                ),
-                tree,
-                shown,
-            )
-    if not args.json:
-        text = _typed_path_header(text, path)
-    return _stamp_ref(text, args.ref, args.json)
-
-
 def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
     if args.name is None:
-        args.path, args.name, ref = _split_address(args.path)
+        try:
+            args.path, args.name, ref = _split_address(args.path)
+        except ValueError as error:
+            raise UsageError(
+                "sct focus: give <path> <name>, or one address path::Qualified.name[@ref]"
+            ) from error
         if ref and args.ref and ref != args.ref:
             raise UsageError(f"sct focus: the address says @{ref}, --ref says {args.ref}")
         args.ref = args.ref or ref
@@ -416,30 +338,28 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
         raise UsageError(
             "sct focus: --as reads stdin content; --ref reads the repository. One or the other."
         )
+    output_format = "json" if args.json else "tree"
     if args.as_path or args.path == STDIN:
         content = _stdin_content("focus", args.as_path, [args.path])
         result = server.scan_file_content(
-            content=content, filename=args.as_path, focus=args.name, include_metadata=False
-        )
-    elif args.ref:
-        top, rel = repo_and_rel(args.path)
-        if ref_kind(top, args.ref, rel) != "blob":
-            raise RefError(f"{spec(args.ref, rel)} is a directory; focus reads one file")
-        result = server.scan_file_content(
-            content=blob(top, args.ref, rel),
-            filename=args.path,
+            content=content,
+            filename=args.as_path,
             focus=args.name,
             include_metadata=False,
+            output_format=output_format,
         )
-    elif not os.path.isfile(args.path):
+    elif not args.ref and not os.path.isfile(args.path):
         return [f"sct focus: no such file: {args.path}"], 1
     else:
         result = server.scan_file(
-            file_path=args.path, focus=args.name, delta=False, include_metadata=False
+            file_path=args.path,
+            focus=args.name,
+            delta=False,
+            include_metadata=False,
+            output_format=output_format,
+            ref=args.ref,
         )
     text = _text(result)
-    if args.ref:
-        text = _stamp_ref(text, args.ref, False)
     return [text], 1 if _not_found(text) else 0
 
 
@@ -455,183 +375,62 @@ def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
         output_format="json" if args.json else "tree",
         **pattern,
     )
-    if args.ref:
-        top, rel = repo_and_rel(args.directory)
-        kind = ref_kind(top, args.ref, rel)
-        shown = args.directory.rstrip("/\\") or args.directory
-        name = os.path.basename(os.path.abspath(args.directory))
-        materialise = materialised if kind == "tree" else materialised_file
-        with materialise(top, args.ref, rel, name) as scope:
-            text = _relabel(
-                _text(server.search_structures(directory=scope, **kwargs)), scope, shown
-            )
-        text = _stamp_ref(text, args.ref, args.json)
-    elif not os.path.exists(args.directory):
+    if not args.ref and not os.path.exists(args.directory):
         return [f"sct search: no such file or directory: {args.directory}"], 1
-    else:
-        text = _text(server.search_structures(directory=args.directory, **kwargs))
+    text = _text(server.search_structures(directory=args.directory, ref=args.ref, **kwargs))
     return [text], 1 if _not_found(text) else 0
 
 
 def run_diff(args: argparse.Namespace) -> tuple[list[str], int]:
-    from .ref_diff import changed_files_review
-    from .structural_diff import (
-        WORKTREE,
-        diff_to_json,
-        diff_with_note,
-        format_diff,
-        repo_top,
-        verify_ref,
+    from . import commands
+
+    text, code = commands.diff(
+        args.ref_a,
+        args.ref_b,
+        repo=args.repo,
+        path=args.path,
+        no_merge_base=args.no_merge_base,
+        review=args.review,
+        as_json=args.json,
     )
-
-    where = args.repo or os.getcwd()
-    top = repo_top(where)
-    if top is None:
-        raise RefError(f"{where} is not inside a git repository; pass --repo DIR")
-    side_a, side_b = args.ref_a, args.ref_b or WORKTREE
-    for ref in (side_a, side_b):
-        if not verify_ref(top, ref):
-            raise RefError(f"unknown ref {ref!r} in {top}")
-    result = diff_with_note(top, side_a, side_b, not args.no_merge_base, args.path)
-    review = (
-        changed_files_review(top, {f.path for f in result.files if not f.deleted})
-        if args.review
-        else ""
-    )
-    if args.json:
-        document = diff_to_json(result)
-        if args.review:
-            document["review"] = review or None
-        return [json.dumps(document, indent=2)], 0
-    text = format_diff(result)
-    if review:
-        text += "\n\n" + review
-    return [text], 0
-
-
-def _surface_at(package_dir: str, ref: str | None):
-    """The surface of the package as typed, or as it is at ref; paths are
-    prefixed with the directory the caller typed, so each row is runnable."""
-    from .surface import read_surface
-
-    typed = package_dir.rstrip("/\\") or package_dir
-    if ref is None:
-        if not os.path.isdir(typed):
-            raise RefError(f"{package_dir} is not a directory")
-        surface = read_surface(typed)
-    else:
-        top, rel = repo_and_rel(typed)
-        if ref_kind(top, ref, rel) != "tree":
-            raise RefError(f"{spec(ref, rel)} is not a directory; surface reads a package")
-        with materialised(top, ref, rel, os.path.basename(os.path.abspath(typed))) as tree:
-            surface = read_surface(tree)
-    parent = os.path.dirname(typed)
-    for export in surface.exports:
-        if export.path:
-            export.path = (
-                os.path.join(parent, export.path).replace(os.sep, "/") if parent else export.path
-            )
-    return surface
+    return [text], code
 
 
 def run_surface(args: argparse.Namespace) -> tuple[list[str], int]:
-    from .surface import format_surface, format_surface_diff, surface_to_json
+    from . import commands
 
-    label_a = f"@{args.ref}" if args.ref else "@WORKTREE"
-    surface_a = _surface_at(args.package_dir, args.ref)
-    if args.against:
-        surface_b = _surface_at(args.package_dir, args.against)
-        text = format_surface_diff(surface_a, surface_b, label_a, f"@{args.against}")
-        if args.json:
-            document = {
-                "direction": f"{label_a} → @{args.against}",
-                "a": surface_to_json(surface_a, label_a),
-                "b": surface_to_json(surface_b, f"@{args.against}"),
-            }
-            return [json.dumps(document, indent=2)], 0
-        return [text], 0
-    if args.json:
-        return [json.dumps(surface_to_json(surface_a, label_a), indent=2)], 0
-    text = format_surface(surface_a, label_a)
-    return [text], 1 if not surface_a.exports else 0
+    text, code = commands.surface(args.package_dir, args.ref, args.against, as_json=args.json)
+    return [text], code
 
 
 def run_overlap(args: argparse.Namespace) -> tuple[list[str], int]:
-    from .overlap import format_overlap, overlap, overlap_to_json
-    from .structural_diff import repo_top, verify_ref
+    from . import commands
 
-    where = args.repo or os.getcwd()
-    top = repo_top(where)
-    if top is None:
-        raise RefError(f"{where} is not inside a git repository; pass --repo DIR")
-    for ref in (args.base, *args.branches):
-        if not verify_ref(top, ref):
-            raise RefError(f"unknown ref {ref!r} in {top}")
-    try:
-        result = overlap(top, args.base, args.branches)
-    except ValueError as error:
-        raise RefError(str(error)) from error
-    if args.json:
-        return [json.dumps(overlap_to_json(result), indent=2)], 0
-    return [format_overlap(result)], 0
+    text, code = commands.overlap(args.base, args.branches, args.repo, as_json=args.json)
+    return [text], code
 
 
 def run_callers(args: argparse.Namespace) -> tuple[list[str], int]:
-    from .callers import callers_to_json, find_callers, format_callers
+    from . import commands
 
-    directory = args.dir or "."
-    label = f"@{args.ref}" if args.ref else ""
-    if args.ref:
-        top, rel = repo_and_rel(directory)
-        if ref_kind(top, args.ref, rel) != "tree":
-            raise RefError(f"{spec(args.ref, rel)} is not a directory")
-        with materialised(top, args.ref, rel, os.path.basename(os.path.abspath(directory))) as tree:
-            found = find_callers(tree, args.name)
-    elif not os.path.isdir(directory):
-        raise RefError(f"{directory} is not a directory")
-    else:
-        found = find_callers(directory, args.name)
-    if args.json:
-        return [json.dumps(callers_to_json(found, label), indent=2)], 0 if found.sites else 1
-    return [format_callers(found, label)], 0 if found.sites else 1
+    text, code = commands.callers(args.name, args.dir, args.ref, as_json=args.json)
+    return [text], code
 
 
 def run_resolve(args: argparse.Namespace) -> tuple[list[str], int]:
-    from .resolve import Resolution, format_resolution, resolution_to_json, resolve
-    from .structural_diff import repo_top, verify_ref
+    from . import commands
 
-    address = args.address
-    target: str | int
-    if "::" in address:
-        path, name, ref_in_address = _split_address(address)
-        target = name
-        if ref_in_address and not args.ref_from:
-            args.ref_from = ref_in_address
-    else:
-        path, sep, line = address.rpartition(":")
-        if not sep or not line.isdigit():
-            raise UsageError("sct resolve: give path:line or path::name")
-        target = int(line)
-    if not args.ref_from:
-        raise UsageError("sct resolve: --from REF is required (or an address carrying @REF)")
-    top = repo_top(args.repo or os.path.dirname(os.path.abspath(path)))
-    if top is None:
-        raise RefError(f"{path} is not inside a git repository; pass --repo DIR")
-    rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
-    if args.repo:
-        rel = path.replace(os.sep, "/")
-    for ref in (args.ref_from, args.ref_to):
-        if not verify_ref(top, ref):
-            raise RefError(f"unknown ref {ref!r} in {top}")
-    outcome = resolve(top, rel, target, args.ref_from, args.ref_to)
-    if not isinstance(outcome, Resolution):
-        return [outcome], 1
-    text = (
-        json.dumps(resolution_to_json(outcome), indent=2)
-        if args.json
-        else format_resolution(outcome)
+    text, code = commands.resolve(
+        args.address, args.ref_from, args.ref_to, args.repo, as_json=args.json
     )
-    return [text.replace(rel, path, 1) if path != rel else text], 0 if outcome.target else 1
+    return [text], code
+
+
+def run_divergence(args: argparse.Namespace) -> tuple[list[str], int]:
+    from . import commands
+
+    text, code = commands.divergence(args.directory, max_findings=args.max_findings)
+    return [text], code
 
 
 RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
@@ -644,6 +443,7 @@ RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "overlap": run_overlap,
     "callers": run_callers,
     "resolve": run_resolve,
+    "divergence": run_divergence,
 }
 
 
@@ -683,7 +483,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     stdin_option(scan)
     ref_option(scan)
 
-    focus = parser("focus", "One structure verbatim with parent context.", False)
+    focus = parser("focus", "One structure verbatim with parent context.", True)
     focus.add_argument("path", help="file, an address path::name[@ref], or `-` with --as")
     focus.add_argument(
         "name", nargs="?", help="name, Class.method, heading, or a heading substring"
@@ -749,6 +549,16 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "--repo", metavar="DIR", help="repository; the path is then relative to it"
     )
 
+    divergence = parser(
+        "divergence",
+        "Functions that break a call pattern their siblings follow (a review hint).",
+        False,
+    )
+    divergence.add_argument("directory")
+    divergence.add_argument(
+        "--max-findings", type=int, default=20, metavar="N", help="cap on findings (default: 20)"
+    )
+
     return {
         "": orient,
         "scan": scan,
@@ -759,6 +569,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "overlap": overlap,
         "callers": callers,
         "resolve": resolve,
+        "divergence": divergence,
     }
 
 

@@ -64,12 +64,14 @@ def test_relabel_replaces_the_real_path_before_its_short_spelling(monkeypatch):
     """macOS: the temporary directory is /var/…, its real path /private/var/…;
     the answer prints the real path, and replacing the short spelling first
     left "/private" glued to every search path."""
+    from scantool import gitref
+
     monkeypatch.setattr(
-        cli.os.path, "realpath", lambda p: "/private" + p if p.startswith("/var") else p
+        gitref.os.path, "realpath", lambda p: "/private" + p if p.startswith("/var") else p
     )
     scratch = "/var/folders/x/sct-ref-1/src"
     text = f"/private{scratch}/gone.py:3\n{scratch}/mod.py:1"
-    assert cli._relabel(text, scratch, "src") == "src/gone.py:3\nsrc/mod.py:1"
+    assert gitref.relabel(text, scratch, "src") == "src/gone.py:3\nsrc/mod.py:1"
 
 
 @requires_git

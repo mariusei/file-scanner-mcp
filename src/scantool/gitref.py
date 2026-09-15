@@ -18,7 +18,9 @@ SCOPE:
 """
 
 import io
+import json
 import os
+import re
 import subprocess
 import tarfile
 import tempfile
@@ -104,3 +106,72 @@ def materialised(top: str, ref: str, rel: str, name: str) -> Iterator[str]:
             else:
                 tar.extractall(target)
         yield target
+
+
+# ── the ref view, shared by both doors ───────────────────────────────────────
+
+
+def relabel(text: str, scratch_path: str, shown: str) -> str:
+    """Every spelling of the temporary directory becomes the path the caller
+    typed: the tools resolve paths, so the real path is replaced too.
+    Longest first: on macOS the real path is /private + the short one, and
+    replacing the short one inside it would leave "/private" glued on."""
+    spellings = {os.path.realpath(scratch_path), scratch_path}
+    for spelling in sorted(spellings, key=len, reverse=True):
+        text = text.replace(spelling, shown).replace(spelling.replace(os.sep, "/"), shown)
+    return text
+
+
+def stamp_ref(text: str, ref: str, as_json: bool) -> str:
+    """Every address the answer prints carries the ref it was read at: `@REF`
+    on the coverage line, in a focus header before the range, on the
+    `next:` trailer; coverage.ref (or a top-level ref) in JSON."""
+    if as_json:
+        try:
+            document = json.loads(text)
+        except ValueError:
+            return text
+        if isinstance(document, dict):
+            if isinstance(document.get("coverage"), dict):
+                document["coverage"]["ref"] = ref
+            elif "ref" in document:
+                document["ref"] = ref
+        return json.dumps(document, indent=2)
+    first, newline, rest = text.partition("\n")
+    if first.startswith("<") and first.endswith(">"):
+        first = f"{first} @{ref}"
+    elif "::" in first and first.endswith(")"):
+        name, _, span = first.rpartition(" (")
+        first = f"{name}@{ref} ({span}"
+    head, sep, trailer = rest.rpartition("\nnext: sct focus ")
+    if sep and "\n" not in trailer:
+        rest = f"{head}{sep}{trailer}@{ref}"
+    return f"{first}{newline}{rest}"
+
+
+_RANGE_SUFFIX = re.compile(r" \((\d+)(?:-(\d+))?\)$")
+
+
+def split_address(address: str) -> tuple[str, str, str | None]:
+    """`path::name[@ref][ (a-b)]` -> (path, name[ (a-b)], ref). A quoted name
+    keeps its quotes and any `@` inside them; the ref is what follows the
+    closing quote or the last `@`; a trailing range stays with the name, it
+    is how focus picks one of several nodes with the same name. Raises
+    ValueError without `::`."""
+    span = _RANGE_SUFFIX.search(address)
+    if span:
+        address = address[: span.start()]
+    path, sep, name = address.rpartition("::")
+    if not sep:
+        raise ValueError("an address is path::Qualified.name[@ref]")
+    ref = None
+    if name.startswith('"'):
+        closing = name.find('"', 1)
+        if closing > 0 and name[closing + 1 :].startswith("@"):
+            ref = name[closing + 2 :]
+            name = name[: closing + 1]
+    elif "@" in name:
+        name, _, ref = name.rpartition("@")
+    if span:
+        name += span.group(0)
+    return path, name, ref or None

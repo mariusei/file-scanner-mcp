@@ -1,0 +1,239 @@
+"""
+FILE: commands.py
+
+PROBLEM:
+  Two doors, one reader: the MCP server (server.py) and the shell command
+  (cli.py) each orchestrated the same module functions for diff, surface,
+  overlap, callers, resolve and divergence — resolve the repository, verify
+  the refs, materialise a tree, pick text or JSON. Two copies of one
+  decision drift (brief §3: "no second logic"); scan_diff and sct diff did.
+
+SOLUTION:
+  One entry per command, taking the union of both doors' parameters and
+  returning (text, exit code). server.py wraps the text in TextContent and
+  turns an exception into an error line; cli.py parses argv, prints, and
+  maps UsageError to exit 2 and RefError to exit 1. Neither door holds a
+  line of command logic. scan, focus and search keep their entry in
+  server.py (the tools themselves, which the CLI already calls) because
+  their bodies are the reader; `ref=` lives there for both doors.
+
+SCOPE:
+  ✓ diff, surface, overlap, callers, resolve, divergence
+  ✗ scan, focus, search: server.py tools are the shared entry
+"""
+
+import json
+import os
+
+from .gitref import RefError, materialised, ref_kind, repo_and_rel, spec, split_address
+
+
+class UsageError(Exception):
+    """A usage error found after argument parsing: the caller's fault, exit 2."""
+
+
+def diff(
+    ref_a: str,
+    ref_b: str | None = None,
+    repo: str | None = None,
+    path: str | None = None,
+    no_merge_base: bool = False,
+    review: bool = False,
+    as_json: bool = False,
+    budget: int | None = None,
+) -> tuple[str, int]:
+    from .ref_diff import changed_files_review
+    from .structural_diff import (
+        WORKTREE,
+        diff_to_json,
+        diff_with_note,
+        format_diff,
+        repo_top,
+        verify_ref,
+    )
+
+    where = repo or os.getcwd()
+    top = repo_top(where)
+    if top is None:
+        raise RefError(f"{where} is not inside a git repository; pass --repo DIR")
+    side_a, side_b = ref_a, ref_b or WORKTREE
+    for ref in (side_a, side_b):
+        if not verify_ref(top, ref):
+            raise RefError(f"unknown ref {ref!r} in {top}")
+    result = diff_with_note(top, side_a, side_b, not no_merge_base, path, budget)
+    tail = (
+        changed_files_review(top, {f.path for f in result.files if not f.deleted}) if review else ""
+    )
+    if as_json:
+        document = diff_to_json(result)
+        if review:
+            document["review"] = tail or None
+        return json.dumps(document, indent=2), 0
+    text = format_diff(result)
+    if tail:
+        text += "\n\n" + tail
+    return text, 0
+
+
+def _surface_at(package_dir: str, ref: str | None):
+    """The surface of the package as typed, or as it is at ref; paths are
+    prefixed with the directory the caller typed, so each row is runnable."""
+    from .surface import read_surface
+
+    typed = package_dir.rstrip("/\\") or package_dir
+    if ref is None:
+        if not os.path.isdir(typed):
+            raise RefError(f"{package_dir} is not a directory")
+        found = read_surface(typed)
+    else:
+        top, rel = repo_and_rel(typed)
+        if ref_kind(top, ref, rel) != "tree":
+            raise RefError(f"{spec(ref, rel)} is not a directory; surface reads a package")
+        with materialised(top, ref, rel, os.path.basename(os.path.abspath(typed))) as tree:
+            found = read_surface(tree)
+    parent = os.path.dirname(typed)
+    for export in found.exports:
+        if export.path:
+            export.path = (
+                os.path.join(parent, export.path).replace(os.sep, "/") if parent else export.path
+            )
+    return found
+
+
+def surface(
+    package_dir: str,
+    ref: str | None = None,
+    against: str | None = None,
+    as_json: bool = False,
+) -> tuple[str, int]:
+    from .surface import format_surface, format_surface_diff, surface_to_json
+
+    label_a = f"@{ref}" if ref else "@WORKTREE"
+    surface_a = _surface_at(package_dir, ref)
+    if against:
+        surface_b = _surface_at(package_dir, against)
+        if as_json:
+            document = {
+                "direction": f"{label_a} → @{against}",
+                "a": surface_to_json(surface_a, label_a),
+                "b": surface_to_json(surface_b, f"@{against}"),
+            }
+            return json.dumps(document, indent=2), 0
+        return format_surface_diff(surface_a, surface_b, label_a, f"@{against}"), 0
+    if as_json:
+        return json.dumps(surface_to_json(surface_a, label_a), indent=2), 0
+    return format_surface(surface_a, label_a), 1 if not surface_a.exports else 0
+
+
+def overlap(
+    base: str, branches: list[str], repo: str | None = None, as_json: bool = False
+) -> tuple[str, int]:
+    from .overlap import format_overlap, overlap_to_json
+    from .overlap import overlap as compute
+    from .structural_diff import repo_top, verify_ref
+
+    where = repo or os.getcwd()
+    top = repo_top(where)
+    if top is None:
+        raise RefError(f"{where} is not inside a git repository; pass --repo DIR")
+    for ref in (base, *branches):
+        if not verify_ref(top, ref):
+            raise RefError(f"unknown ref {ref!r} in {top}")
+    try:
+        result = compute(top, base, branches)
+    except ValueError as error:
+        raise RefError(str(error)) from error
+    if as_json:
+        return json.dumps(overlap_to_json(result), indent=2), 0
+    return format_overlap(result), 0
+
+
+def callers(
+    name: str, directory: str | None = None, ref: str | None = None, as_json: bool = False
+) -> tuple[str, int]:
+    from .callers import callers_to_json, find_callers, format_callers
+
+    directory = directory or "."
+    label = f"@{ref}" if ref else ""
+    if ref:
+        top, rel = repo_and_rel(directory)
+        if ref_kind(top, ref, rel) != "tree":
+            raise RefError(f"{spec(ref, rel)} is not a directory")
+        with materialised(top, ref, rel, os.path.basename(os.path.abspath(directory))) as tree:
+            found = find_callers(tree, name)
+    elif not os.path.isdir(directory):
+        raise RefError(f"{directory} is not a directory")
+    else:
+        found = find_callers(directory, name)
+    code = 0 if found.sites else 1
+    if as_json:
+        return json.dumps(callers_to_json(found, label), indent=2), code
+    return format_callers(found, label), code
+
+
+def resolve(
+    address: str,
+    ref_from: str | None = None,
+    ref_to: str = "WORKTREE",
+    repo: str | None = None,
+    as_json: bool = False,
+) -> tuple[str, int]:
+    """`path:line` or `path::name[@ref]` carried from ref_from to ref_to."""
+    from .resolve import Resolution, format_resolution, resolution_to_json
+    from .resolve import resolve as carry
+    from .structural_diff import repo_top, verify_ref
+
+    target: str | int
+    if "::" in address:
+        path, name, ref_in_address = split_address(address)
+        target = name
+        ref_from = ref_from or ref_in_address
+    else:
+        path, sep, line = address.rpartition(":")
+        if not sep or not line.isdigit():
+            raise UsageError("sct resolve: give path:line or path::name")
+        target = int(line)
+    if not ref_from:
+        raise UsageError("sct resolve: --from REF is required (or an address carrying @REF)")
+    top = repo_top(repo or os.path.dirname(os.path.abspath(path)))
+    if top is None:
+        raise RefError(f"{path} is not inside a git repository; pass --repo DIR")
+    rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
+    if repo:
+        rel = path.replace(os.sep, "/")
+    for ref in (ref_from, ref_to):
+        if not verify_ref(top, ref):
+            raise RefError(f"unknown ref {ref!r} in {top}")
+    outcome = carry(top, rel, target, ref_from, ref_to)
+    if not isinstance(outcome, Resolution):
+        return outcome, 1
+    text = (
+        json.dumps(resolution_to_json(outcome), indent=2) if as_json else format_resolution(outcome)
+    )
+    return (text.replace(rel, path, 1) if path != rel else text), 0 if outcome.target else 1
+
+
+def divergence(
+    directory: str, respect_gitignore: bool = True, max_findings: int = 20
+) -> tuple[str, int]:
+    """Peer divergence over a whole directory: a review hint, silent when the
+    codebase is consistent (exit 0 either way; the silence is the answer)."""
+    from .code_map import CodeMap
+    from .consensus import DivergenceConfig, find_divergences, format_divergences
+
+    if not os.path.isdir(directory):
+        raise RefError(f"{directory} is not a directory")
+    result = CodeMap(directory, respect_gitignore=respect_gitignore).analyze()
+    if not result.definitions or not result.calls:
+        return (
+            f"{directory}: no call graph to analyze "
+            "(peer divergence needs code with cross-function calls)"
+        ), 0
+    file_clusters = {f: cluster for cluster, files in result.clusters.items() for f in files}
+    findings = find_divergences(
+        result.definitions,
+        result.calls,
+        config=DivergenceConfig(TOP_N=max_findings),
+        file_clusters=file_clusters,
+    )
+    return format_divergences(findings), 0
