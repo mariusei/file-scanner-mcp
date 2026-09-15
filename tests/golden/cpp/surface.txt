@@ -1,9 +1,10 @@
-<6 public names, 6 via definition> package cpp @WORKTREE
+<7 public names, 7 via definition> package cpp @WORKTREE
 basic
-  utils                     cpp/basic.cpp:9
-  database                  cpp/basic.cpp:24
-  UserService               cpp/basic.cpp:71
-  Status                    cpp/basic.cpp:113
-  max_value  T (T a, T b)   cpp/basic.cpp:121
-  main  int ()              cpp/basic.cpp:126
+  utils                                                 cpp/basic.cpp:9
+  database                                              cpp/basic.cpp:24
+  UserService                                           cpp/basic.cpp:71
+  Status                                                cpp/basic.cpp:113
+  max_value  T (T a, T b)                               cpp/basic.cpp:121
+  retry_connect  bool (database::DatabaseManager& db)   cpp/basic.cpp:129
+  main  int ()                                          cpp/basic.cpp:139
 [exit 0]

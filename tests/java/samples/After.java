@@ -40,12 +40,10 @@ public class DatabaseManager {
     }
 
     /**
-     * Closes the database connection.
+     * Liveness probe.
      */
-    public void disconnect() {
-        if (connection != null) {
-            System.out.println("Disconnecting");
-        }
+    public boolean health() {
+        return connection != null;
     }
 
     /**
@@ -86,7 +84,7 @@ public class UserService {
     /**
      * Deletes a user from the system.
      */
-    public boolean deleteUser(int userId) {
+    public boolean removeUser(int userId) {
         return true;
     }
 }
@@ -98,7 +96,7 @@ public class EmailValidator {
     /**
      * Validates an email address format.
      */
-    public static boolean validateEmail(String email) {
+    public static boolean validateEmail(String email, boolean strict) {
         return email != null && email.contains("@");
     }
 }
@@ -108,7 +106,7 @@ public class EmailValidator {
  */
 public class ConnectionRetrier {
     /** Retry budget for connection attempts. */
-    public static final int MAX_RETRIES = 3;
+    public static final int MAX_RETRIES = 5;
 
     /**
      * Connects, retrying up to MAX_RETRIES times.

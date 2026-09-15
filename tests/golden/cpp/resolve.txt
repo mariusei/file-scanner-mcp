@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.cpp::utils.validate_email@v1 (12-14)
+basic.cpp::utils.validate_email@v2 (12-14)
+[exit 0]

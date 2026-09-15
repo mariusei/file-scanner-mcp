@@ -1,5 +1,5 @@
 basic.cpp::utils.validate_email (12-14)
-basic.cpp (3-138)
+basic.cpp (3-151)
 - #include directives @3
 - utils @9 # Utility namespace
   - validate_email bool (const std::string& email) @12 # Validate email format
@@ -11,5 +11,6 @@ basic.cpp (3-138)
 - UserService @71 # User service class
 - Status @113 # Status enumeration
 - max_value T (T a, T b) @121
-- main int () @126 # Main entry point
+- retry_connect bool (database::DatabaseManager& db) @129 [static] # Retry the connection until it succeeds or the budget is spent (internal)
+- main int () @139 # Main entry point
 [exit 0]

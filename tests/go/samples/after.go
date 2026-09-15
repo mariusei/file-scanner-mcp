@@ -39,12 +39,9 @@ func (db *DatabaseManager) Connect() error {
 	return nil
 }
 
-// Disconnect closes database connection
-func (db *DatabaseManager) Disconnect() {
-	if db.connected {
-		fmt.Println("Disconnecting from database")
-		db.connected = false
-	}
+// Health is a liveness probe
+func Health() bool {
+	return true
 }
 
 // Query executes a SQL query and returns results
@@ -68,12 +65,12 @@ func (s *UserService) GetUser(userID int) (map[string]interface{}, error) {
 }
 
 // DeleteUser deletes a user by ID
-func (s *UserService) DeleteUser(userID int) error {
+func (s *UserService) RemoveUser(userID int) error {
 	return nil
 }
 
 // ValidateEmail validates email format
-func ValidateEmail(email string) bool {
+func ValidateEmail(email string, strict bool) bool {
 	return len(email) > 0 && email[0] != '@'
 }
 
@@ -90,7 +87,7 @@ func main() {
 }
 
 // MaxRetries is the retry budget for connection attempts
-const MaxRetries = 3
+const MaxRetries = 5
 
 // retryConnect retries the connection until it succeeds or the budget is spent (internal)
 func retryConnect(db *DatabaseManager) error {

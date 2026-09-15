@@ -1,9 +1,12 @@
-<1 file seen, 26 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /UserRole/
+<1 file seen, 29 structures shown, 1 excluded (.git/)>
+3 hits in 2 structures for /TryConnect/
 
 ./Basic.cs
-- MyApp.Services > UserRole @163-168  (1 hit)
-   163 | public enum UserRole
+- MyApp.Services > ConnectionRetrier > RetryConnect (DatabaseManager db) : bool @183-193  (2 hits)
+   183 | public static bool RetryConnect(DatabaseManager db)
+   187 | if (TryConnect(db))
+- MyApp.Services > ConnectionRetrier > TryConnect (DatabaseManager db) : bool @195-199  (1 hit)
+   195 | private static bool TryConnect(DatabaseManager db)
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

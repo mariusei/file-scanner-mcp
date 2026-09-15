@@ -1,4 +1,4 @@
-<14 public names, 14 via definition> package go @WORKTREE
+<15 public names, 15 via definition> package go @WORKTREE
 basic
   Config                                                                        go/basic.go:10
   Logger                                                                        go/basic.go:16
@@ -14,4 +14,5 @@ basic
   ValidateEmail  (email string) bool                                            go/basic.go:76
   FormatTimestamp  (t time.Time) string                                         go/basic.go:81
   main  ()                                                                      go/basic.go:86
+  retryConnect  (db *DatabaseManager) error                                     go/basic.go:96
 [exit 0]

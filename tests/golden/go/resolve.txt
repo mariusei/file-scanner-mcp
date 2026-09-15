@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.go::Config@v1 (10-13)
+basic.go::Config@v2 (10-13)
+[exit 0]

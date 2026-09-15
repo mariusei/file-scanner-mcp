@@ -1,3 +1,6 @@
-<0 call sites in 0 files, 0 definitions, 1 file scanned> callers of com.example.demo
-no call sites of com.example.demo (mentions in docstrings, comments and strings are not calls)
-[exit 1]
+<1 call site in 1 file, 1 definition, 1 file scanned> callers of connect
+defined: Basic.java::DatabaseManager.connect (method) Basic.java:38
+
+Basic.java  (1 site)
+  - tryConnect Basic.java:126   db.connect();
+[exit 0]

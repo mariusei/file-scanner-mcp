@@ -1,5 +1,5 @@
-<1 file seen, 22 structures shown>
-basic.cpp (3-138)
+<1 file seen, 23 structures shown>
+basic.cpp (3-151)
 - #include directives @3
 - utils @9 # Utility namespace
   - validate_email bool (const std::string& email) @12 # Validate email format
@@ -38,7 +38,7 @@ basic.cpp (3-138)
   - create_user int (const std::string& username, const std::string& email) @82 [public] # Create a new user
      int create_user(const std::string& username, const std::string& email) {
          if (!utils::validate_email(email)) {
-             return -1;
+       …
          …
          return user_count;
   - get_user std::string (int user_id) @91 [public const] # Get user by ID
@@ -60,11 +60,17 @@ basic.cpp (3-138)
 - max_value T (T a, T b) @121
    T max_value(T a, T b) {
        return (a > b) ? a : b;
-- main int () @126 # Main entry point
+- retry_connect bool (database::DatabaseManager& db) @129 [static] # Retry the connection until it succeeds or the budget is spent (internal)
+   static bool retry_connect(database::DatabaseManager& db) {
+       for (int attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+           if (db.connect()) {
+               return true;
+       return false;
+- main int () @139 # Main entry point
    int main() {
        auto db = std::make_shared<database::DatabaseManager>("postgresql://localhost/mydb");
        UserService service(db);
-       db->connect();
+       retry_connect(*db);
        int user_id = service.create_user("john_doe", "john@example.com");
        …
        std::cout << "Service version: " << UserService::get_version() << std::endl;

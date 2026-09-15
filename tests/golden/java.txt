@@ -1,5 +1,5 @@
-<1 file seen, 18 structures shown>
-Basic.java (5-104)
+<1 file seen, 21 structures shown>
+Basic.java (5-129)
 - com.example.demo @5
 - import statements @7
 - Config @14 [public] # Configuration interface for application settings.
@@ -42,3 +42,14 @@ Basic.java (5-104)
   - validateEmail (String email) : boolean @101 [public static] # Validates an email address format.
      public static boolean validateEmail(String email) {
          return email != null && email.contains("@");
+- ConnectionRetrier @109 [public] # Retries a connection until it succeeds or the budget is spent.
+  - retryConnect (DatabaseManager db) : boolean @116 [public static] # Connects, retrying up to MAX_RETRIES times.
+     public static boolean retryConnect(DatabaseManager db) {
+         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+             if (tryConnect(db)) {
+                 return true;
+         return false;
+  - tryConnect (DatabaseManager db) : boolean @125 [private static]
+     private static boolean tryConnect(DatabaseManager db) {
+         db.connect();
+         return EmailValidator.validateEmail("ada@example.com");

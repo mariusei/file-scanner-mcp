@@ -1,5 +1,5 @@
 Basic.java::Config.getApiKey (15-15)
-Basic.java (5-104)
+Basic.java (5-129)
 - com.example.demo @5
 - import statements @7
 - Config @14 [public] # Configuration interface for application settings.
@@ -10,4 +10,5 @@ Basic.java (5-104)
 - DatabaseManager @23 [public] # Manages database connections and queries.
 - UserService @62 [public] # Handles user-related operations.
 - EmailValidator @97 [public] # Utility class for email validation.
+- ConnectionRetrier @109 [public] # Retries a connection until it succeeds or the budget is spent.
 [exit 0]

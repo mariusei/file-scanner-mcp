@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+Basic.java::Config.getApiKey@v1 (15-15)
+Basic.java::Config.getApiKey@v2 (15-15)
+[exit 0]

@@ -9,7 +9,7 @@
 namespace utils {
 
 // Validate email format
-bool validate_email(const std::string& email) {
+bool validate_email(const std::string& email, bool strict = false) {
     return email.find('@') != std::string::npos;
 }
 
@@ -93,7 +93,7 @@ public:
     }
 
     // Delete user
-    bool delete_user(int user_id) {
+    bool remove_user(int user_id) {
         user_count--;
         return true;
     }
@@ -116,14 +116,8 @@ enum class Status {
     Pending
 };
 
-// Template function
-template<typename T>
-T max_value(T a, T b) {
-    return (a > b) ? a : b;
-}
-
 // Retry budget for connection attempts
-constexpr int MAX_RETRIES = 3;
+constexpr int MAX_RETRIES = 5;
 
 // Retry the connection until it succeeds or the budget is spent (internal)
 static bool retry_connect(database::DatabaseManager& db) {
@@ -133,6 +127,11 @@ static bool retry_connect(database::DatabaseManager& db) {
         }
     }
     return false;
+}
+
+// Liveness probe
+bool health() {
+    return true;
 }
 
 // Main entry point

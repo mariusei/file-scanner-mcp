@@ -1,5 +1,5 @@
-<1 file seen, 9 structures shown>
-basic.c (3-59)
+<1 file seen, 11 structures shown>
+basic.c (3-83)
 - #include directives @3
 - User @8 # User structure definition
    struct User {
@@ -25,9 +25,20 @@ basic.c (3-59)
 - Status @45 # Status codes enumeration
    enum Status {
        …
-- main int (void) @52 # Main entry point
+- Pool @55 # Connection pool, its address record nested in it
+   struct Pool {
+       struct Address {
+     …
+- retry_connect int (struct DatabaseConfig *config) @64 [static] # Retry the connection until it succeeds or the budget is spent (internal)
+   static int retry_connect(struct DatabaseConfig *config) {
+       for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+     …
+       return 0;
+- main int (void) @74 # Main entry point
    int main(void) {
        struct User user;
+       struct DatabaseConfig config = {"localhost", 5432, "mydb"};
        init_user(&user, 1, "John Doe");
+       retry_connect(&config);
        printf("User: %s (ID: %d)\n", user.name, user.id);
        return 0;

@@ -470,6 +470,8 @@ class JavaLanguage(BaseLanguage):
                         if line and not line.startswith("@"):  # Skip JavaDoc tags
                             return line
                 return None
+            if prev.type != "line_comment":
+                break  # another member: its javadoc is not this node's
             prev = prev.prev_sibling
 
         return None

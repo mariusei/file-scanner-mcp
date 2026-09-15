@@ -1,5 +1,5 @@
-<1 file seen, 15 structures shown>
-basic.go (4-90)
+<1 file seen, 16 structures shown>
+basic.go (4-104)
 - import statements @4
 - Config @10 [public] # Config holds application configuration
    type Config struct {
@@ -35,10 +35,10 @@ basic.go (4-90)
    	return 1, nil
 - GetUser (s *UserService) (userID int) (map[string]interface{}, error) @66 [public] # GetUser retrieves user by ID
    func (s *UserService) GetUser(userID int) (map[string]interface{}, error) {
-   	return nil, nil
+    …
 - DeleteUser (s *UserService) (userID int) error @71 [public] # DeleteUser deletes a user by ID
    func (s *UserService) DeleteUser(userID int) error {
-   	return nil
+    …
 - ValidateEmail (email string) bool @76 [public] # ValidateEmail validates email format
    func ValidateEmail(email string) bool {
    	return len(email) > 0 && email[0] != '@'
@@ -48,6 +48,10 @@ basic.go (4-90)
 - main () @86 # main is the entry point
    func main() {
    	db := NewDatabaseManager("postgresql://localhost/mydb")
-   	db.Connect()
+   	retryConnect(db)
    	fmt.Println("Application started")
+- retryConnect (db *DatabaseManager) error @96 # retryConnect retries the connection until it succeeds or the budget is spent (internal)
+   func retryConnect(db *DatabaseManager) error {
+    …
+     …
 [exit 0]

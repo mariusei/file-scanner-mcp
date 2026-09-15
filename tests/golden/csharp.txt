@@ -1,5 +1,5 @@
-<1 file seen, 26 structures shown>
-Basic.cs (5-169)
+<1 file seen, 29 structures shown>
+Basic.cs (5-201)
 - using directives @5
 - MyApp.Services @9
   - IConfig @14 [public] # Configuration interface for application settings.
@@ -74,3 +74,18 @@ Basic.cs (5-169)
          Admin,
          User,
          Guest
+  - ConnectionRetrier @173 [public static] # Retries a connection until it succeeds or the budget is spent.
+    - RetryConnect (DatabaseManager db) : bool @183 [public static] # Connects, retrying up to MaxRetries times.
+       public static bool RetryConnect(DatabaseManager db)
+       …
+           for (var attempt = 0; attempt < MaxRetries; attempt++)
+           …
+               if (TryConnect(db))
+               …
+                   return true;
+           return false;
+    - TryConnect (DatabaseManager db) : bool @195 [private static]
+       private static bool TryConnect(DatabaseManager db)
+       …
+           db.Connect();
+           return EmailValidator.ValidateEmail("ada@example.com");
