@@ -26,15 +26,22 @@ SCOPE:
     FileScanner._scan_source when no per-line git signals are in play
   ✓ SCANTOOL_CACHE_DIR relocates the disk layer, SCANTOOL_NO_CACHE=1
     turns the disk layer off (the in-process layer stays)
+  ✓ a checkout where the handlers themselves change: the package's own
+    source files (mtime, size) are part of the key, so an edited handler
+    never serves nodes it did not produce
+  ✓ no locks: atomic replace on write, a torn file is a miss, pruning by
+    a marker's age so every process shares one schedule
   ✗ CodeMap keeps its own stat-fingerprint cache; exceptions are never
     cached; results with per-line edit labels are never cached
 """
 
 import contextlib
+import functools
 import hashlib
 import os
 import pickle
 import tempfile
+import time
 from collections import OrderedDict
 from collections.abc import Callable
 from pathlib import Path
@@ -46,11 +53,11 @@ NO_CACHE_ENV = "SCANTOOL_NO_CACHE"
 _MEMORY_ENTRIES = 512
 _MEMORY_BYTES = 64 * 1024 * 1024
 _DISK_BYTES = 200 * 1024 * 1024
-_PRUNE_EVERY = 100  # writes between disk-size checks
+_PRUNE_INTERVAL = 3600.0  # seconds between disk-size checks, across processes
+_PRUNE_MARKER = ".pruned"
 
 _memory: OrderedDict[str, bytes] = OrderedDict()
 _memory_size = 0
-_writes = 0
 
 
 def blob_id(data: bytes) -> str:
@@ -115,7 +122,27 @@ def cache_dir() -> Path | None:
 def _digest(key: tuple) -> str:
     from . import __version__
 
-    return hashlib.sha1(repr((__version__, *key)).encode("utf-8")).hexdigest()
+    return hashlib.sha1(repr((__version__, _source_fingerprint(), *key)).encode()).hexdigest()
+
+
+def _package_root() -> Path:
+    return Path(__file__).parent
+
+
+@functools.lru_cache(maxsize=1)
+def _source_fingerprint() -> str:
+    """The package's own source files by size and mtime: a handler edited
+    in a checkout changes the key, an installed release never does."""
+    digest = hashlib.sha1()
+    for path in sorted(_package_root().rglob("*.py")):
+        try:
+            info = path.stat()
+        except OSError:
+            continue
+        digest.update(
+            f"{path.relative_to(_package_root())}:{info.st_size}:{info.st_mtime_ns}\n".encode()
+        )
+    return digest.hexdigest()
 
 
 def _remember(digest: str, stored: bytes) -> None:
@@ -148,7 +175,6 @@ def _read_disk(digest: str) -> bytes | None:
 
 
 def _write_disk(digest: str, stored: bytes) -> None:
-    global _writes
     directory = cache_dir()
     if directory is None:
         return
@@ -160,9 +186,22 @@ def _write_disk(digest: str, stored: bytes) -> None:
         os.replace(temporary, directory / f"{digest}.pkl")
     except OSError:
         return  # a read-only or full disk means no disk layer, nothing else
-    _writes += 1
-    if _writes % _PRUNE_EVERY == 0:
-        _prune(directory)
+    _prune_when_due(directory)
+
+
+def _prune_when_due(directory: Path) -> None:
+    """One schedule for every process: a marker's age says when the size
+    was last checked. The CLI is a process per call, so a per-process
+    counter would never fire."""
+    marker = directory / _PRUNE_MARKER
+    try:
+        if time.time() - marker.stat().st_mtime < _PRUNE_INTERVAL:
+            return
+    except OSError:
+        pass
+    with contextlib.suppress(OSError):
+        marker.touch()
+    _prune(directory)
 
 
 def _prune(directory: Path) -> None:

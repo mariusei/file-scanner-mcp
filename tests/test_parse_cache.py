@@ -1,9 +1,11 @@
 """The parse cache (brief §5.1 item 8): the same blob is parsed once across
 calls, callers and processes, and nothing a caller sees changes."""
 
+import os
 import pickle
 import shutil
 import subprocess
+import time
 
 import pytest
 
@@ -126,6 +128,39 @@ def test_memory_layer_is_bounded(cache, monkeypatch):
     for i in range(6):
         parse_cache.memo(("bounded", i), lambda i=i: i)
     assert len(parse_cache._memory) == 3
+
+
+def test_pruning_follows_a_shared_schedule_not_a_process_counter(cache, monkeypatch):
+    """A CLI process writes a handful of entries and exits; the cap is still
+    enforced because the marker's age, not a per-process count, decides."""
+    # the first write creates the marker and checks: one entry fits the cap,
+    # three do not; the second write is within the interval, so no check
+    monkeypatch.setattr(parse_cache, "_DISK_BYTES", 250)
+    directory = cache / f"parse-{_version()}"
+    parse_cache.memo(("prune", 1), lambda: "x" * 100)
+    parse_cache.memo(("prune", 2), lambda: "y" * 100)
+    assert len(list(directory.glob("*.pkl"))) == 2  # within the interval: no check yet
+    old = time.time() - parse_cache._PRUNE_INTERVAL - 1
+    os.utime(directory / parse_cache._PRUNE_MARKER, (old, old))
+    parse_cache.memo(("prune", 3), lambda: "z" * 100)
+    assert len(list(directory.glob("*.pkl"))) < 3
+
+
+def test_an_edited_source_file_changes_the_key(cache, monkeypatch, tmp_path):
+    """A checkout where a handler is edited must not serve nodes the old
+    handler produced: the package's own files are part of the key."""
+    fake_package = tmp_path / "pkg"
+    fake_package.mkdir()
+    handler = fake_package / "handler.py"
+    handler.write_text("old\n")
+    monkeypatch.setattr(parse_cache, "_package_root", lambda: fake_package)
+    parse_cache._source_fingerprint.cache_clear()
+    before = parse_cache._digest(("k",))
+    handler.write_text("new, and longer\n")
+    parse_cache._source_fingerprint.cache_clear()
+    after = parse_cache._digest(("k",))
+    parse_cache._source_fingerprint.cache_clear()
+    assert before != after
 
 
 def _version() -> str:
