@@ -1,9 +1,9 @@
 <1 file seen, 18 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /EmailValidator/
+1 hits in 1 structures for /validateEmail/
 
 ./Basic.java
-- EmailValidator @97-104  (1 hit)
-   97 | public class EmailValidator {
+- EmailValidator > validateEmail (String email) : boolean @101-103  (1 hit)
+   101 | public static boolean validateEmail(String email) {
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

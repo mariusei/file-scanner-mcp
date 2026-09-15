@@ -1,9 +1,9 @@
 <1 file seen, 26 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /MyApp\.Services/
+1 hits in 1 structures for /UserRole/
 
 ./Basic.cs
-- MyApp.Services @9-169  (1 hit)
-   9 | namespace MyApp.Services
+- MyApp.Services > UserRole @163-168  (1 hit)
+   163 | public enum UserRole
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

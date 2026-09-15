@@ -1,40 +1,10 @@
 <1 file seen, 9 structures shown, 1 excluded (.git/)>
-58 hits in 8 structures for //
+2 hits in 1 structures for /mean/
 
 ./basic.ipynb
-- (module level) @1-1  (38 hits)
-   1 | {
-   2 | "cells": [
-   3 | {
-   4 | "cell_type": "markdown",
-   +34 more in this structure at lines 5, 6, 10, 11, 12, 13, …
-- cell 2 (code) in-cell 1-16 at 18-33 @18-33  (5 hits)
-   18 | "import statistics\n",
-   19 | "\n",
-   20 | "\n",
-   24 | "\n",
-   +1 more in this structure at lines 25
-- cell 2 (code) > Ledger @26-33  (4 hits)
-   26 | "class Ledger:\n",
-   27 | "    \"\"\"Rows of (region, amount).\"\"\"\n",
-   28 | "\n",
-   31 | "\n",
-- cell 1 (markdown) > Sales ledger @7-9  (3 hits)
-   7 | "# Sales ledger\n",
-   8 | "\n",
-   9 | "Reads the nightly export and summarises it per region."
-- cell 2 (code) > total (amounts) @21-23  (3 hits)
-   21 | "def total(amounts):\n",
-   22 | "    \"\"\"Sum of the amounts.\"\"\"\n",
-   23 | "    return sum(amounts)\n",
-- cell 2 (code) > Ledger > __init__ (self, rows) @29-30  (2 hits)
-   29 | "    def __init__(self, rows):\n",
-   30 | "        self.rows = rows\n",
 - cell 2 (code) > Ledger > mean (self) @32-33  (2 hits)
    32 | "    def mean(self):\n",
    33 | "        return statistics.mean(amount for _, amount in self.rows)\n"
-- cell 3 (raw) in-cell 1-1 at 40-40 @40-40  (1 hit)
-   40 | "The export is refreshed nightly and is not part of the repository.\n"
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

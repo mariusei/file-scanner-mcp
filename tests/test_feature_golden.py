@@ -94,21 +94,33 @@ def _fixture(lang: str, root: Path) -> tuple[Path, str, bool]:
     return directory, sample.name, has_after
 
 
+def _named(nodes, chain: tuple[str, ...] = ()):
+    """Every non-synthetic named node, depth first, with its dotted chain of
+    non-synthetic ancestors (a cell or an import block is not a name)."""
+    for node in nodes:
+        own = (*chain, node.name) if not node.synthetic and node.name else chain
+        if not node.synthetic and node.name:
+            yield node, own
+        yield from _named(node.children, own)
+
+
 def _targets(directory: Path, name: str) -> dict[str, str]:
     """What each command asks about, read off the sample's own structure so
-    every language gets the same kind of question."""
+    every language gets the same kind of question: the first nested
+    definition for focus and resolve, the most-called definition for
+    callers, the first and the last names for names and search."""
     structures = FileScanner().scan_file(str(directory / name), include_file_metadata=False) or []
-    nodes = [n for n in structures if not n.synthetic]
-    if not nodes:
-        return {"focus": "", "search": "", "names": "", "callers": ""}
-    focus = nodes[0].name
-    for node in nodes:
-        children = [c for c in node.children if not c.synthetic]
+    named = list(_named(structures))
+    if not named:
+        return dict.fromkeys(("focus", "search", "names", "callers"), "nothing-named")
+    focus = ".".join(named[0][1])
+    for node, chain in named:
+        children = [c for c in node.children if not c.synthetic and c.name]
         if children:
-            focus = f"{node.name}.{children[0].name}"
+            focus = ".".join((*chain, children[0].name))
             break
-    defined = {n.name for n in nodes}
-    callers = nodes[0].name
+    defined = {node.name for node, _ in named}
+    callers = named[0][0].name
     try:
         calls = CodeMap(str(directory), use_cache=False).analyze().calls
         counted = sorted(
@@ -121,8 +133,8 @@ def _targets(directory: Path, name: str) -> dict[str, str]:
         pass
     return {
         "focus": focus,
-        "search": re.escape(nodes[-1].name),
-        "names": re.escape(nodes[0].name),
+        "search": re.escape(named[-1][0].name),
+        "names": re.escape(named[0][0].name),
         "callers": callers,
     }
 
@@ -153,8 +165,8 @@ def _cell(directory: Path, name: str, has_after: bool, targets: dict, command: s
         os.chdir(cwd)
     captured = capsys.readouterr()
     text = relabel((captured.out + captured.err).rstrip("\n"), str(directory), ".")
-    if os.name == "nt":  # the same answer with the separators the goldens hold
-        text = text.replace(".\\", "./").replace(f"\\{name}", f"/{name}")
+    if os.name == "nt":  # the sample's path with the separator the goldens hold; nothing else
+        text = text.replace(f"\\{name}", f"/{name}")
     return f"{text}\n[exit {code}]"
 
 

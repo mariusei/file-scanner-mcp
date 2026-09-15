@@ -1,3 +1,7 @@
-<0 call sites in 0 files, 0 definitions, 1 file scanned> callers of App\Database
-no call sites of App\Database (mentions in docstrings, comments and strings are not calls)
-[exit 1]
+<2 call sites in 1 file, 1 definition, 1 file scanned> callers of log
+defined: basic.php::Loggable.log (method) basic.php:69
+
+basic.php  (2 sites)
+  - createUser basic.php:100   $this->log("Creating user: {$username}");
+  - deleteUser basic.php:115   $this->log("Deleting user: {$userId}");
+[exit 0]
