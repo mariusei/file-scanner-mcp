@@ -1,0 +1,18 @@
+basic.ts::AuthService.constructor (26-29)
+basic.ts (5-114)
+- import statements @5
+- Config @11 # Configuration interface for authentication service.
+- AuthService @19 # Service for handling user authentication and authorization.
+  - constructor (config: Config) @26 # Constructs a new AuthService instance.
+     26 |   constructor(config: Config) {
+     27 |     this.apiKey = config.apiKey;
+     28 |     this.users = new Map();
+     29 |   }
+  - login (username: string, password: string) : Promise<User | null> @34 [async] # Authenticates a user with username and password.
+  - logout (userId: string) : Promise<void> @42 [async] # Logs out a user by their ID.
+  - validateToken (token: string) : boolean @49 # Validates an authentication token.
+- UserManager @57 # Manager class for user CRUD operations.
+- generateId () : string @95 # Generates a random unique identifier.
+- validateEmail (email: string) : boolean @102 # Validates an email address format.
+- calculateStats (users: User[]) : { total: number; active: number } @109 # Arrow function to calculate statistics.
+[exit 0]

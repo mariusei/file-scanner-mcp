@@ -1,0 +1,9 @@
+<1 file seen, 21 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /formatName/
+
+./basic.php
+- formatName (string $firstName, string $lastName) string @130-132  (1 hit)
+   130 | function formatName(string $firstName, string $lastName): string {
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

@@ -1,0 +1,9 @@
+<6 public names, 6 via definition> package python @WORKTREE
+basic
+  DatabaseManager                                             python/basic.py:8
+  UserService                                                 python/basic.py:29
+  validate_email  (email: str) -> bool                        python/basic.py:48
+  DEFAULT_TIMEOUT  = 30                                       python/basic.py:53
+  RETRY_POLICY  = {'attempts': 3, 'backoff': 'exponential'}   python/basic.py:54
+  main  ()                                                    python/basic.py:65
+[exit 0]

@@ -1,0 +1,5 @@
+<2 public names, 2 via definition> package markdown @WORKTREE
+basic
+  Project Documentation         markdown/basic.md:1
+  Alternative Heading Style     markdown/basic.md:99
+[exit 0]

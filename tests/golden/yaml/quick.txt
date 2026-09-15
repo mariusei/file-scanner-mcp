@@ -1,0 +1,37 @@
+<1 file seen, 31 structures shown>
+basic.yaml (1-42)
+- document 1 @1
+  - name sample-workflow @1
+  - shared_timeout 10 @3 [anchor:timeout]
+  - on 2 keys @5
+    - push 1 key @6
+      - branches [2] main, develop @7
+    - pull_request 0 keys @8
+  - jobs 2 keys @10
+    - build 3 keys @11
+      - runs-on ubuntu-latest @12
+      - timeout-minutes *timeout @13 [alias]
+      - steps 2 items @14
+        - Checkout @15
+          - uses actions/checkout@v4 @16
+        - Build @17
+          - run make build @18
+    - test 4 keys @20
+      - needs [1] build @21
+      - runs-on ubuntu-latest @22
+      - timeout-minutes *timeout @23 [alias]
+      - steps 2 items @24
+        - Checkout @25
+          - uses actions/checkout@v4 @26
+        - Run tests @27
+          - run | make test make coverage @28 [literal]
+  - notes > This is a folded block scalar describing the workflow a... @32 [folded]
+     32 | notes: >
+     33 |   This is a folded block scalar
+     34 |   describing the workflow above.
+- document 2 @35
+  - service 3 keys @36
+    - name worker @37
+    - replicas 3 @38
+    - tags [2] prod, critical @39
+[exit 0]

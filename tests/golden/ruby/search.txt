@@ -1,0 +1,12 @@
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
+3 hits in 2 structures for /main/
+
+./basic.rb
+- (module level) @68-68  (2 hits)
+   68 | # Main entry point
+   75 | main if __FILE__ == $PROGRAM_NAME
+- main () @69-73  (1 hit)
+   69 | def main
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

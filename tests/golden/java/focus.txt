@@ -1,0 +1,13 @@
+Basic.java::Config.getApiKey (15-15)
+Basic.java (5-104)
+- com.example.demo @5
+- import statements @7
+- Config @14 [public] # Configuration interface for application settings.
+  - getApiKey () : String @15
+     15 |     String getApiKey();
+  - getEndpoint () : String @16
+  - getTimeout () : int @17
+- DatabaseManager @23 [public] # Manages database connections and queries.
+- UserService @62 [public] # Handles user-related operations.
+- EmailValidator @97 [public] # Utility class for email validation.
+[exit 0]

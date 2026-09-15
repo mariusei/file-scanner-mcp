@@ -1,0 +1,9 @@
+<1 file seen, 11 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /addition\ works/
+
+./basic.zig
+- addition works @58-61  (1 hit)
+   58 | test "addition works" {
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

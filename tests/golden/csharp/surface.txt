@@ -1,0 +1,4 @@
+<1 public name, 1 via definition> package csharp @WORKTREE
+Basic
+  MyApp.Services     csharp/Basic.cs:9
+[exit 0]

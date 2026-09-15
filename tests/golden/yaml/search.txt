@@ -1,0 +1,9 @@
+<1 file seen, 31 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /tags/
+
+./basic.yaml
+- document 2 > service > tags [2] prod, critical @39-42  (1 hit)
+   39 | tags:
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

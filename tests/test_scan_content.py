@@ -58,12 +58,12 @@ def test_budget_and_depth_reduce_content_output():
     assert "DatabaseManager" in budgeted  # names survive; only excerpts degrade
     # What the budget cut is said, not hidden: counted in the coverage line
     # and marked on the node with the lines focus= would show
-    assert full.splitlines()[0] == "<1 file seen, 14 structures shown>"
+    assert full.splitlines()[0] == "<1 file seen, 17 structures shown>"
     assert budgeted.splitlines()[0].endswith(" elided (budget)>")
     assert "⟨…⟩ +" in budgeted
     elided = sum(1 for line in budgeted.splitlines() if line.strip().startswith("⟨…⟩ +"))
     assert (
-        budgeted.splitlines()[0] == f"<1 file seen, 14 structures shown, {elided} elided (budget)>"
+        budgeted.splitlines()[0] == f"<1 file seen, 17 structures shown, {elided} elided (budget)>"
     )
 
 

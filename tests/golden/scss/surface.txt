@@ -1,0 +1,23 @@
+<20 public names, 20 via definition> package scss @WORKTREE
+basic
+  base/variables  @use                                           scss/basic.scss:3
+  base/mixins  @use                                              scss/basic.scss:4
+  components/buttons  @forward                                   scss/basic.scss:5
+  legacy/old-styles  @import                                     scss/basic.scss:6
+  $primary-color  #3498db                                        scss/basic.scss:9
+  $secondary-color  #2ecc71                                      scss/basic.scss:10
+  $font-stack  'Helvetica Neue', sans-serif                      scss/basic.scss:11
+  $spacing-unit  8px                                             scss/basic.scss:12
+  $border-radius  4px                                            scss/basic.scss:13
+  flex-center  ()                                                scss/basic.scss:16
+  button-style  ($bg-color, $text-color: white)                  scss/basic.scss:22
+  responsive  ($breakpoint)                                      scss/basic.scss:34
+  shade  ($color, $amount: 10%)                                  scss/basic.scss:47
+  tint  ($color, $amount: 10%)                                   scss/basic.scss:51
+  body  1 sel, 4 decl                                            scss/basic.scss:56
+  .btn  1 sel, 0 decl                                            scss/basic.scss:64
+  .card  1 sel, 3 decl                                           scss/basic.scss:83
+  .container  1 sel, 2 decl                                      scss/basic.scss:99
+  screen and (max-width: 768px)  screen and (max-width: 768px)   scss/basic.scss:110
+  fadeIn                                                         scss/basic.scss:117
+[exit 0]

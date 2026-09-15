@@ -1,0 +1,10 @@
+<7 public names, 7 via definition> package json @WORKTREE
+basic
+  name  "demo-app"    json/basic.json:2
+  version  "1.2.3"    json/basic.json:3
+  private  true       json/basic.json:4
+  scripts             json/basic.json:5
+  dependencies        json/basic.json:9
+  keywords  3 items   json/basic.json:13
+  config              json/basic.json:14
+[exit 0]

@@ -1,0 +1,3 @@
+<0 call sites in 0 files, 0 definitions, 1 file scanned> callers of DOCTYPE
+no call sites of DOCTYPE (mentions in docstrings, comments and strings are not calls)
+[exit 1]

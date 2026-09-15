@@ -1,0 +1,4 @@
+<1 file seen, 9 structures shown, 1 excluded (.git/)>
+basic.ipynb (7-9)
+- Sales ledger @7
+[exit 0]

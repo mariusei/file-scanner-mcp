@@ -1,0 +1,13 @@
+<1 file seen, 14 structures shown, 1 excluded (.git/)>
+3 hits in 3 structures for /enabled/
+
+./basic.toml
+- server.tls > enabled true @10-10  (1 hit)
+   10 | enabled = true
+- plugins > enabled true @15-15  (1 hit)
+   15 | enabled = true
+- plugins > enabled false @19-19  (1 hit)
+   19 | enabled = false
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

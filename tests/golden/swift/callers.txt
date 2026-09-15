@@ -1,0 +1,4 @@
+<0 call sites in 0 files, 1 definition, 1 file scanned> callers of Config
+defined: basic.swift::Config (struct) basic.swift:7
+no call sites of Config (mentions in docstrings, comments and strings are not calls)
+[exit 1]

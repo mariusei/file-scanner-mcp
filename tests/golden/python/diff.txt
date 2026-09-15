@@ -1,0 +1,11 @@
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.py  (+1 ~2 =1 -1)
+  + health() -> bool                                           B:60
+  ~ validate_email(email: str, strict: bool = False) -> bool   A:48 → B:43   [signature: (email: str) -> bool → (email: str, strict: bool = False) -> bool]
+  ~ DEFAULT_TIMEOUT = 60                                       A:53 → B:48   [value: 30 → 60]
+  = UserService.remove_user(self, user_id: int) -> bool        A:43 → B:38   [renamed from UserService.delete_user]
+  - DatabaseManager.disconnect(self)                           A:19
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]

@@ -50,10 +50,24 @@ def validate_email(email: str) -> bool:
     return "@" in email
 
 
+DEFAULT_TIMEOUT = 30
+RETRY_POLICY = {"attempts": 3, "backoff": "exponential"}
+
+
+def _retry(action, attempts: int = RETRY_POLICY["attempts"]):
+    """Run action until it succeeds or the attempts are spent (internal)."""
+    for _ in range(attempts):
+        if action():
+            return True
+    return False
+
+
 def main():
     """Main entry point."""
     db = DatabaseManager("postgresql://localhost/mydb")
     service = UserService(db)
+    if validate_email("ada@example.com"):
+        _retry(db.connect)
     print("Application started")
 
 

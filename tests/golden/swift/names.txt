@@ -1,0 +1,11 @@
+<1 file seen, 33 structures shown, 1 excluded (.git/)>
+basic.swift (7-11)
+- Config @7 # Configuration structure for the application
+   struct Config {
+       let host: String
+       let port: Int
+       …
+  - host : String @8
+  - port : Int @9
+  - isEnabled : Bool @10
+[exit 0]

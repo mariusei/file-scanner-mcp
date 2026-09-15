@@ -1,0 +1,17 @@
+<14 public names, 14 via definition> package go @WORKTREE
+basic
+  Config                                                                        go/basic.go:10
+  Logger                                                                        go/basic.go:16
+  DatabaseManager                                                               go/basic.go:22
+  NewDatabaseManager  (connStr string) *DatabaseManager                         go/basic.go:28
+  Connect  (db *DatabaseManager) () error                                       go/basic.go:36
+  Disconnect  (db *DatabaseManager) ()                                          go/basic.go:43
+  Query  (db *DatabaseManager) (sql string) ([]map[string]interface{}, error)   go/basic.go:51
+  UserService                                                                   go/basic.go:56
+  CreateUser  (s *UserService) (username, email string) (int, error)            go/basic.go:61
+  GetUser  (s *UserService) (userID int) (map[string]interface{}, error)        go/basic.go:66
+  DeleteUser  (s *UserService) (userID int) error                               go/basic.go:71
+  ValidateEmail  (email string) bool                                            go/basic.go:76
+  FormatTimestamp  (t time.Time) string                                         go/basic.go:81
+  main  ()                                                                      go/basic.go:86
+[exit 0]

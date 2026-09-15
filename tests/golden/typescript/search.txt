@@ -1,0 +1,9 @@
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /calculateStats/
+
+./basic.ts
+- calculateStats (users: User[]) : { total: number; active: number } @109-114  (1 hit)
+   109 | const calculateStats = (users: User[]): { total: number; active: number } => {
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

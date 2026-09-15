@@ -1,0 +1,9 @@
+<1 file seen, 33 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /CompletionHandler/
+
+./basic.swift
+- CompletionHandler = (Result<Bool, Error>) -> Void @117-117  (1 hit)
+   117 | typealias CompletionHandler = (Result<Bool, Error>) -> Void
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

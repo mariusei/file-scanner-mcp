@@ -1,0 +1,12 @@
+basic.toml::server.host (6-6)
+basic.toml (2-19)
+- name "demo-app" @2 # Project configuration
+- version "1.2.3" @3
+- server @5
+  - host "localhost" @6
+     6 | host = "localhost"
+  - port 8080 @7
+- server.tls @9
+- plugins @13
+- plugins @17
+[exit 0]
