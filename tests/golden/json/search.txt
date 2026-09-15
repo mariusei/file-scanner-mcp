@@ -1,9 +1,9 @@
-<1 file seen, 14 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /port/
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /_comment/
 
 ./basic.json
-- config > server > port 8080 @17-17  (1 hit)
-   17 | "port": 8080
+- _comment "JSON has no comments; a leading underscore is ... @20-20  (1 hit)
+   20 | "_comment": "JSON has no comments; a leading underscore is the idiom for one"
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

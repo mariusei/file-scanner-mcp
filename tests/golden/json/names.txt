@@ -1,4 +1,4 @@
-<1 file seen, 14 structures shown, 1 excluded (.git/)>
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
 basic.json (2-2)
 - name "demo-app" @2
 [exit 0]

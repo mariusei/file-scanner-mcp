@@ -1,1 +1,23 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (cf9343f)
+a  merge-base cf9343f  1 ahead 0 behind  1 file, +5 ~1 -5 structures
+b  merge-base cf9343f  1 ahead 0 behind  1 file, +5 ~1 -5 structures
+overlap (structures touched by 2+ branches): 11 in 1 file
+  basic.json::config                 a(-)  b(-)
+  basic.json::config.server          a(-)  b(-)
+  basic.json::config.server.host     a(-)  b(-)
+  basic.json::config.server.port     a(-)  b(-)
+  basic.json::keywords               a(-)  b(-)
+  basic.json::license                a(+)  b(+)
+  basic.json::settings               a(+)  b(+)
+  basic.json::settings.server        a(+)  b(+)
+  basic.json::settings.server.host   a(+)  b(+)
+  basic.json::settings.server.port   a(+)  b(+)
+  basic.json::version                a(~)  b(~)
+colliding new names (added independently on 2+ branches): 5
+  host       a:basic.json:15  b:basic.json:15
+  license    a:basic.json:19  b:basic.json:19
+  port       a:basic.json:16  b:basic.json:16
+  server     a:basic.json:14  b:basic.json:14
+  settings   a:basic.json:13  b:basic.json:13
+merge order (a hint, not a verdict): a < b   (all share 11 structures; ordered by change size, a touches 11 and b touches 11)
+[exit 0]

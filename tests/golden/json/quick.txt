@@ -1,5 +1,5 @@
-<1 file seen, 14 structures shown>
-basic.json (2-19)
+<1 file seen, 15 structures shown>
+basic.json (2-20)
 - name "demo-app" @2
 - version "1.2.3" @3
 - private true @4
@@ -23,4 +23,5 @@ basic.json (2-19)
        "port": 8080
     - host "localhost" @16
     - port 8080 @17
+- _comment "JSON has no comments; a leading underscore is ... @20
 [exit 0]

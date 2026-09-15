@@ -1,5 +1,5 @@
 basic.json::scripts.build (6-6)
-basic.json (2-19)
+basic.json (2-20)
 - name "demo-app" @2
 - version "1.2.3" @3
 - private true @4
@@ -10,4 +10,5 @@ basic.json (2-19)
 - dependencies @9
 - keywords 3 items @13
 - config @14
+- _comment "JSON has no comments; a leading underscore is ... @20
 [exit 0]
