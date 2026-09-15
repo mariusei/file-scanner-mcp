@@ -8,6 +8,7 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from .models import (
     CallInfo,
     DefinitionInfo,
     EntryPointInfo,
+    Export,
     ImportInfo,
     StructureNode,
 )
@@ -409,6 +411,44 @@ class GoLanguage(BaseLanguage):
             )
 
         return structures
+
+    # ===========================================================================
+    # Naming conventions and the public surface
+    # ===========================================================================
+    #: `go test` runs these by rule: the prefix followed by nothing or by a
+    #: character that is not a lower-case letter, in a _test.go file.
+    _TEST_PREFIXES = ("Test", "Benchmark", "Example", "Fuzz")
+    _TEST_FILE_SUFFIX = "_test.go"
+
+    def is_private(self, node) -> bool:
+        """Unexported unless the handler recorded "public", which it does
+        for a capitalised identifier — Go's only visibility rule. A leading
+        underscore says nothing here."""
+        return "public" not in node.modifiers
+
+    def is_exempt_from_unreferenced(self, definition) -> bool:
+        """TestXxx, BenchmarkXxx, ExampleXxx and FuzzXxx in a _test.go file
+        are invoked by `go test` through its discovery rule, never by a
+        textual reference. main and init are universal roots in code_health
+        and are not repeated here."""
+        if not definition.file.endswith(self._TEST_FILE_SUFFIX):
+            return False
+        name = definition.name
+        return any(
+            name.startswith(prefix) and not name[len(prefix) : len(prefix) + 1].islower()
+            for prefix in self._TEST_PREFIXES
+        )
+
+    def public_surface(self, package_dir: str, read_file) -> list[Export]:
+        """A Go package has no facade: its surface is every exported
+        identifier across the directory's .go files, except what _test.go
+        files define — those compile only under `go test`."""
+        root = os.path.dirname(os.path.abspath(package_dir))
+        exports: list[Export] = []
+        for path in self._surface_files(package_dir):
+            if not path.endswith(self._TEST_FILE_SUFFIX):
+                exports.extend(self._definition_exports(path, root, read_file(path)))
+        return exports
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from GoAnalyzer)

@@ -801,7 +801,22 @@ class BaseLanguage(ABC):
         the same walk serves a working tree and a materialised ref."""
         exports: list[Export] = []
         root = os.path.dirname(os.path.abspath(package_dir))
+        for path in self._surface_files(package_dir):
+            exports.extend(self._definition_exports(path, root, read_file(path)))
+        return exports
+
+    def _surface_files(self, package_dir: str) -> list[str]:
+        """The directory's files this language owns, in name order."""
         extensions = tuple(self.get_extensions())
+        paths = [os.path.join(package_dir, name) for name in sorted(os.listdir(package_dir))]
+        return [p for p in paths if os.path.isfile(p) and p.lower().endswith(extensions)]
+
+    def _surface_nodes(self, content: str | None) -> list[StructureNode]:
+        """A file's top-level definitions that are on the public surface,
+        looking through SURFACE_CONTAINER_TYPES (a namespace is not a name)."""
+        structures = (
+            parse_cache.scan(self, content.encode("utf-8")) if content is not None else None
+        )
 
         def definitions(nodes: list[StructureNode]) -> Iterator[StructureNode]:
             for node in nodes:
@@ -812,27 +827,33 @@ class BaseLanguage(ABC):
                 ):
                     yield node
 
-        for name in sorted(os.listdir(package_dir)):
-            path = os.path.join(package_dir, name)
-            if not (os.path.isfile(path) and name.lower().endswith(extensions)):
-                continue
-            content = read_file(path)
-            structures = (
-                parse_cache.scan(self, content.encode("utf-8")) if content is not None else None
-            )
-            for node in definitions(structures or []):
-                exports.append(
-                    Export(
-                        name=node.name,
-                        kind=node.type,
-                        via="definition",
-                        module=os.path.splitext(name)[0],
-                        path=os.path.relpath(path, root).replace(os.sep, "/"),
-                        line=node.start_line,
-                        signature=node.signature or "",
-                    )
-                )
-        return exports
+        return list(definitions(structures or []))
+
+    def _definition_exports(self, path: str, root: str, content: str | None) -> list[Export]:
+        """One Export per public top-level definition of the file, in file order."""
+        return [self._export(node, path, root) for node in self._surface_nodes(content)]
+
+    @staticmethod
+    def _export(
+        node: StructureNode,
+        path: str,
+        root: str,
+        via: str = "definition",
+        name: str | None = None,
+        module: str | None = None,
+    ) -> Export:
+        """The Export record for a definition node; `name` when the facade
+        exports it under another name, `module` when the file's stem is not
+        the module's name."""
+        return Export(
+            name=name or node.name,
+            kind=node.type,
+            via=via,
+            module=module or os.path.splitext(os.path.basename(path))[0],
+            path=os.path.relpath(path, root).replace(os.sep, "/"),
+            line=node.start_line,
+            signature=node.signature or "",
+        )
 
     # ===========================================================================
     # Reachability contract — for dead-code detection (OPTIONAL, opt-in)

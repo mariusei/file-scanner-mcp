@@ -158,3 +158,38 @@ def test_union(file_scanner):
     # Find Result union
     result = next((s for s in structures if s.type == "union" and s.name == "Result"), None)
     assert result is not None, "Should find Result union"
+
+
+def test_privacy_is_pub_or_export_not_the_name():
+    """No naming convention in Zig: the keyword decides. `export` is the C-ABI
+    surface, `extern` only declares a symbol defined elsewhere."""
+    from scantool.languages import get_language
+    from scantool.languages.models import StructureNode
+
+    zig = get_language(".zig")
+
+    def node(name, modifiers, type="function"):
+        return StructureNode(type=type, name=name, start_line=1, end_line=1, modifiers=modifiers)
+
+    assert not zig.is_private(node("shown", ["pub"]))
+    assert not zig.is_private(node("_shown", ["pub", "inline"]))
+    assert not zig.is_private(node("c_api", ["export"]))
+    assert zig.is_private(node("helper", []))
+    assert zig.is_private(node("declared_elsewhere", ["extern"]))
+    assert zig.is_private(node("basic test", [], type="test"))
+
+
+def test_surface_is_each_files_pub_declarations(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "lib.zig").write_text(
+        'const std = @import("std");\npub const Config = struct {\n    pub fn total() i32 {\n'
+        "        return 1;\n    }\n};\nconst Hidden = struct {};\npub fn shown() void {}\n"
+        'fn helper() void {}\nexport fn c_api() void {}\ntest "it" {}\n'
+    )
+    rows = [(e.name, e.kind, e.via) for e in read_surface(str(tmp_path)).exports]
+    assert rows == [
+        ("Config", "struct", "definition"),
+        ("shown", "function", "definition"),
+        ("c_api", "function", "definition"),
+    ]

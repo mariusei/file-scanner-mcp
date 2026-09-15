@@ -1,13 +1,8 @@
-<10 public names, 10 via definition> package zig @WORKTREE
+<5 public names, 5 via definition> package zig @WORKTREE
 basic
-  Config                                            zig/basic.zig:4
-  Status                                            zig/basic.zig:19
-  Result                                            zig/basic.zig:26
-  main  () !void                                    zig/basic.zig:32
-  helper  (x: i32, y: i32) i32                      zig/basic.zig:41
-  fastAdd  (a: u32, b: u32) u32                     zig/basic.zig:45
-  c_api_function  (ptr: [*]u8, len: usize) void     zig/basic.zig:49
-  basic test                                        zig/basic.zig:54
-  addition works                                    zig/basic.zig:58
-  clamp  (value: i32, lower: i32, upper: i32) i32   zig/basic.zig:67
+  Config                                          zig/basic.zig:4
+  Status                                          zig/basic.zig:19
+  main  () !void                                  zig/basic.zig:32
+  fastAdd  (a: u32, b: u32) u32                   zig/basic.zig:45
+  c_api_function  (ptr: [*]u8, len: usize) void   zig/basic.zig:49
 [exit 0]

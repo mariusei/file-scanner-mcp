@@ -203,3 +203,98 @@ def test_fallback_mode():
 
     finally:
         os.unlink(temp_path)
+
+
+def test_export_lists_and_default_exports_record_the_export_modifier(file_scanner):
+    """`export { a, b as c }` and `export default a` export names defined
+    elsewhere in the module; the handler records them as it records an
+    inline `export function`. A `from` clause names another module's."""
+    source = (
+        "function a() {}\nfunction b() {}\nfunction d() {}\nfunction x() {}\nclass K {}\n"
+        'export { a, b as c };\nexport default d;\nexport { x } from "./x";\n'
+    )
+    by_name = {s.name: s for s in file_scanner.scan_content(source, "m.ts")}
+    assert "export" in by_name["a"].modifiers and "export" in by_name["b"].modifiers
+    assert "export" in by_name["d"].modifiers
+    assert "export" not in by_name["x"].modifiers and "export" not in by_name["K"].modifiers
+
+
+def test_privacy_is_export_at_module_scope_and_private_members_in_a_class():
+    from scantool.languages import get_language
+    from scantool.languages.models import StructureNode
+
+    ts = get_language(".ts")
+
+    def node(name, modifiers, type="function"):
+        return StructureNode(type=type, name=name, start_line=1, end_line=1, modifiers=modifiers)
+
+    assert not ts.is_private(node("shown", ["export"]))
+    assert not ts.is_private(node("_shown", ["async", "export"]))
+    assert ts.is_private(node("hidden", []))
+    assert ts.is_private(node("Hidden", ["abstract"], type="class"))
+    assert not ts.is_private(node("run", [], type="method"))
+    assert ts.is_private(node("run", ["private"], type="method"))
+    assert ts.is_private(node("run", ["protected", "async"], type="method"))
+    assert ts.is_private(node("#run", [], type="method"))
+
+
+def test_surface_follows_the_facade(tmp_path):
+    """index.ts is the facade: re-export lists with aliases, wildcards,
+    namespaces, default exports, a chain through a module's own re-export,
+    the facade's own exports, a dependency and a name nobody defines."""
+    from scantool.surface import read_surface
+
+    (tmp_path / "index.ts").write_text(
+        'export { A, B as C } from "./a";\nexport * from "./b";\nexport * as ns from "./sub/c";\n'
+        "export { local };\nexport default main;\nexport const MAX = 3;\n"
+        "export function own(): void {}\nfunction local(): number {\n  return 1;\n}\n"
+        "function main(): void {}\nfunction hidden(): void {}\n"
+        'export { Deep } from "./a";\nexport { Missing } from "./a";\n'
+        'export { thing } from "lodash";\n'
+    )
+    (tmp_path / "a.ts").write_text(
+        "export class A {}\nexport function B(): void {}\n"
+        'export { Deep } from "./sub/c";\nfunction priv() {}\n'
+    )
+    (tmp_path / "b.ts").write_text(
+        "export interface Task {\n  name: string;\n}\n"
+        "export const arrow = () => 1;\nfunction nope() {}\n"
+    )
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "c.ts").write_text(
+        "export class Deep {}\nexport function cfun(): void {}\n"
+    )
+    pkg = tmp_path.name
+    surface = read_surface(str(tmp_path))
+    rows = [(e.name, e.kind, e.via, e.module, e.path) for e in surface.exports]
+    assert rows == [
+        ("A", "class", "re-export", "a", f"{pkg}/a.ts"),
+        ("C", "function", "re-export", "a", f"{pkg}/a.ts"),
+        ("Task", "interface", "re-export", "b", f"{pkg}/b.ts"),
+        ("arrow", "function", "re-export", "b", f"{pkg}/b.ts"),
+        ("ns", "module", "re-export", "sub.c", f"{pkg}/sub/c.ts"),
+        ("local", "function", "definition", "index", f"{pkg}/index.ts"),
+        ("main", "function", "default export", "index", f"{pkg}/index.ts"),
+        ("MAX", "value", "definition", "index", f"{pkg}/index.ts"),
+        ("own", "function", "definition", "index", f"{pkg}/index.ts"),
+        ("Deep", "class", "re-export", "sub.c", f"{pkg}/sub/c.ts"),
+        ("Missing", "unresolved", "re-export", "a", f"{pkg}/a.ts"),
+        ("thing", "external", "re-export", "lodash", None),
+    ]
+    by_name = {e.name: e for e in surface.exports}
+    assert by_name["MAX"].signature == "= 3" and by_name["MAX"].line == 6
+    assert by_name["ns"].signature == "module (2 exported names)"
+    assert by_name["local"].signature == "() : number" and by_name["local"].line == 8
+    assert by_name["thing"].signature == "from lodash (outside the package)"
+
+
+def test_surface_without_a_facade_is_each_files_exports(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "m.ts").write_text(
+        "export class A {}\nclass B {}\nfunction c() {}\nfunction d() {}\nexport { d };\n"
+    )
+    assert [(e.name, e.via) for e in read_surface(str(tmp_path)).exports] == [
+        ("A", "definition"),
+        ("d", "definition"),
+    ]

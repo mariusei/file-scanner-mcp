@@ -8,6 +8,7 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from .models import (
     CallInfo,
     DefinitionInfo,
     EntryPointInfo,
+    Export,
     ImportInfo,
     StructureNode,
 )
@@ -214,6 +216,11 @@ class TypeScriptLanguage(BaseLanguage):
                 for added in parent_structures[before:]:
                     if "export" not in added.modifiers:
                         added.modifiers.append("export")
+                # `export { a, b as c }` and `export default a` export names
+                # defined elsewhere in the module (a `from` clause names
+                # another module's, not this file's).
+                if node.child_by_field_name("source") is None:
+                    listed.update(self._listed_exports(node, source_code))
 
             # Imports
             elif node.type == "import_statement":
@@ -224,8 +231,27 @@ class TypeScriptLanguage(BaseLanguage):
                 for child in node.children:
                     traverse(child, parent_structures)
 
+        listed: set[str] = set()
         traverse(root, structures)
+        for node in structures:
+            if node.name in listed and "export" not in node.modifiers:
+                node.modifiers.append("export")
         return structures
+
+    def _listed_exports(self, node: Node, source_code: bytes) -> list[str]:
+        """The local names an export statement without a declaration names:
+        the specifiers of `export { a, b as c }` (before any `as`) and the
+        identifier of `export default a`."""
+        names = []
+        for child in node.children:
+            if child.type == "export_clause":
+                for specifier in child.named_children:
+                    local = specifier.child_by_field_name("name")
+                    if local is not None:
+                        names.append(self._get_node_text(local, source_code))
+            elif child.type == "identifier":
+                names.append(self._get_node_text(child, source_code))
+        return names
 
     def _extract_class(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
         """Extract class with full metadata."""
@@ -592,6 +618,62 @@ class TypeScriptLanguage(BaseLanguage):
             )
 
         return structures
+
+    # ===========================================================================
+    # Naming conventions and the public surface
+    # ===========================================================================
+    _FACADE_STEM = "index"
+    _HIDDEN_MEMBER_MODIFIERS = frozenset({"private", "protected"})
+
+    def is_private(self, node) -> bool:
+        """At module scope a name is on the surface only when exported —
+        inline (`export function f`), in an `export { f }` list or as
+        `export default f`; the handler records all three as the modifier
+        "export". A class or interface member is private with `private`,
+        `protected` or a `#name`, and otherwise answers for itself (a bare
+        StructureNode cannot see whether its class is exported).
+        is_exempt_from_unreferenced stays default: nothing in TS/JS is
+        invoked by name alone — Jest/Vitest/Mocha run `test()`/`it()` calls,
+        which are textual references."""
+        if node.type == "method":
+            return bool(
+                self._HIDDEN_MEMBER_MODIFIERS & set(node.modifiers)
+            ) or node.name.startswith("#")
+        return "export" not in node.modifiers
+
+    def public_surface(self, package_dir: str, read_file) -> list[Export]:
+        """index.ts (or index.<any extension the handler owns>) is the
+        facade: its own exports, `export { A, B as C } from "./a"`,
+        `export * from "./b"`, `export * as ns from "./c"` and `export
+        default`, each followed to the file that defines the name (./a as
+        a.ts, a/index.ts, ... through the file's own re-exports; a bare
+        specifier is a dependency, outside the package). Without a facade
+        the directory is a flat set of modules: each file's exported names."""
+        package_dir = os.path.abspath(package_dir.rstrip("/\\"))
+        facade = self._module_file(os.path.join(package_dir, self._FACADE_STEM))
+        if facade is None:
+            return super().public_surface(package_dir, read_file)
+        return _Facade(self, package_dir, read_file).exports(facade)
+
+    def _module_file(self, stem: str) -> str | None:
+        """The file a stem names, in the handler's extension order."""
+        return next(
+            (stem + ext for ext in self.get_extensions() if os.path.isfile(stem + ext)), None
+        )
+
+    def _specifier_file(self, from_dir: str, specifier: str) -> str | None:
+        """The file a relative import specifier names, or None for a bare
+        specifier (a dependency). `./a` is a.ts, a.tsx, ..., a/index.ts;
+        `./a.js` may be a.js or, ESM-style, a.ts."""
+        if not specifier.startswith("."):
+            return None
+        base = os.path.normpath(os.path.join(from_dir, specifier))
+        stem, ext = os.path.splitext(base)
+        if os.path.isfile(base) and ext.lower() in self.get_extensions():
+            return base
+        return self._module_file(stem if ext.lower() in self.get_extensions() else base) or (
+            self._module_file(os.path.join(base, self._FACADE_STEM))
+        )
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from TypeScriptAnalyzer)
@@ -1016,3 +1098,200 @@ class TypeScriptLanguage(BaseLanguage):
             return f"  {ep.file}:{ep.framework} {ep.name} @{ep.line}"
         else:
             return super().format_entry_point(ep)
+
+
+_MAX_CHAIN = 16  # re-export hops before a name is called unresolved
+
+
+class _Facade:
+    """Follows the facade's export statements to the files that define the
+    names, through each file's own `export ... from` chain."""
+
+    _DECLARATION_KINDS = {
+        "lexical_declaration": "value",
+        "variable_declaration": "value",
+        "type_alias_declaration": "type",
+        "enum_declaration": "enum",
+    }
+
+    def __init__(self, language: TypeScriptLanguage, package_dir: str, read_file):
+        self.language = language
+        self.package_dir = package_dir
+        self.root = os.path.dirname(package_dir)
+        self.read_file = read_file
+
+    def exports(self, facade: str) -> list[Export]:
+        content = self.read_file(facade)
+        if content is None:
+            return []
+        source = content.encode("utf-8")
+        own = {node.name: node for node in self.language._surface_nodes(content)}
+        out: list[Export] = []
+        for statement in self.language.parser.parse(source).root_node.children:
+            if statement.type == "export_statement":
+                out.extend(self._statement(statement, source, facade, own))
+        return out
+
+    def _statement(self, statement: Node, source: bytes, facade: str, own: dict) -> list[Export]:
+        def text(node: Node | None) -> str:
+            return self.language._get_node_text(node, source) if node is not None else ""
+
+        children = {child.type: child for child in statement.children}
+        specifier = text(children["string"]).strip("'\"`") if "string" in children else None
+        target = (
+            self.language._specifier_file(os.path.dirname(facade), specifier)
+            if specifier is not None
+            else None
+        )
+        via = "default export" if "default" in children else "definition"
+        declaration = statement.child_by_field_name("declaration")
+        if declaration is not None:
+            name = self._declared_name(declaration, source)
+            return [self._own(name, own.get(name), declaration, facade, via, source)]
+        if "export_clause" in children:
+            out = []
+            for spec in children["export_clause"].named_children:
+                local = text(spec.child_by_field_name("name"))
+                alias = spec.child_by_field_name("alias")
+                exported = text(alias) if alias is not None else local
+                if specifier is not None:
+                    out.append(self._follow(local, exported, target, specifier))
+                else:
+                    out.append(
+                        self._own(local, own.get(local), spec, facade, via, source, exported)
+                    )
+            return out
+        if "namespace_export" in children:
+            namespace = children["namespace_export"]
+            name = text(next(c for c in namespace.children if c.type == "identifier"))
+            return [self._module(name, target, specifier)]
+        if "*" in children and specifier is not None:
+            if target is None:
+                return [self._external("*", specifier)]
+            label = self._label(target)
+            return [
+                self.language._export(node, target, self.root, "re-export", module=label)
+                for node in self.language._surface_nodes(self.read_file(target))
+            ]
+        value = statement.child_by_field_name("value")
+        if "default" in children and value is not None:
+            if value.type == "identifier":
+                name = text(value)
+                return [self._own(name, own.get(name), value, facade, via, source)]
+            line = statement.start_point[0] + 1
+            label, rel = self._label(facade), self._rel(facade)
+            return [Export("default", "value", via, label, rel, line, text(value)[:80])]
+        return []
+
+    def _declared_name(self, declaration: Node, source: bytes) -> str:
+        """The name a declaration introduces; a variable declaration's is on
+        its first declarator, an anonymous `export default class {}` has none."""
+        holder = self._declarator(declaration) or declaration
+        name = holder.child_by_field_name("name")
+        return self.language._get_node_text(name, source) if name is not None else "default"
+
+    @staticmethod
+    def _declarator(declaration: Node) -> Node | None:
+        if declaration.type not in ("lexical_declaration", "variable_declaration"):
+            return None
+        return next(
+            (c for c in declaration.named_children if c.type == "variable_declarator"), None
+        )
+
+    def _own(
+        self,
+        name: str,
+        node: StructureNode | None,
+        declaration: Node,
+        facade: str,
+        via: str,
+        source: bytes,
+        exported: str | None = None,
+    ) -> Export:
+        """A name the facade defines itself: the scanned node when the
+        handler extracts that kind, else the declaration as a value/type."""
+        label = self._label(facade)
+        if node is not None:
+            return self.language._export(node, facade, self.root, via, name=exported, module=label)
+        kind = self._DECLARATION_KINDS.get(declaration.type, "value")
+        declarator = self._declarator(declaration)
+        value = declarator.child_by_field_name("value") if declarator is not None else None
+        signature = "= " + self.language._get_node_text(value, source)[:80] if value else ""
+        line = declaration.start_point[0] + 1
+        return Export(exported or name, kind, via, label, self._rel(facade), line, signature)
+
+    def _follow(
+        self,
+        local: str,
+        exported: str,
+        target: str | None,
+        specifier: str,
+        seen: frozenset = frozenset(),
+    ) -> Export:
+        """`local` as exported by the file `specifier` names: a definition
+        there, or one hop further along that file's own `export ... from`."""
+        if target is None:
+            return self._external(exported, specifier)
+        content = self.read_file(target)
+        label = self._label(target)
+        node = next((n for n in self.language._surface_nodes(content) if n.name == local), None)
+        if node is not None:
+            return self.language._export(node, target, self.root, "re-export", exported, label)
+        key = (target, local)
+        if content is not None and key not in seen and len(seen) < _MAX_CHAIN:
+            found = self._hop(local, exported, target, content.encode("utf-8"), seen | {key})
+            if found is not None:
+                return found
+        rel = self._rel(target)
+        return Export(exported, "unresolved", "re-export", label, rel, None, "not found in module")
+
+    def _hop(
+        self, local: str, exported: str, target: str, source: bytes, seen: frozenset
+    ) -> Export | None:
+        """The file's own `export { local } from` or `export * from` that
+        carries the name, followed one hop."""
+
+        def text(node: Node | None) -> str:
+            return self.language._get_node_text(node, source) if node is not None else ""
+
+        for statement in self.language.parser.parse(source).root_node.children:
+            children = {child.type: child for child in statement.children}
+            if statement.type != "export_statement" or "string" not in children:
+                continue
+            inner = text(children["string"]).strip("'\"`")
+            inner_target = self.language._specifier_file(os.path.dirname(target), inner)
+            if "export_clause" in children:
+                for spec in children["export_clause"].named_children:
+                    alias = spec.child_by_field_name("alias")
+                    inner_local = text(spec.child_by_field_name("name"))
+                    if (text(alias) if alias is not None else inner_local) == local:
+                        return self._follow(inner_local, exported, inner_target, inner, seen)
+            elif "*" in children and "namespace_export" not in children:
+                found = self._follow(local, exported, inner_target, inner, seen)
+                if found.kind not in ("unresolved", "external"):
+                    return found
+        return None
+
+    def _module(self, name: str, target: str | None, specifier: str | None) -> Export:
+        if target is None:
+            return Export(
+                name, "external", "re-export", specifier, None, None, f"module {specifier}"
+            )
+        count = len(self.language._surface_nodes(self.read_file(target)))
+        signature = f"module ({count} exported name{'s' if count != 1 else ''})"
+        return Export(
+            name, "module", "re-export", self._label(target), self._rel(target), 1, signature
+        )
+
+    @staticmethod
+    def _external(name: str, specifier: str) -> Export:
+        note = f"from {specifier} (outside the package)"
+        return Export(name, "external", "re-export", specifier, None, None, note)
+
+    def _label(self, path: str) -> str:
+        """The module a file is, relative to the package: sub/b.ts -> sub.b."""
+        relative = os.path.relpath(path, self.package_dir)
+        return os.path.splitext(relative)[0].replace(os.sep, ".")
+
+    def _rel(self, path: str) -> str:
+        return os.path.relpath(path, self.root).replace(os.sep, "/")

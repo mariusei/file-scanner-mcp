@@ -8,8 +8,7 @@ overlap (structures touched by 2+ branches): 6 in 1 file
   basic.ts::UserManager.updateUser   a(-)  b(-)
   basic.ts::health                   a(+)  b(+)
   basic.ts::validateEmail            a(~)  b(~)
-colliding new names (added independently on 2+ branches): 2
-  health      a:basic.ts:112  b:basic.ts:112
+colliding new names (added independently on 2+ branches): 1
   patchUser   a:basic.ts:80  b:basic.ts:80
 merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
 [exit 0]
