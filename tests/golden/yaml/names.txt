@@ -1,4 +1,4 @@
-<1 file seen, 31 structures shown, 1 excluded (.git/)>
+<1 file seen, 36 structures shown, 1 excluded (.git/)>
 basic.yaml (1-37)
 - name sample-workflow @1
 - name worker @37

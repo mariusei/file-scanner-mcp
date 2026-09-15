@@ -1,5 +1,5 @@
-<1 file seen, 31 structures shown>
-basic.yaml (1-42)
+<1 file seen, 36 structures shown>
+basic.yaml (1-51)
 - document 1 @1
   - name sample-workflow @1
   - shared_timeout 10 @3 [anchor:timeout]
@@ -26,11 +26,21 @@ basic.yaml (1-42)
         - Run tests @27
           - run | make test make coverage @28 [literal]
   - notes > This is a folded block scalar describing the workflow a... @32 [folded]
-     32 | notes: >
-     33 |   This is a folded block scalar
-     34 |   describing the workflow above.
 - document 2 @35
   - service 3 keys @36
     - name worker @37
     - replicas 3 @38
     - tags [2] prod, critical @39
+         tags:
+           - prod
+           - critical
+       …
+  - Retry policy for the worker's outbound calls; 2 lines @43
+  - retry 2 keys @45
+     retry:
+       attempts: 3
+       backoff: exponential
+     …
+    - attempts 3 @46
+    - backoff exponential @47
+  - kill_after 120 @50 # Seconds before a stuck job is killed

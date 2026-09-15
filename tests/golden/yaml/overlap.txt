@@ -1,1 +1,21 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (04fb08c)
+a  merge-base 04fb08c  1 ahead 0 behind  1 file, +4 ~2 -4 structures
+b  merge-base 04fb08c  1 ahead 0 behind  1 file, +4 ~2 -4 structures
+overlap (structures touched by 2+ branches): 10 in 1 file
+  basic.yaml::document 2.metrics_port       a(+)  b(+)
+  basic.yaml::document 2.retries            a(+)  b(+)
+  basic.yaml::document 2.retries.attempts   a(+)  b(+)
+  basic.yaml::document 2.retries.backoff    a(+)  b(+)
+  basic.yaml::document 2.retry              a(-)  b(-)
+  basic.yaml::document 2.retry.attempts     a(-)  b(-)
+  basic.yaml::document 2.retry.backoff      a(-)  b(-)
+  basic.yaml::document 2.service            a(~)  b(~)
+  basic.yaml::document 2.service.replicas   a(~)  b(~)
+  basic.yaml::document 2.service.tags       a(-)  b(-)
+colliding new names (added independently on 2+ branches): 4
+  attempts       a:basic.yaml:43  b:basic.yaml:43
+  backoff        a:basic.yaml:44  b:basic.yaml:44
+  metrics_port   a:basic.yaml:48  b:basic.yaml:48
+  retries        a:basic.yaml:42  b:basic.yaml:42
+merge order (a hint, not a verdict): a < b   (all share 10 structures; ordered by change size, a touches 10 and b touches 10)
+[exit 0]
