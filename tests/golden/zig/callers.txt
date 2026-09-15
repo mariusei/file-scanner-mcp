@@ -1,4 +1,6 @@
-<0 call sites in 0 files, 1 definition, 1 file scanned> callers of Config
-defined: basic.zig::Config (struct) basic.zig:4
-no call sites of Config (mentions in docstrings, comments and strings are not calls)
-[exit 1]
+<1 call site in 1 file, 1 definition, 1 file scanned> callers of clamp
+defined: basic.zig::clamp (function) basic.zig:67
+
+basic.zig  (1 site)
+  - main basic.zig:37   try stdout.print("Hello, {s}! {d}\n", .{ "World", clamp(helper(2, 3), 0, max_value) });
+[exit 0]

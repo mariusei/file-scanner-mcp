@@ -1,5 +1,5 @@
 basic.zig::Config.total (9-11)
-basic.zig (4-61)
+basic.zig (4-71)
 - Config @4 [pub] # Configuration for the application
   - total (self: Config) i32 @9 [pub] # Calculate the total value
      9 |     pub fn total(self: Config) i32 {
@@ -14,4 +14,5 @@ basic.zig (4-61)
 - c_api_function (ptr: [*]u8, len: usize) void @49 [export]
 - basic test @54
 - addition works @58
+- clamp (value: i32, lower: i32, upper: i32) i32 @67 # Clamp a value into the inclusive range (private)
 [exit 0]

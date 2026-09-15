@@ -1,1 +1,10 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.zig  (+1 ~1 =1 -1)
+  + isReady() bool                        B:56
+  ~ fastAdd(a: u32, b: u32, c: u32) u32   A:45 → B:37   [signature: (a: u32, b: u32) u32 → (a: u32, b: u32, c: u32) u32]
+  = Config.discard(self: Config) void     A:13 → B:13   [renamed from Config.private_helper]
+  - Status                                A:19
+
+summary: 1 file, +1 ~1 =1 -1 structures
+[exit 0]

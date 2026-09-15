@@ -10,17 +10,9 @@ pub const Config = struct {
         return self.value * 2;
     }
 
-    fn private_helper(self: Config) void {
+    fn discard(self: Config) void {
         _ = self;
     }
-};
-
-/// Status enumeration
-pub const Status = enum {
-    pending,
-    running,
-    completed,
-    failed,
 };
 
 const Result = union(enum) {
@@ -42,8 +34,8 @@ fn helper(x: i32, y: i32) i32 {
     return x + y;
 }
 
-pub inline fn fastAdd(a: u32, b: u32) u32 {
-    return a + b;
+pub inline fn fastAdd(a: u32, b: u32, c: u32) u32 {
+    return a + b + c;
 }
 
 export fn c_api_function(ptr: [*]u8, len: usize) void {
@@ -60,8 +52,13 @@ test "addition works" {
     try std.testing.expectEqual(result, 5);
 }
 
+/// Liveness probe
+pub fn isReady() bool {
+    return max_value > 0;
+}
+
 /// Upper bound for clamped values
-pub const max_value: i32 = 100;
+pub const max_value: i32 = 200;
 
 /// Clamp a value into the inclusive range (private)
 fn clamp(value: i32, lower: i32, upper: i32) i32 {
