@@ -7,7 +7,7 @@ It contains various structural elements that should be detected and parsed.
 INTRODUCTION
 
 The file scanner MCP is designed to handle multiple file formats including
-plain text files. This document serves as a test case for the text extraction
+plain text files. This document is the sample that exercises the text extraction
 functionality.
 
 Features and Capabilities
@@ -54,17 +54,7 @@ It handles Unicode characters gracefully and won't crash on malformed input.
 The parser is designed to be robust and extract whatever structure it can
 find, even in messy files.
 
-FUTURE ENHANCEMENTS
-
-Potential improvements could include:
-- Detection of numbered lists
-- Recognition of bullet points
-- Indentation-based structure
-
-Another area for development is better handling of email-style quoted text,
-which often appears in documentation and discussion threads.
-
-CONCLUSION
+FINAL NOTE
 ----------
 
 This demonstrates the capability to extract meaningful structure from plain
@@ -83,5 +73,10 @@ Related material, listed as plain references since text has no link syntax:
 Document settings, in key: value form:
 - max line length: 80
 - encoding: UTF-8
+
+APPENDIX
+
+Sample files for the other scanners live next to this one, one directory
+per language.
 
 End of document.

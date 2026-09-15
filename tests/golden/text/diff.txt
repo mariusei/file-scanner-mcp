@@ -1,1 +1,9 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.txt  (+1 =1 -1)
+  + APPENDIX              B:77
+  = FINAL NOTE            A:67 → B:57   [renamed from CONCLUSION]
+  - FUTURE ENHANCEMENTS   A:57
+
+summary: 1 file, +1 =1 -1 structures
+[exit 0]
