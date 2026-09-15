@@ -1,13 +1,8 @@
-<10 public names, 10 via definition> package rust @WORKTREE
+<5 public names, 5 via definition> package rust @WORKTREE
 basic
-  User                                                               rust/basic.rs:8
-  DatabaseManager                                                    rust/basic.rs:15
-  DatabaseManager                                                    rust/basic.rs:20
-  UserService                                                        rust/basic.rs:42
-  UserService                                                        rust/basic.rs:46
-  Validate                                                           rust/basic.rs:64
-  Validate for User                                                  rust/basic.rs:69
-  validate_email  (email: &str) -> bool                              rust/basic.rs:80
-  main  ()                                                           rust/basic.rs:85
-  retry  (action: &mut dyn FnMut() -> bool, attempts: u32) -> bool   rust/basic.rs:98
+  User                                    rust/basic.rs:8
+  DatabaseManager                         rust/basic.rs:15
+  UserService                             rust/basic.rs:42
+  Validate                                rust/basic.rs:64
+  validate_email  (email: &str) -> bool   rust/basic.rs:80
 [exit 0]

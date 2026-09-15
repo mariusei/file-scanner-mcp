@@ -217,3 +217,86 @@ def test_imports(file_scanner):
     # Should have imports group
     imports = next((s for s in structures if s.type == "imports"), None)
     assert imports is not None, "Should group use statements"
+
+
+def _node(name: str, modifiers: list[str]):
+    from scantool.languages.models import StructureNode
+
+    return StructureNode(type="function", name=name, start_line=1, end_line=1, modifiers=modifiers)
+
+
+def test_privacy_is_the_pub_keyword_not_the_name():
+    """The surface is what `pub` declares: pub(crate) and friends stay inside
+    the crate, a leading underscore says nothing, and a trait member is public
+    through its trait when the hook can see the enclosing definition."""
+    from scantool.languages import get_language
+    from scantool.languages.models import DefinitionInfo
+
+    rust = get_language(".rs")
+    assert not rust.is_private(_node("shown", ["pub"]))
+    assert not rust.is_private(_node("_shown", ["pub"]))
+    assert rust.is_private(_node("hidden", []))
+    assert rust.is_private(_node("crate_wide", ["pub(crate)"]))
+    assert rust.is_private(_node("upward", ["pub(super)"]))
+
+    def member(parent: str, kind: str, modifiers: tuple[str, ...] = ()):
+        return DefinitionInfo(
+            file="f",
+            type="method",
+            name="m",
+            line=1,
+            parent=parent,
+            modifiers=list(modifiers),
+            enclosing_kind=kind,
+        )
+
+    assert not rust.is_private(member("Validate", "trait"))
+    assert not rust.is_private(member("Validate for User", "impl"))
+    assert rust.is_private(member("User", "impl"))
+    assert not rust.is_private(member("User", "impl", ("pub",)))
+
+
+def test_surface_follows_the_facade(tmp_path):
+    """lib.rs is the facade: pub mod, pub use (lists, aliases, wildcards, a
+    module's own re-export chain, an external crate) and its own pub items."""
+    from scantool.surface import read_surface
+
+    (tmp_path / "lib.rs").write_text(
+        "pub mod core;\npub mod util;\nmod hidden;\n"
+        "pub use core::{Thing, helper as run, Deep};\npub use util::*;\n"
+        "pub use hidden::Secret;\npub use std::fmt::Display;\npub use core::Missing;\n"
+        "pub(crate) fn internal() {}\n\n/// Shown.\npub fn shown() -> u8 {\n    1\n}\n\nfn private() {}\n"
+    )
+    (tmp_path / "core.rs").write_text(
+        "pub struct Thing;\npub fn helper() {}\nfn quiet() {}\npub use crate::hidden::Deep;\n"
+    )
+    (tmp_path / "util").mkdir()
+    (tmp_path / "util" / "mod.rs").write_text("pub fn a() {}\nfn b() {}\n")
+    (tmp_path / "hidden.rs").write_text("pub struct Secret;\npub struct Deep;\n")
+    pkg = tmp_path.name
+    rows = [(e.name, e.kind, e.via, e.path) for e in read_surface(str(tmp_path)).exports]
+    assert rows == [
+        ("core", "module", "pub mod", f"{pkg}/core.rs"),
+        ("util", "module", "pub mod", f"{pkg}/util/mod.rs"),
+        ("Thing", "struct", "pub use", f"{pkg}/core.rs"),
+        ("run", "function", "pub use", f"{pkg}/core.rs"),
+        ("Deep", "struct", "pub use", f"{pkg}/hidden.rs"),
+        ("a", "function", "pub use", f"{pkg}/util/mod.rs"),
+        ("Secret", "struct", "pub use", f"{pkg}/hidden.rs"),
+        ("Display", "external", "pub use", None),
+        ("Missing", "unresolved", "pub use", f"{pkg}/core.rs"),
+        ("shown", "function", "definition", f"{pkg}/lib.rs"),
+    ]
+    by_name = {e.name: e for e in read_surface(str(tmp_path)).exports}
+    assert by_name["core"].signature == "module (2 pub names)"
+    assert by_name["shown"].signature == "() -> u8" and by_name["shown"].line == 12
+    assert by_name["run"].line == 2 and by_name["Display"].signature.startswith(
+        "from std::fmt::Display"
+    )
+
+
+def test_surface_without_a_facade_is_each_files_pub_items(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "a.rs").write_text("pub struct A;\nstruct B;\npub(crate) fn c() {}\nimpl A {}\n")
+    assert [(e.name, e.via) for e in read_surface(str(tmp_path)).exports] == [("A", "definition")]

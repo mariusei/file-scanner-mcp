@@ -8,6 +8,7 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from .models import (
     CallInfo,
     DefinitionInfo,
     EntryPointInfo,
+    Export,
     ImportInfo,
     StructureNode,
 )
@@ -539,6 +541,216 @@ class RustLanguage(BaseLanguage):
             )
 
         return structures
+
+    # ===========================================================================
+    # Naming conventions and the public surface
+    # ===========================================================================
+    #: An impl block is not a name: the surface lists the type it implements
+    #: for, and its methods answer for their own `pub`.
+    NON_EXPORT_TYPES = BaseLanguage.NON_EXPORT_TYPES | {"impl"}
+    #: The facade of a crate or a module directory; the first found wins.
+    _FACADES = ("lib.rs", "mod.rs", "main.rs")
+    _PATH_ROOTS = ("crate", "self", "super")
+
+    def is_private(self, node) -> bool:
+        """Outside the crate's public surface unless declared `pub`.
+        `pub(crate)`, `pub(super)` and `pub(in path)` widen visibility inside
+        the crate only, so they stay private here. A member of a trait, or of
+        a trait impl (`impl Trait for Type`), is public through the trait; the
+        hook sees that only when handed a DefinitionInfo (enclosing_kind and
+        parent, as CODE HEALTH does) — a bare StructureNode answers for its
+        own `pub`."""
+        if "pub" in node.modifiers:
+            return False
+        kind = getattr(node, "enclosing_kind", None)
+        parent = getattr(node, "parent", None)
+        return not (kind == "trait" or (kind == "impl" and parent and " for " in parent))
+
+    def public_surface(self, package_dir: str, read_file) -> list[Export]:
+        """lib.rs (else mod.rs, else main.rs) is the facade: its own `pub`
+        items, `pub mod x` as a module export (x.rs or x/mod.rs) and `pub use`
+        re-exports followed to the module that defines the name — through
+        crate::, self::, super:: and the modules' own `pub use` chains; a
+        path that leaves the directory (`pub use other_crate::X`) is outside
+        the package. Without a facade the directory is a flat set of modules:
+        each file's `pub` items, as any language."""
+        package_dir = os.path.abspath(package_dir.rstrip("/\\"))
+        candidates = (os.path.join(package_dir, name) for name in self._FACADES)
+        facade = next((path for path in candidates if os.path.isfile(path)), None)
+        if facade is None:
+            return super().public_surface(package_dir, read_file)
+        content = read_file(facade)
+        if content is None:
+            return []
+        source = content.encode("utf-8")
+        root = os.path.dirname(package_dir)
+        own = {node.start_line: node for node in self._surface_nodes(content)}
+        exports: list[Export] = []
+        for item in self.parser.parse(source).root_node.children:
+            line = item.start_point[0] + 1
+            if item.type == "use_declaration" and self._is_pub(item, source):
+                for segments, alias in self._use_leaves(
+                    item.child_by_field_name("argument"), source
+                ):
+                    exports.extend(
+                        self._follow_use(segments, alias, package_dir, package_dir, root, read_file)
+                    )
+            elif item.type == "mod_item" and self._is_pub(item, source):
+                name = self._get_node_text(item.child_by_field_name("name"), source)
+                if item.child_by_field_name("body") is not None:
+                    exports.append(
+                        Export(name, "module", "pub mod", name, self._rel(facade, root), line, "")
+                    )
+                else:
+                    exports.append(self._module_export(name, (name,), package_dir, root, read_file))
+            elif line in own:
+                exports.append(self._export(own[line], facade, root))
+        return exports
+
+    def _is_pub(self, item: Node, source: bytes) -> bool:
+        return any(
+            child.type == "visibility_modifier" and self._get_node_text(child, source) == "pub"
+            for child in item.children
+        )
+
+    def _use_leaves(
+        self, node: Node | None, source: bytes, prefix: tuple[str, ...] = ()
+    ) -> list[tuple[tuple[str, ...], str | None]]:
+        """Every name a use tree names, as (path segments, alias):
+        `a::{B, c as d, e::*}` gives (a, B), (a, c) as d and (a, e, *)."""
+        if node is None:
+            return []
+        text = self._get_node_text
+        if node.type in ("identifier", "crate", "self", "super", "metavariable"):
+            return [((*prefix, text(node, source)), None)]
+        if node.type in ("scoped_identifier", "scoped_use_list", "use_as_clause"):
+            path = node.child_by_field_name("path")
+            base = self._use_leaves(path, source, prefix)[0][0] if path else prefix
+            if node.type == "scoped_identifier":
+                return [((*base, text(node.child_by_field_name("name"), source)), None)]
+            if node.type == "scoped_use_list":
+                return self._use_leaves(node.child_by_field_name("list"), source, base)
+            alias = text(node.child_by_field_name("alias"), source)
+            return [(base, alias)]
+        if node.type == "use_list":
+            return [
+                leaf
+                for child in node.named_children
+                for leaf in self._use_leaves(child, source, prefix)
+            ]
+        if node.type == "use_wildcard":
+            path = next(iter(node.named_children), None)
+            base = self._use_leaves(path, source, prefix)[0][0] if path else prefix
+            return [((*base, "*"), None)]
+        return []
+
+    def _follow_use(
+        self,
+        segments: tuple[str, ...],
+        alias: str | None,
+        base_dir: str,
+        package_dir: str,
+        root: str,
+        read_file,
+        seen: frozenset[tuple[str, ...]] = frozenset(),
+    ) -> list[Export]:
+        """The Export(s) a `pub use` leaf names. base_dir holds the child
+        modules of the file the `use` is written in (crate:: resets it to the
+        package, super:: goes up one); a module's own `pub use` of the name is
+        followed one hop at a time until it is defined or leaves the directory."""
+        while segments and segments[0] in self._PATH_ROOTS:
+            head, segments = segments[0], segments[1:]
+            base_dir = (
+                package_dir
+                if head == "crate"
+                else os.path.dirname(base_dir)
+                if head == "super"
+                else base_dir
+            )
+        if not segments:
+            return []
+        name, module_segments = segments[-1], segments[:-1]
+        exported = alias or name
+        path = self._module_file(base_dir, module_segments) if module_segments else None
+        if path is None:
+            if not module_segments and self._module_file(base_dir, segments):
+                return [self._module_export(exported, segments, base_dir, root, read_file)]
+            spelled = "::".join(segments)
+            return [
+                Export(
+                    exported,
+                    "external",
+                    "pub use",
+                    spelled,
+                    None,
+                    None,
+                    f"from {spelled} (outside the package)",
+                )
+            ]
+        module = ".".join(module_segments)
+        content = read_file(path)
+        nodes = self._surface_nodes(content)
+        if name == "*":
+            return [self._export(n, path, root, "pub use", module=module) for n in nodes]
+        node = next((n for n in nodes if n.name == name), None)
+        if node is not None:
+            return [self._export(node, path, root, "pub use", name=exported, module=module)]
+        if self._module_file(base_dir, segments):
+            return [self._module_export(exported, segments, base_dir, root, read_file)]
+        key = (path, name)
+        if content is not None and key not in seen:  # the module re-exports it itself
+            children = (
+                os.path.splitext(path)[0] if not path.endswith("mod.rs") else os.path.dirname(path)
+            )
+            source = content.encode("utf-8")
+            for item in self.parser.parse(source).root_node.children:
+                if item.type != "use_declaration" or not self._is_pub(item, source):
+                    continue
+                for leaf, leaf_alias in self._use_leaves(
+                    item.child_by_field_name("argument"), source
+                ):
+                    if (leaf_alias or leaf[-1]) == name:
+                        return self._follow_use(
+                            leaf, exported, children, package_dir, root, read_file, seen | {key}
+                        )
+        return [
+            Export(
+                exported,
+                "unresolved",
+                "pub use",
+                module,
+                self._rel(path, root),
+                None,
+                "not found in module",
+            )
+        ]
+
+    @staticmethod
+    def _module_file(base_dir: str, segments: tuple[str, ...]) -> str | None:
+        base = os.path.join(base_dir, *segments)
+        for candidate in (base + ".rs", os.path.join(base, "mod.rs")):
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
+    def _module_export(
+        self, name: str, segments: tuple[str, ...], base_dir: str, root: str, read_file
+    ) -> Export:
+        path = self._module_file(base_dir, segments)
+        if path is None:
+            spelled = "::".join(segments)
+            return Export(
+                name, "unresolved", "pub mod", spelled, None, None, f"module {spelled} not found"
+            )
+        count = len(self._surface_nodes(read_file(path)))
+        signature = f"module ({count} pub name{'s' if count != 1 else ''})"
+        return Export(
+            name, "module", "pub mod", ".".join(segments), self._rel(path, root), 1, signature
+        )
+
+    @staticmethod
+    def _rel(path: str, root: str) -> str:
+        return os.path.relpath(path, root).replace(os.sep, "/")
 
     # ===========================================================================
     # Semantic Analysis - Layer 1 (from RustAnalyzer)
