@@ -55,6 +55,44 @@ class PHPLanguage(BaseLanguage):
             return True
         return "private" not in defn.modifiers  # public/protected = external/subclass API
 
+    # ── Naming conventions and the public surface ─────────────────────────────
+    #: A braced namespace holds its declarations as children; its members are
+    #: the package's names, listed as `App.Thing` (QUALIFIER, not the
+    #: source's `\`). The `namespace App;` form has no body: what follows it
+    #: is already top level.
+    SURFACE_CONTAINER_TYPES = frozenset({"namespace"})
+    #: PHPUnit's attribute form, `#[Test]` or fully qualified
+    #: `#[PHPUnit\Framework\Attributes\Test]`, as the handler records it.
+    _TEST_ATTRIBUTE = re.compile(r"#\[\s*(?:[\w\\]+\\)?Test\b")
+
+    def is_private(self, node) -> bool:
+        """A visibility keyword decides where there is one (`private` and
+        `protected` are outside the surface; `public` is on it whatever the
+        name). Without one the name rule applies: PHP itself defaults a
+        member to public, but the leading underscore is the convention
+        WordPress and Drupal use for internal functions and the PEAR style
+        used for private members, so `_helper` stays private by name."""
+        modifiers = set(node.modifiers or [])
+        if "private" in modifiers or "protected" in modifiers:
+            return True
+        if "public" in modifiers:
+            return False
+        return self.is_private_name(node.name)
+
+    def is_exempt_from_unreferenced(self, definition) -> bool:
+        """Invoked without a textual reference: PHPUnit's discovery rule (a
+        `test*` method on a `*Test` class, or the `#[Test]` attribute) and
+        the magic methods (`__construct`, `__toString`, ...) the runtime
+        calls — PHP reserves the `__` prefix for them. The attribute case is
+        also rooted generically (every decorated definition is); it is
+        stated here because the rule is PHPUnit's, not CODE HEALTH's."""
+        name = definition.name
+        if name.startswith("__"):
+            return True
+        if name.startswith("test") and (definition.parent or "").endswith("Test"):
+            return True
+        return any(self._TEST_ATTRIBUTE.search(d) for d in definition.decorators or [])
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.parser = Parser()
@@ -129,9 +167,17 @@ class PHPLanguage(BaseLanguage):
                     parent_structures.append(error_node)
                 return
 
-            # Namespace declaration
+            # Namespace declaration; the braced form holds its declarations
             if node.type == "namespace_definition":
-                self._handle_namespace(node, parent_structures, source_code)
+                namespace_node = self._extract_namespace(node, source_code)
+                if namespace_node:
+                    parent_structures.append(namespace_node)
+                body = node.child_by_field_name("body")
+                for child in body.children if body else []:
+                    # an unnamed `namespace { }` block is the global namespace
+                    traverse(
+                        child, namespace_node.children if namespace_node else parent_structures
+                    )
 
             # Use statements (imports)
             elif node.type == "namespace_use_declaration":
@@ -483,19 +529,18 @@ class PHPLanguage(BaseLanguage):
 
         return None
 
-    def _handle_namespace(self, node: Node, parent_structures: list, source_code: bytes):
-        """Handle namespace declaration."""
+    def _extract_namespace(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """Namespace declaration; None for the global `namespace { }` block."""
         namespace_name_node = node.child_by_field_name("name")
-
-        if namespace_name_node:
-            namespace_name = self._get_node_text(namespace_name_node, source_code)
-            namespace_node = StructureNode(
-                type="namespace",
-                name=namespace_name,
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1,
-            )
-            parent_structures.append(namespace_node)
+        if not namespace_name_node:
+            return None
+        return StructureNode(
+            type="namespace",
+            name=self._get_node_text(namespace_name_node, source_code),
+            start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1,
+            children=[],
+        )
 
     def _handle_use(self, node: Node, parent_structures: list):
         """Group use statements together."""
