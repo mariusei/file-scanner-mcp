@@ -1,1 +1,14 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (3acce27)
+a  merge-base 3acce27  1 ahead 0 behind  1 file, +2 ~1 -2 structures
+b  merge-base 3acce27  1 ahead 0 behind  1 file, +2 ~1 -2 structures
+overlap (structures touched by 2+ branches): 5 in 1 file
+  basic.c::Status           a(-)  b(-)
+  basic.c::free_user        a(-)  b(-)
+  basic.c::health           a(+)  b(+)
+  basic.c::release_user     a(+)  b(+)
+  basic.c::validate_email   a(~)  b(~)
+colliding new names (added independently on 2+ branches): 2
+  health         a:basic.c:67  b:basic.c:67
+  release_user   a:basic.c:40  b:basic.c:40
+merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
+[exit 0]

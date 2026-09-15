@@ -26,7 +26,7 @@ void init_user(struct User *user, int id, const char *name) {
 }
 
 // Validate email format
-int validate_email(const char *email) {
+int validate_email(const char *email, int strict) {
     return strchr(email, '@') != NULL;
 }
 
@@ -37,19 +37,12 @@ int connect_database(struct DatabaseConfig *config) {
 }
 
 // Free user resources
-void free_user(struct User *user) {
+void release_user(struct User *user) {
     // Nothing to free for stack-allocated struct
 }
 
-// Status codes enumeration
-enum Status {
-    STATUS_SUCCESS,
-    STATUS_ERROR,
-    STATUS_PENDING
-};
-
 // Retry budget for connection attempts
-#define MAX_RETRIES 3
+#define MAX_RETRIES 5
 
 // Connection pool, its address record nested in it
 struct Pool {
@@ -68,6 +61,11 @@ static int retry_connect(struct DatabaseConfig *config) {
         }
     }
     return 0;
+}
+
+// Liveness probe
+int health(void) {
+    return 1;
 }
 
 // Main entry point
