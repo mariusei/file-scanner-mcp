@@ -4,7 +4,7 @@ basic.ts (5-131)
 - Config @11 # Configuration interface for authentication service.
    interface Config {
      …
-- AuthService @19 # Service for handling user authentication and authorization.
+- AuthService @19 [export] # Service for handling user authentication and authorization.
   - constructor (config: Config) @26 # Constructs a new AuthService instance.
      constructor(config: Config) {
        this.apiKey = config.apiKey;
@@ -16,7 +16,7 @@ basic.ts (5-131)
   - validateToken (token: string) : boolean @49 # Validates an authentication token.
      validateToken(token: string): boolean {
        return retry(() => token.length > 0);
-- UserManager @57 # Manager class for user CRUD operations.
+- UserManager @57 [export] # Manager class for user CRUD operations.
   - constructor (database: Database) @60
      constructor(database: Database) {
        this.db = database;
@@ -31,10 +31,10 @@ basic.ts (5-131)
   - updateUser (id: string, data: Partial<User>) : Promise<User> @87 [async] # Updates a user's information.
      …
        return {} as User;
-- generateId () : string @95 # Generates a random unique identifier.
+- generateId () : string @95 [export] # Generates a random unique identifier.
    function generateId(): string {
      return Math.random().toString(36).substr(2, 9);
-- validateEmail (email: string) : boolean @102 # Validates an email address format.
+- validateEmail (email: string) : boolean @102 [export] # Validates an email address format.
    function validateEmail(email: string): boolean {
      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 - calculateStats (users: User[]) : { total: number; active: number } @109 # Arrow function to calculate statistics.
