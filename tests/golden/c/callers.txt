@@ -1,0 +1,6 @@
+<1 call site in 1 file, 1 definition, 1 file scanned> callers of init_user
+defined: basic.c::init_user (function) basic.c:22
+
+basic.c  (1 site)
+  - main basic.c:54   init_user(&user, 1, "John Doe");
+[exit 0]

@@ -1,0 +1,26 @@
+<1 file seen, 14 structures shown>
+basic.json (2-19)
+- name "demo-app" @2
+- version "1.2.3" @3
+- private true @4
+- scripts @5
+   "scripts": {
+     "build": "node build.js",
+     "test": "node ./scripts/test.mjs"
+  - build "node build.js" @6
+  - test "node ./scripts/test.mjs" @7
+- dependencies @9
+   "dependencies": {
+     "react": "^18.0.0",
+     "lodash": "^4.17.21"
+  - react "^18.0.0" @10
+  - lodash "^4.17.21" @11
+- keywords 3 items @13
+- config @14
+  - server @15
+     "server": {
+       "host": "localhost",
+       "port": 8080
+    - host "localhost" @16
+    - port 8080 @17
+[exit 0]

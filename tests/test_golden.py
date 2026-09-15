@@ -91,6 +91,7 @@ def _render_directory(fixture_dir: Path) -> str:
 def _assert_matches_golden(name: str, actual: str, suffix: str = "txt") -> None:
     golden = GOLDEN_DIR / f"{name}.{suffix}"
     if os.environ.get("UPDATE_GOLDEN"):
+        golden.parent.mkdir(parents=True, exist_ok=True)
         golden.write_text(actual + "\n", encoding="utf-8")
         return
     assert golden.exists(), f"golden-fil mangler: {golden}. {UPDATE_HINT}"

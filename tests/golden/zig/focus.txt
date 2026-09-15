@@ -1,0 +1,17 @@
+basic.zig::Config.total (9-11)
+basic.zig (4-61)
+- Config @4 [pub] # Configuration for the application
+  - total (self: Config) i32 @9 [pub] # Calculate the total value
+     9 |     pub fn total(self: Config) i32 {
+     10 |         return self.value * 2;
+     11 |     }
+  - private_helper (self: Config) void @13
+- Status @19 [pub] # Status enumeration
+- Result @26
+- main () !void @32 [pub] # Main entry point for the application
+- helper (x: i32, y: i32) i32 @41
+- fastAdd (a: u32, b: u32) u32 @45 [pub inline]
+- c_api_function (ptr: [*]u8, len: usize) void @49 [export]
+- basic test @54
+- addition works @58
+[exit 0]

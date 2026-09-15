@@ -1,0 +1,11 @@
+<1 file seen, 22 structures shown, 1 excluded (.git/)>
+2 hits in 2 structures for /main/
+
+./basic.cpp
+- (module level) @125-125  (1 hit)
+   125 | // Main entry point
+- main int () @126-138  (1 hit)
+   126 | int main() {
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

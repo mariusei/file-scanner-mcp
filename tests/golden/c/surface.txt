@@ -1,0 +1,11 @@
+<8 public names, 8 via definition> package c @WORKTREE
+basic
+  User                                                            c/basic.c:8
+  DatabaseConfig                                                  c/basic.c:15
+  init_user  void (struct User *user, int id, const char *name)   c/basic.c:22
+  validate_email  int (const char *email)                         c/basic.c:29
+  connect_database  int (struct DatabaseConfig *config)           c/basic.c:34
+  free_user  void (struct User *user)                             c/basic.c:40
+  Status                                                          c/basic.c:45
+  main  int (void)                                                c/basic.c:52
+[exit 0]

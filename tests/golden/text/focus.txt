@@ -1,0 +1,17 @@
+basic.txt::"PROJECT OVERVIEW" (1-6)
+basic.txt (1-77)
+- PROJECT OVERVIEW @1
+   1 | PROJECT OVERVIEW
+   2 | ================
+   3 | 
+   4 | This is a plain text document demonstrating the text file scanner capabilities.
+   5 | It contains various structural elements that should be detected and parsed.
+   6 | 
+- INTRODUCTION @7
+- Features and Capabilities @13
+- TECHNICAL DETAILS @24
+- USE CASES @34
+- PERFORMANCE CONSIDERATIONS @47
+- FUTURE ENHANCEMENTS @57
+- CONCLUSION @67
+[exit 0]

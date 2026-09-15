@@ -1,5 +1,5 @@
 focus: DatabaseManager.query @24-26
-basic.py (1-57)
+basic.py (1-71)
 - module docstring @1 # Example Python file for testing the scanner.
 - import statements @3
 - DatabaseManager @8 # Manages database connections and queries.
@@ -12,4 +12,7 @@ basic.py (1-57)
      26 |         return []
 - UserService @29 # Handles user-related operations.
 - validate_email (email: str) -> bool @48 # Validate email format.
-- main () @53 # Main entry point.
+- DEFAULT_TIMEOUT = 30 @53
+- RETRY_POLICY = {'attempts': 3, 'backoff': 'exponential'} @54
+- _retry (action, attempts: int = RETRY_POLICY["attempts"]) @57 # Run action until it succeeds or the attempts are spent (internal).
+- main () @65 # Main entry point.

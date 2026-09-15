@@ -1,0 +1,27 @@
+<1 file seen, 17 structures shown, 1 excluded (.git/)>
+basic.rs (8-77)
+- User @8 [pub] # User account with basic information.
+   #[derive(Debug, Clone)]
+   pub struct User {
+       …
+- UserService @42 [pub] # Service for user operations.
+   pub struct UserService {
+       …
+- UserService @46
+  - create_user (&self, name: String, email: String) -> Result<u64, String> @48 [pub] # Create a user.
+     pub fn create_user(&self, name: String, email: String) -> Result<u64, String> {
+         Ok(1)
+  - get_user (&self, user_id: u64) -> Option<User> @53 [pub] # Get user by ID.
+     pub fn get_user(&self, user_id: u64) -> Option<User> {
+         …
+  - delete_user (&self, user_id: u64) -> bool @58 [pub] # Delete a user.
+     pub fn delete_user(&self, user_id: u64) -> bool {
+         …
+- Validate for User @69
+  - validate (&self) -> Result<(), String> @70
+     fn validate(&self) -> Result<(), String> {
+         if self.email.contains('@') {
+       …
+         } else {
+       …
+[exit 0]

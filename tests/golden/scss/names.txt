@@ -1,0 +1,4 @@
+<1 file seen, 26 structures shown, 1 excluded (.git/)>
+basic.scss (3-3)
+- base/variables @use @3 [use]
+[exit 0]

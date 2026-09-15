@@ -1,0 +1,9 @@
+<1 file seen, 14 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /config/
+
+./basic.json
+- config @14-19  (1 hit)
+   14 | "config": {
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

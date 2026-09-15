@@ -1,0 +1,6 @@
+<1 file seen, 9 structures shown, 1 excluded (.git/)>
+basic.c (8-12)
+- User @8 # User structure definition
+   struct User {
+       …
+[exit 0]

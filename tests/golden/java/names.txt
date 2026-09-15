@@ -1,0 +1,4 @@
+<1 file seen, 18 structures shown, 1 excluded (.git/)>
+Basic.java (5-5)
+- com.example.demo @5
+[exit 0]

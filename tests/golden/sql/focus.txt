@@ -1,0 +1,16 @@
+basic.sql::users.id (5-5)
+basic.sql (4-34)
+- users @4 # Users table to store user information
+  - id INT PRIMARY KEY AUTO_INCREMENT @5
+     5 |     id INT PRIMARY KEY AUTO_INCREMENT,
+  - username VARCHAR(50) NOT NULL UNIQUE @6
+  - email VARCHAR(100) NOT NULL @7
+  - created_at TIMESTAMP DEFAULT @8
+- products @12 # Products table
+- active_users SELECT id, username, email
+FROM users
+WHERE create... @20 # View for active users
+- calculate_discount (price DECIMAL, discount_pct INT) -> DECIMAL @26 # Function to calculate discount
+- idx_username ON users (username) @31
+- idx_product_price ON products (name, price) @34 # Composite index for product queries
+[exit 0]

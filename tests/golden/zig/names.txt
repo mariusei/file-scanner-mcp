@@ -1,0 +1,10 @@
+<1 file seen, 11 structures shown, 1 excluded (.git/)>
+basic.zig (4-16)
+- Config @4 [pub] # Configuration for the application
+  - total (self: Config) i32 @9 [pub] # Calculate the total value
+     pub fn total(self: Config) i32 {
+         return self.value * 2;
+  - private_helper (self: Config) void @13
+     fn private_helper(self: Config) void {
+         …
+[exit 0]

@@ -1,0 +1,9 @@
+<1 file seen, 26 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /CONCLUSION/
+
+./basic.txt
+- CONCLUSION @67-77  (1 hit)
+   67 | CONCLUSION
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

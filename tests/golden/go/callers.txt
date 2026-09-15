@@ -1,0 +1,6 @@
+<1 call site in 1 file, 1 definition, 1 file scanned> callers of Connect
+defined: basic.go::Connect (method) basic.go:36
+
+basic.go  (1 site)
+  - main basic.go:88   db.Connect()
+[exit 0]

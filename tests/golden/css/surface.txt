@@ -1,0 +1,20 @@
+<17 public names, 17 via definition> package css @WORKTREE
+basic
+  base/reset.css  base/reset.css                                 css/basic.css:3
+  components/buttons.css  components/buttons.css                 css/basic.css:4
+  :root  1 sel, 5 decl                                           css/basic.css:6
+  body  1 sel, 4 decl                                            css/basic.css:15
+  .header  1 sel, 2 decl                                         css/basic.css:23
+  #main-nav  1 sel, 2 decl                                       css/basic.css:28
+  .nav-link  1 sel, 2 decl                                       css/basic.css:33
+  .nav-link:hover  1 sel, 1 decl                                 css/basic.css:38
+  .btn  1 sel, 4 decl                                            css/basic.css:43
+  .btn-primary  1 sel, 2 decl                                    css/basic.css:50
+  .btn-secondary  1 sel, 2 decl                                  css/basic.css:55
+  screen and (max-width: 768px)  screen and (max-width: 768px)   css/basic.css:61
+  print  print                                                   css/basic.css:75
+  fadeIn                                                         css/basic.css:82
+  slideIn                                                        css/basic.css:91
+  @font-face                                                     css/basic.css:101
+  .footer  1 sel, 3 decl                                         css/basic.css:110
+[exit 0]

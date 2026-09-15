@@ -16,7 +16,9 @@ from scantool import cli
 TESTS_DIR = Path(__file__).parent
 PYTHON_SAMPLE = TESTS_DIR / "python" / "samples" / "basic.py"
 MARKDOWN_SAMPLE = TESTS_DIR / "markdown" / "samples" / "basic.md"
-STRUCTURE_LINE = re.compile(r"^( *)- (.+?) (?:\(|@)")  # indent, name; stops at signature or @line
+STRUCTURE_LINE = re.compile(
+    r"^( *)- (.+?) (?:\(|=|@)"
+)  # indent, name; stops at a signature, a value or @line
 AT_LINE = re.compile(r" @(\d+)(?:\s|$)")
 
 

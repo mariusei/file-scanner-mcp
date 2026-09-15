@@ -81,7 +81,7 @@ def test_scan_json_is_one_document_without_file_info(capsys):
     document = json.loads(out)
     assert code == 0
     assert isinstance(document, dict) and document["file"] == str(PYTHON_SAMPLE)
-    assert document["coverage"] == {"files_seen": 1, "structures_shown": 14, "elided": 0}
+    assert document["coverage"] == {"files_seen": 1, "structures_shown": 17, "elided": 0}
     assert all(node["type"] != "file-info" for node in document["structures"])
     assert {"DatabaseManager"} <= {node["name"] for node in document["structures"]}
 

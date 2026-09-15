@@ -1,0 +1,3 @@
+basic.py::DatabaseManager.__init__@v1 (11-13)
+basic.py::DatabaseManager.__init__@v2 (11-13)
+[exit 0]

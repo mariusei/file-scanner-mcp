@@ -1,0 +1,13 @@
+basic.json::scripts.build (6-6)
+basic.json (2-19)
+- name "demo-app" @2
+- version "1.2.3" @3
+- private true @4
+- scripts @5
+  - build "node build.js" @6
+     6 |     "build": "node build.js",
+  - test "node ./scripts/test.mjs" @7
+- dependencies @9
+- keywords 3 items @13
+- config @14
+[exit 0]

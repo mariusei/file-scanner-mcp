@@ -1,0 +1,25 @@
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
+basic.rb (8-39)
+- DataAccess @8 # Data access layer module
+  - DatabaseManager @10 # Manages database connections and queries
+    - initialize (connection_string) @14
+       def initialize(connection_string)
+         @connection_string = connection_string
+         @connection = nil
+       …
+    - connect () @20 # Establish database connection
+       def connect
+         puts "Connecting to #{@connection_string}"
+       …
+    - disconnect () @25 # Close database connection
+       def disconnect
+         @connection&.close
+       …
+    - query (sql) @30 # Execute a SQL query
+       def query(sql)
+         …
+    - self.create_default () @35 [class] # Class method for creating a default instance
+       def self.create_default
+         new("postgresql://localhost/mydb")
+       …
+[exit 0]

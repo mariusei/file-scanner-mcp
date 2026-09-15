@@ -1,0 +1,15 @@
+<2 branches vs v1, 2 with structural changes> base v1 (32f569f)
+a  merge-base 32f569f  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base 32f569f  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
+  basic.py::DEFAULT_TIMEOUT              a(~)  b(~)
+  basic.py::DatabaseManager.disconnect   a(-)  b(-)
+  basic.py::UserService.delete_user      a(-)  b(-)
+  basic.py::UserService.remove_user      a(+)  b(+)
+  basic.py::health                       a(+)  b(+)
+  basic.py::validate_email               a(~)  b(~)
+colliding new names (added independently on 2+ branches): 2
+  health        a:basic.py:60  b:basic.py:60
+  remove_user   a:basic.py:38  b:basic.py:38
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+[exit 0]

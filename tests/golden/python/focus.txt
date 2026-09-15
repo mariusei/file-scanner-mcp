@@ -1,0 +1,19 @@
+basic.py::DatabaseManager.__init__ (11-13)
+basic.py (1-71)
+- module docstring @1 # Example Python file for testing the scanner.
+- import statements @3
+- DatabaseManager @8 # Manages database connections and queries.
+  - __init__ (self, connection_string: str) @11
+     11 |     def __init__(self, connection_string: str):
+     12 |         self.connection_string = connection_string
+     13 |         self.connection = None
+  - connect (self) @15 # Establish database connection.
+  - disconnect (self) @19 # Close database connection.
+  - query (self, sql: str) -> list @24 # Execute a SQL query.
+- UserService @29 # Handles user-related operations.
+- validate_email (email: str) -> bool @48 # Validate email format.
+- DEFAULT_TIMEOUT = 30 @53
+- RETRY_POLICY = {'attempts': 3, 'backoff': 'exponential'} @54
+- _retry (action, attempts: int = RETRY_POLICY["attempts"]) @57 # Run action until it succeeds or the attempts are spent (internal).
+- main () @65 # Main entry point.
+[exit 0]

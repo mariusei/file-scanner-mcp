@@ -1,0 +1,12 @@
+focus '' is ambiguous (31 matches) — pick one by its range, as listed:
+  document 1 (1-34)
+  document 1.name (1-1)
+  document 1.shared_timeout (3-3)
+  document 1.on (5-8)
+  document 1.on.push (6-7)
+  document 1.on.push.branches (7-7)
+  document 1.on.pull_request (8-8)
+  document 1.jobs (10-30)
+  document 1.jobs.build (11-18)
+  document 1.jobs.build.runs-on (12-12)
+[exit 1]

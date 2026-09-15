@@ -1,0 +1,179 @@
+"""
+Feature × language golden (brief §9e addendum, §11 C): every command run
+against every language's sample, the answer frozen per cell in
+tests/golden/<language>/<command>.txt.
+
+The hook matrix (hooks.json) says whether a language overrides a hook;
+this tree says whether the feature works for it. A cell that is a stub, an
+empty list or "no after sample" is a hole, visible to everyone; a language
+gaining support shows as a diff that must be named in the commit.
+
+Each cell is the `sct` command as an agent would run it, from inside a
+temporary git repository holding the language's `basic.*` sample at tag
+v1 and, when the language has one, `after.*` as the same file at tag v2
+(branches a and b carry the same change on distinct commits for overlap).
+Dates and identities are fixed, so SHAs in the answers are stable.
+
+Regenerate deliberately: UPDATE_GOLDEN=1 uv run pytest tests/test_feature_golden.py
+"""
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from scantool import cli
+from scantool.code_map import CodeMap
+from scantool.gitref import relabel
+from scantool.scanner import FileScanner
+
+sys.path.insert(0, str(Path(__file__).parent))
+from test_golden import SAMPLES, TESTS_DIR, _assert_matches_golden  # noqa: E402
+
+COMMANDS = (
+    "quick",
+    "focus",
+    "search",
+    "names",
+    "callers",
+    "surface",
+    "diff",
+    "resolve",
+    "overlap",
+    "divergence",
+)
+REF_COMMANDS = {"diff", "resolve", "overlap"}
+NO_AFTER = "(no after sample: diff, resolve and overlap need the sample in a second version)"
+
+_GIT_ENV = {
+    "GIT_AUTHOR_NAME": "golden",
+    "GIT_AUTHOR_EMAIL": "golden@scantool",
+    "GIT_COMMITTER_NAME": "golden",
+    "GIT_COMMITTER_EMAIL": "golden@scantool",
+    "GIT_AUTHOR_DATE": "2026-01-01T00:00:00Z",
+    "GIT_COMMITTER_DATE": "2026-01-01T00:00:00Z",
+}
+
+
+def _git(cwd: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, env={**os.environ, **_GIT_ENV}
+    )
+
+
+def _fixture(lang: str, root: Path) -> tuple[Path, str, bool]:
+    """A repository with the sample at v1 (and after.* at v2, a, b); the
+    working tree is left at v1. Returns (directory, sample name, has_after)."""
+    sample = TESTS_DIR / SAMPLES[lang]
+    after = sample.with_name("after" + "".join(sample.suffixes))
+    if lang == "csharp" or lang == "java":  # samples named Basic.*
+        after = sample.with_name("After" + sample.suffix)
+    directory = root / lang
+    directory.mkdir()
+    target = directory / sample.name
+    shutil.copy(sample, target)
+    _git(directory, "init", "-q", "-b", "main")
+    _git(directory, "add", "-A")
+    _git(directory, "commit", "-qm", "v1")
+    _git(directory, "tag", "v1")
+    has_after = after.exists()
+    if has_after:
+        shutil.copy(after, target)
+        _git(directory, "commit", "-qam", "v2")
+        _git(directory, "tag", "v2")
+        _git(directory, "branch", "a", "v2")
+        _git(directory, "checkout", "-q", "v1")
+        shutil.copy(after, target)
+        _git(directory, "commit", "-qam", "the same change, independently")
+        _git(directory, "branch", "b")
+        _git(directory, "checkout", "-q", "v1")
+    return directory, sample.name, has_after
+
+
+def _targets(directory: Path, name: str) -> dict[str, str]:
+    """What each command asks about, read off the sample's own structure so
+    every language gets the same kind of question."""
+    structures = FileScanner().scan_file(str(directory / name), include_file_metadata=False) or []
+    nodes = [n for n in structures if not n.synthetic]
+    if not nodes:
+        return {"focus": "", "search": "", "names": "", "callers": ""}
+    focus = nodes[0].name
+    for node in nodes:
+        children = [c for c in node.children if not c.synthetic]
+        if children:
+            focus = f"{node.name}.{children[0].name}"
+            break
+    defined = {n.name for n in nodes}
+    callers = nodes[0].name
+    try:
+        calls = CodeMap(str(directory), use_cache=False).analyze().calls
+        counted = sorted(
+            {c.callee_name for c in calls if c.callee_name in defined},
+            key=lambda n: (-sum(1 for c in calls if c.callee_name == n), n),
+        )
+        if counted:
+            callers = counted[0]
+    except Exception:
+        pass
+    return {
+        "focus": focus,
+        "search": re.escape(nodes[-1].name),
+        "names": re.escape(nodes[0].name),
+        "callers": callers,
+    }
+
+
+def _argv(command: str, name: str, targets: dict[str, str]) -> list[str]:
+    return {
+        "quick": ["scan", name, "--depth", "quick"],
+        "focus": ["focus", name, targets["focus"]],
+        "search": ["search", ".", targets["search"]],
+        "names": ["search", ".", targets["names"], "--names"],
+        "callers": ["callers", targets["callers"], "--dir", "."],
+        "surface": ["surface", "."],
+        "diff": ["diff", "v1", "v2", "--repo", "."],
+        "resolve": ["resolve", f"{name}::{targets['focus']}", "--from", "v1", "--to", "v2"],
+        "overlap": ["overlap", "v1", "a", "b", "--repo", "."],
+        "divergence": ["divergence", "."],
+    }[command]
+
+
+def _cell(directory: Path, name: str, has_after: bool, targets: dict, command: str, capsys) -> str:
+    if command in REF_COMMANDS and not has_after:
+        return NO_AFTER
+    cwd = os.getcwd()
+    os.chdir(directory)
+    try:
+        code = cli.main(_argv(command, name, targets))
+    finally:
+        os.chdir(cwd)
+    captured = capsys.readouterr()
+    text = relabel((captured.out + captured.err).rstrip("\n"), str(directory), ".")
+    if os.name == "nt":  # the same answer with the separators the goldens hold
+        text = text.replace(".\\", "./").replace(f"\\{name}", f"/{name}")
+    return f"{text}\n[exit {code}]"
+
+
+@pytest.fixture(scope="module")
+def fixtures(tmp_path_factory):
+    if shutil.which("git") is None:
+        pytest.skip("git not installed")
+    root = tmp_path_factory.mktemp("feature-golden")
+    built = {}
+    for lang in SAMPLES:
+        directory, name, has_after = _fixture(lang, root)
+        built[lang] = (directory, name, has_after, _targets(directory, name))
+    return built
+
+
+@pytest.mark.parametrize("command", COMMANDS)
+@pytest.mark.parametrize("lang", sorted(SAMPLES))
+def test_feature_answer_is_frozen(lang, command, fixtures, capsys):
+    directory, name, has_after, targets = fixtures[lang]
+    _assert_matches_golden(
+        f"{lang}/{command}", _cell(directory, name, has_after, targets, command, capsys)
+    )

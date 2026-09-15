@@ -1,0 +1,80 @@
+<1 file seen, 31 structures shown, 1 excluded (.git/)>
+42 hits in 31 structures for //
+
+./basic.yaml
+- document 1 @1-34  (4 hits)
+   2 | 
+   4 | 
+   9 | 
+   31 | 
+- document 2 > service > tags [2] prod, critical @39-42  (4 hits)
+   39 | tags:
+   40 | - prod
+   41 | - critical
+   42 | 
+- document 1 > jobs > test > steps > Run tests > run | make test make coverage @28-30  (3 hits)
+   28 | run: |
+   29 | make test
+   30 | make coverage
+- document 1 > notes > This is a folded block scalar describing the workflow a... @32-34  (3 hits)
+   32 | notes: >
+   33 | This is a folded block scalar
+   34 | describing the workflow above.
+- document 1 > jobs 2 keys @10-30  (2 hits)
+   10 | jobs:
+   19 | 
+- document 1 > name sample-workflow @1-1  (1 hit)
+   1 | name: sample-workflow
+- document 1 > shared_timeout 10 @3-3  (1 hit)
+   3 | shared_timeout: &timeout 10
+- document 1 > on 2 keys @5-8  (1 hit)
+   5 | on:
+- document 1 > on > push 1 key @6-7  (1 hit)
+   6 | push:
+- document 1 > on > push > branches [2] main, develop @7-7  (1 hit)
+   7 | branches: [main, develop]
+- document 1 > on > pull_request 0 keys @8-8  (1 hit)
+   8 | pull_request: {}
+- document 1 > jobs > build 3 keys @11-18  (1 hit)
+   11 | build:
+- document 1 > jobs > build > runs-on ubuntu-latest @12-12  (1 hit)
+   12 | runs-on: ubuntu-latest
+- document 1 > jobs > build > timeout-minutes *timeout @13-13  (1 hit)
+   13 | timeout-minutes: *timeout
+- document 1 > jobs > build > steps 2 items @14-18  (1 hit)
+   14 | steps:
+- document 1 > jobs > build > steps > Checkout @15-16  (1 hit)
+   15 | - name: Checkout
+- document 1 > jobs > build > steps > Checkout > uses actions/checkout@v4 @16-16  (1 hit)
+   16 | uses: actions/checkout@v4
+- document 1 > jobs > build > steps > Build @17-18  (1 hit)
+   17 | - name: Build
+- document 1 > jobs > build > steps > Build > run make build @18-18  (1 hit)
+   18 | run: make build
+- document 1 > jobs > test 4 keys @20-30  (1 hit)
+   20 | test:
+- document 1 > jobs > test > needs [1] build @21-21  (1 hit)
+   21 | needs: [build]
+- document 1 > jobs > test > runs-on ubuntu-latest @22-22  (1 hit)
+   22 | runs-on: ubuntu-latest
+- document 1 > jobs > test > timeout-minutes *timeout @23-23  (1 hit)
+   23 | timeout-minutes: *timeout
+- document 1 > jobs > test > steps 2 items @24-30  (1 hit)
+   24 | steps:
+- document 1 > jobs > test > steps > Checkout @25-26  (1 hit)
+   25 | - name: Checkout
+- document 1 > jobs > test > steps > Checkout > uses actions/checkout@v4 @26-26  (1 hit)
+   26 | uses: actions/checkout@v4
+- document 1 > jobs > test > steps > Run tests @27-30  (1 hit)
+   27 | - name: Run tests
+- document 2 @35-42  (1 hit)
+   35 | ---
+- document 2 > service 3 keys @36-42  (1 hit)
+   36 | service:
+- document 2 > service > name worker @37-37  (1 hit)
+   37 | name: worker
+- document 2 > service > replicas 3 @38-38  (1 hit)
+   38 | replicas: 3
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

@@ -1,0 +1,11 @@
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
+2 hits in 2 structures for /main/
+
+./basic.go
+- (module level) @85-85  (1 hit)
+   85 | // main is the entry point
+- main () @86-90  (1 hit)
+   86 | func main() {
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

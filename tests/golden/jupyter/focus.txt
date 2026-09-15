@@ -1,0 +1,11 @@
+focus '' is ambiguous (9 matches) — pick one by its range, as listed:
+  cell 1 (markdown) (7-9)
+  cell 1 (markdown).Sales ledger (7-9)
+  cell 2 (code) (18-33)
+  cell 2 (code).import statements (18-18)
+  cell 2 (code).total (21-23)
+  cell 2 (code).Ledger (26-33)
+  cell 2 (code).Ledger.__init__ (29-30)
+  cell 2 (code).Ledger.mean (32-33)
+  cell 3 (raw) (40-40)
+[exit 1]

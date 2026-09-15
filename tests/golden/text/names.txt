@@ -1,0 +1,5 @@
+<1 file seen, 26 structures shown, 1 excluded (.git/)>
+basic.txt (1-6)
+- PROJECT OVERVIEW @1
+  - paragraph (4-5) @4
+[exit 0]

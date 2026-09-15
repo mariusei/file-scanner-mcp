@@ -1,0 +1,9 @@
+<1 file seen, 14 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /idx_product_price/
+
+./basic.sql
+- idx_product_price ON products (name, price) @34-34  (1 hit)
+   34 | CREATE INDEX idx_product_price ON products(name, price);
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

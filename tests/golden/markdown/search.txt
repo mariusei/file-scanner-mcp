@@ -1,0 +1,9 @@
+<1 file seen, 25 structures shown, 1 excluded (.git/)>
+1 hits in 1 structures for /Alternative\ Heading\ Style/
+
+./basic.md
+- Alternative Heading Style @99-119  (1 hit)
+   99 | Alternative Heading Style
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

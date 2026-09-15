@@ -158,8 +158,8 @@ class PythonLanguage(BaseLanguage):
         package = os.path.basename(package_dir)
         resolver = _FacadeResolver(os.path.dirname(package_dir), read_file, self.is_private_name)
         tree = resolver.tree(os.path.join(package_dir, "__init__.py"))
-        if tree is None:
-            return []
+        if tree is None:  # not a package: each module's public definitions, as any language
+            return super().public_surface(package_dir, read_file)
         listed = _dunder_all(tree)
         names = (
             listed

@@ -1,0 +1,65 @@
+<1 file seen, 22 structures shown>
+basic.cpp (3-138)
+- #include directives @3
+- utils @9 # Utility namespace
+  - validate_email bool (const std::string& email) @12 # Validate email format
+     bool validate_email(const std::string& email) {
+         return email.find('@') != std::string::npos;
+  - format_name std::string (const std::string& first, const std::string& last) @17 # Format user name
+     std::string format_name(const std::string& first, const std::string& last) {
+      …
+- database @24 # Database namespace
+  - DatabaseManager @27 # Database manager class
+    - DatabaseManager (const std::string& conn_str) @34 [public] # Constructor
+       DatabaseManager(const std::string& conn_str)
+        …
+    - ~DatabaseManager () @38 [public virtual] # Virtual destructor
+       virtual ~DatabaseManager() {
+        …
+    - connect bool () @43 [public virtual] # Connect to database
+       virtual bool connect() {
+        …
+    - disconnect void () @50 [public virtual] # Disconnect from database
+       virtual void disconnect() {
+        …
+    - is_connected bool () @58 [public const] # Check if connected
+       bool is_connected() const {
+        …
+    - query std::vector<std::string> (const std::string& sql) @63 [public const] # Execute query
+       std::vector<std::string> query(const std::string& sql) const {
+        …
+- UserService @71 # User service class
+  - UserService (std::shared_ptr<database::DatabaseManager> database) @78 [public] # Constructor
+     UserService(std::shared_ptr<database::DatabaseManager> database)
+      …
+  - create_user int (const std::string& username, const std::string& email) @82 [public] # Create a new user
+     int create_user(const std::string& username, const std::string& email) {
+      …
+  - get_user std::string (int user_id) @91 [public const] # Get user by ID
+     std::string get_user(int user_id) const {
+      …
+  - delete_user bool (int user_id) @96 [public] # Delete user
+     bool delete_user(int user_id) {
+      …
+  - get_version std::string () @102 [public static] # Static method to get service version
+     static std::string get_version() {
+      …
+  - get_user_count int () @107 [public const] # Get user count
+     int get_user_count() const {
+      …
+- Status @113 # Status enumeration
+   enum class Status {
+    …
+- max_value T (T a, T b) @121
+   T max_value(T a, T b) {
+    …
+- main int () @126 # Main entry point
+   int main() {
+       auto db = std::make_shared<database::DatabaseManager>("postgresql://localhost/mydb");
+       UserService service(db);
+       db->connect();
+       int user_id = service.create_user("john_doe", "john@example.com");
+       …
+       std::cout << "Service version: " << UserService::get_version() << std::endl;
+       return 0;
+[exit 0]

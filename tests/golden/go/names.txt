@@ -1,0 +1,6 @@
+<1 file seen, 15 structures shown, 1 excluded (.git/)>
+basic.go (10-13)
+- Config @10 [public] # Config holds application configuration
+   type Config struct {
+    …
+[exit 0]

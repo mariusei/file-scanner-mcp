@@ -1,0 +1,11 @@
+<1 file seen, 14 structures shown, 1 excluded (.git/)>
+2 hits in 2 structures for /plugins/
+
+./basic.toml
+- plugins @13-15  (1 hit)
+   13 | [[plugins]]
+- plugins @17-19  (1 hit)
+   17 | [[plugins]]
+
+leads: none (no name called in the hits is defined in another scanned file)
+[exit 0]

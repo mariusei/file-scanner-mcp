@@ -1,0 +1,4 @@
+<0 call sites in 0 files, 1 definition, 1 file scanned> callers of users
+defined: basic.sql::users (table) basic.sql:4
+no call sites of users (mentions in docstrings, comments and strings are not calls)
+[exit 1]

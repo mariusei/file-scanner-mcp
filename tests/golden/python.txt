@@ -1,5 +1,5 @@
-<1 file seen, 14 structures shown>
-basic.py (1-57)
+<1 file seen, 17 structures shown>
+basic.py (1-71)
 - module docstring @1 # Example Python file for testing the scanner.
 - import statements @3
 - DatabaseManager @8 # Manages database connections and queries.
@@ -21,7 +21,16 @@ basic.py (1-57)
      return True
 - validate_email (email: str) -> bool @48 # Validate email format.
    return '@' in email
-- main () @53 # Main entry point.
+- DEFAULT_TIMEOUT = 30 @53
+- RETRY_POLICY = {'attempts': 3, 'backoff': 'exponential'} @54
+- _retry (action, attempts: int = RETRY_POLICY["attempts"]) @57 # Run action until it succeeds or the attempts are spent (internal).
+   for _ in range(attempts):
+    if action():
+     return True
+   return False
+- main () @65 # Main entry point.
    db = DatabaseManager('postgresql://localhost/mydb')
    service = UserService(db)
+   if validate_email('ada@example.com'):
+    _retry(db.connect)
    print('Application started')

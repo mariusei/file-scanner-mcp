@@ -1,0 +1,2 @@
+focus 'MyApp.Services.IConfig' matches no node. Top-level nodes: using directives, MyApp.Services
+[exit 1]

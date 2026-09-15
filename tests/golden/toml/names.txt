@@ -1,0 +1,6 @@
+<1 file seen, 14 structures shown, 1 excluded (.git/)>
+basic.toml (2-18)
+- name "demo-app" @2 # Project configuration
+- name "auth" @14
+- name "cache" @18
+[exit 0]
