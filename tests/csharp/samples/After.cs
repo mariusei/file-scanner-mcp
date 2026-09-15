@@ -53,14 +53,11 @@ namespace MyApp.Services
         }
 
         /// <summary>
-        /// Closes the database connection.
+        /// Liveness probe.
         /// </summary>
-        public void Disconnect()
+        public bool Health()
         {
-            if (_connection != null)
-            {
-                Console.WriteLine("Disconnecting");
-            }
+            return _connection != null;
         }
 
         /// <summary>
@@ -111,7 +108,7 @@ namespace MyApp.Services
         /// <summary>
         /// Deletes a user from the system.
         /// </summary>
-        public bool DeleteUser(int userId)
+        public bool RemoveUser(int userId)
         {
             return true;
         }
@@ -125,7 +122,7 @@ namespace MyApp.Services
         /// <summary>
         /// Validates an email address format.
         /// </summary>
-        public static bool ValidateEmail(string email)
+        public static bool ValidateEmail(string email, bool strict = false)
         {
             return email != null && email.Contains("@");
         }
@@ -175,7 +172,7 @@ namespace MyApp.Services
         /// <summary>
         /// Retry budget for connection attempts.
         /// </summary>
-        public const int MaxRetries = 3;
+        public const int MaxRetries = 5;
 
         /// <summary>
         /// Connects, retrying up to MaxRetries times.

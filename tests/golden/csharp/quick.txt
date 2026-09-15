@@ -1,5 +1,5 @@
-<1 file seen, 26 structures shown>
-Basic.cs (5-169)
+<1 file seen, 29 structures shown>
+Basic.cs (5-201)
 - using directives @5
 - MyApp.Services @9
   - IConfig @14 [public] # Configuration interface for application settings.
@@ -12,23 +12,19 @@ Basic.cs (5-169)
     - DatabaseManager (string connectionString) @32 [public] # Constructs a new DatabaseManager with the given connection string.
        public DatabaseManager(string connectionString)
        …
-           _connectionString = connectionString;
-           _connection = null;
+        …
     - ConnectionString : string @41 [public] # Gets or sets the connection string.
        public string ConnectionString
        …
-           get => _connectionString;
-           set => _connectionString = value;
+        …
     - Connect () : void @50 [public] # Establishes a connection to the database.
        public void Connect()
        …
-           Console.WriteLine($"Connecting to {_connectionString}");
+        …
     - Disconnect () : void @58 [public] # Closes the database connection.
        public void Disconnect()
        …
-           if (_connection != null)
-           …
-         …
+        …
     - Query (string sql) : List<Dictionary<string, object>> @69 [public] # Executes a SQL query and returns the results.
        public List<Dictionary<string, object>> Query(string sql)
        …
@@ -37,16 +33,16 @@ Basic.cs (5-169)
     - UserService (DatabaseManager db) @85 [public] # Constructs a UserService with a database manager.
        public UserService(DatabaseManager db)
        …
-           _db = db;
+        …
     - Database : DatabaseManager @93 [public] # Gets the database manager.
     - CreateUser (string username, string email) : int @98 [public] # Creates a new user in the system.
        public int CreateUser(string username, string email)
        …
-           return 1;
+        …
     - GetUser (int userId) : Dictionary<string, object>? @106 [public] # Retrieves a user by their ID.
        public Dictionary<string, object>? GetUser(int userId)
        …
-           return null;
+        …
     - DeleteUser (int userId) : bool @114 [public] # Deletes a user from the system.
        public bool DeleteUser(int userId)
        …
@@ -62,8 +58,7 @@ Basic.cs (5-169)
     - Point (double x, double y) @145 [public] # Constructs a new point.
        public Point(double x, double y)
        …
-           X = x;
-           Y = y;
+        …
     - DistanceFromOrigin () : double @154 [public] # Calculates the distance from origin.
        public double DistanceFromOrigin()
        …
@@ -71,7 +66,18 @@ Basic.cs (5-169)
   - UserRole @163 [public] # User role enumeration.
      public enum UserRole
      {
-         Admin,
-         User,
-         Guest
+      …
+  - ConnectionRetrier @173 [public static] # Retries a connection until it succeeds or the budget is spent.
+    - RetryConnect (DatabaseManager db) : bool @183 [public static] # Connects, retrying up to MaxRetries times.
+       public static bool RetryConnect(DatabaseManager db)
+       …
+           for (var attempt = 0; attempt < MaxRetries; attempt++)
+           …
+         …
+           return false;
+    - TryConnect (DatabaseManager db) : bool @195 [private static]
+       private static bool TryConnect(DatabaseManager db)
+       …
+           db.Connect();
+           return EmailValidator.ValidateEmail("ada@example.com");
 [exit 0]
