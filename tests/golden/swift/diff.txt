@@ -1,1 +1,11 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.swift  (+1 ~2 =1 -1)
+  + health() -> Bool                                                   B:112
+  ~ DatabaseManager                                                    A:39 → B:39   [body: 1 doc line]
+  ~ DatabaseManager.query(_ sql: String, limit: Int) async throws ->   A:63 → B:55   [signature: (_ sql: String) async throws -> → (_ sql: String, limit: Int) async throws ->]
+  = formatDate(_ date: Date) -> String                                 A:109 → B:101   [renamed from formatTimestamp]
+  - DatabaseManager.disconnect()                                       A:55
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]

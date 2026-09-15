@@ -51,16 +51,8 @@ public class DatabaseManager {
         isConnected = true
     }
 
-    /// Disconnect from database
-    public func disconnect() {
-        if isConnected {
-            print("Disconnecting from database")
-            isConnected = false
-        }
-    }
-
     /// Query the database with SQL
-    public func query(_ sql: String) async throws -> [[String: Any]] {
+    public func query(_ sql: String, limit: Int = 100) async throws -> [[String: Any]] {
         return []
     }
 }
@@ -106,7 +98,7 @@ func validateEmail(_ email: String) -> Bool {
 }
 
 /// Format a timestamp to string
-func formatTimestamp(_ date: Date) -> String {
+func formatDate(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
     return formatter.string(from: date)
@@ -116,8 +108,13 @@ func formatTimestamp(_ date: Date) -> String {
 typealias UserID = Int
 typealias CompletionHandler = (Result<Bool, Error>) -> Void
 
+/// Liveness probe
+func health() -> Bool {
+    return defaultAttempts > 0
+}
+
 /// Default number of connection attempts
-let defaultAttempts = 3
+let defaultAttempts = 5
 
 /// Run `action` until it returns true or the attempts are spent (file-private)
 private func retry(_ action: () -> Bool, attempts: Int = defaultAttempts) -> Bool {
