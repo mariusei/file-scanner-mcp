@@ -1,5 +1,5 @@
-<1 file seen, 26 structures shown>
-basic.scss (3-124)
+<1 file seen, 30 structures shown>
+basic.scss (3-138)
 - base/variables @use @3 [use]
 - base/mixins @use @4 [use]
 - components/buttons @forward @5 [forward]
@@ -77,3 +77,11 @@ basic.scss (3-124)
            opacity: 0;
        to {
            opacity: 1;
+- Theme overrides @126 # /*! Theme overrides
+   Loaded last so they win the cascade. */
+- $accent-color #e67e22 @128 [scss-variable]
+- .theme-dark 1 sel, 2 decl @130 [class]
+  - .card 1 sel, 2 decl @134 [class]
+     .card {
+         background: #333;
+         border-left: 4px solid $accent-color;

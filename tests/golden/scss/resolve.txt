@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.scss::.btn.&--secondary@v1 (67-69)
+basic.scss::.btn.&--secondary@v2 (63-65)
+[exit 0]

@@ -1,5 +1,5 @@
-<1 file seen, 26 structures shown, 5 elided (budget)>
-basic.scss (3-124)
+<1 file seen, 30 structures shown, 6 elided (budget)>
+basic.scss (3-138)
 - base/variables @use @3 [use]
 - base/mixins @use @4 [use]
 - components/buttons @forward @5 [forward]
@@ -35,7 +35,8 @@ basic.scss (3-124)
    @function shade($color, $amount: 10%) {
        @return darken($color, $amount);
 - tint ($color, $amount: 10%) @51 [scss-function]
-   ⟨…⟩ +2
+   @function tint($color, $amount: 10%) {
+       @return lighten($color, $amount);
 - body 1 sel, 4 decl @56
    body {
        font-family: $font-stack;
@@ -66,10 +67,12 @@ basic.scss (3-124)
   - .hide-mobile 1 sel, 1 decl @111 [class]
      ⟨…⟩ +2
 - fadeIn @117 [keyframes]
-   @keyframes fadeIn {
-       from {
-           opacity: 0;
-       to {
-           opacity: 1;
-next: sct focus basic.scss::.btn.&--outline.&:hover
+   ⟨…⟩ +7
+- Theme overrides @126 # /*! Theme overrides
+   Loaded last so they win the cascade. */
+- $accent-color #e67e22 @128 [scss-variable]
+- .theme-dark 1 sel, 2 decl @130 [class]
+  - .card 1 sel, 2 decl @134 [class]
+     ⟨…⟩ +3
+next: sct focus basic.scss::fadeIn
 [exit 0]
