@@ -54,6 +54,38 @@ def format_focus(
     return header + "\n" + TreeFormatter().format(file_path, pruned)
 
 
+def focus_to_json(
+    file_path: str, structures: list[StructureNode], source_lines: list[str], focus: str
+) -> dict | str:
+    """The same answer as format_focus(addressed=True) as a document: the
+    address (valid input for focus), the node's range, its verbatim body,
+    and the pruned skeleton as context. A miss or an ambiguity returns the
+    message format_focus would print, so both doors say the same thing."""
+    from .formatter import structures_to_json
+
+    matches = _resolve(structures, focus)
+    if len(matches) != 1:
+        return _resolution_error(structures, focus, matches)
+    target, ancestors = matches[0]
+    path_ids = {id(node) for node in (*ancestors, target)}
+    pruned = _prune(structures, target, path_ids, source_lines)
+    name = address_name(structures, target, ancestors)
+    return {
+        "address": f"{file_path}::{name}",
+        "ref": None,
+        "path": file_path,
+        "name": name,
+        "qualified": ".".join(node.name for node in (*ancestors, target)),
+        "type": target.type,
+        "start_line": target.start_line,
+        "end_line": target.end_line,
+        "signature": target.signature,
+        "docstring": target.docstring,
+        "body": "\n".join(source_lines[target.start_line - 1 : target.end_line]),
+        "context": structures_to_json(pruned, file_path, return_dict=True)["structures"],
+    }
+
+
 # A heading that opens with a bracketed tag ([DEV-L17] Contracts …) is
 # addressed by the tag; the study's documents used exactly this convention.
 _ID_TAG = re.compile(r"^\[([A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+)\]")

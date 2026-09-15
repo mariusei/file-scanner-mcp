@@ -139,7 +139,7 @@ class TestScanDiff:
         assert out.startswith("<0 files changed") and "no structural differences" in out
 
     def test_unknown_ref(self, repo):
-        assert "Unknown ref" in _text(server.scan_diff(str(repo), ref="does-not-exist"))
+        assert "unknown ref" in _text(server.scan_diff(str(repo), ref="does-not-exist"))
 
     def test_non_git_directory(self, tmp_path):
         (tmp_path / "f.py").write_text("x = 1\n")

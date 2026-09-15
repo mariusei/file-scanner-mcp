@@ -8,14 +8,14 @@ from pathlib import Path
 from fastmcp import FastMCP
 from mcp.types import TextContent
 
+from . import commands
 from .code_health import analyze_health
 from .code_map import CodeMap
 from .connectivity import connectivity_tail
-from .consensus import DivergenceConfig, find_divergences, format_divergences
 from .content_search import find_leads, format_hits, hits_to_json, search_content
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
 from .directory_formatter import DirectoryFormatter, coverage_dict, format_coverage
-from .focus import format_focus
+from .focus import focus_to_json, format_focus
 from .formatter import (
     TreeFormatter,
     file_coverage,
@@ -30,14 +30,22 @@ from .git_signals import (
     recent_line_edits,
     repo_root,
 )
-from .gitref import RefError, materialised, ref_kind, repo_and_rel, spec
+from .gitref import (
+    RefError,
+    blob,
+    materialised,
+    materialised_file,
+    ref_kind,
+    relabel,
+    repo_and_rel,
+    spec,
+    stamp_ref,
+)
 from .languages import StructureNode, is_file_info_stub
 from .languages.models import Sweep
 from .launcher import ensure_launcher, shell_hint, shell_instructions
 from .preview import preview_directory as preview_dir_func
-from .ref_diff import changed_files_review
 from .scanner import FileScanner
-from .structural_diff import WORKTREE, diff_to_json, diff_with_note, format_diff, verify_ref
 
 # Injected into context at session start even when tools are deferred behind
 # ToolSearch. Clients cap this text (measured ~2 047 characters in one; the
@@ -54,7 +62,7 @@ by sct: sct IS the shell.
 {shell}
 
 MCP TOOLS (no shell, or JSON output); parameters in each description: \
-search_structures, scan_directory, scan_file (focus= reads one node), \
+search_structures, scan_directory, scan_file, \
 scan_diff, preview_directory, find_divergence, list_directories, \
 scan_file_content, surface, overlap, callers, resolve.
 """
@@ -380,6 +388,53 @@ def list_directories(
         return [TextContent(type="text", text=f"Error listing directories: {e}")]
 
 
+def _focus_answer(
+    path: str, structures, source_lines: list[str], focus: str, output_format: str
+) -> str:
+    """One node verbatim with parent context, as text or as a document; a
+    miss or an ambiguity is the same message in both forms."""
+    if output_format != "json":
+        return format_focus(path, structures, source_lines, focus, addressed=True)
+    document = focus_to_json(path, structures, source_lines, focus)
+    return document if isinstance(document, str) else json.dumps(document, indent=2)
+
+
+def _at_ref_file(file_path: str, ref: str, **kwargs) -> list[TextContent]:
+    """scan_file at a git ref: the blob through scan_file_content under the
+    caller's own path, every address stamped @REF. Shared by both doors."""
+    try:
+        top, rel = repo_and_rel(file_path)
+        if ref_kind(top, ref, rel) != "blob":
+            raise RefError(f"{spec(ref, rel)} is not a file at {ref}")
+        content = blob(top, ref, rel)
+    except RefError as error:
+        return [TextContent(type="text", text=f"Error: {error}")]
+    result = scan_file_content(content=content, filename=file_path, **kwargs)
+    as_json = kwargs.get("output_format") == "json"
+    return [TextContent(type="text", text=stamp_ref(_text(result), ref, as_json))]
+
+
+def _at_ref_tree(directory: str, ref: str, tool, as_json: bool, **kwargs) -> list[TextContent]:
+    """A directory tool at a git ref: the tree from `git archive` unpacked
+    under the caller's own directory name, the tool run on it, every
+    spelling of the temporary path replaced by the path the caller typed,
+    every address stamped @REF. Shared by both doors."""
+    shown = directory.rstrip("/\\") or directory
+    try:
+        top, rel = repo_and_rel(directory)
+        kind = ref_kind(top, ref, rel)
+        materialise = materialised if kind == "tree" else materialised_file
+        with materialise(top, ref, rel, os.path.basename(os.path.abspath(directory))) as scope:
+            text = relabel(_text(tool(directory=scope, **kwargs)), scope, shown)
+    except RefError as error:
+        return [TextContent(type="text", text=f"Error: {error}")]
+    return [TextContent(type="text", text=stamp_ref(text, ref, as_json))]
+
+
+def _text(result: list[TextContent]) -> str:
+    return "".join(part.text for part in result)
+
+
 @mcp.tool(
     tags={"remote", "http", "content"},
     description="Scan file content directly - USE THIS for remote files, GitHub, APIs, a git blob or stdin instead of saving to disk first. Same budget/depth and focus='name' as scan_file"
@@ -474,12 +529,8 @@ def scan_file_content(
 
         if focus is not None:
             source_lines = content.split("\n")
-            return [
-                TextContent(
-                    type="text",
-                    text=format_focus(filename, structures, source_lines, focus, addressed=True),
-                )
-            ]
+            answer = _focus_answer(filename, structures, source_lines, focus, output_format)
+            return [TextContent(type="text", text=answer)]
         if output_format == "json":
             document = {
                 "coverage": file_coverage(structures),
@@ -522,6 +573,7 @@ def scan_file(
     mode: str = "balanced",
     include_metadata: bool = True,
     output_format: str = "tree",
+    ref: str | None = None,
 ) -> list[TextContent]:
     """
     Scan any file and return its structure — works on code, markdown, text, HTML, CSS, SQL, config, and 20+ file types.
@@ -552,6 +604,9 @@ def scan_file(
     Args (tiered — most calls need only Common):
         Common:
             file_path: Absolute or relative path to the file to scan
+            ref: Read the file as committed at this git ref (branch, tag,
+                SHA) instead of the working tree, no checkout; the answer
+                carries @REF. The file need not exist in the working tree
             focus: Read ONE node verbatim by name instead of guessing line
                 ranges: a function/class/method/heading from a previous scan,
                 qualified if needed ("ClassA.method"). Returns the file
@@ -616,6 +671,22 @@ def scan_file(
              return self.cursor.execute(sql).fetchall()
         - validate_email (email: str) -> bool @48 # Validate email format
     """
+    if ref:
+        return _at_ref_file(
+            file_path,
+            ref,
+            focus=focus,
+            show_signatures=show_signatures,
+            show_decorators=show_decorators,
+            show_docstrings=show_docstrings,
+            show_complexity=show_complexity,
+            condense=condense,
+            budget=budget,
+            depth=depth,
+            mode=mode,
+            include_metadata=include_metadata,
+            output_format=output_format,
+        )
     try:
         # depth is an alias carried over from preview_directory; map it to the
         # native cost lever. Explicit budget always wins; "deep" == full (None).
@@ -677,12 +748,8 @@ def scan_file(
 
         if focus is not None:
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
-            return [
-                TextContent(
-                    type="text",
-                    text=format_focus(file_path, structures, source_lines, focus, addressed=True),
-                )
-            ]
+            answer = _focus_answer(file_path, structures, source_lines, focus, output_format)
+            return [TextContent(type="text", text=answer)]
 
         delta_note = ""
         if delta and caller and output_format != "json":
@@ -746,6 +813,7 @@ def scan_directory(
     depth: str | None = None,
     include_metadata: bool = True,
     output_format: str = "tree",
+    ref: str | None = None,
 ) -> list[TextContent]:
     """
     Scan directory and show compact overview of all file structures (code, docs, markdown, config, text).
@@ -797,6 +865,9 @@ def scan_directory(
     Args (tiered — most calls need only Common):
         Common:
             directory: Directory path to scan
+            ref: Read the directory as committed at this git ref, no
+                checkout; paths in the answer are the ones you typed and the
+                coverage line carries @REF (default: the working tree)
             pattern: Glob pattern (default: "**/*" = recursive all files)
         Cost & slicing:
             max_files: Maximum files to process (default: None = unlimited)
@@ -835,6 +906,22 @@ def scan_directory(
         # Shallow scan (1 level)
         scan_directory(".", pattern="*/*")
     """
+    if ref:
+        return _at_ref_tree(
+            directory,
+            ref,
+            scan_directory,
+            output_format == "json",
+            pattern=pattern,
+            max_files=max_files,
+            respect_gitignore=respect_gitignore,
+            exclude_patterns=exclude_patterns,
+            delta=False,
+            mode=mode,
+            depth=depth,
+            include_metadata=include_metadata,
+            output_format=output_format,
+        )
     try:
         # depth has no analog here — scan_directory is already the shallow tier.
         # Accept it (no crash) but flag it as non-optimal tool use, in-loop.
@@ -1013,7 +1100,7 @@ def scan_diff(
     """
     try:
         try:
-            top, rel = repo_and_rel(directory)
+            top, rel = repo_and_rel(directory)  # this door's directory is the diff's scope
         except RefError:
             return [
                 TextContent(
@@ -1021,24 +1108,16 @@ def scan_diff(
                     text=f"{directory}: not in a git repo — structural ref diff requires git",
                 )
             ]
-        side_a, side_b = ref, ref2 or WORKTREE
-        for side in (side_a, side_b):
-            if not verify_ref(top, side):
-                return [TextContent(type="text", text=f"Unknown ref: {side!r} in {top}")]
-        result = diff_with_note(top, side_a, side_b, not no_merge_base, rel or None, budget)
-        tail = (
-            changed_files_review(top, {f.path for f in result.files if not f.deleted})
-            if review
-            else ""
+        text, _ = commands.diff(
+            ref,
+            ref2,
+            repo=top,
+            path=rel or None,
+            no_merge_base=no_merge_base,
+            review=review,
+            as_json=output_format == "json",
+            budget=budget,
         )
-        if output_format == "json":
-            document = diff_to_json(result)
-            if review:
-                document["review"] = tail or None
-            return [TextContent(type="text", text=json.dumps(document, indent=2))]
-        text = format_diff(result)
-        if tail:
-            text += "\n\n" + tail
         return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error diffing: {e}")]
@@ -1073,26 +1152,8 @@ def find_divergence(
         max_findings: Cap on the number of findings shown (default: 20)
     """
     try:
-        cm = CodeMap(directory, respect_gitignore=respect_gitignore)
-        result = cm.analyze()
-        if not result.definitions or not result.calls:
-            return [
-                TextContent(
-                    type="text",
-                    text=(
-                        f"{directory}: no call graph to analyze "
-                        f"(peer divergence needs code with cross-function calls)"
-                    ),
-                )
-            ]
-        file_clusters = {f: cluster for cluster, files in result.clusters.items() for f in files}
-        findings = find_divergences(
-            result.definitions,
-            result.calls,
-            config=DivergenceConfig(TOP_N=max_findings),
-            file_clusters=file_clusters,
-        )
-        return [TextContent(type="text", text=format_divergences(findings))]
+        text, _ = commands.divergence(directory, respect_gitignore, max_findings)
+        return [TextContent(type="text", text=text)]
     except FileNotFoundError:
         return [TextContent(type="text", text=f"Error: Directory not found: {directory}")]
     except PermissionError:
@@ -1117,6 +1178,7 @@ def search_structures(
     limit: int = 40,
     offset: int = 0,
     output_format: str = "tree",
+    ref: str | None = None,
 ) -> list[TextContent]:
     """
     Search for structures — or for text in its structural context — across a directory.
@@ -1137,7 +1199,10 @@ def search_structures(
 
     Args (tiered — most calls need only Common):
         Common:
-            directory: Directory to search in
+            directory: Directory to search in (a single file is a scope too)
+            ref: Search the directory as committed at this git ref, no
+                checkout; paths are the ones you typed, the coverage line
+                carries @REF (default: the working tree)
             content_pattern: Regex searched in raw file content (case-insensitive);
                 hits are grouped by their containing structure. Combine with
                 type_filter/name_pattern to restrict which structures count.
@@ -1161,6 +1226,22 @@ def search_structures(
         # Find all classes ending in "Manager"
         search_structures("./src", type_filter="class", name_pattern=".*Manager$")
     """
+    if ref:
+        return _at_ref_tree(
+            directory,
+            ref,
+            search_structures,
+            output_format == "json",
+            type_filter=type_filter,
+            name_pattern=name_pattern,
+            has_decorator=has_decorator,
+            min_complexity=min_complexity,
+            content_pattern=content_pattern,
+            include_metadata=include_metadata,
+            limit=limit,
+            offset=offset,
+            output_format=output_format,
+        )
     try:
         sweep = _search_scope(directory)
         results = sweep.results
@@ -1338,32 +1419,6 @@ def _filter_structures(
     return results
 
 
-def _surface_at(package_dir: str, ref: str | None):
-    """The surface of the package as typed, or as it is at ref; paths are
-    prefixed with the directory the caller typed, so each row is runnable.
-    Mirrors cli.py's `_surface_at` — the same helper `sct surface` uses."""
-    from .surface import read_surface
-
-    typed = package_dir.rstrip("/\\") or package_dir
-    if ref is None:
-        if not os.path.isdir(typed):
-            raise RefError(f"{package_dir} is not a directory")
-        found = read_surface(typed)
-    else:
-        top, rel = repo_and_rel(typed)
-        if ref_kind(top, ref, rel) != "tree":
-            raise RefError(f"{spec(ref, rel)} is not a directory; surface reads a package")
-        with materialised(top, ref, rel, os.path.basename(os.path.abspath(typed))) as tree:
-            found = read_surface(tree)
-    parent = os.path.dirname(typed)
-    for export in found.exports:
-        if export.path:
-            export.path = (
-                os.path.join(parent, export.path).replace(os.sep, "/") if parent else export.path
-            )
-    return found
-
-
 @mcp.tool(
     tags={"local", "surface", "api"},
     description="The public surface of a package (exports and where each is really defined, following __all__, lazy-import tables and re-export chains) at a ref, or the surface diff between two refs when against is given"
@@ -1402,28 +1457,8 @@ def surface(
         Public names grouped by defining module, or an added/removed/changed/moved diff
     """
     try:
-        from .surface import format_surface, format_surface_diff, surface_to_json
-
-        label_a = f"@{ref}" if ref else "@WORKTREE"
-        surface_a = _surface_at(package_dir, ref)
-        if against:
-            surface_b = _surface_at(package_dir, against)
-            if output_format == "json":
-                document = {
-                    "direction": f"{label_a} → @{against}",
-                    "a": surface_to_json(surface_a, label_a),
-                    "b": surface_to_json(surface_b, f"@{against}"),
-                }
-                return [TextContent(type="text", text=json.dumps(document, indent=2))]
-            text = format_surface_diff(surface_a, surface_b, label_a, f"@{against}")
-            return [TextContent(type="text", text=text)]
-        if output_format == "json":
-            return [
-                TextContent(
-                    type="text", text=json.dumps(surface_to_json(surface_a, label_a), indent=2)
-                )
-            ]
-        return [TextContent(type="text", text=format_surface(surface_a, label_a))]
+        text, _ = commands.surface(package_dir, ref, against, as_json=output_format == "json")
+        return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error reading surface: {e}")]
 
@@ -1470,21 +1505,8 @@ def overlap(
         colliding new names, and a suggested merge order
     """
     try:
-        from .overlap import format_overlap, overlap_to_json
-        from .overlap import overlap as compute_overlap
-        from .structural_diff import repo_top, verify_ref
-
-        where = repo or os.getcwd()
-        top = repo_top(where)
-        if top is None:
-            raise RefError(f"{where} is not inside a git repository; pass repo")
-        for candidate in (base, *branches):
-            if not verify_ref(top, candidate):
-                raise RefError(f"unknown ref {candidate!r} in {top}")
-        result = compute_overlap(top, base, branches)
-        if output_format == "json":
-            return [TextContent(type="text", text=json.dumps(overlap_to_json(result), indent=2))]
-        return [TextContent(type="text", text=format_overlap(result))]
+        text, _ = commands.overlap(base, branches, repo, as_json=output_format == "json")
+        return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error computing overlap: {e}")]
 
@@ -1528,52 +1550,10 @@ def callers(
         Definition site(s) plus every real call site, grouped by file
     """
     try:
-        from .callers import callers_to_json, find_callers, format_callers
-
-        label = f"@{ref}" if ref else ""
-        if ref:
-            top, rel = repo_and_rel(directory)
-            if ref_kind(top, ref, rel) != "tree":
-                raise RefError(f"{spec(ref, rel)} is not a directory")
-            with materialised(top, ref, rel, os.path.basename(os.path.abspath(directory))) as tree:
-                found = find_callers(tree, name)
-        elif not os.path.isdir(directory):
-            raise RefError(f"{directory} is not a directory")
-        else:
-            found = find_callers(directory, name)
-        if output_format == "json":
-            return [
-                TextContent(type="text", text=json.dumps(callers_to_json(found, label), indent=2))
-            ]
-        return [TextContent(type="text", text=format_callers(found, label))]
+        text, _ = commands.callers(name, directory, ref, as_json=output_format == "json")
+        return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error finding callers: {e}")]
-
-
-_RESOLVE_RANGE_SUFFIX = re.compile(r" \((\d+)(?:-(\d+))?\)$")
-
-
-def _split_resolve_address(address: str) -> tuple[str, str, str | None]:
-    """`path::name[@ref][ (a-b)]` -> (path, name[ (a-b)], ref). Mirrors
-    cli.py's `_split_address` for the same address form (resolve does not
-    need the quoted-heading case focus does, but accepts it for symmetry)."""
-    span = _RESOLVE_RANGE_SUFFIX.search(address)
-    if span:
-        address = address[: span.start()]
-    path, sep, name = address.rpartition("::")
-    if not sep:
-        raise ValueError("give path:line or path::name")
-    ref = None
-    if name.startswith('"'):
-        closing = name.find('"', 1)
-        if closing > 0 and name[closing + 1 :].startswith("@"):
-            ref = name[closing + 2 :]
-            name = name[: closing + 1]
-    elif "@" in name:
-        name, _, ref = name.rpartition("@")
-    if span:
-        name += span.group(0)
-    return path, name, ref or None
 
 
 @mcp.tool(
@@ -1619,42 +1599,9 @@ def resolve(
         the nearest names by similarity
     """
     try:
-        from .resolve import Resolution, format_resolution, resolution_to_json
-        from .resolve import resolve as resolve_address
-        from .structural_diff import repo_top, verify_ref
-
-        target: str | int
-        if "::" in location:
-            path, name, ref_in_address = _split_resolve_address(location)
-            target = name
-            if ref_in_address and not ref_from:
-                ref_from = ref_in_address
-        else:
-            path, sep, line = location.rpartition(":")
-            if not sep or not line.isdigit():
-                raise ValueError("give path:line or path::name")
-            target = int(line)
-        if not ref_from:
-            raise ValueError("ref_from is required (or an address carrying @REF)")
-        top = repo_top(repo or os.path.dirname(os.path.abspath(path)))
-        if top is None:
-            raise RefError(f"{path} is not inside a git repository; pass repo")
-        rel = os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
-        if repo:
-            rel = path.replace(os.sep, "/")
-        for candidate in (ref_from, ref_to):
-            if not verify_ref(top, candidate):
-                raise RefError(f"unknown ref {candidate!r} in {top}")
-        outcome = resolve_address(top, rel, target, ref_from, ref_to)
-        if not isinstance(outcome, Resolution):
-            return [TextContent(type="text", text=outcome)]
-        text = (
-            json.dumps(resolution_to_json(outcome), indent=2)
-            if output_format == "json"
-            else format_resolution(outcome)
+        text, _ = commands.resolve(
+            location, ref_from, ref_to, repo, as_json=output_format == "json"
         )
-        if path != rel:
-            text = text.replace(rel, path, 1)
         return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error resolving: {e}")]
