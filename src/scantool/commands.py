@@ -18,7 +18,7 @@ SOLUTION:
   their bodies are the reader; `ref=` lives there for both doors.
 
 SCOPE:
-  ✓ diff, surface, overlap, callers, resolve, divergence
+  ✓ diff, surface, overlap, callers, resolve, divergence, history
   ✗ scan, focus, search: server.py tools are the shared entry
 """
 
@@ -211,6 +211,43 @@ def resolve(
         json.dumps(resolution_to_json(outcome), indent=2) if as_json else format_resolution(outcome)
     )
     return (text.replace(rel, path, 1) if path != rel else text), 0 if outcome.target else 1
+
+
+def history(
+    address: str,
+    ref: str | None = None,
+    repo: str | None = None,
+    as_json: bool = False,
+) -> tuple[str, int]:
+    """`path::name[@ref]` or `path:line` followed backwards through the
+    commits that touched the file."""
+    from .history import follow, format_history, history_to_json
+    from .structural_diff import repo_top
+
+    target: str | int
+    if "::" in address:
+        path, name, ref_in_address = split_address(address)
+        target = name
+        ref = ref or ref_in_address
+    else:
+        path, sep, line = address.rpartition(":")
+        if not sep or not line.isdigit():
+            raise UsageError("sct history: give path::name or path:line")
+        target = int(line)
+    ref = ref or "HEAD"
+    top = repo_top(repo or os.path.dirname(os.path.abspath(path)))
+    if top is None:
+        raise RefError(f"{path} is not inside a git repository; pass --repo DIR")
+    rel = (
+        path.replace(os.sep, "/")
+        if repo
+        else os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
+    )
+    outcome = follow(top, rel, target, ref)
+    if isinstance(outcome, str):
+        raise RefError(outcome)
+    text = json.dumps(history_to_json(outcome), indent=2) if as_json else format_history(outcome)
+    return (text.replace(rel, path, 1) if path != rel else text), 0 if outcome.events else 1
 
 
 def divergence(

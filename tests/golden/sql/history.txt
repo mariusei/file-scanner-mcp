@@ -1,0 +1,3 @@
+<1 change in 2 commits touching the file> history of basic.sql::users.id@b (5-5)
+ff8b9b1 2026-01-01  + users.id INT PRIMARY KEY AUTO_INCREMENT   [added]   v1
+[exit 0]

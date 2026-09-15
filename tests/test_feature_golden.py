@@ -45,9 +45,12 @@ COMMANDS = (
     "resolve",
     "overlap",
     "divergence",
+    "history",
 )
-REF_COMMANDS = {"diff", "resolve", "overlap"}
-NO_AFTER = "(no after sample: diff, resolve and overlap need the sample in a second version)"
+REF_COMMANDS = {"diff", "resolve", "overlap", "history"}
+NO_AFTER = (
+    "(no after sample: diff, resolve, overlap and history need the sample in a second version)"
+)
 
 _GIT_ENV = {
     "GIT_AUTHOR_NAME": "golden",
@@ -156,6 +159,7 @@ def _argv(command: str, name: str, targets: dict[str, str]) -> list[str]:
         "resolve": ["resolve", f"{name}::{targets['focus']}", "--from", "v1", "--to", "v2"],
         "overlap": ["overlap", "v1", "a", "b", "--repo", "."],
         "divergence": ["divergence", "."],
+        "history": ["history", f"{name}::{targets['focus']}", "--ref", "b", "--repo", "."],
     }[command]
 
 

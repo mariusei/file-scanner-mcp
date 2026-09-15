@@ -56,6 +56,7 @@ USAGE
   sct callers  <name> [--dir DIR] [--ref REF]
   sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
   sct divergence <dir> [--max-findings N]
+  sct history  <path::name | path:line> [--ref REF] [--repo DIR]
   sct <command> --help
   any command: --json, --ascii
 
@@ -149,6 +150,7 @@ COMMANDS = (
     "callers",
     "resolve",
     "divergence",
+    "history",
 )
 STDIN = "-"
 
@@ -426,6 +428,13 @@ def run_resolve(args: argparse.Namespace) -> tuple[list[str], int]:
     return [text], code
 
 
+def run_history(args: argparse.Namespace) -> tuple[list[str], int]:
+    from . import commands
+
+    text, code = commands.history(args.address, args.ref, args.repo, as_json=args.json)
+    return [text], code
+
+
 def run_divergence(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import commands
 
@@ -444,6 +453,7 @@ RUNNERS: dict[str, Callable[[argparse.Namespace], tuple[list[str], int]]] = {
     "callers": run_callers,
     "resolve": run_resolve,
     "divergence": run_divergence,
+    "history": run_history,
 }
 
 
@@ -549,6 +559,13 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "--repo", metavar="DIR", help="repository; the path is then relative to it"
     )
 
+    history = parser("history", "One structure followed through the commits that changed it.", True)
+    history.add_argument("address", metavar="path::name | path:line")
+    ref_option(history)
+    history.add_argument(
+        "--repo", metavar="DIR", help="repository; the path is then relative to it"
+    )
+
     divergence = parser(
         "divergence",
         "Functions that break a call pattern their siblings follow (a review hint).",
@@ -570,6 +587,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
         "callers": callers,
         "resolve": resolve,
         "divergence": divergence,
+        "history": history,
     }
 
 

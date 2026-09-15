@@ -1,0 +1,3 @@
+<1 change in 2 commits touching the file> history of basic.zig::Config.total@b (9-11)
+98d20e0 2026-01-01  + Config.total(self: Config) i32   [added]   v1
+[exit 0]
