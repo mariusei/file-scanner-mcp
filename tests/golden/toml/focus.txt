@@ -1,5 +1,5 @@
 basic.toml::server.host (6-6)
-basic.toml (2-19)
+basic.toml (2-25)
 - name "demo-app" @2 # Project configuration
 - version "1.2.3" @3
 - server @5
@@ -9,4 +9,6 @@ basic.toml (2-19)
 - server.tls @9
 - plugins @13
 - plugins @17
+- Limits applied to every worker. 2 lines @21
+- limits @23
 [exit 0]

@@ -1,4 +1,4 @@
-<6 public names, 6 via definition> package toml @WORKTREE
+<7 public names, 7 via definition> package toml @WORKTREE
 basic
   name  "demo-app"   toml/basic.toml:2
   version  "1.2.3"   toml/basic.toml:3
@@ -6,4 +6,5 @@ basic
   server.tls         toml/basic.toml:9
   plugins            toml/basic.toml:13
   plugins            toml/basic.toml:17
+  limits             toml/basic.toml:23
 [exit 0]
