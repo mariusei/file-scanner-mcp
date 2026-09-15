@@ -1,1 +1,3 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+basic.rs::DatabaseManager.new@v1 (22-27)
+basic.rs::DatabaseManager.new@v2 (22-27)
+[exit 0]

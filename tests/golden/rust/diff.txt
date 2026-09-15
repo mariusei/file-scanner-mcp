@@ -1,1 +1,11 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.rs  (+1 ~2 =1 -1)
+  + health() -> &'static str                                 B:90
+  ~ DatabaseManager                                          A:20 → B:20   [body: 1 doc line]
+  ~ validate_email <S: AsRef<str>>(email: S) -> bool         A:80 → B:75   [signature: (email: &str) -> bool → <S: AsRef<str>>(email: S) -> bool]
+  = UserService.remove_user(&self, user_id: u64) -> bool     A:58 → B:53   [renamed from UserService.delete_user]
+  - DatabaseManager.query(&self, sql: &str) -> Vec<String>   A:36
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]

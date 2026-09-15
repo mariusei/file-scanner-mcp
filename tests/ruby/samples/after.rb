@@ -21,11 +21,6 @@ module DataAccess
       puts "Connecting to #{@connection_string}"
     end
 
-    # Close database connection
-    def disconnect
-      @connection&.close
-    end
-
     # Execute a SQL query
     def query(sql)
       []
@@ -55,18 +50,23 @@ class UserService
   end
 
   # Delete a user
-  def delete_user(user_id)
+  def remove_user(user_id)
     true
   end
 end
 
 # Validate email format
-def validate_email(email)
+def validate_email(email, strict = false)
   email.include?('@')
 end
 
+# Liveness probe
+def health
+  { status: 'ok' }
+end
+
 # Default number of connection attempts
-DEFAULT_ATTEMPTS = 3
+DEFAULT_ATTEMPTS = 5
 
 # Retries a block a bounded number of times
 class Retrier

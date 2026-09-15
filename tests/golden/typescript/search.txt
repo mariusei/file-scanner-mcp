@@ -1,9 +1,11 @@
-<1 file seen, 15 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /calculateStats/
+<1 file seen, 16 structures shown, 1 excluded (.git/)>
+2 hits in 2 structures for /retry/
 
 ./basic.ts
-- calculateStats (users: User[]) : { total: number; active: number } @109-114  (1 hit)
-   109 | const calculateStats = (users: User[]): { total: number; active: number } => {
+- AuthService > validateToken (token: string) : boolean @49-51  (1 hit)
+   50 | return retry(() => token.length > 0);
+- retry (action: () => boolean, attempts: number = MAX_ATTEMPTS) : boolean @124-131  (1 hit)
+   124 | function retry(action: () => boolean, attempts: number = MAX_ATTEMPTS): boolean {
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

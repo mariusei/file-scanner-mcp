@@ -31,11 +31,6 @@ impl DatabaseManager {
         println!("Connecting to {}", self.connection_string);
         Ok(())
     }
-
-    /// Execute a SQL query.
-    pub fn query(&self, sql: &str) -> Vec<String> {
-        vec![]
-    }
 }
 
 /// Service for user operations.
@@ -55,7 +50,7 @@ impl UserService {
     }
 
     /// Delete a user.
-    pub fn delete_user(&self, user_id: u64) -> bool {
+    pub fn remove_user(&self, user_id: u64) -> bool {
         true
     }
 }
@@ -77,8 +72,8 @@ impl Validate for User {
 }
 
 /// Validate an email address.
-pub fn validate_email(email: &str) -> bool {
-    email.contains('@')
+pub fn validate_email<S: AsRef<str>>(email: S) -> bool {
+    email.as_ref().contains('@')
 }
 
 /// Entry point for the application.
@@ -91,8 +86,13 @@ fn main() {
     println!("Application started");
 }
 
+/// Liveness probe.
+pub fn health() -> &'static str {
+    "ok"
+}
+
 /// Upper bound on connection attempts.
-pub const MAX_ATTEMPTS: u32 = 3;
+pub const MAX_ATTEMPTS: u32 = 5;
 
 /// Run `action` until it returns true or the attempts are spent (private).
 fn retry(action: &mut dyn FnMut() -> bool, attempts: u32) -> bool {

@@ -1,5 +1,5 @@
-<1 file seen, 21 structures shown>
-basic.php (6-132)
+<1 file seen, 25 structures shown>
+basic.php (6-167)
 - App\Database @6
 - use statements @8
 - DatabaseConfig @15 # Configuration interface for database settings.
@@ -52,3 +52,15 @@ basic.php (6-132)
 - formatName (string $firstName, string $lastName) string @130 # Formats a user's full name.
    function formatName(string $firstName, string $lastName): string {
        return "{$firstName} {$lastName}";
+- Retrier @142 # Retries an action a bounded number of times.
+  - __construct (int $attempts = DEFAULT_ATTEMPTS) @145 [public]
+     public function __construct(int $attempts = DEFAULT_ATTEMPTS) {
+         $this->attempts = $attempts;
+  - run (callable $action) bool @152 [public] # Runs the action until it returns true or the attempts are spent.
+     public function run(callable $action): bool {
+         for ($i = 0; $i < $this->attempts; $i++) {
+       …
+         return false;
+  - attempt (callable $action) bool @164 [private] # Executes one attempt (internal).
+     private function attempt(callable $action): bool {
+         return $action() === true;

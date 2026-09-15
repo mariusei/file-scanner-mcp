@@ -1,5 +1,5 @@
-<1 file seen, 15 structures shown>
-basic.rb (3-73)
+<1 file seen, 19 structures shown>
+basic.rb (3-97)
 - require statements @3
 - DataAccess @8 # Data access layer module
   - DatabaseManager @10 # Manages database connections and queries
@@ -30,7 +30,8 @@ basic.rb (3-73)
      …
   - create_user (username, email) @48 # Create a new user
      def create_user(username, email)
-       …
+       validate_email(email) ? 1 : 0
+     …
   - get_user (user_id) @53 # Retrieve user by ID
      def get_user(user_id)
        …
@@ -41,9 +42,23 @@ basic.rb (3-73)
    def validate_email(email)
      email.include?('@')
    …
-- main () @69 # Main entry point
+- Retrier @72 # Retries a block a bounded number of times
+  - initialize (attempts = DEFAULT_ATTEMPTS) @73
+     def initialize(attempts = DEFAULT_ATTEMPTS)
+       @attempts = attempts
+     …
+  - run (&action) @78 # Run the block until it returns true or the attempts are spent
+     def run(&action)
+       @attempts.times { return true if attempt(&action) }
+       …
+  - attempt () @86 # Execute one attempt (internal)
+     def attempt
+       yield == true
+     …
+- main () @92 # Main entry point
    def main
      db = DataAccess::DatabaseManager.create_default
      service = UserService.new(db)
+     Retrier.new.run { db.connect }
      puts "Application started"
    …

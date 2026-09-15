@@ -1,5 +1,5 @@
 basic.swift::Config.host (8-8)
-basic.swift (3-117)
+basic.swift (3-128)
 - import statements @3
 - Config @7 # Configuration structure for the application
   - host : String @8
@@ -15,4 +15,5 @@ basic.swift (3-117)
 - formatTimestamp (_ date: Date) -> String @109 # Format a timestamp to string
 - UserID = Int @116 # Typealias for convenience
 - CompletionHandler = (Result<Bool, Error>) -> Void @117
+- retry (_ action: () -> Bool, attempts: Int) -> Bool @123 [private] # Run `action` until it returns true or the attempts are spent (file-private)
 [exit 0]

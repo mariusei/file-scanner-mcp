@@ -1,9 +1,14 @@
-<1 file seen, 11 structures shown, 1 excluded (.git/)>
-1 hits in 1 structures for /addition\ works/
+<1 file seen, 12 structures shown, 1 excluded (.git/)>
+4 hits in 3 structures for /clamp/
 
 ./basic.zig
-- addition works @58-61  (1 hit)
-   58 | test "addition works" {
+- (module level) @63-63  (2 hits)
+   63 | /// Upper bound for clamped values
+   66 | /// Clamp a value into the inclusive range (private)
+- main () !void @32-39  (1 hit)
+   37 | try stdout.print("Hello, {s}! {d}\n", .{ "World", clamp(helper(2, 3), 0, max_value) });
+- clamp (value: i32, lower: i32, upper: i32) i32 @67-71  (1 hit)
+   67 | fn clamp(value: i32, lower: i32, upper: i32) i32 {
 
 leads: none (no name called in the hits is defined in another scanned file)
 [exit 0]

@@ -1,1 +1,15 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<2 branches vs v1, 2 with structural changes> base v1 (b1a37e2)
+a  merge-base b1a37e2  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base b1a37e2  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
+  basic.php::DatabaseManager              a(~)  b(~)
+  basic.php::DatabaseManager.disconnect   a(-)  b(-)
+  basic.php::UserService.deleteUser       a(-)  b(-)
+  basic.php::UserService.removeUser       a(+)  b(+)
+  basic.php::health                       a(+)  b(+)
+  basic.php::validateEmail                a(~)  b(~)
+colliding new names (added independently on 2+ branches): 2
+  health       a:basic.php:127  b:basic.php:127
+  removeUser   a:basic.php:104  b:basic.php:104
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+[exit 0]

@@ -1,5 +1,5 @@
-<1 file seen, 11 structures shown>
-basic.zig (4-61)
+<1 file seen, 12 structures shown>
+basic.zig (4-71)
 - Config @4 [pub] # Configuration for the application
   - total (self: Config) i32 @9 [pub] # Calculate the total value
      pub fn total(self: Config) i32 {
@@ -19,7 +19,7 @@ basic.zig (4-61)
        …
        var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
        const stdout = &stdout_writer.interface;
-       try stdout.print("Hello, {s}!\n", .{"World"});
+       try stdout.print("Hello, {s}! {d}\n", .{ "World", clamp(helper(2, 3), 0, max_value) });
        try stdout.flush();
 - helper (x: i32, y: i32) i32 @41
    fn helper(x: i32, y: i32) i32 {
@@ -37,4 +37,9 @@ basic.zig (4-61)
    …
        const result = helper(2, 3);
        try std.testing.expectEqual(result, 5);
+- clamp (value: i32, lower: i32, upper: i32) i32 @67 # Clamp a value into the inclusive range (private)
+   fn clamp(value: i32, lower: i32, upper: i32) i32 {
+       if (value < lower) return lower;
+       if (value > upper) return upper;
+       return value;
 [exit 0]

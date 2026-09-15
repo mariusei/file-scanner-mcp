@@ -1,5 +1,5 @@
 basic.rs::DatabaseManager.new (22-27)
-basic.rs (3-89)
+basic.rs (3-105)
 - use statements @3
 - User @8 [pub] # User account with basic information.
    #[derive(Debug, Clone)]
@@ -20,4 +20,5 @@ basic.rs (3-89)
 - Validate for User @69
 - validate_email (email: &str) -> bool @80 [pub] # Validate an email address.
 - main () @85 # Entry point for the application.
+- retry (action: &mut dyn FnMut() -> bool, attempts: u32) -> bool @98 # Run `action` until it returns true or the attempts are spent (private).
 [exit 0]

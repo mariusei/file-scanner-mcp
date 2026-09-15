@@ -1,4 +1,4 @@
-<1 file seen, 15 structures shown, 1 excluded (.git/)>
+<1 file seen, 16 structures shown, 1 excluded (.git/)>
 basic.ts (11-14)
 - Config @11 # Configuration interface for authentication service.
    interface Config {

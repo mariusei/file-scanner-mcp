@@ -1,4 +1,4 @@
-<7 public names, 7 via definition> package php @WORKTREE
+<8 public names, 8 via definition> package php @WORKTREE
 basic
   App\Database                                               php/basic.php:6
   DatabaseConfig                                             php/basic.php:15
@@ -7,4 +7,5 @@ basic
   UserService                                                php/basic.php:84
   validateEmail  (string $email) bool                        php/basic.php:123
   formatName  (string $firstName, string $lastName) string   php/basic.php:130
+  Retrier                                                    php/basic.php:142
 [exit 0]

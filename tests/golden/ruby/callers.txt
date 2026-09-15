@@ -1,3 +1,6 @@
-<0 call sites in 0 files, 0 definitions, 1 file scanned> callers of DataAccess
-no call sites of DataAccess (mentions in docstrings, comments and strings are not calls)
-[exit 1]
+<1 call site in 1 file, 1 definition, 1 file scanned> callers of attempt
+defined: basic.rb::Retrier.attempt (method) basic.rb:86
+
+basic.rb  (1 site)
+  - run basic.rb:79   @attempts.times { return true if attempt(&action) }
+[exit 0]

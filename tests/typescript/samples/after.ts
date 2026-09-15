@@ -37,13 +37,6 @@ class AuthService {
   }
 
   /**
-   * Logs out a user by their ID.
-   */
-  async logout(userId: string): Promise<void> {
-    // Logout logic here
-  }
-
-  /**
    * Validates an authentication token.
    */
   validateToken(token: string): boolean {
@@ -84,7 +77,7 @@ class UserManager {
   /**
    * Updates a user's information.
    */
-  async updateUser(id: string, data: Partial<User>): Promise<User> {
+  async patchUser(id: string, data: Partial<User>): Promise<User> {
     return {} as User;
   }
 }
@@ -99,7 +92,7 @@ function generateId(): string {
 /**
  * Validates an email address format.
  */
-function validateEmail(email: string): boolean {
+function validateEmail(email: string, strict = false): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
@@ -114,9 +107,16 @@ const calculateStats = (users: User[]): { total: number; active: number } => {
 };
 
 /**
+ * Liveness probe.
+ */
+function health(): boolean {
+  return MAX_ATTEMPTS > 0;
+}
+
+/**
  * Default number of attempts before giving up.
  */
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 
 /**
  * Runs `action` until it returns true or the attempts are spent (not exported).

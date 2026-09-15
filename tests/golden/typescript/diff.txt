@@ -1,1 +1,11 @@
-(no after sample: diff, resolve and overlap need the sample in a second version)
+<1 file changed, 1 with structural rows> v1 → v2
+
+basic.ts  (+1 ~2 =1 -1)
+  + health() : boolean                                                 B:112
+  ~ AuthService                                                        A:19 → B:19   [body: 3 doc lines]
+  ~ validateEmail(email: string, strict = false) : boolean             A:102 → B:95   [signature: (email: string) : boolean → (email: string, strict = false) : boolean]
+  = UserManager.patchUser(id: string, data: Partial<User>) : Promise<User>   A:87 → B:80   [renamed from UserManager.updateUser]
+  - AuthService.logout(userId: string) : Promise<void>                 A:42
+
+summary: 1 file, +1 ~2 =1 -1 structures
+[exit 0]

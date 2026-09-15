@@ -1,5 +1,5 @@
-<1 file seen, 33 structures shown>
-basic.swift (3-117)
+<1 file seen, 34 structures shown>
+basic.swift (3-128)
 - import statements @3
 - Config @7 # Configuration structure for the application
    struct Config {
@@ -57,13 +57,13 @@ basic.swift (3-117)
          self.db = db
   - createUser (username: String, email: String) -> Int @88 # Create a new user
      func createUser(username: String, email: String) -> Int {
-         return 1
+         return validateEmail(email) ? 1 : 0
   - getUser (by id: Int) -> [String: Any]? @93 # Get user by ID
      func getUser(by id: Int) -> [String: Any]? {
          return nil
   - deleteUser (id: Int) throws @98 # Delete user by ID
      func deleteUser(id: Int) throws {
-         …
+         _ = retry({ db.isConnected })
 - validateEmail (_ email: String) -> Bool @104 # Validate email format
    func validateEmail(_ email: String) -> Bool {
        return email.contains("@") && email.count > 3
@@ -74,3 +74,8 @@ basic.swift (3-117)
        return formatter.string(from: date)
 - UserID = Int @116 # Typealias for convenience
 - CompletionHandler = (Result<Bool, Error>) -> Void @117
+- retry (_ action: () -> Bool, attempts: Int) -> Bool @123 [private] # Run `action` until it returns true or the attempts are spent (file-private)
+   private func retry(_ action: () -> Bool, attempts: Int = defaultAttempts) -> Bool {
+       for _ in 0..<attempts where action() {
+           return true
+       return false

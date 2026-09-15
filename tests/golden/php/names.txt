@@ -1,4 +1,4 @@
-<1 file seen, 21 structures shown, 1 excluded (.git/)>
+<1 file seen, 25 structures shown, 1 excluded (.git/)>
 basic.php (6-6)
 - App\Database @6
 [exit 0]

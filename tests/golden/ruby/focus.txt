@@ -1,5 +1,5 @@
 basic.rb::DataAccess.DatabaseManager (10-38)
-basic.rb (3-73)
+basic.rb (3-97)
 - require statements @3
 - DataAccess @8 # Data access layer module
   - DatabaseManager @10 # Manages database connections and queries
@@ -34,5 +34,6 @@ basic.rb (3-73)
      38 |   end
 - UserService @42 # Handles user-related operations
 - validate_email (email) @64 # Validate email format
-- main () @69 # Main entry point
+- Retrier @72 # Retries a block a bounded number of times
+- main () @92 # Main entry point
 [exit 0]
