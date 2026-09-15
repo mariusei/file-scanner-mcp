@@ -70,6 +70,43 @@ class K2:
 '''
 
 
+CALLS_BASE = """def run_task(x):
+    return x + 1
+
+
+def process(y):
+    return y * 2
+
+
+def finalize(z):
+    return z - 1
+
+
+def standalone(w):
+    return w
+"""
+
+CALLS_FEATURE = """def helper(n):
+    return n + 100
+
+
+def run_task(x):
+    return helper(x) + 1
+
+
+def process(y):
+    return helper(y) * 2
+
+
+def finalize(z):
+    return helper(z) - 1
+
+
+def standalone(w):
+    return w * 2
+"""
+
+
 def _git(cwd, *args):
     subprocess.run(
         ["git", *args],
@@ -190,3 +227,53 @@ class TestDiff:
         rows = file_rows(a, b)
         assert len(rows) == 1 and rows[0].name == "3 functions"
         assert rows[0].note == "signature +binding: a, b, c"
+
+
+@pytest.fixture
+def calls_repo(tmp_path, monkeypatch):
+    _git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / "calls.py").write_text(CALLS_BASE)
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "base")
+    _git(tmp_path, "checkout", "-qb", "feature")
+    (tmp_path / "calls.py").write_text(CALLS_FEATURE)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "feature")
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+@requires_git
+class TestCallRelations:
+    """A dedicated repo rather than the shared `repo` fixture: `repo`'s
+    BASE/FEATURE exist to exercise renames and signature grouping, and none
+    of its functions call each other, so it can't assert an exact
+    called_by_changed count without adding call sites that would also
+    perturb the rename/fold assertions already pinned to it. This fixture
+    adds one function (helper) and threads a call to it through three
+    others that also change for an unrelated reason (their own body edit),
+    so the count is exact and the "no callers" case is unambiguous too."""
+
+    def test_added_helper_counts_changed_callers(self, calls_repo, capsys):
+        out, _, code = run("diff", "main", "feature", capsys=capsys)
+        assert code == 0
+        rows = [line.strip() for line in out.splitlines() if line.startswith("  ")]
+        assert any(
+            r.startswith("+ helper(n)") and "[called by 3 changed functions here]" in r
+            for r in rows
+        )
+
+    def test_changed_function_with_no_diff_callers_gets_no_note(self, calls_repo, capsys):
+        out, _, code = run("diff", "main", "feature", capsys=capsys)
+        assert code == 0
+        rows = [line.strip() for line in out.splitlines() if line.startswith("  ")]
+        standalone_rows = [r for r in rows if r.startswith("~ standalone")]
+        assert len(standalone_rows) == 1
+        assert "called by" not in standalone_rows[0]
+
+    def test_json_reports_called_by_changed(self, calls_repo, capsys):
+        out, _, code = run("diff", "main", "feature", "--json", capsys=capsys)
+        document = json.loads(out)
+        rows = {r["name"]: r for f in document["files"] for r in f["rows"]}
+        assert rows["helper"]["called_by_changed"] == 3
+        assert rows["standalone"]["called_by_changed"] == 0

@@ -21,7 +21,10 @@ SOLUTION:
 SCOPE:
   ✓ ref vs ref, ref vs working tree (WORKTREE), --path pathspec, merge-base
   ✓ rows, renames, grouped signature deltas, new-file skeletons, coverage
-  ✗ no call relations yet, no near-rename similarity, no MCP surface change
+  ✓ call relations scoped to the diff itself ("called by N changed
+    functions here"), bare-name matched like callers.py, never a
+    whole-corpus call graph
+  ✗ no near-rename similarity, no MCP surface change
 """
 
 import difflib
@@ -46,6 +49,12 @@ WORKTREE = "WORKTREE"
 ROW_SYNTHETIC_TYPES = frozenset({"imports", "includes", "requires", "docstring"})
 DOC_MARKERS = ("#", "//", "/*", "*", '"""', "'''", "--", "<!--")
 GROUP_MIN = 3  # identical signature deltas fold into one row from this many
+# Kinds every language's extract_definitions() can turn into a call-graph
+# node (base.py's _structures_to_definitions filters to exactly these).
+CALLABLE_TYPES = frozenset({"function", "method"})
+# Marks that still have code on side b — a row with one of these can BE a
+# caller in the relation graph; "-" (removed) has nothing left to call from.
+CALLER_MARKS = frozenset({"+", "~", "="})
 
 
 @dataclass
@@ -77,6 +86,9 @@ class Row:
     a_line: int | None
     b_line: int | None
     note: str = ""
+    # + or ~ callable rows only: distinct other rows in THIS diff whose
+    # enclosing function/method, on side b, calls this row's bare name.
+    called_by_changed: int = 0
 
 
 @dataclass
@@ -459,6 +471,10 @@ def diff_refs(
 ) -> DiffResult:
     scanner = FileScanner()
     files: list[FileDiff] = []
+    # (entry, its rel path, its side-b content, name -> NodeRecord on side b)
+    # for every file with rows — the raw material _annotate_call_relations
+    # needs to build a call graph scoped to just this diff's files.
+    changed: list[tuple[FileDiff, str, str, dict[str, NodeRecord]]] = []
     for status, old_rel, new_rel in _name_status(top, side_a, side_b, pathspec):
         entry = FileDiff(
             path=new_rel,
@@ -480,23 +496,77 @@ def diff_refs(
             else:
                 entry.skeleton = TreeFormatter().format(new_rel, structures)
             continue
+        b_content = read_side(top, side_b, new_rel) if not status.startswith("D") else None
         a = _scan_side(
             scanner,
             read_side(top, side_a, old_rel) if not status.startswith("A") else None,
             old_rel,
         )
-        b = _scan_side(
-            scanner,
-            read_side(top, side_b, new_rel) if not status.startswith("D") else None,
-            new_rel,
-        )
+        b = _scan_side(scanner, b_content, new_rel)
         if a is None or b is None:
             entry.reason = "unstructured type"
             continue
         entry.rows = file_rows(a, b)
         if not entry.rows:
             entry.reason = "no structural change"
+        elif b_content is not None:
+            changed.append(
+                (entry, new_rel, b_content, {record.name: record for record in b.values()})
+            )
+    _annotate_call_relations(scanner, changed)
     return DiffResult(side_a, side_b, files)
+
+
+def _annotate_call_relations(
+    scanner: FileScanner, changed: list[tuple[FileDiff, str, str, dict[str, NodeRecord]]]
+) -> None:
+    """called_by_changed on every +/~ callable row: how many OTHER rows in
+    THIS diff — any file that changed, any mark still present on side b —
+    call its bare name. Deliberately scoped to the diff's own files (the
+    call graph is built only from the content already read for them, never
+    a directory walk): "called by six changed functions HERE", not in the
+    whole corpus. Calls are matched on the bare name the same way
+    callers.py's find_callers does — which definition a call binds to when
+    several share a name is not resolved, so an ambiguous name can overcount.
+    """
+    # file -> {bare name -> rows at that name still alive on side b}: who
+    # COULD be a caller. Multiple rows can share a bare name (e.g. two
+    # classes each with a "run" method) — an unavoidable ambiguity, matching
+    # find_callers' own bare-name resolution.
+    by_file_bare: dict[str, dict[str, list[Row]]] = {}
+    # callee bare name -> [(file, caller bare name), ...] across the diff.
+    calls_by_callee: dict[str, list[tuple[str, str]]] = {}
+    for entry, rel, content, name_to_record in changed:
+        language = language_of(scanner, rel)
+        if language is None:
+            continue
+        index: dict[str, list[Row]] = {}
+        for row in entry.rows:
+            record = name_to_record.get(row.name)
+            if row.mark in CALLER_MARKS and record is not None:
+                index.setdefault(record.bare, []).append(row)
+        by_file_bare[rel] = index
+        try:
+            definitions = language.extract_definitions(rel, content)
+            for call in language.extract_calls(rel, content, definitions):
+                if call.caller_name is not None:
+                    calls_by_callee.setdefault(call.callee_name, []).append((rel, call.caller_name))
+        except Exception:
+            continue  # a language hook raising costs this file's relations, not the diff
+
+    for entry, _, _, name_to_record in changed:
+        for row in entry.rows:
+            if row.mark not in ("+", "~"):
+                continue
+            record = name_to_record.get(row.name)
+            if record is None or record.type not in CALLABLE_TYPES:
+                continue
+            callers: set[int] = set()
+            for call_file, caller_name in calls_by_callee.get(record.bare, []):
+                for caller_row in by_file_bare.get(call_file, {}).get(caller_name, []):
+                    if caller_row is not row:
+                        callers.add(id(caller_row))
+            row.called_by_changed = len(callers)
 
 
 def _plural(n: int, noun: str) -> str:
@@ -539,8 +609,9 @@ def format_diff(result: DiffResult, max_rows: int | None = None) -> str:
         for row in rows:
             location = _location(row)
             line = f"  {row.mark} {_row_text(row).ljust(width)}   {location}"
-            if row.note:
-                line += f"   [{row.note}]"
+            bracket = _note_text(row)
+            if bracket:
+                line += f"   [{bracket}]"
             lines.append(line.rstrip())
         if max_rows is not None and len(file.rows) > max_rows:
             lines.append(f"  … +{len(file.rows) - max_rows} more rows (--budget)")
@@ -566,6 +637,16 @@ def _row_text(row: Row) -> str:
         if row.signature.startswith("(")
         else f"{row.name} {row.signature}"
     )
+
+
+def _note_text(row: Row) -> str:
+    """The bracketed note's full text: the row's own fact (rename/signature/
+    body delta) plus the call-relation fact, semicolon-joined the same way
+    a rename row already threads a body delta onto its rename note."""
+    parts = [row.note] if row.note else []
+    if row.called_by_changed:
+        parts.append(f"called by {_count(row.called_by_changed, 'changed function')} here")
+    return "; ".join(parts)
 
 
 def _location(row: Row) -> str:
@@ -601,6 +682,7 @@ def diff_to_json(result: DiffResult) -> dict:
                         "a_line": r.a_line,
                         "b_line": r.b_line,
                         "note": r.note,
+                        "called_by_changed": r.called_by_changed,
                     }
                     for r in f.rows
                 ],
