@@ -113,18 +113,22 @@ In the Cline panel: MCP Servers icon → *Configure* tab → *Configure MCP Serv
 Agents read most code through their shell, not through MCP tools. So when the server starts, it writes a launcher named `sct` into uv's tool bin directory (`uv tool dir --bin`: `~/.local/bin` on macOS and Linux, `%USERPROFILE%\.local\bin` on Windows, where it also writes `sct.cmd` for cmd.exe and PowerShell). The launcher runs the same tool functions the MCP server exposes, under the same interpreter. Nothing else is installed, PATH and shell profiles are never edited, and a file named `sct` that scantool did not write is never touched. A launcher scantool wrote earlier is kept as long as its interpreter still exists and the starting server is not newer, so two scantool installs on one machine do not take turns rewriting it.
 
 ```
-sct <dir>                                        orientation: entry points, hot functions, map
-sct scan   <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
-sct scan   - [--as <path>]                       paths from stdin; with --as, stdin content scanned as <path>
-sct focus  <path> <name|heading> [--ref REF]
-sct focus  - --as <path> <name>                  one node from stdin content
-sct search <dir> <pattern> [--ref REF] [--names] [--type TYPE]
-sct diff   <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
-sct surface <package-dir> [--ref REF] [--against REF]
-sct overlap <base> <branch>... [--repo DIR]
-sct callers <name> [--dir DIR] [--ref REF]
-sct resolve <path:line | path::name> --from REF --to REF [--repo DIR]
-sct --help                                       the full help; --json on scan and search, --ascii anywhere
+sct <dir>
+sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
+sct scan     - [...]                     paths from stdin, one per line
+sct scan     - --as <path> [...]         stdin content scanned as <path>
+sct focus    <path> <name|heading> [--ref REF] [--json]
+sct focus    <path>::<name>[@REF]        the address form, one argument
+sct focus    - --as <path> <name>        stdin content, one node
+sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]
+sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
+sct surface  <package-dir> [--ref REF] [--against REF]
+sct overlap  <base> <branch>... [--repo DIR]
+sct callers  <name> [--dir DIR] [--ref REF]
+sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
+sct divergence <dir> [--max-findings N]
+sct history  <path::name | path:line> [--ref REF] [--repo DIR]
+sct <command> --help                             the full help; --json on every command but <dir> and divergence, --ascii anywhere
 ```
 
 Output is valid input. A `focus` answer opens with the node's address, `path::Qualified.name (a-b)`, and `sct focus path::Qualified.name` is one argument that reads it again; with `--ref` the address carries it, `path::Qualified.name@origin/main (a-b)`. From a scan, the file line and a structure under it compose the same address. Headings are addressed by their ID tag when they have one (`notes.md::DEV-L17`), else quoted (`notes.md::"Quick Start"`). When a budget cut something, one trailer names the call that recovers the most: `next: sct focus <address>`. Search leads and hits are `path:line`.

@@ -9,6 +9,7 @@ from fastmcp import FastMCP
 from mcp.types import TextContent
 
 from . import commands
+from .capabilities import tool_description
 from .code_health import analyze_health
 from .code_map import CodeMap
 from .connectivity import connectivity_tail
@@ -141,8 +142,7 @@ def _annotate_churn(results: dict, directory: str) -> None:
 
 @mcp.tool(
     tags={"exploration", "overview", "analysis", "primary"},
-    description="Deep architecture analysis - entry points, hot functions, call graph, git activity (RICH output ~3-5k tokens; for first-time orientation of an unknown codebase. For targeted questions, search_structures or scan_directory are cheaper first calls)"
-    + shell_hint("<dir>"),
+    description=tool_description("preview_directory") + shell_hint("<dir>"),
 )
 def preview_directory(
     directory: str,
@@ -297,8 +297,7 @@ def preview_directory(
 
 @mcp.tool(
     tags={"exploration", "navigation", "directories"},
-    description="List directory tree structure (folders only, no files) - USE THIS to see folder hierarchy"
-    + shell_hint("--help"),
+    description=tool_description("list_directories") + shell_hint("--help"),
 )
 def list_directories(
     directory: str, max_depth: int | None = 3, respect_gitignore: bool = True
@@ -437,7 +436,7 @@ def _text(result: list[TextContent]) -> str:
 
 @mcp.tool(
     tags={"remote", "http", "content"},
-    description="Scan file content directly - USE THIS for remote files, GitHub, APIs, a git blob or stdin instead of saving to disk first. Same budget/depth and focus='name' as scan_file"
+    description=tool_description("scan_file_content")
     + shell_hint("scan - --as <path>", "focus - --as <path> <name>"),
 )
 def scan_file_content(
@@ -555,8 +554,7 @@ def scan_file_content(
 
 @mcp.tool(
     tags={"local", "file", "analysis"},
-    description="Scan ANY file (code, markdown, text, HTML, config) - structure with condensed code skeletons. USE BEFORE Read. For exploration, pass budget=1500 (or 300 for a quick look) - full depth is rarely needed on the first pass. To READ one function/class/section verbatim afterwards, pass focus='name' (or 'Class.method') instead of guessing line ranges. May append a self-levelling CONNECTIVITY note - candidate dead/orphan/drift across the whole corpus, silent when clean; candidates to look at, not verdicts"
-    + shell_hint("scan <path>", "focus <path> <name>"),
+    description=tool_description("scan_file") + shell_hint("scan <path>", "focus <path> <name>"),
 )
 def scan_file(
     file_path: str,
@@ -798,8 +796,7 @@ def scan_file(
 
 @mcp.tool(
     tags={"local", "directory", "exploration"},
-    description="Scan directory - file tree with one-line gists per file, code health and churn labels (cheap overview, good first call). Replaces Glob/ls for ALL file types"
-    + shell_hint("scan <dir>"),
+    description=tool_description("scan_directory") + shell_hint("scan <dir>"),
 )
 def scan_directory(
     directory: str,
@@ -1041,8 +1038,7 @@ def scan_directory(
 
 @mcp.tool(
     tags={"local", "diff", "review"},
-    description="Structural diff between a git ref and the working tree, or between two refs (A...B against their merge-base): which functions/classes/sections are added, changed (signature old → new, or body as code/doc line counts), renamed (paired by identical body) or removed, with a coverage line for files changed without structural rows. USE THIS INSTEAD of git diff for review and 'what changed' questions. The same table sct diff prints"
-    + shell_hint("diff <ref>", "diff <refA> <refB>"),
+    description=tool_description("scan_diff") + shell_hint("diff <ref>", "diff <refA> <refB>"),
 )
 def scan_diff(
     directory: str,
@@ -1125,8 +1121,7 @@ def scan_diff(
 
 @mcp.tool(
     tags={"local", "analysis", "review", "divergence"},
-    description="Audit a directory for peer divergence - functions that break a call pattern their siblings across the codebase follow (peers calling X also call Y, this one doesn't). A REVIEW HINT to look at, not a verified bug list. Silent on a consistent codebase. Use to hunt drift, dead/missing connectivity, or misaligned implementations - cheaper and more focused than preview_directory when divergence is all you want"
-    + shell_hint("--help"),
+    description=tool_description("find_divergence") + shell_hint("--help"),
 )
 def find_divergence(
     directory: str,
@@ -1164,8 +1159,7 @@ def find_divergence(
 
 @mcp.tool(
     tags={"local", "search", "filter"},
-    description="Search across all file types - BEST FIRST CALL for targeted questions, USE INSTEAD of Grep: content_pattern finds text WITH structural context (enclosing function/class/section) plus leads to definitions; name/type/decorator find structures"
-    + shell_hint("search <dir> <pattern>"),
+    description=tool_description("search_structures") + shell_hint("search <dir> <pattern>"),
 )
 def search_structures(
     directory: str,
@@ -1421,7 +1415,7 @@ def _filter_structures(
 
 @mcp.tool(
     tags={"local", "surface", "api"},
-    description="The public surface of a package (exports and where each is really defined, following __all__, lazy-import tables and re-export chains) at a ref, or the surface diff between two refs when against is given"
+    description=tool_description("surface")
     + shell_hint("surface <package-dir>", "surface <package-dir> --against REF"),
 )
 def surface(
@@ -1465,8 +1459,7 @@ def surface(
 
 @mcp.tool(
     tags={"local", "overlap", "review"},
-    description="N branches against one base, each diffed at its own merge-base: structures every branch shares, colliding new names, and a suggested merge order"
-    + shell_hint("overlap <base> <branch>..."),
+    description=tool_description("overlap") + shell_hint("overlap <base> <branch>..."),
 )
 def overlap(
     base: str,
@@ -1513,7 +1506,7 @@ def overlap(
 
 @mcp.tool(
     tags={"local", "callers", "search"},
-    description="Actual call sites of a function or method across a directory (never a mention in prose, a comment, a docstring or a string literal), with its definition(s)"
+    description=tool_description("callers")
     + shell_hint("callers <name>", "callers <name> --dir <dir>"),
 )
 def callers(
@@ -1558,7 +1551,7 @@ def callers(
 
 @mcp.tool(
     tags={"local", "history", "refs"},
-    description="The history of ONE structure (a function, class or section): the commits that changed its signature or body, renamed it, or introduced it, followed through renames and file moves - what git log -L gives for a line range, keyed on the structure instead"
+    description=tool_description("history")
     + shell_hint("history <path::name>", "history <path:line> --ref REF"),
 )
 def history(
@@ -1605,7 +1598,7 @@ def history(
 
 @mcp.tool(
     tags={"local", "resolve", "refs"},
-    description="Translate a path:line or path::name address from one git ref to another - the same structure's new address, a rename, or that it's gone (with the nearest names)"
+    description=tool_description("resolve")
     + shell_hint("resolve <path:line> --from REF", "resolve <path::name> --from REF --to REF"),
 )
 def resolve(

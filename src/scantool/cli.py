@@ -26,10 +26,11 @@ import os
 import sys
 from collections.abc import Callable, Sequence
 
+from .capabilities import help_commands, help_usage
 from .commands import UsageError
 from .gitref import RefError, ref_kind, repo_and_rel, split_address
 
-HELP = """\
+HELP_TEMPLATE = """\
 sct — structure-first reader for code and documents
 
   sct <dir>                 orientation: entry points, hot functions, call-graph map
@@ -42,92 +43,25 @@ sections, signatures, call relations — with path:line on everything. Ask by
 name, heading or question; never by line number.
 
 USAGE
-  sct <dir>
-  sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
-  sct scan     - [...]                     paths from stdin, one per line
-  sct scan     - --as <path> [...]         stdin content scanned as <path>
-  sct focus    <path> <name|heading> [--ref REF] [--json]
-  sct focus    <path>::<name>[@REF]        the address form, one argument
-  sct focus    - --as <path> <name>        stdin content, one node
-  sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]
-  sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base]
-  sct surface  <package-dir> [--ref REF] [--against REF]
-  sct overlap  <base> <branch>... [--repo DIR]
-  sct callers  <name> [--dir DIR] [--ref REF]
-  sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
-  sct divergence <dir> [--max-findings N]
-  sct history  <path::name | path:line> [--ref REF] [--repo DIR]
+{usage}
   sct <command> --help
   any command: --json, --ascii
 
 COMMANDS
-  <dir>     No command on a directory = orientation: size and language mix,
-            entry points, hot functions, the call-graph map. ~3–5k tokens.
-            The file tree is the tier below (scan).
-  scan      Skeleton of files or a directory: every structure with path:line,
-            signature or title, condensed excerpt within the budget.
-            Directory → tree with one-line gists. --depth quick ≈ 300
-            tokens/file, normal ≈ 1500, deep = everything, module values
-            whole (files only).
-            Elided content is marked ⟨…⟩ +N; ask with focus to see it.
-  focus     One structure verbatim with parent context. Name, qualified name
-            (Class.method), heading, or a substring of a heading. Several
-            matches → the list, exit 1. None → the top-level names, exit 1.
-            Answers open with the node's address, `path::Qualified.name (a-b)`.
-  search    Text across a directory with structural context: each hit shows
-            its enclosing structure, plus leads to where matched names are
-            defined; when no lead exists it says so. --names matches
-            structure names instead of text. The pattern is a Python regex;
-            grep's `\\|` is read as alternation with a note. --type filters
-            WHICH structures are reported, not where the text is. Files come
-            in path order; 40 structures per page, --limit/--offset for the
-            rest, and the page is stated.
-  diff      Structural diff between refs. One ref = that ref vs the working
-            tree. Two refs = A...B against their merge-base by default
-            (--no-merge-base compares the tips; a note says which). Per
-            file: + added, ~ changed (signature: old → new; or body: N code
-            / M doc lines), = renamed (paired by identical body; children
-            follow a renamed class), - removed; identical signature deltas
-            in 3+ functions fold into one row; new files as skeletons. The
-            coverage line counts files changed without structural rows and
-            names the reason for each. --review appends candidate
-            dead/orphan/drift the changed files introduced (same check the
-            MCP scan_diff tool runs by default).
-  surface   The public surface of a Python package at a ref: every exported
-            name with its signature, how it is exported (__all__, lazy table,
-            re-export, TYPE_CHECKING) and where it is defined after following
-            re-exports; inherited members marked. --against REF prints the
-            surface diff; the header states the direction (A → B).
-  overlap   N branches against one base, each at its own merge-base:
-            structures touched by 2+ branches (marked base(~/+/-) when the
-            base itself changed them since the branches forked), new names
-            introduced independently by 2+ branches, commits two branches
-            share (a stack: overlap between them is expected; the residual
-            beyond their shared commits is what stays), and per branch
-            whether it is already in the base and by which criterion
-            (ancestor / patch-equivalent / tree-equal; patch-equivalence
-            proves it can be deleted, not that its content is in the current
-            tree). Ends with a merge-order hint, not a verdict.
-  callers   Actual call sites of a function or method (not docstring
-            mentions), each with its enclosing function and path:line,
-            across the directory; where the name is defined comes first.
-  resolve   Translate path:line or path::name from one ref to another: the
-            enclosing structure with start AND end at --from, where it is at
-            --to (same place, renamed with an identical body), or that it is
-            gone, with the nearest names.
+{commands}
 
 OPTIONS
   --ref REF      Read at a git ref (branch, tag, SHA) instead of the working
                  tree. No checkout; the repository is found from the path.
                  The coverage line ends with @REF.
-  --repo DIR     Repository for diff, overlap and resolve (default: the one
+  --repo DIR     Repository for diff, overlap, resolve and history (default: the one
                  the current directory is inside; required when it is not).
   --dir DIR      Directory callers scans (default: the current directory).
   --path PATH    Restrict diff to a file or directory, relative to the repo.
   --budget N     Approximate output size in tokens (scan, files only).
   --as PATH      The name stdin content is scanned under (its extension picks
                  the parser; the name appears in the output).
-  --json         Same content as JSON (scan, search).
+  --json         Same content as JSON (every command but <dir> and divergence).
   --ascii        scantool's own glyphs as ASCII; file content is untouched.
 
 CONVENTIONS
@@ -139,6 +73,8 @@ CONVENTIONS
   Search leads and hits are path:line. Exit 0 ok, 1 not found, 2 usage
   error. Plain text; one fact per line. Errors on stderr.
 """
+
+HELP = HELP_TEMPLATE.format(usage=help_usage(), commands=help_commands())
 
 COMMANDS = (
     "scan",
