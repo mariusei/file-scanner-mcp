@@ -82,6 +82,62 @@ class RubyLanguage(BaseLanguage):
         return super().is_low_value_for_inventory(file_path, size)
 
     # ===========================================================================
+    # Naming conventions and the public surface
+    # ===========================================================================
+    #: A module's members are the package's names: `DataAccess` and
+    #: `DataAccess.DatabaseManager` (QUALIFIER, not the source's `::`).
+    SURFACE_CONTAINER_TYPES = frozenset({"module"})
+    #: Methods the object model calls without naming them in the sources:
+    #: `initialize` (by `new`), `to_s`/`inspect` (interpolation, `puts`, `p`),
+    #: `method_missing`/`respond_to_missing?` (dispatch), `each` (Enumerable),
+    #: `<=>`/`==`/`eql?`/`hash` (Comparable, sorting, Hash keys), `call`
+    #: (`.()`, `&`), `to_proc`/`to_str`/`to_ary`/`coerce` (implicit
+    #: conversion), and the `included`/`extended`/`inherited`/`prepended`
+    #: hooks (fired by include/extend/subclassing). The Ruby counterpart of
+    #: Python's dunders, which have no lexical marker here.
+    _IMPLICIT_METHODS = frozenset(
+        {
+            "initialize",
+            "to_s",
+            "inspect",
+            "method_missing",
+            "respond_to_missing?",
+            "each",
+            "<=>",
+            "==",
+            "eql?",
+            "hash",
+            "call",
+            "to_proc",
+            "to_str",
+            "to_ary",
+            "coerce",
+            "included",
+            "extended",
+            "inherited",
+            "prepended",
+        }
+    )
+
+    def is_private(self, node) -> bool:
+        """The section keyword the handler stamped (`private`, `protected`)
+        decides for a method; otherwise the name rule (a leading underscore),
+        which is all Ruby has for a top-level `def` or a constant."""
+        modifiers = node.modifiers or []
+        if "private" in modifiers or "protected" in modifiers:
+            return True
+        return self.is_private_name(node.name)
+
+    def is_exempt_from_unreferenced(self, definition) -> bool:
+        """Invoked without a textual reference: minitest's discovery rule
+        (every `test_*` method on a test case) and the object model's
+        implicit calls (_IMPLICIT_METHODS). RSpec needs nothing here — its
+        examples are `it`/`describe` calls with a block, never a definition
+        the runner finds by name."""
+        name = definition.name
+        return name.startswith("test_") or name in self._IMPLICIT_METHODS
+
+    # ===========================================================================
     # Structure Scanning (from RubyScanner)
     # ===========================================================================
 
@@ -106,23 +162,13 @@ class RubyLanguage(BaseLanguage):
             if node.type == "module" and node.child_by_field_name("name"):
                 module_node = self._extract_module(node, source_code)
                 parent_structures.append(module_node)
-
-                # Traverse children for nested structures (via body field)
-                body = node.child_by_field_name("body")
-                if body:
-                    for child in body.children:
-                        traverse(child, module_node.children)
+                self._traverse_members(node, module_node.children, source_code, traverse)
 
             # Classes - only process if it has a name field (not keyword tokens)
             elif node.type == "class" and node.child_by_field_name("name"):
                 class_node = self._extract_class(node, source_code)
                 parent_structures.append(class_node)
-
-                # Traverse children for methods (via body field)
-                body = node.child_by_field_name("body")
-                if body:
-                    for child in body.children:
-                        traverse(child, class_node.children)
+                self._traverse_members(node, class_node.children, source_code, traverse)
 
             # Regular methods - only process if it has a name field
             elif node.type == "method" and node.child_by_field_name("name"):
@@ -206,8 +252,8 @@ class RubyLanguage(BaseLanguage):
         # Get comment above method
         docstring = self._extract_comment(node, source_code)
 
-        # Check for visibility modifiers in name or context
-        modifiers = self._extract_visibility_modifiers(node, source_code)
+        # Visibility is a section keyword, stamped by _traverse_members
+        modifiers: list[str] = []
 
         # Calculate complexity
         complexity = self._calculate_complexity(node)
@@ -301,16 +347,73 @@ class RubyLanguage(BaseLanguage):
 
         return None
 
-    def _extract_visibility_modifiers(self, node: Node, source_code: bytes) -> list[str]:
-        """Extract visibility modifiers (public, private, protected)."""
-        modifiers: list[str] = []
+    _VISIBILITY = frozenset({"public", "private", "protected"})
+    _CLASS_VISIBILITY = {"private_class_method": "private", "public_class_method": "public"}
 
-        # In Ruby, visibility is typically determined by context
-        # We could check for explicit visibility declarations, but for simplicity
-        # we'll return public by default unless we detect private/protected context
-        # This would require more complex traversal of the tree
+    def _traverse_members(self, node: Node, target: list, source_code: bytes, traverse) -> None:
+        """Walk a class or module body with Ruby's section visibility. A bare
+        `private`/`protected` governs every instance method defined after it
+        until the next keyword (`public` resets); `private def x` and
+        `private :x, :y` name their targets; `private_class_method :x` is the
+        only form that reaches a singleton method. The keyword lands in the
+        method's modifiers, where is_private and the formatter read it.
+        `module_function` is left alone: it makes a method a private
+        instance method AND a public module method at once."""
+        body = node.child_by_field_name("body")
+        if not body:
+            return
+        section = None
+        for child in body.children:
+            if child.type == "identifier":
+                word = self._get_node_text(child, source_code)
+                if word in self._VISIBILITY:
+                    section = None if word == "public" else word
+                continue
+            before = len(target)
+            traverse(child, target)
+            added = [m for m in target[before:] if m.type == "method"]
+            keyword = self._visibility_call(child, source_code)
+            if keyword:
+                visibility, named = keyword
+                for method in target:
+                    if method.type == "method" and (
+                        any(method is m for m in added) or method.name in named
+                    ):
+                        self._set_visibility(method, visibility)
+            elif section:
+                for method in added:
+                    if "class" not in method.modifiers:  # a bare keyword skips `def self.x`
+                        self._set_visibility(method, section)
 
-        return modifiers
+    def _visibility_call(self, node: Node, source_code: bytes) -> tuple[str, set[str]] | None:
+        """`private def x` / `private :x` / `private_class_method :x`: the
+        visibility and the names it targets (a `def` argument is added
+        to the body by the ordinary traversal and matched by identity)."""
+        if node.type != "call":
+            return None
+        method = node.child_by_field_name("method")
+        arguments = node.child_by_field_name("arguments")
+        if method is None or arguments is None:
+            return None
+        word = self._get_node_text(method, source_code)
+        if word in self._VISIBILITY:
+            visibility, prefix = word, ""
+        elif word in self._CLASS_VISIBILITY:
+            visibility, prefix = self._CLASS_VISIBILITY[word], "self."
+        else:
+            return None
+        named = {
+            prefix + self._get_node_text(a, source_code).lstrip(":")
+            for a in arguments.children
+            if a.type == "simple_symbol"
+        }
+        return visibility, named
+
+    @staticmethod
+    def _set_visibility(method: StructureNode, visibility: str) -> None:
+        method.modifiers = [m for m in method.modifiers if m not in ("private", "protected")]
+        if visibility != "public":
+            method.modifiers.append(visibility)
 
     def _is_require_call(self, node: Node, source_code: bytes) -> bool:
         """Check if a call node is a require or require_relative statement."""

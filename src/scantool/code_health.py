@@ -29,7 +29,7 @@ SCOPE:
 
 import re
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
 
@@ -69,6 +69,13 @@ class Definition:
     line: int
     block: str  # normalized source block (for duplicate grouping)
     flaggable: bool  # eligible for [unreferenced] (duplicates use all)
+    # What the language's is_exempt_from_unreferenced hook reads, carried
+    # from the node as-is: the enclosing definition's name, the modifiers
+    # and the decorators the handler recorded (a test runner's rule is
+    # often "this name on that kind of class").
+    parent: str | None = None
+    modifiers: list[str] = field(default_factory=list)
+    decorators: list[str] = field(default_factory=list)
 
 
 def analyze_health(
@@ -154,6 +161,9 @@ def _collect_definitions(results, contents) -> tuple[list[Definition], set[str]]
                         line=node.start_line,
                         block=block,
                         flaggable=not node.children and not in_subclass,
+                        parent=parent.name if parent is not None else None,
+                        modifiers=list(node.modifiers or []),
+                        decorators=list(node.decorators or []),
                     )
                 )
                 if node.decorators or "override" in (node.modifiers or []):

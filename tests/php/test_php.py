@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
+from scantool.languages import get_language
+from scantool.languages.models import DefinitionInfo
 from scantool.scanner import FileScanner
+from scantool.surface import read_surface
 
 
 def test_basic_parsing(file_scanner):
@@ -343,3 +346,76 @@ def test_repository_interface(file_scanner):
     find = next((c for c in repository.children if c.name == "find"), None)
     assert find is not None, "Should find 'find' method"
     assert find.signature is not None, "Method should have signature"
+
+
+# ── Naming conventions and the public surface ────────────────────────────────
+
+
+def _by_name(nodes):
+    return {n.name: n for n in nodes}
+
+
+def _definition(name, kind="method", **fields):
+    return DefinitionInfo(file="f.php", type=kind, name=name, line=1, **fields)
+
+
+def test_braced_namespace_holds_its_declarations(file_scanner):
+    """`namespace App { ... }` nests its classes and functions under the
+    namespace node; an unnamed block is the global namespace; the
+    `namespace App;` form has no body, so what follows stays top level."""
+    language = get_language(".php")
+    top = _by_name(
+        language.scan(
+            b"<?php\nnamespace App\\Core {\n    class A { public function m() {} }\n"
+            b"    function f() {}\n}\nnamespace {\n    function g() {}\n}\n"
+        )
+    )
+    assert [c.name for c in top["App\\Core"].children] == ["A", "f"]
+    assert top["g"].type == "function"
+    flat = file_scanner.scan_file(str(Path(__file__).parent / "samples" / "basic.php"))
+    assert not _by_name(flat)["App\\Database"].children
+
+
+def test_privacy_is_the_visibility_keyword(file_scanner):
+    """private/protected are off the surface, public is on it whatever the
+    name (`__construct` is public); without a keyword the name rule."""
+    language = get_language(".php")
+    top = _by_name(file_scanner.scan_file(str(Path(__file__).parent / "samples" / "basic.php")))
+    retrier = _by_name(top["Retrier"].children)
+    assert language.is_private(retrier["attempt"])
+    assert not language.is_private(retrier["__construct"])
+    assert not language.is_private(top["validateEmail"])
+    k = _by_name(
+        _by_name(
+            language.scan(
+                b"<?php\nclass K { protected function p() {} public function _q() {} function r() {} function _s() {} }\n"
+            )
+        )["K"].children
+    )
+    assert language.is_private(k["p"]) and language.is_private(k["_s"])
+    assert not language.is_private(k["_q"]) and not language.is_private(k["r"])
+    assert language.is_private(_definition("_wp_internal", kind="function"))
+
+
+def test_unreferenced_exemption_is_phpunit_and_magic():
+    language = get_language(".php")
+    assert language.is_exempt_from_unreferenced(_definition("testCreate", parent="UserTest"))
+    assert not language.is_exempt_from_unreferenced(_definition("testCreate", parent="UserService"))
+    assert language.is_exempt_from_unreferenced(_definition("creates", decorators=["#[Test]"]))
+    assert language.is_exempt_from_unreferenced(
+        _definition("creates", decorators=["#[PHPUnit\\Framework\\Attributes\\Test]"])
+    )
+    assert not language.is_exempt_from_unreferenced(
+        _definition("creates", decorators=["#[Route('/x')]"])
+    )
+    assert language.is_exempt_from_unreferenced(_definition("__toString"))
+    assert not language.is_exempt_from_unreferenced(_definition("helper"))
+
+
+def test_surface_lists_braced_namespace_members(tmp_path):
+    (tmp_path / "lib.php").write_text(
+        "<?php\nnamespace App {\n    class Shown {}\n    function _hidden() {}\n"
+        "    interface Contract {}\n}\n"
+    )
+    names = [e.name for e in read_surface(str(tmp_path)).exports]
+    assert names == ["App.Shown", "App.Contract"]

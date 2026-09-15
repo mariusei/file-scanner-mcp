@@ -1,10 +1,10 @@
 <7 public names, 7 via definition> package csharp @WORKTREE
 Basic
-  IConfig               csharp/Basic.cs:14
-  DatabaseManager       csharp/Basic.cs:24
-  UserService           csharp/Basic.cs:78
-  EmailValidator        csharp/Basic.cs:123
-  Point                 csharp/Basic.cs:137
-  UserRole              csharp/Basic.cs:163
-  ConnectionRetrier     csharp/Basic.cs:173
+  MyApp.Services.IConfig               csharp/Basic.cs:14
+  MyApp.Services.DatabaseManager       csharp/Basic.cs:24
+  MyApp.Services.UserService           csharp/Basic.cs:78
+  MyApp.Services.EmailValidator        csharp/Basic.cs:123
+  MyApp.Services.Point                 csharp/Basic.cs:137
+  MyApp.Services.UserRole              csharp/Basic.cs:163
+  MyApp.Services.ConnectionRetrier     csharp/Basic.cs:173
 [exit 0]

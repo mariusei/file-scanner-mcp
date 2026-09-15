@@ -1,6 +1,9 @@
 """Tests for Ruby scanner."""
 
+from scantool.languages import get_language
+from scantool.languages.models import DefinitionInfo
 from scantool.scanner import FileScanner
+from scantool.surface import read_surface
 
 
 def test_basic_parsing(file_scanner):
@@ -290,3 +293,84 @@ def test_method_visibility(file_scanner):
     # Should find protected_method
     protected_method = next((m for m in showcase.children if m.name == "protected_method"), None)
     assert protected_method is not None, "Should find protected_method"
+    assert private_method.modifiers == ["private"]
+    assert protected_method.modifiers == ["protected"]
+
+
+# ── Naming conventions and the public surface ────────────────────────────────
+
+
+def _members(language, source: bytes) -> dict[str, list[str]]:
+    """name -> modifiers for every method in the first container."""
+    return {m.name: m.modifiers for m in language.scan(source)[0].children}
+
+
+def _definition(name, **fields):
+    return DefinitionInfo(file="f.rb", type="method", name=name, line=1, **fields)
+
+
+def test_section_visibility_is_stamped_on_the_methods_that_follow():
+    """A bare `private`/`protected` governs until the next keyword; `public`
+    resets; a singleton method is untouched by a bare keyword."""
+    language = get_language(".rb")
+    members = _members(
+        language,
+        b"class K\n  def a; end\n  private\n  def b; end\n  def self.c; end\n  protected\n"
+        b"  def d; end\n  public\n  def e; end\nend\n",
+    )
+    assert members == {
+        "a": [],
+        "b": ["private"],
+        "self.c": ["class"],
+        "d": ["protected"],
+        "e": [],
+    }
+
+
+def test_inline_and_symbol_forms_name_their_targets():
+    """`private def x`, `private :x, :y`, `private_class_method :x`, and
+    `public :x` lifting an earlier keyword."""
+    language = get_language(".rb")
+    members = _members(
+        language,
+        b"class K\n  def a; end\n  def b; end\n  def self.c; end\n  private def d; end\n"
+        b"  private :a, :b\n  private_class_method :c\n  public :b\nend\n",
+    )
+    assert members == {"a": ["private"], "b": [], "self.c": ["class", "private"], "d": ["private"]}
+
+
+def test_module_bodies_track_sections_too():
+    language = get_language(".rb")
+    members = _members(language, b"module M\n  def a; end\n  private\n  def b; end\nend\n")
+    assert members == {"a": [], "b": ["private"]}
+
+
+def test_privacy_is_the_section_then_the_name_rule(file_scanner):
+    language = get_language(".rb")
+    retrier = next(
+        s for s in file_scanner.scan_file("tests/ruby/samples/basic.rb") if s.name == "Retrier"
+    )
+    by_name = {m.name: m for m in retrier.children}
+    assert language.is_private(by_name["attempt"])
+    assert not language.is_private(by_name["run"])
+    assert language.is_private(_definition("_helper"))
+    assert language.is_private(_definition("shown", modifiers=["protected"]))
+
+
+def test_unreferenced_exemption_is_minitest_and_the_object_model():
+    language = get_language(".rb")
+    assert language.is_exempt_from_unreferenced(_definition("test_creates_a_user"))
+    for name in ("initialize", "to_s", "inspect", "method_missing", "respond_to_missing?", "each"):
+        assert language.is_exempt_from_unreferenced(_definition(name)), name
+    assert not language.is_exempt_from_unreferenced(_definition("testing_helper"))
+    assert not language.is_exempt_from_unreferenced(_definition("attempt"))
+    assert not language.is_exempt_from_unreferenced(_definition("_helper"))
+
+
+def test_surface_lists_module_members_qualified(tmp_path):
+    (tmp_path / "lib.rb").write_text(
+        "module Outer\n  class Shown\n    def run; end\n  end\n  module Inner\n    def deep; end\n  end\n"
+        "  def helper; end\n  private\n  def hidden; end\nend\n"
+    )
+    names = [e.name for e in read_surface(str(tmp_path)).exports]
+    assert names == ["Outer.Shown", "Outer.Inner.deep", "Outer.helper"]

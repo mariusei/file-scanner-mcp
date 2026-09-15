@@ -51,7 +51,7 @@ basic.rb (3-97)
      def run(&action)
        @attempts.times { return true if attempt(&action) }
        …
-  - attempt () @86 # Execute one attempt (internal)
+  - attempt () @86 [private] # Execute one attempt (internal)
      def attempt
        yield == true
      …

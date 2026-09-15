@@ -60,6 +60,25 @@ def test_default_surface_is_top_level_definitions_not_marked_private(tmp_path):
     assert all(e.path.endswith("lib.rb") and e.line for e in surface.exports)
 
 
+def test_default_surface_looks_through_container_types(tmp_path):
+    """SURFACE_CONTAINER_TYPES is empty on the base (a class's methods are
+    the class's); a language that names its container type gets the
+    members, qualified with the container chain and QUALIFIER, the
+    container itself never listed, each member judged on its own. C++ is
+    the language here because its namespace is such a type."""
+    assert not BaseLanguage.SURFACE_CONTAINER_TYPES
+    (tmp_path / "lib.cpp").write_text(
+        "namespace outer {\nint one() { return 1; }\nnamespace inner { int two() { return 2; } }\n"
+        "class K { public: int three() { return 3; } };\n}\n"
+    )
+    names = [(e.name, e.kind) for e in read_surface(str(tmp_path)).exports]
+    assert names == [
+        ("outer.one", "function"),
+        ("outer.inner.two", "function"),
+        ("outer.K", "class"),
+    ]
+
+
 def test_default_surface_skips_comment_blocks(tmp_path):
     """A comment block is a node so focus can print it, but it is prose, not
     a name the directory exports (reported by a #42 review on a config dir)."""
@@ -114,11 +133,12 @@ def test_qualifiers_never_collide_with_the_address_form():
 def test_default_unreferenced_exemption_is_none(tmp_path):
     """CODE HEALTH's UNREFERENCED check must not assume any language's
     naming convention by default (brief §9e) — a leading-underscore or
-    "test"-prefixed name is only exempt where a language says so."""
-    ruby = get_language(".rb")
-    assert not ruby.is_exempt_from_unreferenced(_definition("__init__"))
-    assert not ruby.is_exempt_from_unreferenced(_definition("test_something"))
-    assert not ruby.is_exempt_from_unreferenced(_definition("plain"))
+    "test"-prefixed name is only exempt where a language says so. SQL has
+    no test runner and no magic names, so it keeps the default."""
+    sql = get_language(".sql")
+    assert not sql.is_exempt_from_unreferenced(_definition("__init__"))
+    assert not sql.is_exempt_from_unreferenced(_definition("test_something"))
+    assert not sql.is_exempt_from_unreferenced(_definition("plain"))
 
 
 def test_python_unreferenced_exemption_covers_dunders_and_pytest_names():
@@ -301,8 +321,10 @@ def test_csharp_surface_is_the_public_types_inside_the_namespace(tmp_path):
     )
     names = [(e.name, e.kind, e.module) for e in read_surface(str(tmp_path)).exports]
     assert names == [
-        ("IApi", "interface", "Lib"),
-        ("Widget", "class", "Lib"),
+        ("MyApp.Core.IApi", "interface", "Lib"),
+        ("MyApp.Core.Widget", "class", "Lib"),
+        # a file-scoped `namespace X;` has no block, so the handler yields the
+        # declarations as siblings, not members: bare here (handler candidate)
         ("Token", "record", "Scoped"),
     ]
     assert not BaseLanguage.SURFACE_CONTAINER_TYPES
