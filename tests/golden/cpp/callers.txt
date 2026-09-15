@@ -2,5 +2,5 @@
 defined: basic.cpp::DatabaseManager.connect (method) basic.cpp:43
 
 basic.cpp  (1 site)
-  - main basic.cpp:130   db->connect();
+  - retry_connect basic.cpp:131   if (db.connect()) {
 [exit 0]
