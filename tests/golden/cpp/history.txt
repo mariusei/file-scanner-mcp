@@ -1,0 +1,4 @@
+<2 changes in 2 commits touching the file> history of basic.cpp::utils.validate_email@b (12-14)
+9c7651b 2026-01-01  ~ utils.validate_email bool (const std::string& email, bool strict = false)   [signature: bool (const std::string& email) → bool (const std::string& email, bool strict = false)]   the same change, independently
+08181bb 2026-01-01  + utils.validate_email bool (const std::string& email)       [added]   v1
+[exit 0]

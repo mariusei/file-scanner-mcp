@@ -193,8 +193,8 @@ def test_instructions_route_to_the_shell_before_the_tool_list():
     table, then every command, then the MCP tool list."""
     text = server.mcp.instructions or ""
     table, commands, tools = (
-        text.index("Substitute per command:"),
-        text.index("Every command:"),
+        text.index("Per command:"),
+        text.index("Commands:"),
         text.index("MCP TOOLS"),
     )
     assert table < commands < tools

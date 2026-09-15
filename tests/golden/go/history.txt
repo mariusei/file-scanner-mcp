@@ -1,0 +1,3 @@
+<1 change in 2 commits touching the file> history of basic.go::Config@b (10-13)
+8c8db1e 2026-01-01  + Config   [added]   v1
+[exit 0]

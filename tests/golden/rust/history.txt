@@ -1,0 +1,3 @@
+<1 change in 2 commits touching the file> history of basic.rs::DatabaseManager.new@b (22-27)
+2961c8a 2026-01-01  + DatabaseManager.new(connection_string: String) -> Self   [added]   v1
+[exit 0]

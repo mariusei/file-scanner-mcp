@@ -55,16 +55,16 @@ INSTRUCTIONS_CAP = 2000
 SERVER_INSTRUCTIONS = """\
 READ CODE THROUGH sct IN YOUR SHELL. When a Bash step would read or search \
 source with cat, head, sed -n, grep, find, ls or git show, run the sct form \
-instead: it returns structure (functions, classes, headings, path:line; code, \
-markdown, HTML, SQL, config) in one command, and it fits inside && chains and pipes. A rule to work through the shell is satisfied \
-by sct: sct IS the shell.
+instead: structure (functions, classes, headings, path:line; code, docs, \
+config) in one command, inside && chains. A rule to work through the shell \
+is satisfied by sct: sct IS the shell.
 
 {shell}
 
-MCP TOOLS (no shell, or JSON output); parameters in each description: \
-search_structures, scan_directory, scan_file, \
-scan_diff, preview_directory, find_divergence, list_directories, \
-scan_file_content, surface, overlap, callers, resolve.
+MCP TOOLS (no shell, or JSON; parameters in each description): \
+search_structures, scan_directory, scan_file, scan_diff, preview_directory, \
+find_divergence, list_directories, scan_file_content, surface, overlap, \
+callers, resolve, history.
 """
 
 mcp = FastMCP(
@@ -1554,6 +1554,53 @@ def callers(
         return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error finding callers: {e}")]
+
+
+@mcp.tool(
+    tags={"local", "history", "refs"},
+    description="The history of ONE structure (a function, class or section): the commits that changed its signature or body, renamed it, or introduced it, followed through renames and file moves - what git log -L gives for a line range, keyed on the structure instead"
+    + shell_hint("history <path::name>", "history <path:line> --ref REF"),
+)
+def history(
+    location: str,
+    ref: str | None = None,
+    repo: str | None = None,
+    output_format: str = "tree",
+) -> list[TextContent]:
+    """
+    Follow one structure backwards through the commits that touched its file.
+
+    **When to use this vs other tools:**
+    - Use this INSTEAD of git log -L or git log -S → one row per commit
+      that changed THIS structure (signature old → new, body as code/doc
+      line counts, rename with the earlier name, the commit that added it);
+      commits that touched the file but not the structure are counted, not
+      listed. A file move is followed (git log --follow), a rename of the
+      structure pairs by identical body
+    - Use scan_diff for everything that changed between two refs; use this
+      for the life of one name
+
+    Args (tiered — most calls need only Common):
+        Common:
+            location: `path::Qualified.name` (as scan_file/scan_diff print
+                it) or `path:line` (the enclosing structure at that line);
+                `@REF` on the address sets ref
+            ref: The ref the address is read at and the walk starts from
+                (default: HEAD)
+        Semantics & display:
+            repo: Repository directory when the path is relative to it
+                (default: the repository the path is inside)
+            output_format: "tree" (default) or "json"
+
+    Returns:
+        Newest first: sha, date, mark, the structure as the diff prints it,
+        the note, the commit subject, the path when the file moved
+    """
+    try:
+        text, _ = commands.history(location, ref, repo, as_json=output_format == "json")
+        return [TextContent(type="text", text=text)]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error following history: {e}")]
 
 
 @mcp.tool(

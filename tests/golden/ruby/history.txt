@@ -1,0 +1,4 @@
+<2 changes in 2 commits touching the file> history of basic.rb::DataAccess.DatabaseManager@b (10-33)
+1f4c4f5 2026-01-01  ~ DataAccess.DatabaseManager   [body: 1 doc line]   the same change, independently
+e5c9fd1 2026-01-01  + DataAccess.DatabaseManager   [added]   v1
+[exit 0]

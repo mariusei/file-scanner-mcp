@@ -1,0 +1,3 @@
+<1 change in 2 commits touching the file> history of Basic.cs::MyApp.Services.IConfig@b (14-19)
+40aaed1 2026-01-01  + MyApp.Services.IConfig   [added]   v1
+[exit 0]
