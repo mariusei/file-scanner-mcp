@@ -1,10 +1,37 @@
 """Pretty tree formatter for file structure with rich metadata display."""
 
 import json
+import os
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
 from .languages import StructureNode
+
+
+def rows_first() -> bool:
+    """The SCANTOOL_ROWS_FIRST=1 experiment: structure rows first, the
+    continuation lines they interleave with today (skeletons, gists,
+    per-file definition lists) after them, on wider lines. Agents keep the
+    first 40-60 lines of an answer; today those lines are mostly skeleton.
+    Unset (or any value but "1"): every output is byte-identical to today."""
+    return os.environ.get("SCANTOOL_ROWS_FIRST") == "1"
+
+
+def join_within(
+    head: str, items: list[str], width: int, overflow: Callable[[int, int], str]
+) -> str:
+    """head followed by as many of items, comma-joined, as fit in width
+    characters; the rest is summarised by overflow(remaining, total) as the
+    last item. Everything fits: no summary at all."""
+    if len(head + ", ".join(items)) <= width:
+        return head + ", ".join(items)
+    kept: list[str] = []
+    for i, item in enumerate(items):
+        if len(head + ", ".join([*kept, item, overflow(len(items) - i - 1, len(items))])) > width:
+            break
+        kept.append(item)
+    return head + ", ".join([*kept, overflow(len(items) - len(kept), len(items))])
 
 
 def _spans_source(node: StructureNode) -> bool:
@@ -139,14 +166,72 @@ class TreeFormatter:
         else:
             lines = [f"{Path(file_path).name}"]
 
+        if rows_first():
+            rows: list[str] = []
+            skeletons: list[str] = []
+            for i, node in enumerate(structures):
+                self._collect_rows_first(node, "", i == len(structures) - 1, (), rows, skeletons)
+            lines.extend(rows)
+            if skeletons:
+                lines.append(self.SKELETONS_SEPARATOR)
+                lines.extend(skeletons)
+            return "\n".join(lines)
+
         for i, node in enumerate(structures):
             is_last = i == len(structures) - 1
             lines.extend(self._format_node(node, "", is_last))
 
         return "\n".join(lines)
 
+    SKELETONS_SEPARATOR = "── skeletons ──"
+
+    def _collect_rows_first(
+        self,
+        node: StructureNode,
+        prefix: str,
+        is_last: bool,
+        ancestors: tuple[StructureNode, ...],
+        rows: list[str],
+        skeletons: list[str],
+    ) -> None:
+        """Rows-first: the node's row lines go to rows; its code lines, under
+        a `Qualified.name @line` header, go to skeletons. Same lines as
+        _format_node, partitioned."""
+        rows.extend(self._row_lines(node, prefix, is_last))
+        code = self._code_lines(node, prefix, is_last)
+        if code:
+            qualified = ".".join(n.name for n in (*ancestors, node))
+            skeletons.append(f"{qualified} @{node.start_line}")
+            skeletons.extend(code)
+        child_prefix = prefix + (self.SPACE if is_last else self.VERTICAL)
+        for i, child in enumerate(node.children):
+            self._collect_rows_first(
+                child,
+                child_prefix,
+                i == len(node.children) - 1,
+                (*ancestors, node),
+                rows,
+                skeletons,
+            )
+
     def _format_node(self, node: StructureNode, prefix: str, is_last: bool) -> list[str]:
         """Format a single node and its children with metadata."""
+        lines = self._row_lines(node, prefix, is_last)
+        lines.extend(self._code_lines(node, prefix, is_last))
+
+        # Format children (2-space indent, token-optimized)
+        if node.children:
+            child_prefix = prefix + (self.SPACE if is_last else self.VERTICAL)
+
+            for i, child in enumerate(node.children):
+                is_last_child = i == len(node.children) - 1
+                lines.extend(self._format_node(child, child_prefix, is_last_child))
+
+        return lines
+
+    def _row_lines(self, node: StructureNode, prefix: str, is_last: bool) -> list[str]:
+        """The node's own row: name, signature, @line, modifiers, docstring —
+        plus its decorator lines."""
         lines = []
 
         # Current node connector
@@ -224,6 +309,13 @@ class TreeFormatter:
             for decorator in node.decorators:
                 lines.append(f"{decorator_prefix}{decorator}")
 
+        return lines
+
+    def _code_lines(self, node: StructureNode, prefix: str, is_last: bool) -> list[str]:
+        """The node's continuation lines: condensed skeleton, verbatim
+        excerpt, or the budget's elision marker. Empty for most nodes."""
+        lines: list[str] = []
+
         # Add code for salient (high-entropy) nodes: condensed skeleton when
         # available, verbatim excerpt otherwise; a node the budget cut to its
         # header says so, with the number of lines focus= would show
@@ -247,14 +339,6 @@ class TreeFormatter:
             # Compact line number format: {i} | instead of {i:4d} |
             for i, line in enumerate(node.code_excerpt, start=node.start_line):
                 lines.append(f"{code_prefix}{i} | {line}")
-
-        # Format children (2-space indent, token-optimized)
-        if node.children:
-            child_prefix = prefix + (self.SPACE if is_last else self.VERTICAL)
-
-            for i, child in enumerate(node.children):
-                is_last_child = i == len(node.children) - 1
-                lines.extend(self._format_node(child, child_prefix, is_last_child))
 
         return lines
 

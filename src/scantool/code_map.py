@@ -9,6 +9,7 @@ from typing import Any
 from . import call_graph
 from .consensus import DivergenceConfig, find_divergences, format_divergences
 from .delta import stat_fingerprint
+from .formatter import join_within, rows_first
 from .gitignore import load_gitignore
 from .languages import (
     CodeMapResult,
@@ -72,6 +73,14 @@ def _dir_cache(directory: str) -> dict:
         else:
             _EXTRACT_CACHE.move_to_end(directory)
         return cache
+
+
+def _definitions_by_file(result: "CodeMapResult") -> dict[str, list[DefinitionInfo]]:
+    """file path -> its definitions, in extraction order."""
+    file_defs: dict[str, list[DefinitionInfo]] = {}
+    for defn in result.definitions or []:
+        file_defs.setdefault(defn.file, []).append(defn)
+    return file_defs
 
 
 class CodeMap:
@@ -491,265 +500,24 @@ class CodeMap:
         """
         lines = [f"📂 {self.directory.name}/", ""]
 
-        # Section 0: Directory Structure (NEW!)
-        all_file_paths = [f.path for f in result.files] if result.files else []
-        if all_file_paths:
-            structure = self._build_directory_structure(all_file_paths)
-
-            # Sort by file count (most files first), exclude (root)
-            sorted_dirs = sorted(
-                [(k, v) for k, v in structure.items() if k != "(root)"],
-                key=lambda x: x[1]["file_count"],
-                reverse=True,
-            )
-
-            if sorted_dirs:
-                lines.append("━━━ STRUCTURE ━━━")
-                for dir_name, info in sorted_dirs[:8]:  # Show top 8 dirs
-                    subdirs = sorted(info["subdirs"])[:3]
-                    subdirs_str = ", ".join(subdirs) if subdirs else ""
-                    if len(info["subdirs"]) > 3:
-                        subdirs_str += f" +{len(info['subdirs']) - 3}"
-
-                    lang_tag = self._format_language_tag(info["extensions"])
-                    lang_str = f"[{lang_tag}]" if lang_tag else ""
-
-                    # Format: dirname/    subdirs    [Language]
-                    line = f"  {dir_name + '/':<14}"
-                    if subdirs_str:
-                        line += f" {subdirs_str:<20}"
-                    else:
-                        line += f" {'(' + str(info['file_count']) + ' files)':<20}"
-                    line += f" {lang_str}"
-                    lines.append(line)
-
-                # Show root files if any
-                if "(root)" in structure:
-                    root_info = structure["(root)"]
-                    lang_tag = self._format_language_tag(root_info["extensions"])
-                    lines.append(
-                        f"  (root files)     {root_info['file_count']} files            [{lang_tag}]"
-                        if lang_tag
-                        else f"  (root files)     {root_info['file_count']} files"
-                    )
-
-                lines.append("")
-
-        # Section 0b: File Archetypes (multi-signal classification)
-        if result.files:
-            files_with_meta = [f for f in result.files if f.mtime > 0]
-
-            if files_with_meta:
-                # Calculate project's timeline thresholds
-                ages = [f.age_days for f in files_with_meta]
-                sizes = [f.size for f in files_with_meta if f.size > 0]
-
-                min_age = min(ages)
-                max_age = max(ages)
-                age_span = max_age - min_age if max_age > min_age else 1
-                median_size = sorted(sizes)[len(sizes) // 2] if sizes else 1000
-
-                # Thresholds (relative to project)
-                recent_threshold = min_age + (age_span * 0.25)  # Top 25% newest
-                old_threshold = min_age + (age_span * 0.50)  # Older than median
-                large_threshold = max(median_size, 2000)  # Larger than median or 2KB
-
-                # Classify each file into archetypes
-                archetypes: dict[str, list[FileNode]] = {
-                    "core_infrastructure": [],  # 🏛️ old + central + stable
-                    "active_core": [],  # 🔧 central + recently changed
-                    "active_development": [],  # 🚀 recent + large + not central
-                    "stable_utilities": [],  # 📦 central + small + old
-                    "potentially_stale": [],  # 💤 old + small + not central + not recent
-                }
-
-                for f in files_with_meta:
-                    is_recent = f.age_days <= recent_threshold
-                    is_old = f.age_days >= old_threshold
-                    is_central = len(f.imported_by) > 0
-                    is_large = f.size >= large_threshold
-                    is_small = f.size < 1000
-
-                    # Classification logic (order matters - first match wins)
-                    if is_central and is_recent:
-                        archetypes["active_core"].append(f)
-                    elif is_central and is_old and not is_recent:
-                        if is_small:
-                            archetypes["stable_utilities"].append(f)
-                        else:
-                            archetypes["core_infrastructure"].append(f)
-                    elif is_recent and is_large and not is_central:
-                        archetypes["active_development"].append(f)
-                    elif is_old and is_small and not is_central and not is_recent:
-                        archetypes["potentially_stale"].append(f)
-
-                # Format output
-                archetype_config = [
-                    ("core_infrastructure", "🏛️", "Core Infrastructure", "old + central + stable"),
-                    ("active_core", "🔧", "Active Core", "central + recently changed"),
-                    ("active_development", "🚀", "Active Development", "recent + large"),
-                    ("stable_utilities", "📦", "Stable Utilities", "central + small + old"),
-                    ("potentially_stale", "💤", "Potentially Stale", "old + small + unused"),
-                ]
-
-                has_any = any(archetypes[key] for key, _, _, _ in archetype_config)
-                if has_any:
-                    lines.append("━━━ FILE ARCHETYPES ━━━")
-                    lines.append(
-                        f"  (project span: {self._format_age(min_age)} - {self._format_age(max_age)})"
-                    )
-                    lines.append("")
-
-                    for key, emoji, label, description in archetype_config:
-                        files_in_archetype = archetypes[key]
-                        if files_in_archetype:
-                            # Sort by relevance within archetype
-                            if key in ["core_infrastructure", "active_core", "stable_utilities"]:
-                                # Sort by centrality (most imported first)
-                                files_in_archetype.sort(
-                                    key=lambda f: len(f.imported_by), reverse=True
-                                )
-                            elif key == "active_development":
-                                # Sort by recency (newest first)
-                                files_in_archetype.sort(key=lambda f: f.age_days)
-                            else:
-                                # Sort by age (oldest first for stale)
-                                files_in_archetype.sort(key=lambda f: f.age_days, reverse=True)
-
-                            lines.append(f"  {emoji} {label} ({description}):")
-                            for f in files_in_archetype[:4]:
-                                age_str = self._format_age(f.age_days)
-                                size_str = self._format_file_size(f.size)
-                                used_by = (
-                                    f"used by {len(f.imported_by)}"
-                                    if len(f.imported_by) > 0
-                                    else ""
-                                )
-                                lines.append(
-                                    f"     {f.path:<45} {age_str:<8} {size_str:<8} {used_by}"
-                                )
-                            if len(files_in_archetype) > 4:
-                                lines.append(f"     ... +{len(files_in_archetype) - 4} more")
-                            lines.append("")
-
-        # Section 1: Entry Points
-        if result.entry_points:
-            lines.append("━━━ ENTRY POINTS ━━━")
-            # Deduplicate entry points by (file, name) - keep highest line number
-            # (lower line numbers are often in comments/documentation)
-            seen: dict[tuple[str, str | None], EntryPointInfo] = {}
-            for ep in result.entry_points:
-                ep_key = (ep.file, ep.name)
-                if ep_key not in seen or ep.line > seen[ep_key].line:
-                    seen[ep_key] = ep
-            deduped_entry_points = list(seen.values())
-
-            for ep in deduped_entry_points[:max_entries]:
-                # Delegate formatting to language-specific analyzer
-                analyzer = self._get_analyzer(ep.file)
-                if analyzer:
-                    lines.append(analyzer.format_entry_point(ep))
-                else:
-                    # Fallback for unknown file types
-                    line_str = f" @{ep.line}" if ep.line else ""
-                    lines.append(f"  {ep.file}:{ep.name or ep.type}{line_str}")
-            lines.append("")
-
-        # Section 2: Core Files (by centrality) with their contents
-        if result.files:
-            lines.append("━━━ CORE FILES (by centrality) ━━━")
-            sorted_files = sorted(result.files, key=lambda f: f.centrality_score, reverse=True)
-
-            # Build a map of file -> definitions for quick lookup
-            file_defs: dict[str, list[DefinitionInfo]] = {}
-            if result.definitions:
-                for defn in result.definitions:
-                    if defn.file not in file_defs:
-                        file_defs[defn.file] = []
-                    file_defs[defn.file].append(defn)
-
-            shown = 0
-            for node in sorted_files:
-                if node.centrality_score > 0 and shown < max_entries:
-                    # Show file header with import stats
-                    lines.append(
-                        f"  {node.path}: "
-                        f"imports {len(node.imports)}, "
-                        f"used by {len(node.imported_by)} files"
-                    )
-
-                    # Show what's inside this file (functions, classes)
-                    defs_in_file = file_defs.get(node.path, [])
-                    if defs_in_file:
-                        # Group by type for better readability
-                        classes = [d for d in defs_in_file if d.type == "class"]
-                        functions = [d for d in defs_in_file if d.type == "function"]
-                        methods = [d for d in defs_in_file if d.type == "method"]
-
-                        # Sort functions by centrality (most called first)
-                        # Build FQN for each definition to look up in call graph
-                        def get_centrality(defn):
-                            fqn = f"{defn.file}:{defn.name}"
-                            if fqn in result.call_graph:
-                                return result.call_graph[fqn].centrality_score
-                            return 0
-
-                        classes.sort(key=get_centrality, reverse=True)
-                        functions.sort(key=get_centrality, reverse=True)
-
-                        # Show classes first (sorted by centrality)
-                        if classes:
-                            for cls in classes[:4]:  # Top 4 classes
-                                sig = f"({cls.signature})" if cls.signature else ""
-                                centrality = get_centrality(cls)
-                                # Show centrality if significant
-                                cent_str = (
-                                    f" [called by {round(centrality)}]"
-                                    if round(centrality) >= 1
-                                    else ""
-                                )
-                                lines.append(f"     class {cls.name}{sig}{cent_str}")
-
-                        # Show top-level functions (sorted by centrality)
-                        if functions:
-                            for func in functions[:5]:  # Top 5 functions
-                                # func.signature might be "name(args)" or just "(args)"
-                                if func.signature and not func.signature.startswith("("):
-                                    sig = func.signature
-                                elif func.signature:
-                                    sig = f"{func.name}{func.signature}"
-                                else:
-                                    sig = f"{func.name}()"
-
-                                centrality = get_centrality(func)
-                                cent_str = (
-                                    f" [called by {round(centrality)}]"
-                                    if round(centrality) >= 1
-                                    else ""
-                                )
-                                lines.append(f"     def {sig}{cent_str}")
-
-                        # Show count if more exist
-                        total = len(classes) + len(functions) + len(methods)
-                        shown_count = min(4, len(classes)) + min(5, len(functions))
-                        if total > shown_count:
-                            lines.append(f"     ... +{total - shown_count} more")
-
-                    shown += 1
-
-            lines.append("")
+        file_defs = _definitions_by_file(result)
+        compact = rows_first()
+        sections = [
+            self._structure_section(result),
+            self._archetypes_section(result),
+            self._entry_points_section(result, max_entries),
+            self._core_files_section(result, max_entries, file_defs, one_line=compact),
+        ]
+        if compact:
+            # Highest-information section first: core files, entry points,
+            # then the directory outline and the archetype table
+            sections = [sections[3], sections[2], sections[0], sections[1]]
+        for section in sections:
+            lines.extend(section)
 
         # Section 3: Architecture Clusters (with contents for key clusters)
         if result.clusters:
             lines.append("━━━ ARCHITECTURE ━━━")
-
-            # Build file -> definitions map (reuse from above if needed)
-            if not file_defs and result.definitions:
-                file_defs = {}
-                for defn in result.definitions:
-                    if defn.file not in file_defs:
-                        file_defs[defn.file] = []
-                    file_defs[defn.file].append(defn)
 
             for cluster_name in [
                 "entry_points",
@@ -759,14 +527,16 @@ class CodeMap:
                 "config",
                 "tests",
             ]:
-                files = result.clusters.get(cluster_name, [])
-                if files:
-                    lines.append(f"  {cluster_name.replace('_', ' ').title()}: {len(files)} files")
+                cluster_paths = result.clusters.get(cluster_name, [])
+                if cluster_paths:
+                    lines.append(
+                        f"  {cluster_name.replace('_', ' ').title()}: {len(cluster_paths)} files"
+                    )
 
                     # For important clusters, show file contents
                     show_contents = cluster_name in ["entry_points", "core_logic", "plugins"]
 
-                    for cluster_file in files[:3]:
+                    for cluster_file in cluster_paths[:3]:
                         lines.append(f"    - {cluster_file}")
 
                         # Show what's in this file (for key clusters only)
@@ -806,8 +576,8 @@ class CodeMap:
                                 lines.append(f"       def {sig}{cent_str}")
                                 shown_items += 1
 
-                    if len(files) > 3:
-                        lines.append(f"    ... +{len(files) - 3} more")
+                    if len(cluster_paths) > 3:
+                        lines.append(f"    ... +{len(cluster_paths) - 3} more")
             lines.append("")
 
         # Section 4: Key Dependencies
@@ -1036,3 +806,305 @@ class CodeMap:
         )
 
         return "\n".join(lines)
+
+    def _structure_section(self, result: CodeMapResult) -> list[str]:
+        """Section 0: directory outline."""
+        lines: list[str] = []
+
+        # Section 0: Directory Structure (NEW!)
+        all_file_paths = [f.path for f in result.files] if result.files else []
+        if all_file_paths:
+            structure = self._build_directory_structure(all_file_paths)
+
+            # Sort by file count (most files first), exclude (root)
+            sorted_dirs = sorted(
+                [(k, v) for k, v in structure.items() if k != "(root)"],
+                key=lambda x: x[1]["file_count"],
+                reverse=True,
+            )
+
+            if sorted_dirs:
+                lines.append("━━━ STRUCTURE ━━━")
+                for dir_name, info in sorted_dirs[:8]:  # Show top 8 dirs
+                    subdirs = sorted(info["subdirs"])[:3]
+                    subdirs_str = ", ".join(subdirs) if subdirs else ""
+                    if len(info["subdirs"]) > 3:
+                        subdirs_str += f" +{len(info['subdirs']) - 3}"
+
+                    lang_tag = self._format_language_tag(info["extensions"])
+                    lang_str = f"[{lang_tag}]" if lang_tag else ""
+
+                    # Format: dirname/    subdirs    [Language]
+                    line = f"  {dir_name + '/':<14}"
+                    if subdirs_str:
+                        line += f" {subdirs_str:<20}"
+                    else:
+                        line += f" {'(' + str(info['file_count']) + ' files)':<20}"
+                    line += f" {lang_str}"
+                    lines.append(line)
+
+                # Show root files if any
+                if "(root)" in structure:
+                    root_info = structure["(root)"]
+                    lang_tag = self._format_language_tag(root_info["extensions"])
+                    lines.append(
+                        f"  (root files)     {root_info['file_count']} files            [{lang_tag}]"
+                        if lang_tag
+                        else f"  (root files)     {root_info['file_count']} files"
+                    )
+
+                lines.append("")
+
+        return lines
+
+    def _archetypes_section(self, result: CodeMapResult) -> list[str]:
+        """Section 0b: file archetypes (multi-signal classification)."""
+        lines: list[str] = []
+
+        # Section 0b: File Archetypes (multi-signal classification)
+        if result.files:
+            files_with_meta = [f for f in result.files if f.mtime > 0]
+
+            if files_with_meta:
+                # Calculate project's timeline thresholds
+                ages = [f.age_days for f in files_with_meta]
+                sizes = [f.size for f in files_with_meta if f.size > 0]
+
+                min_age = min(ages)
+                max_age = max(ages)
+                age_span = max_age - min_age if max_age > min_age else 1
+                median_size = sorted(sizes)[len(sizes) // 2] if sizes else 1000
+
+                # Thresholds (relative to project)
+                recent_threshold = min_age + (age_span * 0.25)  # Top 25% newest
+                old_threshold = min_age + (age_span * 0.50)  # Older than median
+                large_threshold = max(median_size, 2000)  # Larger than median or 2KB
+
+                # Classify each file into archetypes
+                archetypes: dict[str, list[FileNode]] = {
+                    "core_infrastructure": [],  # 🏛️ old + central + stable
+                    "active_core": [],  # 🔧 central + recently changed
+                    "active_development": [],  # 🚀 recent + large + not central
+                    "stable_utilities": [],  # 📦 central + small + old
+                    "potentially_stale": [],  # 💤 old + small + not central + not recent
+                }
+
+                for f in files_with_meta:
+                    is_recent = f.age_days <= recent_threshold
+                    is_old = f.age_days >= old_threshold
+                    is_central = len(f.imported_by) > 0
+                    is_large = f.size >= large_threshold
+                    is_small = f.size < 1000
+
+                    # Classification logic (order matters - first match wins)
+                    if is_central and is_recent:
+                        archetypes["active_core"].append(f)
+                    elif is_central and is_old and not is_recent:
+                        if is_small:
+                            archetypes["stable_utilities"].append(f)
+                        else:
+                            archetypes["core_infrastructure"].append(f)
+                    elif is_recent and is_large and not is_central:
+                        archetypes["active_development"].append(f)
+                    elif is_old and is_small and not is_central and not is_recent:
+                        archetypes["potentially_stale"].append(f)
+
+                # Format output
+                archetype_config = [
+                    ("core_infrastructure", "🏛️", "Core Infrastructure", "old + central + stable"),
+                    ("active_core", "🔧", "Active Core", "central + recently changed"),
+                    ("active_development", "🚀", "Active Development", "recent + large"),
+                    ("stable_utilities", "📦", "Stable Utilities", "central + small + old"),
+                    ("potentially_stale", "💤", "Potentially Stale", "old + small + unused"),
+                ]
+
+                has_any = any(archetypes[key] for key, _, _, _ in archetype_config)
+                if has_any:
+                    lines.append("━━━ FILE ARCHETYPES ━━━")
+                    lines.append(
+                        f"  (project span: {self._format_age(min_age)} - {self._format_age(max_age)})"
+                    )
+                    lines.append("")
+
+                    for key, emoji, label, description in archetype_config:
+                        files_in_archetype = archetypes[key]
+                        if files_in_archetype:
+                            # Sort by relevance within archetype
+                            if key in ["core_infrastructure", "active_core", "stable_utilities"]:
+                                # Sort by centrality (most imported first)
+                                files_in_archetype.sort(
+                                    key=lambda f: len(f.imported_by), reverse=True
+                                )
+                            elif key == "active_development":
+                                # Sort by recency (newest first)
+                                files_in_archetype.sort(key=lambda f: f.age_days)
+                            else:
+                                # Sort by age (oldest first for stale)
+                                files_in_archetype.sort(key=lambda f: f.age_days, reverse=True)
+
+                            lines.append(f"  {emoji} {label} ({description}):")
+                            for f in files_in_archetype[:4]:
+                                age_str = self._format_age(f.age_days)
+                                size_str = self._format_file_size(f.size)
+                                used_by = (
+                                    f"used by {len(f.imported_by)}"
+                                    if len(f.imported_by) > 0
+                                    else ""
+                                )
+                                lines.append(
+                                    f"     {f.path:<45} {age_str:<8} {size_str:<8} {used_by}"
+                                )
+                            if len(files_in_archetype) > 4:
+                                lines.append(f"     ... +{len(files_in_archetype) - 4} more")
+                            lines.append("")
+
+        return lines
+
+    def _entry_points_section(self, result: CodeMapResult, max_entries: int) -> list[str]:
+        """Section 1: entry points."""
+        lines: list[str] = []
+
+        # Section 1: Entry Points
+        if result.entry_points:
+            lines.append("━━━ ENTRY POINTS ━━━")
+            # Deduplicate entry points by (file, name) - keep highest line number
+            # (lower line numbers are often in comments/documentation)
+            seen: dict[tuple[str, str | None], EntryPointInfo] = {}
+            for ep in result.entry_points:
+                ep_key = (ep.file, ep.name)
+                if ep_key not in seen or ep.line > seen[ep_key].line:
+                    seen[ep_key] = ep
+            deduped_entry_points = list(seen.values())
+
+            for ep in deduped_entry_points[:max_entries]:
+                # Delegate formatting to language-specific analyzer
+                analyzer = self._get_analyzer(ep.file)
+                if analyzer:
+                    lines.append(analyzer.format_entry_point(ep))
+                else:
+                    # Fallback for unknown file types
+                    line_str = f" @{ep.line}" if ep.line else ""
+                    lines.append(f"  {ep.file}:{ep.name or ep.type}{line_str}")
+            lines.append("")
+
+        return lines
+
+    ROWS_FIRST_WIDTH = 150
+
+    def _core_files_section(
+        self,
+        result: CodeMapResult,
+        max_entries: int,
+        file_defs: dict[str, list[DefinitionInfo]],
+        one_line: bool = False,
+    ) -> list[str]:
+        """Section 2: core files by centrality, with what each defines.
+        one_line (rows-first): each file on a single wide line, its classes
+        and functions by callers descending, no keywords or signatures."""
+        lines: list[str] = []
+
+        # Build FQN for each definition to look up in call graph
+        def get_centrality(defn):
+            fqn = f"{defn.file}:{defn.name}"
+            if fqn in result.call_graph:
+                return result.call_graph[fqn].centrality_score
+            return 0
+
+        # Section 2: Core Files (by centrality) with their contents
+        if result.files:
+            lines.append("━━━ CORE FILES (by centrality) ━━━")
+            sorted_files = sorted(result.files, key=lambda f: f.centrality_score, reverse=True)
+
+            shown = 0
+            for node in sorted_files:
+                if node.centrality_score > 0 and shown < max_entries:
+                    if one_line:
+                        defs = sorted(
+                            (
+                                d
+                                for d in file_defs.get(node.path, [])
+                                if d.type in ("class", "function")
+                            ),
+                            key=get_centrality,
+                            reverse=True,
+                        )
+                        items = [
+                            f"{d.name}←{round(get_centrality(d))}"
+                            if round(get_centrality(d)) >= 1
+                            else d.name
+                            for d in defs
+                        ]
+                        head = f"  {node.path}  used by {len(node.imported_by)}  imports {len(node.imports)}"
+                        if items:
+                            head = join_within(
+                                head + "  —  ",
+                                items,
+                                self.ROWS_FIRST_WIDTH,
+                                lambda rest, _total: f"+{rest} more",
+                            )
+                        lines.append(head)
+                        shown += 1
+                        continue
+
+                    # Show file header with import stats
+                    lines.append(
+                        f"  {node.path}: "
+                        f"imports {len(node.imports)}, "
+                        f"used by {len(node.imported_by)} files"
+                    )
+
+                    # Show what's inside this file (functions, classes)
+                    defs_in_file = file_defs.get(node.path, [])
+                    if defs_in_file:
+                        # Group by type for better readability
+                        classes = [d for d in defs_in_file if d.type == "class"]
+                        functions = [d for d in defs_in_file if d.type == "function"]
+                        methods = [d for d in defs_in_file if d.type == "method"]
+
+                        # Sort functions by centrality (most called first)
+                        classes.sort(key=get_centrality, reverse=True)
+                        functions.sort(key=get_centrality, reverse=True)
+
+                        # Show classes first (sorted by centrality)
+                        if classes:
+                            for cls in classes[:4]:  # Top 4 classes
+                                sig = f"({cls.signature})" if cls.signature else ""
+                                centrality = get_centrality(cls)
+                                # Show centrality if significant
+                                cent_str = (
+                                    f" [called by {round(centrality)}]"
+                                    if round(centrality) >= 1
+                                    else ""
+                                )
+                                lines.append(f"     class {cls.name}{sig}{cent_str}")
+
+                        # Show top-level functions (sorted by centrality)
+                        if functions:
+                            for func in functions[:5]:  # Top 5 functions
+                                # func.signature might be "name(args)" or just "(args)"
+                                if func.signature and not func.signature.startswith("("):
+                                    sig = func.signature
+                                elif func.signature:
+                                    sig = f"{func.name}{func.signature}"
+                                else:
+                                    sig = f"{func.name}()"
+
+                                centrality = get_centrality(func)
+                                cent_str = (
+                                    f" [called by {round(centrality)}]"
+                                    if round(centrality) >= 1
+                                    else ""
+                                )
+                                lines.append(f"     def {sig}{cent_str}")
+
+                        # Show count if more exist
+                        total = len(classes) + len(functions) + len(methods)
+                        shown_count = min(4, len(classes)) + min(5, len(functions))
+                        if total > shown_count:
+                            lines.append(f"     ... +{total - shown_count} more")
+
+                    shown += 1
+
+            lines.append("")
+
+        return lines

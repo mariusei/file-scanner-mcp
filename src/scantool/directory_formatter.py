@@ -1,9 +1,11 @@
 """Hierarchical directory tree formatter with integrated code structures."""
 
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .formatter import join_within, rows_first
 from .languages import StructureNode, is_file_info_stub
 from .languages.models import Sweep
 
@@ -198,9 +200,34 @@ class DirectoryFormatter:
 
         # Format as text
         lines = [f"{base_path.name}/ {self._format_stats(tree)}"]
-        lines.extend(self._format_tree_node(tree, ""))
+        # Rows-first: gists are collected here instead of following each
+        # file row, and emitted as one section after the tree
+        gists: list[str] | None = [] if rows_first() else None
+        lines.extend(self._format_tree_node(tree, "", gists))
+        if gists:
+            lines.append(self.GISTS_SEPARATOR)
+            lines.extend(gists)
 
         return "\n".join(lines)
+
+    GISTS_SEPARATOR = "── gists ──"
+    ROWS_FIRST_WIDTH = 150
+
+    @staticmethod
+    def _kind_counts(structures: list[StructureNode]) -> str:
+        """`[8f 1c 0v]`: functions (methods included), classes, variables
+        anywhere in the file's tree."""
+        counts: Counter[str] = Counter()
+
+        def walk(nodes):
+            for node in nodes:
+                counts[node.type] += 1
+                walk(node.children or [])
+
+        walk(structures)
+        return (
+            f"[{counts['function'] + counts['method']}f {counts['class']}c {counts['variable']}v]"
+        )
 
     def _build_tree(
         self, base_path: Path, file_structures: dict[str, list[StructureNode] | None]
@@ -249,6 +276,7 @@ class DirectoryFormatter:
                 "type": "file",
                 "name": filename,
                 "path": file_path,
+                "rel": rel_path.as_posix(),
                 "structures": structures,
             }
 
@@ -291,8 +319,12 @@ class DirectoryFormatter:
 
         return f"({', '.join(parts)})" if parts else ""
 
-    def _format_tree_node(self, node: dict, prefix: str) -> list[str]:
-        """Recursively format a tree node and its children."""
+    def _format_tree_node(
+        self, node: dict, prefix: str, gists: list[str] | None = None
+    ) -> list[str]:
+        """Recursively format a tree node and its children. A gists list
+        means rows-first: file rows are widened and gists collected there
+        (path-prefixed) instead of following their file row."""
         lines = []
 
         # Get sorted children and files
@@ -314,7 +346,7 @@ class DirectoryFormatter:
 
                 # Recurse into directory
                 child_prefix = prefix + (self.SPACE if is_last else self.VERTICAL)
-                lines.extend(self._format_tree_node(child, child_prefix))
+                lines.extend(self._format_tree_node(child, child_prefix, gists))
 
             else:
                 # File
@@ -366,7 +398,21 @@ class DirectoryFormatter:
                     if self.include_structures and self.flatten_structures:
                         # Ultra-compact mode: show structures inline
                         display_structures = self._flatten_top_level(structures)
-                        if display_structures:
+                        if gists is not None:
+                            names = [s.name for s in display_structures]
+                            head = (
+                                f"{prefix}{connector} {name} ({min_line}-{max_line})"
+                                f"{metadata_str} {self._kind_counts(structures)}"
+                            )
+                            if names:
+                                head = join_within(
+                                    head + " - ",
+                                    names,
+                                    self.ROWS_FIRST_WIDTH,
+                                    lambda _rest, total: f"… ({total} total)",
+                                )
+                            lines.append(head)
+                        elif display_structures:
                             # Get just the names of classes and functions
                             names = [s.name for s in display_structures]
                             if len(names) > 5:
@@ -385,7 +431,9 @@ class DirectoryFormatter:
                             )
                         if self.include_glimpse:
                             glimpse = self._glimpse_line(structures)
-                            if glimpse:
+                            if glimpse and gists is not None:
+                                gists.append(f"{child['rel']} {glimpse}")
+                            elif glimpse:
                                 lines.append(
                                     f"{prefix}{self.SPACE if is_last else self.VERTICAL} {glimpse}"
                                 )
