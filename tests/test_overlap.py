@@ -13,7 +13,7 @@ import subprocess
 
 import pytest
 
-from scantool import cli
+from scantool import cli, commands, server
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 
@@ -141,6 +141,9 @@ class TestOverlap:
             "  residual beyond their shared commits: none",  # feat-a and feat-e
             "  residual beyond their shared commits: 1 structure in 1 file",  # feat-c and feat-e
         ]
+        # the residual is listed under its count line, one address per row
+        assert lines[pairs[2] + 2] == "    mod.py::beta"
+        assert lines[pairs[2] + 3].startswith("overlap (")
         assert lines[-1].startswith(
             "merge order (a hint, not a verdict): feat-a < feat-c < feat-e   "
             "(feat-a shares 0 structures with the others, feat-e shares 1;"
@@ -154,12 +157,13 @@ class TestOverlap:
             ("feat-a", "feat-e", 1),
             ("feat-c", "feat-e", 1),
         ]
-        assert history[0]["residual"] == {"structures": 0, "files": 0, "addresses": []}
+        assert history[0]["residual"] == {"count": 0, "files": 0, "structures": []}
         assert history[2]["residual"] == {
-            "structures": 1,
+            "count": 1,
             "files": 1,
-            "addresses": ["mod.py::beta"],
+            "structures": [{"path": "mod.py", "name": "beta"}],
         }
+        assert json.loads(out)["coverage"]["filters"] == {"path": None, "kind": None}
 
     def test_each_branch_is_diffed_at_its_own_merge_base(self, repo, capsys):
         # feat-d moved main's other.py after feat-a forked; feat-a must not be
@@ -185,3 +189,127 @@ class TestOverlap:
         monkeypatch.chdir(tmp_path_factory.mktemp("outside"))
         _, err, code = run("overlap", "main", "feat-a", capsys=capsys)
         assert code == 1 and "pass --repo DIR" in err
+
+
+SCOPED_MOD = "def alpha(x):\n    return x\n\n\nclass Box:\n    def get(self):\n        return 1\n"
+SCOPED_UTIL = "def helper():\n    return 0\n"
+
+
+@pytest.fixture
+def scoped_repo(tmp_path, monkeypatch):
+    """Two directories, two branches: both touch alpha, Box.get and helper;
+    feat-a adds newfn under src/, feat-b adds it under lib/."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "lib").mkdir()
+    (tmp_path / "src" / "mod.py").write_text(SCOPED_MOD)
+    (tmp_path / "lib" / "util.py").write_text(SCOPED_UTIL)
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "base")
+    _git(tmp_path, "checkout", "-qb", "feat-a")
+    (tmp_path / "src" / "mod.py").write_text(
+        SCOPED_MOD.replace("return x", "return x + 1").replace("return 1", "return 2")
+        + "\n\ndef newfn():\n    return 'a'\n"
+    )
+    (tmp_path / "lib" / "util.py").write_text(SCOPED_UTIL.replace("return 0", "return 1"))
+    _git(tmp_path, "commit", "-qam", "a")
+    _git(tmp_path, "checkout", "-q", "main")
+    _git(tmp_path, "checkout", "-qb", "feat-b")
+    (tmp_path / "src" / "mod.py").write_text(
+        SCOPED_MOD.replace("return x", "return x - 1").replace("return 1", "return 3")
+    )
+    (tmp_path / "lib" / "util.py").write_text(
+        SCOPED_UTIL.replace("return 0", "return 2") + "\n\ndef newfn():\n    return 'b'\n"
+    )
+    _git(tmp_path, "commit", "-qam", "b")
+    _git(tmp_path, "checkout", "-q", "main")
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+@requires_git
+class TestOverlapScope:
+    def test_unfiltered_sees_both_directories(self, scoped_repo, capsys):
+        out, _, code = run("overlap", "main", "feat-a", "feat-b", capsys=capsys)
+        assert code == 0
+        assert out.splitlines()[0].endswith(")")  # no filter label
+        assert "feat-a  merge-base" in out and "2 files, +1 ~3 -0 structures" in out
+        assert "src/mod.py::alpha" in out and "src/mod.py::Box.get" in out
+        assert "lib/util.py::helper" in out
+        assert "colliding new names (added independently on 2+ branches): 1" in out
+
+    def test_path_filters_every_number(self, scoped_repo, capsys):
+        for prefix in ("src", "src/"):
+            out, _, code = run(
+                "overlap", "main", "feat-a", "feat-b", "--path", prefix, capsys=capsys
+            )
+            assert code == 0
+            assert out.splitlines()[0].endswith(")  [path src]")
+            # per-branch counts: one file in scope, helper's ~ is gone
+            assert "feat-a  merge-base" in out and "1 file, +1 ~2 -0 structures" in out
+            assert "feat-b  merge-base" in out and "1 file, +0 ~2 -0 structures" in out
+            assert "overlap (structures touched by 2+ branches): 2 in 1 file" in out
+            assert "src/mod.py::alpha" in out and "src/mod.py::Box.get" in out
+            assert "lib/" not in out and "helper" not in out
+            # newfn is added once inside src: no collision
+            assert "colliding new names" not in out
+            assert "feat-b < feat-a   (all share 2 structures; ordered by change size" in out
+
+    def test_path_accepts_a_file(self, scoped_repo, capsys):
+        out, _, _ = run(
+            "overlap", "main", "feat-a", "feat-b", "--path", "lib/util.py", capsys=capsys
+        )
+        assert "[path lib/util.py]" in out
+        assert "1 file, +0 ~1 -0 structures" in out and "1 file, +1 ~1 -0 structures" in out
+        assert "overlap (structures touched by 2+ branches): 1 in 1 file" in out
+        assert "lib/util.py::helper" in out and "src/" not in out
+
+    def test_kind_filters_structures_not_files(self, scoped_repo, capsys):
+        out, _, code = run("overlap", "main", "feat-a", "feat-b", "--kind", "method", capsys=capsys)
+        assert code == 0
+        assert out.splitlines()[0].endswith(")  [kind method]")
+        assert "2 files, +0 ~1 -0 structures" in out
+        assert "overlap (structures touched by 2+ branches): 1 in 1 file" in out
+        assert "src/mod.py::Box.get" in out and "alpha" not in out and "helper" not in out
+        assert "colliding new names" not in out
+
+        out, _, _ = run("overlap", "main", "feat-a", "feat-b", "--kind", "function", capsys=capsys)
+        assert "2 files, +1 ~2 -0 structures" in out
+        assert "overlap (structures touched by 2+ branches): 2 in 2 files" in out
+        assert "Box.get" not in out
+        assert "colliding new names (added independently on 2+ branches): 1" in out
+
+        out, _, _ = run(
+            "overlap", "main", "feat-a", "feat-b", "--path", "src", "--kind", "class", capsys=capsys
+        )
+        assert "[path src, kind class]" in out
+        assert "1 file, +0 ~0 -0 structures" in out  # Box itself is unchanged
+        assert "overlap (structures touched by 2+ branches): none" in out
+
+    def test_json_names_the_filters(self, scoped_repo, capsys):
+        out, _, _ = run(
+            "overlap",
+            "main",
+            "feat-a",
+            "feat-b",
+            "--path",
+            "src/",
+            "--kind",
+            "method",
+            "--json",
+            capsys=capsys,
+        )
+        document = json.loads(out)
+        assert document["coverage"]["filters"] == {"path": "src", "kind": "method"}
+        assert [o["address"] for o in document["overlap"]] == ["src/mod.py::Box.get"]
+        assert [b["counts"] for b in document["branches"]] == [{"~": 1}, {"~": 1}]
+
+    def test_the_mcp_tool_answers_identically(self, scoped_repo, capsys):
+        for kwargs in ({"path": "src"}, {"kind": "function"}, {"path": "lib/", "kind": "function"}):
+            text, _ = commands.overlap("main", ["feat-a", "feat-b"], as_json=True, **kwargs)
+            result = server.overlap("main", ["feat-a", "feat-b"], output_format="json", **kwargs)
+            assert "".join(part.text for part in result) == text
+            assert json.loads(text)["coverage"]["filters"] == {
+                "path": kwargs.get("path", "").rstrip("/") or None,
+                "kind": kwargs.get("kind") or None,
+            }

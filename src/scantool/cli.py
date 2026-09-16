@@ -57,7 +57,8 @@ OPTIONS
   --repo DIR     Repository for diff, overlap, resolve and history (default: the one
                  the current directory is inside; required when it is not).
   --dir DIR      Directory callers scans (default: the current directory).
-  --path PATH    Restrict diff to a file or directory, relative to the repo.
+  --path PATH    Restrict diff or overlap to a file or directory, relative to the repo.
+  --kind KIND    Restrict overlap to structures of one type (function, class, …).
   --budget N     Approximate output size in tokens (scan, files only).
   --as PATH      The name stdin content is scanned under (its extension picks
                  the parser; the name appears in the output).
@@ -344,7 +345,9 @@ def run_surface(args: argparse.Namespace) -> tuple[list[str], int]:
 def run_overlap(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import commands
 
-    text, code = commands.overlap(args.base, args.branches, args.repo, as_json=args.json)
+    text, code = commands.overlap(
+        args.base, args.branches, args.repo, args.path, args.kind, as_json=args.json
+    )
     return [text], code
 
 
@@ -474,6 +477,10 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     overlap.add_argument("branches", metavar="branch", nargs="+")
     overlap.add_argument(
         "--repo", metavar="DIR", help="repository (default: the one cwd is inside)"
+    )
+    overlap.add_argument("--path", metavar="PATH", help="a file or directory, relative to the repo")
+    overlap.add_argument(
+        "--kind", metavar="KIND", help="only structures of this type (function, class, …)"
     )
 
     callers = parser(

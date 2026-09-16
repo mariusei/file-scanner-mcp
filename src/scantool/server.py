@@ -1465,6 +1465,8 @@ def overlap(
     base: str,
     branches: list[str],
     repo: str | None = None,
+    path: str = "",
+    kind: str = "",
     output_format: str = "tree",
 ) -> list[TextContent]:
     """
@@ -1491,6 +1493,10 @@ def overlap(
             branches: Candidate branches (or any refs) to compare against base
         Semantics & display:
             repo: Repository directory (default: the one the server's cwd is inside)
+            path: Only files under this repository-relative prefix (a directory
+                or a file; empty = all)
+            kind: Only structures of this node type, as scan prints it
+                (function, method, class, …; empty = all)
             output_format: Output format - "tree" or "json" (default: "tree")
 
     Returns:
@@ -1498,7 +1504,9 @@ def overlap(
         colliding new names, and a suggested merge order
     """
     try:
-        text, _ = commands.overlap(base, branches, repo, as_json=output_format == "json")
+        text, _ = commands.overlap(
+            base, branches, repo, path, kind, as_json=output_format == "json"
+        )
         return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error computing overlap: {e}")]

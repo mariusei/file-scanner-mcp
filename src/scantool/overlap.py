@@ -31,6 +31,8 @@ SOLUTION:
 SCOPE:
   ✓ N branches vs one base, merge-base per branch, caps on every list
   ✓ base marks and residuals computed only for the shared set (cheap)
+  ✓ a Scope (path prefix, node kind) applied where records are read, so
+    counts, rows, residuals and the merge order all agree with it
   ✗ no conflict simulation (git merge-tree), no similarity beyond identity
   ✗ base marks follow the path as the branch spells it; a rename on the
     base side reads as removed
@@ -58,6 +60,34 @@ LABEL_CAP = 72
 RESIDUAL_CAP = 20
 
 Site = tuple[str, str]  # (path, key)
+
+
+@dataclass
+class Scope:
+    """Which structures take part: those in files under `path` (a
+    repository-relative directory or file, forward slashes) whose type is
+    `kind` (as scan prints it). None on either side means no filter. Applied
+    where records are read, so every number downstream agrees with it."""
+
+    path: str | None = None
+    kind: str | None = None
+
+    def __post_init__(self) -> None:
+        self.path = self.path.replace("\\", "/").rstrip("/") or None if self.path else None
+        self.kind = self.kind or None
+
+    def admits_path(self, path: str) -> bool:
+        return not self.path or path == self.path or path.startswith(self.path + "/")
+
+    def admits(self, path: str, kind: str) -> bool:
+        return self.admits_path(path) and (not self.kind or kind == self.kind)
+
+    @property
+    def label(self) -> str:
+        parts = [
+            f"{name} {value}" for name, value in (("path", self.path), ("kind", self.kind)) if value
+        ]
+        return ", ".join(parts)
 
 
 @dataclass
@@ -92,6 +122,11 @@ class SharedHistory:
     def residual_files(self) -> int:
         return len({path for path, _ in self.residual})
 
+    @property
+    def rows(self) -> list[tuple[str, str]]:
+        """The residual as (path, name), by path then name."""
+        return sorted((path, name) for (path, _), name in self.residual.items())
+
 
 @dataclass
 class OverlapResult:
@@ -104,6 +139,7 @@ class OverlapResult:
     base_moved: dict[Site, str]  # shared site -> how the base tip changed it since the oldest fork
     colliding: dict[str, list[tuple[str, str, int, str]]]  # name -> [(branch, path, line, kind)]
     stacked: list[SharedHistory]
+    scope: Scope = field(default_factory=Scope)
 
 
 def _in_base(top: str, base: str, branch: str) -> str | None:
@@ -123,7 +159,9 @@ def _in_base(top: str, base: str, branch: str) -> str | None:
     return None
 
 
-def branch_report(scanner: FileScanner, top: str, base: str, branch: str) -> BranchReport:
+def branch_report(
+    scanner: FileScanner, top: str, base: str, branch: str, scope: Scope
+) -> BranchReport:
     base_of_branch = merge_base(top, base, branch)
     if base_of_branch is None:
         raise ValueError(f"no merge base between {base} and {branch}")
@@ -131,21 +169,31 @@ def branch_report(scanner: FileScanner, top: str, base: str, branch: str) -> Bra
     report.ahead, report.behind = ahead_behind(top, base, branch)[::-1]
     report.in_base = _in_base(top, base, branch)
     report.commits = set((git_output(top, "rev-list", f"{base_of_branch}..{branch}") or "").split())
-    _diff_structures(scanner, top, base_of_branch, branch, report)
+    _diff_structures(scanner, top, base_of_branch, branch, report, scope)
     return report
 
 
 def _diff_structures(
-    scanner: FileScanner, top: str, old_ref: str, new_ref: str, report: BranchReport
+    scanner: FileScanner,
+    top: str,
+    old_ref: str,
+    new_ref: str,
+    report: BranchReport,
+    scope: Scope,
 ) -> None:
-    """Every structure whose own body, signature or presence differs between
-    the refs, into the report."""
+    """Every structure in scope whose own body, signature or presence differs
+    between the refs, into the report. A file counts when it is in the
+    scope's path and has structure; the kind narrows the structures, not
+    the files (a file with none of that kind touched still changed)."""
     name_status = git_output(top, "diff", "--name-status", "-M", old_ref, new_ref) or ""
     for line in name_status.split("\n"):
         parts = line.split("\t")
         if len(parts) < 2:
             continue
         status, old_path, new_path = parts[0], parts[1], parts[-1]
+        old_in, new_in = scope.admits_path(old_path), scope.admits_path(new_path)
+        if not old_in and not new_in:
+            continue
         old = _records(scanner, top, old_ref, old_path) if not status.startswith("A") else {}
         new = _records(scanner, top, new_ref, new_path) if not status.startswith("D") else {}
         if old is None or new is None:
@@ -154,6 +202,8 @@ def _diff_structures(
             continue
         report.files += 1
         for key, record in new.items():
+            if not new_in or not scope.admits(new_path, record.type):
+                continue
             report.names[(new_path, key)] = record.name
             report.kinds[(new_path, key)] = record.type
             if key not in old:
@@ -165,7 +215,7 @@ def _diff_structures(
             elif old[key].differs_from(record):
                 report.touched[(new_path, key)] = "~"
         for key, record in old.items():
-            if key not in new:
+            if key not in new and old_in and scope.admits(old_path, record.type):
                 report.touched[(old_path, key)] = "-"
                 report.names[(old_path, key)] = record.name
                 report.kinds[(old_path, key)] = record.type
@@ -222,7 +272,9 @@ def _base_moved(
     return moved
 
 
-def _residual(scanner: FileScanner, top: str, a: str, b: str) -> tuple[dict[Site, str], set[str]]:
+def _residual(
+    scanner: FileScanner, top: str, a: str, b: str, scope: Scope
+) -> tuple[dict[Site, str], set[str]]:
     """Structures both branches touch beyond their mutual merge-base (what
     stays shared once one of them is merged), and the new names both added
     beyond it: those are the only names the pair chose independently."""
@@ -232,16 +284,17 @@ def _residual(scanner: FileScanner, top: str, a: str, b: str) -> tuple[dict[Site
     sides = []
     for branch in (a, b):
         side = BranchReport(branch, mutual)
-        _diff_structures(scanner, top, mutual, branch, side)
+        _diff_structures(scanner, top, mutual, branch, side, scope)
         sides.append(side)
     common = sides[0].touched.keys() & sides[1].touched.keys()
     both_added = sides[0].added_names.keys() & sides[1].added_names.keys()
     return {site: sides[0].names[site] for site in sorted(common)}, set(both_added)
 
 
-def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
+def overlap(top: str, base: str, branches: list[str], scope: Scope | None = None) -> OverlapResult:
+    scope = scope or Scope()
     scanner = FileScanner()
-    reports = [branch_report(scanner, top, base, branch) for branch in branches]
+    reports = [branch_report(scanner, top, base, branch, scope) for branch in branches]
 
     by_structure: dict[Site, list[tuple[str, str]]] = {}
     names: dict[Site, str] = {}
@@ -260,7 +313,7 @@ def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
         for b in reports[i + 1 :]:
             common = len(a.commits & b.commits)
             if common:
-                residual, independent = _residual(scanner, top, a.branch, b.branch)
+                residual, independent = _residual(scanner, top, a.branch, b.branch, scope)
                 stacked.append(SharedHistory(a.branch, b.branch, common, residual))
                 shared_names = a.added_names.keys() & b.added_names.keys()
                 inherited[(a.branch, b.branch)] = shared_names - independent
@@ -285,7 +338,7 @@ def overlap(top: str, base: str, branches: list[str]) -> OverlapResult:
             colliding[name] = kept
 
     return OverlapResult(
-        base, short(top, base), reports, shared, names, kinds, base_moved, colliding, stacked
+        base, short(top, base), reports, shared, names, kinds, base_moved, colliding, stacked, scope
     )
 
 
@@ -321,7 +374,10 @@ def format_overlap(result: OverlapResult) -> str:
         parts.append(f"{len(in_base)} already in base")
     if result.stacked:
         parts.append(f"{_count(len(result.stacked), 'pair')} sharing history")
-    lines = [f"<{', '.join(parts)}> base {result.base} ({result.base_sha})"]
+    head = f"<{', '.join(parts)}> base {result.base} ({result.base_sha})"
+    if result.scope.label:
+        head += f"  [{result.scope.label}]"
+    lines = [head]
 
     width = max(len(r.branch) for r in reports)
     for r in reports:
@@ -349,6 +405,9 @@ def format_overlap(result: OverlapResult) -> str:
             else "none"
         )
         lines.append(f"  residual beyond their shared commits: {residual}")
+        lines.extend(f"    {path}::{name}" for path, name in s.rows[:RESIDUAL_CAP])
+        if len(s.rows) > RESIDUAL_CAP:
+            lines.append(f"    … {len(s.rows) - RESIDUAL_CAP} more")
 
     if result.shared:
         rows = sorted(
@@ -429,16 +488,16 @@ def overlap_to_json(result: OverlapResult) -> dict:
                     "b": s.b,
                     "commits": s.commits,
                     "residual": {
-                        "structures": len(s.residual),
+                        "count": len(s.residual),
                         "files": s.residual_files,
-                        "addresses": [
-                            f"{path}::{name}"
-                            for (path, _), name in list(s.residual.items())[:RESIDUAL_CAP]
+                        "structures": [
+                            {"path": path, "name": name} for path, name in s.rows[:RESIDUAL_CAP]
                         ],
                     },
                 }
                 for s in result.stacked
             ],
+            "filters": {"path": result.scope.path, "kind": result.scope.kind},
         },
         "base": {"ref": result.base, "sha": result.base_sha},
         "branches": [
