@@ -7,11 +7,13 @@ the file line the node claims.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 from conftest import validate_line_range_invariants
 
+from scantool import cli
 from scantool.focus import format_focus
 from scantool.languages import get_language
 from scantool.languages.ipynb import JupyterLanguage
@@ -175,3 +177,57 @@ def test_a_file_that_is_not_a_notebook_reports_the_parse_failure():
     structures = JupyterLanguage().scan(b'{"nbformat": 4}')
     assert structures is not None
     assert structures[0].type == "error"
+
+
+# A function defined in one cell, called at the top of the next and from
+# inside a function in the one after: the two call shapes a notebook has.
+CALLS_NOTEBOOK = (
+    {"cell_type": "code", "source": ["def total(amounts):\n", "    return sum(amounts)\n"]},
+    {"cell_type": "markdown", "source": ["Not a call: total(1) in prose.\n"]},
+    {"cell_type": "code", "source": ["%time\n", "grand = total([1, 2, 3])\n"]},
+    {
+        "cell_type": "code",
+        "source": ["def report(rows):\n", "    return total(rows)\n"],
+    },
+)
+
+
+def test_calls_are_reported_with_their_caller_on_their_notebook_line():
+    """Each call row carries the enclosing function in its cell (None at the top
+    of a cell, as at module level in a .py file) and the .ipynb line that holds
+    the call — the line a reader can open, diff or hash."""
+    notebook = _notebook(*CALLS_NOTEBOOK)
+    language = JupyterLanguage()
+    definitions = language.extract_definitions("nb.ipynb", notebook)
+    calls = language.extract_calls("nb.ipynb", notebook, definitions)
+    file_lines = notebook.split("\n")
+
+    assert [(c.callee_name, c.caller_name) for c in calls] == [
+        ("sum", "total"),
+        ("total", None),
+        ("total", "report"),
+    ]
+    assert all(c.caller_file == "nb.ipynb" for c in calls)
+    assert [c.is_cross_file for c in calls] == [True, False, False]
+    for call in calls:
+        assert f"{call.callee_name}(" in file_lines[call.line - 1]
+    assert calls[1].line < calls[2].line  # cell order is file order
+    assert "grand = total" in file_lines[calls[1].line - 1]
+    assert "return total(rows)" in file_lines[calls[2].line - 1]
+
+
+def test_callers_lists_notebook_sites_with_notebook_lines(tmp_path, monkeypatch, capsys):
+    (tmp_path / "nb.ipynb").write_text(_notebook(*CALLS_NOTEBOOK), encoding="utf-8")
+    monkeypatch.chdir(tmp_path.parent)
+    code = cli.main(["callers", "total", "--dir", tmp_path.name])
+    out = capsys.readouterr().out
+    file_lines = (tmp_path / "nb.ipynb").read_text(encoding="utf-8").split("\n")
+
+    assert code == 0
+    assert out.splitlines()[0].startswith(
+        "<2 call sites in 1 file, 1 definition, 1 file scanned> callers of total"
+    )
+    sites = re.findall(rf"  - (.+?) {re.escape(tmp_path.name)}/nb\.ipynb:(\d+)", out)
+    assert [caller for caller, _ in sites] == ["(module level)", "report"]
+    for _, line in sites:
+        assert "total(" in file_lines[int(line) - 1]

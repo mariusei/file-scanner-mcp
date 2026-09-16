@@ -1,3 +1,6 @@
-<0 call sites in 0 files, 0 definitions, 1 file scanned> callers of Sales ledger
-no call sites of Sales ledger (mentions in docstrings, comments and strings are not calls)
-[exit 1]
+<1 call site in 1 file, 1 definition, 1 file scanned> callers of _rows_for
+defined: basic.ipynb::_rows_for (function) basic.ipynb:52
+
+basic.ipynb  (1 site)
+  - report basic.ipynb:64   "    return total(_rows_for(ledger))\n"
+[exit 0]

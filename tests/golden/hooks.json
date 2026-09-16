@@ -365,7 +365,7 @@
       "condense_excerpt": "overridden",
       "corpus_reachable": "inherited",
       "expand_value": "inherited",
-      "extract_calls": "inherited",
+      "extract_calls": "overridden",
       "extract_definitions": "inherited",
       "extract_imports": "overridden",
       "find_entry_points": "overridden",
