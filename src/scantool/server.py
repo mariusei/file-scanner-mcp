@@ -68,9 +68,7 @@ find_divergence, list_directories, scan_file_content, surface, overlap, \
 callers, resolve, history.
 """
 
-mcp = FastMCP(
-    "File Scanner MCP", instructions=SERVER_INSTRUCTIONS.format(shell=shell_instructions())
-)
+mcp = FastMCP("Scantool", instructions=SERVER_INSTRUCTIONS.format(shell=shell_instructions()))
 
 # Global scanner and formatter instances
 scanner = FileScanner()
