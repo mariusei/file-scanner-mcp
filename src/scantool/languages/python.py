@@ -953,7 +953,7 @@ def _render_value(source_text: str) -> str:
     Same renderer the skeletons use, so a 200-line policy dict and a call in a
     method body are elided by one rule. Tree-sitter accepts fragments `ast`
     rejects (a value inside an otherwise broken file), so the flat source text
-    is the fallback, cut to the same width.
+    is the fallback, cut as every other language's values are.
     """
     try:
         return _trunc(_parse_expression(source_text).body)

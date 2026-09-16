@@ -15,5 +15,6 @@ basic.ts (5-131)
 - generateId () : string @95 [export] # Generates a random unique identifier.
 - validateEmail (email: string) : boolean @102 [export] # Validates an email address format.
 - calculateStats (users: User[]) : { total: number; active: number } @109 # Arrow function to calculate statistics.
+- MAX_ATTEMPTS = 3 @119 # Default number of attempts before giving up.
 - retry (action: () => boolean, attempts: number = MAX_ATTEMPTS) : boolean @124 # Runs `action` until it returns true or the attempts are spent (not exported).
 [exit 0]

@@ -1,4 +1,4 @@
-<1 file seen, 18 structures shown>
+<1 file seen, 19 structures shown>
 basic.rs (3-105)
 - use statements @3
 - User @8 [pub] # User account with basic information.
@@ -53,6 +53,7 @@ basic.rs (3-105)
        if validate_email("ada@example.com") {
      …
        println!("Application started");
+- MAX_ATTEMPTS = 3 @95 [pub] # Upper bound on connection attempts.
 - retry (action: &mut dyn FnMut() -> bool, attempts: u32) -> bool @98 # Run `action` until it returns true or the attempts are spent (private).
    fn retry(action: &mut dyn FnMut() -> bool, attempts: u32) -> bool {
        for _ in 0..attempts {

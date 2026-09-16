@@ -14,5 +14,6 @@ basic.zig (4-71)
 - c_api_function (ptr: [*]u8, len: usize) void @49 [export]
 - basic test @54
 - addition works @58
+- max_value = 100 @64 [pub] # Upper bound for clamped values
 - clamp (value: i32, lower: i32, upper: i32) i32 @67 # Clamp a value into the inclusive range (private)
 [exit 0]

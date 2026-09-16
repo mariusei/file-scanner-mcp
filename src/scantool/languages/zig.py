@@ -173,13 +173,14 @@ class ZigLanguage(BaseLanguage):
     def _extract_variable_declaration(
         self, node: Node, source_code: bytes, root: Node
     ) -> StructureNode | None:
-        """Extract struct, enum, union, or import from variable declaration."""
+        """Extract struct, enum, union or value from a variable declaration; an
+        @import is recorded as an import, not a node."""
         name = None
         decl_type = None
         decl_node = None
 
         for child in node.children:
-            if child.type == "identifier":
+            if child.type == "identifier" and name is None:  # the bound name, not a value
                 name = self._get_node_text(child, source_code)
             elif child.type == "struct_declaration":
                 decl_type = "struct"
@@ -202,11 +203,28 @@ class ZigLanguage(BaseLanguage):
                         self._handle_import(node, [])
                         return None
 
-        if not name or not decl_type or not decl_node:
+        if not name:
             return None
 
         # Get modifiers
         modifiers = self._extract_modifiers(node, source_code)
+
+        if not decl_type or not decl_node:
+            # A plain value (`const MAX: u32 = 3;`, `pub const NAME = "x";`,
+            # `var counter: u32 = 0;`): the expression after `=`. A name
+            # taken from a module (`@import("m.zig").Name`) is an import,
+            # as extract_imports already counts it.
+            value = self._value_text(node, source_code)
+            if value is not None and value.startswith("@import("):
+                return None
+            return self._value_node(
+                name,
+                value,
+                node.start_point[0] + 1,
+                node.end_point[0] + 1,
+                modifiers=modifiers,
+                docstring=self._extract_doc_comment(node, source_code),
+            )
 
         # Get doc comment
         docstring = self._extract_doc_comment(node, source_code)
@@ -229,6 +247,15 @@ class ZigLanguage(BaseLanguage):
             complexity=complexity,
             children=children,
         )
+
+    def _value_text(self, node: Node, source_code: bytes) -> str | None:
+        """The expression a variable declaration binds: the first named child
+        after its `=` (none for `extern var x: u32;`)."""
+        children = iter(node.children)
+        if not any(child.type == "=" for child in children):
+            return None
+        value = next((child for child in children if child.is_named), None)
+        return self._get_node_text(value, source_code) if value is not None else None
 
     def _extract_struct_members(
         self, node: Node, source_code: bytes, root: Node

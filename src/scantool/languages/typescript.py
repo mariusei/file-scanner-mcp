@@ -199,11 +199,15 @@ class TypeScriptLanguage(BaseLanguage):
                 method_node = self._extract_method(node, source_code)
                 parent_structures.append(method_node)
 
-            # Arrow functions (const foo = () => {})
-            elif node.type == "lexical_declaration":
-                arrow_func = self._extract_arrow_function(node, source_code)
-                if arrow_func:
-                    parent_structures.append(arrow_func)
+            # Arrow functions (const foo = () => {}) and, at program scope,
+            # the file's values (const MAX = 3)
+            elif node.type in ("lexical_declaration", "variable_declaration"):
+                if node.type == "lexical_declaration":
+                    arrow_func = self._extract_arrow_function(node, source_code)
+                    if arrow_func:
+                        parent_structures.append(arrow_func)
+                if self._at_program_scope(node):
+                    parent_structures.extend(self._extract_file_values(node, source_code))
 
             # Export statements (may contain other structures)
             elif node.type == "export_statement":
@@ -369,6 +373,65 @@ class TypeScriptLanguage(BaseLanguage):
             modifiers=modifiers,
             complexity=complexity,
             children=[],
+        )
+
+    @staticmethod
+    def _at_program_scope(node: Node) -> bool:
+        """Whether a declaration is the file's own: a child of the program,
+        directly or through its `export` statement."""
+        parent = node.parent
+        if parent is not None and parent.type == "export_statement":
+            parent = parent.parent
+        return parent is not None and parent.type == "program"
+
+    #: Values that are definitions of another kind: the arrow is already a
+    #: function node, the rest name no value a scan should show.
+    _DEFINITION_VALUE_TYPES = frozenset(
+        {"arrow_function", "function_expression", "function", "generator_function", "class"}
+    )
+    _MODULE_LOADERS = frozenset({"require", "import"})
+
+    def _extract_file_values(self, node: Node, source_code: bytes) -> list[StructureNode]:
+        """Each `NAME[: T] = value` declarator of a program-scope const, let
+        or var as a variable node, with the JSDoc the declaration carries.
+        Out: a destructured target (`const {a, b} = …` names no single
+        binding), a function or class expression (a definition of another
+        kind) and a module load (`require(…)`, `import(…)`: an import, not a
+        value). The `export` modifier is added by the export statement's
+        branch, as for every declaration it wraps."""
+        nodes = []
+        for declarator in node.named_children:
+            if declarator.type != "variable_declarator":
+                continue
+            name = declarator.child_by_field_name("name")
+            value = declarator.child_by_field_name("value")
+            if name is None or name.type != "identifier" or self._is_definition(value, source_code):
+                continue
+            nodes.append(
+                self._value_node(
+                    self._get_node_text(name, source_code),
+                    self._get_node_text(value, source_code) if value is not None else None,
+                    node.start_point[0] + 1,
+                    node.end_point[0] + 1,
+                    docstring=self._extract_jsdoc(node, source_code),
+                )
+            )
+        return nodes
+
+    def _is_definition(self, value: Node | None, source_code: bytes) -> bool:
+        """Whether a declarator's value is a function, class or module load
+        (looked at through an `await`)."""
+        if value is None:
+            return False
+        if value.type == "await_expression" and value.named_children:
+            value = value.named_children[0]
+        if value.type in self._DEFINITION_VALUE_TYPES:
+            return True
+        if value.type != "call_expression":
+            return False
+        callee = value.child_by_field_name("function")
+        return (
+            callee is not None and self._get_node_text(callee, source_code) in self._MODULE_LOADERS
         )
 
     def _extract_arrow_function(self, node: Node, source_code: bytes) -> StructureNode | None:

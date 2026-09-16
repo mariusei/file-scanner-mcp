@@ -193,3 +193,68 @@ def test_surface_is_each_files_pub_declarations(tmp_path):
         ("shown", "function", "definition"),
         ("c_api", "function", "definition"),
     ]
+
+
+# ===========================================================================
+# File-scope constants (the rule Python's module constants set)
+# ===========================================================================
+
+CONSTANTS_ZIG = (
+    'const std = @import("std");\n'
+    'const Thing = @import("thing.zig").Thing;\n'
+    "\n"
+    "/// Attempts before giving up.\n"
+    "pub const LIMIT: u32 = 3;\n"
+    "var counter: u32 = 0;\n"
+    'const name = "x";\n'
+    "const alias = f;\n"
+    "pub const Point = struct { x: i32 };\n"
+    "pub fn f() u32 {\n"
+    "    const inner = 1;\n"
+    "    return inner;\n"
+    "}\n"
+)
+
+
+def test_file_scope_values_become_variable_nodes(tmp_path, file_scanner):
+    """A plain `const`/`var` at file scope is a variable node, `= value` as
+    signature, the doc comment as docstring and `pub` recorded as on a
+    function; a struct/enum/union const stays what it was."""
+    path = tmp_path / "consts.zig"
+    path.write_text(CONSTANTS_ZIG)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    variables = {s.name: s for s in structures if s.type == "variable"}
+
+    assert set(variables) == {"LIMIT", "counter", "name", "alias"}
+    assert variables["LIMIT"].signature == "= 3"
+    assert variables["LIMIT"].modifiers == ["pub"]
+    assert variables["LIMIT"].docstring == "Attempts before giving up."
+    assert variables["counter"].signature == "= 0"
+    assert variables["counter"].modifiers == []
+    assert variables["name"].signature == '= "x"'
+    assert variables["alias"].signature == "= f"
+    assert [s.type for s in structures if s.name == "Point"] == ["struct"]
+    assert all(not v.synthetic for v in variables.values())
+
+
+def test_imports_and_inner_bindings_are_not_file_scope_values(tmp_path, file_scanner):
+    """`@import(...)` and a name taken from one are imports; a const inside a
+    function is not the file's; a function is bound once (an alias holds a
+    name, not a second definition)."""
+    path = tmp_path / "consts.zig"
+    path.write_text(CONSTANTS_ZIG)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+
+    names = [s.name for s in structures]
+    assert not set(names) & {"std", "Thing", "inner"}
+    assert names.count("f") == 1
+
+
+def test_surface_lists_a_pub_constant_not_a_file_private_one(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "m.zig").write_text(
+        "pub const LIMIT: u32 = 3;\nvar counter: u32 = 0;\npub fn f() void {}\n"
+    )
+    rows = [(e.name, e.kind, e.signature) for e in read_surface(str(tmp_path)).exports]
+    assert rows == [("LIMIT", "variable", "= 3"), ("f", "function", "() void")]

@@ -1,13 +1,14 @@
 <2 branches vs v1, 2 with structural changes> base v1 (98d20e0)
-a  merge-base 98d20e0  1 ahead 0 behind  1 file, +2 ~1 -2 structures
-b  merge-base 98d20e0  1 ahead 0 behind  1 file, +2 ~1 -2 structures
-overlap (structures touched by 2+ branches): 5 in 1 file
+a  merge-base 98d20e0  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base 98d20e0  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
   basic.zig::Config.discard          a(+)  b(+)
   basic.zig::Config.private_helper   a(-)  b(-)
   basic.zig::Status                  a(-)  b(-)
   basic.zig::fastAdd                 a(~)  b(~)
   basic.zig::isReady                 a(+)  b(+)
+  basic.zig::max_value               a(~)  b(~)
 colliding new names (added independently on 2+ branches): 1
   isReady   a:basic.zig:56  b:basic.zig:56
-merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
 [exit 0]

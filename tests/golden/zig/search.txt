@@ -1,4 +1,4 @@
-<1 file seen, 12 structures shown, 1 excluded (.git/)>
+<1 file seen, 13 structures shown, 1 excluded (.git/)>
 4 hits in 3 structures for /clamp/
 
 ./basic.zig

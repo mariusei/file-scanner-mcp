@@ -275,7 +275,7 @@ def test_surface_follows_the_facade(tmp_path):
         ("ns", "module", "re-export", "sub.c", f"{pkg}/sub/c.ts"),
         ("local", "function", "definition", "index", f"{pkg}/index.ts"),
         ("main", "function", "default export", "index", f"{pkg}/index.ts"),
-        ("MAX", "value", "definition", "index", f"{pkg}/index.ts"),
+        ("MAX", "variable", "definition", "index", f"{pkg}/index.ts"),
         ("own", "function", "definition", "index", f"{pkg}/index.ts"),
         ("Deep", "class", "re-export", "sub.c", f"{pkg}/sub/c.ts"),
         ("Missing", "unresolved", "re-export", "a", f"{pkg}/a.ts"),
@@ -298,3 +298,69 @@ def test_surface_without_a_facade_is_each_files_exports(tmp_path):
         ("A", "definition"),
         ("d", "definition"),
     ]
+
+
+# ===========================================================================
+# File-scope constants (the rule Python's module constants set)
+# ===========================================================================
+
+CONSTANTS_TS = (
+    'import { x } from "./x";\n'
+    "\n"
+    "export const LIMIT: number = 3;\n"
+    "/** Attempts before giving up. */\n"
+    'let label = "y";\n'
+    "const handler = () => 1;\n"
+    "var legacy = function () {};\n"
+    'const fs = require("fs");\n'
+    'const lazy = await import("./lazy");\n'
+    "const { a, b } = pair;\n"
+    "function f() {\n"
+    "  const inner = 1;\n"
+    "  return inner;\n"
+    "}\n"
+)
+
+
+def test_program_scope_bindings_become_variable_nodes(tmp_path, file_scanner):
+    """A const/let/var at program scope is a variable node, `= value` as its
+    signature, `export` recorded as on a function, the JSDoc above as its
+    docstring (an inline-exported declaration hides its JSDoc behind the
+    `export` keyword, for a constant as for a function)."""
+    path = tmp_path / "consts.ts"
+    path.write_text(CONSTANTS_TS)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    variables = {s.name: s for s in structures if s.type == "variable"}
+
+    assert set(variables) == {"LIMIT", "label"}
+    assert variables["LIMIT"].signature == "= 3"
+    assert variables["LIMIT"].modifiers == ["export"]
+    assert variables["label"].docstring == "Attempts before giving up."
+    assert variables["LIMIT"].start_line == variables["LIMIT"].end_line == 3
+    assert variables["label"].signature == '= "y"'
+    assert variables["label"].modifiers == []
+    assert all(not v.synthetic for v in variables.values())
+
+
+def test_program_scope_bindings_skip_definitions_loads_and_inner_scopes(tmp_path, file_scanner):
+    """An arrow is the function node alone (never also a variable), a
+    function or class expression is no value, `require`/`import(...)` is an
+    import, a destructured target names no single binding, and a binding
+    inside a function is not the file's."""
+    path = tmp_path / "consts.ts"
+    path.write_text(CONSTANTS_TS)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+
+    assert [s.type for s in structures if s.name == "handler"] == ["function"]
+    names = {s.name for s in structures}
+    assert not names & {"legacy", "fs", "lazy", "a", "b", "inner"}
+
+
+def test_surface_lists_an_exported_constant_not_a_private_one(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "m.ts").write_text(
+        "export const LIMIT = 3;\nconst hidden = 1;\nexport function f(): void {}\n"
+    )
+    rows = [(e.name, e.kind, e.signature) for e in read_surface(str(tmp_path)).exports]
+    assert rows == [("LIMIT", "variable", "= 3"), ("f", "function", "() : void")]

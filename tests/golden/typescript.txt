@@ -1,4 +1,4 @@
-<1 file seen, 16 structures shown>
+<1 file seen, 17 structures shown>
 basic.ts (5-131)
 - import statements @5
 - Config @11 # Configuration interface for authentication service.
@@ -41,6 +41,7 @@ basic.ts (5-131)
    const calculateStats = (users: User[]): { total: number; active: number } => {
      return {
      …
+- MAX_ATTEMPTS = 3 @119 # Default number of attempts before giving up.
 - retry (action: () => boolean, attempts: number = MAX_ATTEMPTS) : boolean @124 # Runs `action` until it returns true or the attempts are spent (not exported).
    function retry(action: () => boolean, attempts: number = MAX_ATTEMPTS): boolean {
      for (let i = 0; i < attempts; i++) {

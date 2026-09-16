@@ -1,9 +1,10 @@
 <2 branches vs v1, 2 with structural changes> base v1 (2961c8a)
-a  merge-base 2961c8a  1 ahead 0 behind  1 file, +2 ~2 -2 structures
-b  merge-base 2961c8a  1 ahead 0 behind  1 file, +2 ~2 -2 structures
-overlap (structures touched by 2+ branches): 6 in 1 file
+a  merge-base 2961c8a  1 ahead 0 behind  1 file, +2 ~3 -2 structures
+b  merge-base 2961c8a  1 ahead 0 behind  1 file, +2 ~3 -2 structures
+overlap (structures touched by 2+ branches): 7 in 1 file
   basic.rs::DatabaseManager           a(~)  b(~)
   basic.rs::DatabaseManager.query     a(-)  b(-)
+  basic.rs::MAX_ATTEMPTS              a(~)  b(~)
   basic.rs::UserService.delete_user   a(-)  b(-)
   basic.rs::UserService.remove_user   a(+)  b(+)
   basic.rs::health                    a(+)  b(+)
@@ -11,5 +12,5 @@ overlap (structures touched by 2+ branches): 6 in 1 file
 colliding new names (added independently on 2+ branches): 2
   health        a:basic.rs:90  b:basic.rs:90
   remove_user   a:basic.rs:53  b:basic.rs:53
-merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
 [exit 0]

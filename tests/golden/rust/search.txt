@@ -1,4 +1,4 @@
-<1 file seen, 18 structures shown, 1 excluded (.git/)>
+<1 file seen, 19 structures shown, 1 excluded (.git/)>
 2 hits in 2 structures for /retry/
 
 ./basic.rs

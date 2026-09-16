@@ -160,6 +160,14 @@ class GoLanguage(BaseLanguage):
             elif node.type == "import_declaration":
                 self._handle_import(node, parent_structures)
 
+            # Package-level constants and variables
+            elif (
+                node.type in ("const_declaration", "var_declaration")
+                and node.parent is not None
+                and node.parent.type == "source_file"
+            ):
+                parent_structures.extend(self._extract_package_values(node, source_code))
+
             else:
                 # Keep traversing
                 for child in node.children:
@@ -167,6 +175,49 @@ class GoLanguage(BaseLanguage):
 
         traverse(root, structures)
         return structures
+
+    def _extract_package_values(self, node: Node, source_code: bytes) -> list[StructureNode]:
+        """Each single-name spec of a package-level const or var declaration
+        as a variable node: `const N = 3`, `var N T = v`, `var N T` (no
+        value, so no signature) and every entry of a grouped block. In a
+        const block an entry without an expression repeats the previous
+        one — Go's implicit repetition, how iota enumerations are written —
+        so it is rendered with that expression (`= iota`). A multi-name spec
+        (`a, b = 1, 2`) names no single binding and is out. The comment
+        above the spec, else above a declaration of that one spec, is its
+        docstring; exported by capitalisation, as every Go name."""
+        specs = [
+            spec
+            for holder in (node, *node.named_children)
+            for spec in holder.named_children
+            if spec.type in ("const_spec", "var_spec")
+        ]
+        nodes = []
+        inherited: str | None = None
+        for spec in specs:
+            names = spec.children_by_field_name("name")
+            value = spec.child_by_field_name("value")
+            text = self._get_node_text(value, source_code) if value is not None else None
+            if node.type == "const_declaration":
+                inherited = text or inherited
+                text = text or inherited
+            if len(names) != 1:
+                continue
+            name = self._get_node_text(names[0], source_code)
+            docstring = self._extract_comment(spec, source_code) or (
+                self._extract_comment(node, source_code) if len(specs) == 1 else None
+            )
+            nodes.append(
+                self._value_node(
+                    name,
+                    text,
+                    spec.start_point[0] + 1 if len(specs) > 1 else node.start_point[0] + 1,
+                    spec.end_point[0] + 1 if len(specs) > 1 else node.end_point[0] + 1,
+                    modifiers=self._extract_type_modifiers(name),
+                    docstring=docstring,
+                )
+            )
+        return nodes
 
     def _extract_type(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract type declaration (struct, interface, etc.)."""

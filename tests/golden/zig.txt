@@ -1,4 +1,4 @@
-<1 file seen, 12 structures shown>
+<1 file seen, 13 structures shown>
 basic.zig (4-71)
 - Config @4 [pub] # Configuration for the application
   - total (self: Config) i32 @9 [pub] # Calculate the total value
@@ -37,6 +37,7 @@ basic.zig (4-71)
    …
        const result = helper(2, 3);
        try std.testing.expectEqual(result, 5);
+- max_value = 100 @64 [pub] # Upper bound for clamped values
 - clamp (value: i32, lower: i32, upper: i32) i32 @67 # Clamp a value into the inclusive range (private)
    fn clamp(value: i32, lower: i32, upper: i32) i32 {
        if (value < lower) return lower;

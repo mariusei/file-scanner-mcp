@@ -1,4 +1,4 @@
-<1 file seen, 12 structures shown, 1 excluded (.git/)>
+<1 file seen, 13 structures shown, 1 excluded (.git/)>
 basic.zig (4-16)
 - Config @4 [pub] # Configuration for the application
   - total (self: Config) i32 @9 [pub] # Calculate the total value

@@ -260,3 +260,92 @@ def test_surface_is_the_exported_identifiers_outside_test_files(tmp_path):
         ("Run", "method", f"{pkg}/a.go"),
         ("New", "function", f"{pkg}/a.go"),
     ]
+
+
+# ===========================================================================
+# Package-level constants and variables (the rule Python's module constants set)
+# ===========================================================================
+
+CONSTANTS_GO = (
+    "package p\n"
+    "\n"
+    'import "fmt"\n'
+    "\n"
+    "// MaxRetries bounds the attempts\n"
+    "const MaxRetries = 3\n"
+    "var timeout int64 = 5\n"
+    "var mu sync.Mutex\n"
+    "const (\n"
+    "\t// First opens the enumeration\n"
+    "\tFirst = iota\n"
+    "\tSecond\n"
+    '\tName = "x"\n'
+    ")\n"
+    "var (\n"
+    "\ta, b = 1, 2\n"
+    "\tc = 3\n"
+    ")\n"
+    "var handler = func() {}\n"
+    "\n"
+    "func f() {\n"
+    "\tconst inner = 1\n"
+    "\tfmt.Println(inner)\n"
+    "}\n"
+)
+
+
+def test_package_level_bindings_become_variable_nodes(tmp_path, file_scanner):
+    """`const N = v`, `var N T = v`, `var N T` and each entry of a grouped
+    block are variable nodes, `= value` as signature (an iota block's
+    valueless entry repeats the expression, as Go does), the comment above
+    as docstring and "public" by capitalisation."""
+    path = tmp_path / "consts.go"
+    path.write_text(CONSTANTS_GO)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    variables = {s.name: s for s in structures if s.type == "variable"}
+
+    assert set(variables) == {
+        "MaxRetries",
+        "timeout",
+        "mu",
+        "First",
+        "Second",
+        "Name",
+        "c",
+        "handler",
+    }
+    assert variables["MaxRetries"].signature == "= 3"
+    assert variables["MaxRetries"].modifiers == ["public"]
+    assert variables["MaxRetries"].docstring == "MaxRetries bounds the attempts"
+    assert variables["timeout"].signature == "= 5"
+    assert variables["timeout"].modifiers == []
+    assert variables["mu"].signature is None, "declared without a value: nothing to show"
+    assert variables["First"].signature == "= iota"
+    assert variables["First"].docstring == "First opens the enumeration"
+    assert variables["Second"].signature == "= iota", "implicit repetition"
+    assert variables["Name"].signature == '= "x"'
+    assert (variables["First"].start_line, variables["Second"].start_line) == (11, 12)
+    assert all(not v.synthetic for v in variables.values())
+
+
+def test_package_level_bindings_skip_multi_name_specs_and_inner_scopes(tmp_path, file_scanner):
+    """`a, b = 1, 2` names no single binding; a const inside a function is
+    not the package's; a func literal is bound once, never twice."""
+    path = tmp_path / "consts.go"
+    path.write_text(CONSTANTS_GO)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+
+    names = [s.name for s in structures]
+    assert not set(names) & {"a", "b", "inner"}
+    assert names.count("handler") == 1
+    assert [s.name for s in structures if s.type == "function"] == ["f"]
+
+
+def test_surface_lists_an_exported_constant_not_an_unexported_one(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "a.go").write_text(
+        "package p\n\nconst MaxRetries = 3\n\nvar timeout = 5\n\nfunc New() {}\n"
+    )
+    rows = [(e.name, e.kind, e.signature) for e in read_surface(str(tmp_path)).exports]
+    assert rows == [("MaxRetries", "variable", "= 3"), ("New", "function", "()")]
