@@ -1,4 +1,4 @@
-# Contributing to File Scanner MCP
+# Contributing to Scantool
 
 This guide covers how to add support for a new programming language.
 
@@ -839,4 +839,4 @@ for node in result:
 ## Getting Help
 
 - **Examples**: Check existing languages in `src/scantool/languages/`
-- **Issues**: [GitHub Issues](https://github.com/mariusei/file-scanner-mcp/issues)
+- **Issues**: [GitHub Issues](https://github.com/mariusei/scantool/issues)
