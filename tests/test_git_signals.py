@@ -51,36 +51,49 @@ def test_run_git_gives_up_when_a_grandchild_keeps_stdout_open(monkeypatch, tmp_p
     child keeps stdout open. CPython's run() then calls communicate() on
     Windows and waits for an EOF that never comes. The stand-in git does
     exactly that; _run_git must still return None within the timeout."""
+    monkeypatch.setattr(git_signals, "_GIT_TIMEOUT", 0.5)
+    # The guarantee is git timeout + kill budget. Process creation and thread
+    # scheduling sit outside both budgets and have cost seconds on a loaded
+    # Windows runner (PR #56 failed at a fixed 1.0 s margin), so allow as much
+    # again before calling it a hang.
+    bound = git_signals._GIT_TIMEOUT + git_signals._KILL_TIMEOUT
+    deadline = 2 * bound
+    # The pipe must stay open past the deadline, or a regressed _run_git that
+    # waits for EOF would return in time once the grandchild exits.
+    hold = 2 * deadline
     stand_in = tmp_path / "git_stand_in.py"
     stand_in.write_text(
         "import subprocess, sys, time\n"
-        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(8)'])\n"
-        "time.sleep(8)\n"
+        f"subprocess.Popen([sys.executable, '-c', 'import time; time.sleep({hold})'])\n"
+        f"time.sleep({hold})\n"
     )
     monkeypatch.setattr(git_signals, "_GIT_COMMAND", (sys.executable, str(stand_in)))
-    monkeypatch.setattr(git_signals, "_GIT_TIMEOUT", 0.5)
 
     outcome: dict = {}
 
     def call():
+        started = time.monotonic()
         try:
             outcome["value"] = _run_git(str(tmp_path), "status")
         except Exception as error:  # the point is to see it, not to hide it
             outcome["error"] = error
+        outcome["elapsed"] = time.monotonic() - started
 
-    # The guarantee is git timeout + kill budget; the kill step on a loaded
-    # Windows runner has taken longer than a short git timeout on its own.
-    deadline = git_signals._GIT_TIMEOUT + git_signals._KILL_TIMEOUT + 1.0
     worker = threading.Thread(target=call, daemon=True)
-    started = time.monotonic()
     worker.start()
     worker.join(deadline)
-    elapsed = time.monotonic() - started
-
-    assert not worker.is_alive(), (
-        f"_run_git still blocked after {elapsed:.1f}s (deadline {deadline:.1f}s): "
-        "a grandchild holding the pipe kept communicate() waiting"
-    )
+    if worker.is_alive():
+        # Failing either way; tell a slow return apart from a real hang.
+        worker.join(deadline)
+        took = (
+            f"returned after {outcome['elapsed']:.1f}s"
+            if "elapsed" in outcome
+            else "never returned"
+        )
+        pytest.fail(
+            f"_run_git missed the {deadline:.1f}s deadline (bound {bound:.1f}s), "
+            f"{took}: a grandchild holding the pipe kept communicate() waiting"
+        )
     assert "error" not in outcome, (
         f"_run_git raised instead of returning None: {outcome['error']!r}"
     )

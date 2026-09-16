@@ -22,6 +22,7 @@ import contextlib
 import os
 import signal
 import subprocess
+import time
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,8 +83,10 @@ def _run_git(directory: str, *args: str) -> str | None:
 
 def _kill_tree(process: subprocess.Popen) -> None:
     """Kill the process and everything it spawned; never block on the pipes,
-    never raise: _run_git returns None within _GIT_TIMEOUT + _KILL_TIMEOUT
-    whatever the tree does."""
+    never raise. taskkill and the final wait share one _KILL_TIMEOUT, so
+    _run_git returns None within _GIT_TIMEOUT + _KILL_TIMEOUT whatever the
+    tree does (plus process creation and scheduling, which no budget covers)."""
+    started = time.monotonic()
     if os.name == "nt":
         with contextlib.suppress(subprocess.SubprocessError, OSError):
             subprocess.run(
@@ -100,8 +103,9 @@ def _kill_tree(process: subprocess.Popen) -> None:
     # The direct child at least, should taskkill be slow or absent.
     with contextlib.suppress(ProcessLookupError, OSError):
         process.kill()
+    remaining = max(0.0, _KILL_TIMEOUT - (time.monotonic() - started))
     with contextlib.suppress(subprocess.TimeoutExpired):
-        process.wait(timeout=_KILL_TIMEOUT)
+        process.wait(timeout=remaining)
 
 
 def repo_root(file_path: str) -> str | None:
