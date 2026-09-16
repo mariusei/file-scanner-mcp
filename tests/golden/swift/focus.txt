@@ -15,5 +15,6 @@ basic.swift (3-128)
 - formatTimestamp (_ date: Date) -> String @109 # Format a timestamp to string
 - UserID = Int @116 # Typealias for convenience
 - CompletionHandler = (Result<Bool, Error>) -> Void @117
+- defaultAttempts = 3 @120 # Default number of connection attempts
 - retry (_ action: () -> Bool, attempts: Int) -> Bool @123 [private] # Run `action` until it returns true or the attempts are spent (file-private)
 [exit 0]

@@ -1,7 +1,8 @@
 <2 branches vs v1, 2 with structural changes> base v1 (3acce27)
-a  merge-base 3acce27  1 ahead 0 behind  1 file, +2 ~1 -2 structures
-b  merge-base 3acce27  1 ahead 0 behind  1 file, +2 ~1 -2 structures
-overlap (structures touched by 2+ branches): 5 in 1 file
+a  merge-base 3acce27  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+b  merge-base 3acce27  1 ahead 0 behind  1 file, +2 ~2 -2 structures
+overlap (structures touched by 2+ branches): 6 in 1 file
+  basic.c::MAX_RETRIES      a(~)  b(~)
   basic.c::Status           a(-)  b(-)
   basic.c::free_user        a(-)  b(-)
   basic.c::health           a(+)  b(+)
@@ -10,5 +11,5 @@ overlap (structures touched by 2+ branches): 5 in 1 file
 colliding new names (added independently on 2+ branches): 2
   health         a:basic.c:67  b:basic.c:67
   release_user   a:basic.c:40  b:basic.c:40
-merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
+merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
 [exit 0]

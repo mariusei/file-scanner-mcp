@@ -11,6 +11,7 @@ basic.cpp (3-151)
 - UserService @71 # User service class
 - Status @113 # Status enumeration
 - max_value T (T a, T b) @121
+- MAX_RETRIES = 3 @126 [constexpr] # Retry budget for connection attempts
 - retry_connect bool (database::DatabaseManager& db) @129 [static] # Retry the connection until it succeeds or the budget is spent (internal)
 - main int () @139 # Main entry point
 [exit 0]

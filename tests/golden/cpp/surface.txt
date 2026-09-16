@@ -1,4 +1,4 @@
-<7 public names, 7 via definition> package cpp @WORKTREE
+<8 public names, 8 via definition> package cpp @WORKTREE
 basic
   utils.validate_email  bool (const std::string& email)                                cpp/basic.cpp:12
   utils.format_name  std::string (const std::string& first, const std::string& last)   cpp/basic.cpp:17
@@ -6,5 +6,6 @@ basic
   UserService                                                                          cpp/basic.cpp:71
   Status                                                                               cpp/basic.cpp:113
   max_value  T (T a, T b)                                                              cpp/basic.cpp:121
+  MAX_RETRIES  = 3                                                                     cpp/basic.cpp:126
   main  int ()                                                                         cpp/basic.cpp:139
 [exit 0]

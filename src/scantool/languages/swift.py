@@ -14,7 +14,7 @@ from pathlib import Path
 import tree_sitter_swift
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import BaseLanguage, render_flat_value
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -268,6 +268,12 @@ class SwiftLanguage(BaseLanguage):
                 if typealias_node:
                     parent_structures.append(typealias_node)
 
+            # A file-scope binding: `let NAME[: T] = value`
+            elif node.type == "property_declaration":
+                value_node = self._extract_value(node, source_code)
+                if value_node:
+                    parent_structures.append(value_node)
+
             # Import declarations
             elif node.type == "import_declaration":
                 self._handle_import(node, parent_structures)
@@ -438,6 +444,32 @@ class SwiftLanguage(BaseLanguage):
             docstring=docstring,
             modifiers=modifiers,
             children=[],
+        )
+
+    def _extract_value(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """A file-scope binding with one name and a value, `let NAME[: T] = …`
+        or `var NAME[: T] = …`: a variable node like Python's `NAME = value`,
+        its access modifier recorded as on a function. Not one named value,
+        so not a node: a tuple pattern (`let (a, b) = …`), a comma list
+        (`let m = 1, n = 2`), a computed property (a body, not a value) and
+        a closure value (`let f = { … }`, a function by another keyword). A
+        member `let` is a property of its type, extracted with the type."""
+        names = node.children_by_field_name("name")
+        values = node.children_by_field_name("value")
+        if len(names) != 1 or len(values) != 1 or values[0].type == "lambda_literal":
+            return None
+        bound = names[0].child_by_field_name("bound_identifier")
+        if bound is None:
+            return None
+        return StructureNode(
+            type="variable",
+            name=self._get_node_text(bound, source_code),
+            start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1,
+            signature=f"= {render_flat_value(self._get_node_text(values[0], source_code))}",
+            docstring=self._extract_docstring(node, source_code),
+            modifiers=self._extract_modifiers(node, source_code),
+            decorators=self._extract_decorators(node, source_code),
         )
 
     def _extract_type_members(

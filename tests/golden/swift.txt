@@ -1,4 +1,4 @@
-<1 file seen, 34 structures shown>
+<1 file seen, 35 structures shown>
 basic.swift (3-128)
 - import statements @3
 - Config @7 # Configuration structure for the application
@@ -74,6 +74,7 @@ basic.swift (3-128)
        return formatter.string(from: date)
 - UserID = Int @116 # Typealias for convenience
 - CompletionHandler = (Result<Bool, Error>) -> Void @117
+- defaultAttempts = 3 @120 # Default number of connection attempts
 - retry (_ action: () -> Bool, attempts: Int) -> Bool @123 [private] # Run `action` until it returns true or the attempts are spent (file-private)
    private func retry(_ action: () -> Bool, attempts: Int = defaultAttempts) -> Bool {
        for _ in 0..<attempts where action() {

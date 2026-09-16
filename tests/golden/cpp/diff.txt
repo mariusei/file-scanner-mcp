@@ -1,10 +1,11 @@
 <1 file changed, 1 with structural rows> v1 → v2
 
-basic.cpp  (+1 ~1 =1 -1)
+basic.cpp  (+1 ~2 =1 -1)
   + health bool ()                                                     B:133
   ~ utils.validate_email bool (const std::string& email, bool strict = false)   A:12 → B:12   [signature: bool (const std::string& email) → bool (const std::string& email, bool strict = false)]
+  ~ MAX_RETRIES = 5                                                    A:126 → B:120   [value: 3 → 5]
   = UserService.remove_user bool (int user_id)                         A:96 → B:96   [renamed from UserService.delete_user]
   - max_value T (T a, T b)                                             A:121
 
-summary: 1 file, +1 ~1 =1 -1 structures
+summary: 1 file, +1 ~2 =1 -1 structures
 [exit 0]

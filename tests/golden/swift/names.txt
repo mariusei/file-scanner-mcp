@@ -1,4 +1,4 @@
-<1 file seen, 34 structures shown, 1 excluded (.git/)>
+<1 file seen, 35 structures shown, 1 excluded (.git/)>
 basic.swift (7-11)
 - Config @7 # Configuration structure for the application
    struct Config {
