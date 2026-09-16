@@ -14,7 +14,7 @@ from pathlib import Path
 import tree_sitter_ruby
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import BaseLanguage, render_flat_value
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -184,12 +184,70 @@ class RubyLanguage(BaseLanguage):
             elif node.type == "call" and self._is_require_call(node, source_code):
                 self._handle_require(node, parent_structures)
 
+            # Constants: `NAME = value` at file scope or directly in a module/class body
+            elif node.type == "assignment":
+                constant_node = self._extract_constant(node, source_code)
+                if constant_node:
+                    parent_structures.append(constant_node)
+
             else:
                 for child in node.children:
                     traverse(child, parent_structures)
 
         traverse(root, structures)
         return structures
+
+    #: Values that define a class, module or callable under a constant's name
+    #: (`X = Struct.new(...)`, `X = Class.new`, `X = lambda { }`): not values.
+    _DEFINING_CALLS = frozenset(
+        {"Class.new", "Module.new", "Struct.new", "Data.define", "Proc.new"}
+    )
+    _DEFINING_METHODS = frozenset({"proc", "lambda"})
+
+    def _extract_constant(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """A single Ruby constant bound to a value, as the Python handler's
+        module-level binding: type "variable", the value's source flattened
+        and width-cut as the signature. None for a lowercase target (a
+        local), a qualified target (`A::B = ...`), multiple assignment, an
+        assignment deeper than file scope or a module/class body (a method
+        body, a block, an `if`), and a value that is a class, module,
+        Struct, Data, proc or lambda (a definition, not a value)."""
+        parent = node.parent
+        container = parent.parent if parent is not None else None
+        at_file_scope = parent is not None and parent.type == "program"
+        in_container_body = (
+            parent is not None
+            and parent.type == "body_statement"
+            and container is not None
+            and container.type in ("module", "class")
+        )
+        if not (at_file_scope or in_container_body):
+            return None
+        left = node.child_by_field_name("left")
+        right = node.child_by_field_name("right")
+        if left is None or right is None or left.type != "constant":
+            return None
+        if right.type == "lambda" or (
+            right.type == "call" and self._is_defining_call(right, source_code)
+        ):
+            return None
+        return StructureNode(
+            type="variable",
+            name=self._get_node_text(left, source_code),
+            start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1,
+            signature=f"= {render_flat_value(self._get_node_text(right, source_code))}",
+        )
+
+    def _is_defining_call(self, call: Node, source_code: bytes) -> bool:
+        receiver = call.child_by_field_name("receiver")
+        method = call.child_by_field_name("method")
+        if method is None:
+            return False
+        method_name = self._get_node_text(method, source_code)
+        if receiver is None:
+            return method_name in self._DEFINING_METHODS
+        return f"{self._get_node_text(receiver, source_code)}.{method_name}" in self._DEFINING_CALLS
 
     def _extract_module(self, node: Node, source_code: bytes) -> StructureNode:
         """Extract module with metadata."""

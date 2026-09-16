@@ -28,7 +28,7 @@ from pathlib import Path
 import tree_sitter_python
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import MAX_EXPR_LEN, BaseLanguage, render_flat_value
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -873,8 +873,6 @@ class PythonLanguage(BaseLanguage):
 # "…". Measured at ~47% of verbatim token cost with 100% call-name retention
 # (see experiments/condensation/).
 
-_MAX_EXPR_LEN = 60
-
 _AUG_OP_SYMBOLS = {
     ast.Add: "+",
     ast.Sub: "-",
@@ -934,17 +932,17 @@ def _trunc(expr: ast.AST) -> str:
     """Render an expression compactly, eliding rather than tail-chopping."""
     try:
         text = " ".join(ast.unparse(expr).split())
-        if len(text) <= _MAX_EXPR_LEN:
+        if len(text) <= MAX_EXPR_LEN:
             return text
         short = _ShortenLiterals().visit(copy.deepcopy(expr))
         text = " ".join(ast.unparse(short).split())
-        if len(text) <= _MAX_EXPR_LEN:
+        if len(text) <= MAX_EXPR_LEN:
             return text
         short = _ElideNestedArgs().visit(short)
         text = " ".join(ast.unparse(short).split())
-        if len(text) <= _MAX_EXPR_LEN * 2:  # roomier limit after elision
+        if len(text) <= MAX_EXPR_LEN * 2:  # roomier limit after elision
             return text
-        return text[: _MAX_EXPR_LEN - 1] + "…"
+        return text[: MAX_EXPR_LEN - 1] + "…"
     except Exception:
         return "…"
 
@@ -960,8 +958,7 @@ def _render_value(source_text: str) -> str:
     try:
         return _trunc(_parse_expression(source_text).body)
     except SyntaxError:
-        flat = " ".join(source_text.split())
-        return flat if len(flat) <= _MAX_EXPR_LEN else flat[: _MAX_EXPR_LEN - 1] + "…"
+        return render_flat_value(source_text)
 
 
 def _has_substance(value: ast.AST) -> bool:

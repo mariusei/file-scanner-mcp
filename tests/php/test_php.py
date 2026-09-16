@@ -419,3 +419,86 @@ def test_surface_lists_braced_namespace_members(tmp_path):
     )
     names = [e.name for e in read_surface(str(tmp_path)).exports]
     assert names == ["App.Shown", "App.Contract"]
+
+
+# ── file-scope constants: the Python handler's module-level binding rule ─────
+
+CONSTANTS_SRC = (
+    "<?php\n"
+    "const MAX_RETRIES = 3;\n"
+    "define('LIMITS', ['soft' => 10,\n"
+    "  'hard' => 20]);\n"
+    "$state = 5;\n"
+    "if (!defined('GUARDED')) { define('GUARDED', 1); }\n"
+    "class Widget { const KIND = 'w'; public function m() { define('IN_METHOD', 1); } }\n"
+    "function handler() { const LOCAL_ONLY = 1; $local = 2; }\n"
+    "const CALLBACK = fn($x) => $x * 2;\n"
+)
+
+
+def _variables(file_scanner, path):
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    return {s.name: s for s in structures if s.type == "variable"}
+
+
+def test_file_scope_constants_become_variable_nodes(tmp_path, file_scanner):
+    path = tmp_path / "constants.php"
+    path.write_text(CONSTANTS_SRC)
+    variables = _variables(file_scanner, path)
+
+    assert variables["MAX_RETRIES"].signature == "= 3"
+    assert variables["MAX_RETRIES"].start_line == 2
+    assert variables["LIMITS"].signature == "= ['soft' => 10, 'hard' => 20]"
+    assert (variables["LIMITS"].start_line, variables["LIMITS"].end_line) == (3, 4)
+    assert all(not v.synthetic for v in variables.values())
+
+
+def test_constants_skip_what_is_not_a_file_scope_value(tmp_path, file_scanner):
+    """A `$var` is request-local script state, not the file's contract; a
+    class constant is a member; a guarded or in-function define is deeper
+    than file scope."""
+    path = tmp_path / "constants.php"
+    path.write_text(CONSTANTS_SRC)
+    names = set(_variables(file_scanner, path))
+
+    assert names == {"MAX_RETRIES", "LIMITS", "CALLBACK"}
+    assert "state" not in names and "$state" not in names
+    assert "KIND" not in names, "a class constant belongs to the class"
+    assert not names & {"GUARDED", "IN_METHOD", "LOCAL_ONLY", "local"}
+
+
+def test_constants_nest_in_a_braced_namespace(tmp_path, file_scanner):
+    path = tmp_path / "ns.php"
+    path.write_text("<?php\nnamespace App {\n    const VERSION = '1.0';\n    class Thing {}\n}\n")
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    namespace = next(s for s in structures if s.type == "namespace")
+
+    constant = next(c for c in namespace.children if c.type == "variable")
+    assert (constant.name, constant.signature) == ("VERSION", "= '1.0'")
+
+
+def test_a_function_or_class_is_its_own_node_not_a_variable(tmp_path, file_scanner):
+    path = tmp_path / "defs.php"
+    path.write_text("<?php\nfunction f() { return 1; }\nclass C {}\nconst N = 1;\n")
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+
+    assert [(s.type, s.name) for s in structures] == [
+        ("function", "f"),
+        ("class", "C"),
+        ("variable", "N"),
+    ]
+
+
+def test_constants_are_not_call_graph_definitions():
+    """A constant can neither be called nor be reported dead."""
+    definitions = get_language(".php").extract_definitions("constants.php", CONSTANTS_SRC)
+    assert {d.name for d in definitions} == {"Widget", "m", "handler"}
+
+
+def test_surface_lists_a_file_scope_constant(tmp_path):
+    (tmp_path / "config.php").write_text(
+        "<?php\nconst DEFAULT_ATTEMPTS = 3;\ndefine('_INTERNAL', 1);\nfunction run() {}\n"
+    )
+    exports = {e.name: e for e in read_surface(str(tmp_path)).exports}
+    assert set(exports) == {"DEFAULT_ATTEMPTS", "run"}
+    assert exports["DEFAULT_ATTEMPTS"].line == 2

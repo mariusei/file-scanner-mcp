@@ -14,7 +14,7 @@ from pathlib import Path
 import tree_sitter_php
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import BaseLanguage, render_flat_value
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -233,6 +233,15 @@ class PHPLanguage(BaseLanguage):
                     function_node = self._extract_function(node, source_code)
                     parent_structures.append(function_node)
 
+            # File-scope constants: `const NAME = value;` and `define('NAME', value);`
+            elif node.type == "const_declaration" and self._is_file_scope(node):
+                parent_structures.extend(self._extract_constants(node, source_code))
+
+            elif node.type == "expression_statement" and self._is_file_scope(node):
+                define_node = self._extract_define(node, source_code)
+                if define_node:
+                    parent_structures.append(define_node)
+
             else:
                 # Keep traversing
                 for child in node.children:
@@ -240,6 +249,72 @@ class PHPLanguage(BaseLanguage):
 
         traverse(root, structures)
         return structures
+
+    @staticmethod
+    def _is_file_scope(node: Node) -> bool:
+        """Directly at file scope or in a braced namespace body. A class
+        `const` is a member (its parent is the class's declaration list) and
+        a `define()` under an `if (!defined(...))` guard sits in a compound
+        statement of the if, so both fall outside, like a function's body."""
+        parent = node.parent
+        if parent is None:
+            return False
+        if parent.type == "program":
+            return True
+        return (
+            parent.type == "compound_statement"
+            and parent.parent is not None
+            and parent.parent.type == "namespace_definition"
+        )
+
+    def _extract_constants(self, node: Node, source_code: bytes) -> list[StructureNode]:
+        """One value node per `NAME = value` element of a `const` declaration
+        (`const A = 1, B = 2;` binds two names), with the declaration's lines.
+        The same node shape the Python handler gives a module-level binding."""
+        nodes = []
+        for element in node.children:
+            if element.type != "const_element":
+                continue
+            name = next((c for c in element.children if c.type == "name"), None)
+            value = element.children[-1] if element.children else None
+            if name is None or value is None or value is name:
+                continue
+            nodes.append(
+                StructureNode(
+                    type="variable",
+                    name=self._get_node_text(name, source_code),
+                    start_line=node.start_point[0] + 1,
+                    end_line=node.end_point[0] + 1,
+                    signature=f"= {render_flat_value(self._get_node_text(value, source_code))}",
+                )
+            )
+        return nodes
+
+    def _extract_define(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """`define('NAME', value);` as a value node named NAME; None for any
+        other expression statement, or a define whose name is not a literal."""
+        call = node.children[0] if node.children else None
+        if call is None or call.type != "function_call_expression":
+            return None
+        function = call.child_by_field_name("function")
+        arguments = call.child_by_field_name("arguments")
+        if (
+            function is None
+            or self._get_node_text(function, source_code) != "define"
+            or arguments is None
+        ):
+            return None
+        args = [a for a in arguments.children if a.type == "argument"]
+        if len(args) != 2 or args[0].children[0].type != "string":
+            return None
+        name = self._get_node_text(args[0], source_code).strip("'\"")
+        return StructureNode(
+            type="variable",
+            name=name,
+            start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1,
+            signature=f"= {render_flat_value(self._get_node_text(args[1], source_code))}",
+        )
 
     def _extract_class(self, node: Node, source_code: bytes, root: Node) -> StructureNode:
         """Extract class with full metadata."""

@@ -12,5 +12,6 @@ basic.php (6-167)
 - UserService @84 # Handles user-related operations.
 - validateEmail (string $email) bool @123 # Validates an email address format.
 - formatName (string $firstName, string $lastName) string @130 # Formats a user's full name.
+- DEFAULT_ATTEMPTS = 3 @137
 - Retrier @142 # Retries an action a bounded number of times.
 [exit 0]

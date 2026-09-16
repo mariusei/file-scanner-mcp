@@ -1,7 +1,8 @@
 <2 branches vs v1, 2 with structural changes> base v1 (e5c9fd1)
-a  merge-base e5c9fd1  1 ahead 0 behind  1 file, +2 ~2 -2 structures
-b  merge-base e5c9fd1  1 ahead 0 behind  1 file, +2 ~2 -2 structures
-overlap (structures touched by 2+ branches): 6 in 1 file
+a  merge-base e5c9fd1  1 ahead 0 behind  1 file, +2 ~3 -2 structures
+b  merge-base e5c9fd1  1 ahead 0 behind  1 file, +2 ~3 -2 structures
+overlap (structures touched by 2+ branches): 7 in 1 file
+  basic.rb::DEFAULT_ATTEMPTS                        a(~)  b(~)
   basic.rb::DataAccess.DatabaseManager              a(~)  b(~)
   basic.rb::DataAccess.DatabaseManager.disconnect   a(-)  b(-)
   basic.rb::UserService.delete_user                 a(-)  b(-)
@@ -11,5 +12,5 @@ overlap (structures touched by 2+ branches): 6 in 1 file
 colliding new names (added independently on 2+ branches): 2
   health        a:basic.rb:64  b:basic.rb:64
   remove_user   a:basic.rb:53  b:basic.rb:53
-merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
 [exit 0]

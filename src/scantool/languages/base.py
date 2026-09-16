@@ -84,6 +84,21 @@ def default_is_private_name(name: str) -> bool:
     return name.startswith("_")
 
 
+#: Width of a value node's rendered signature (`NAME = value`) and of the
+#: expressions in a condensed skeleton. One number for every language, so a
+#: Ruby or PHP constant is cut where a Python one is.
+MAX_EXPR_LEN = 60
+
+
+def render_flat_value(source_text: str) -> str:
+    """The value of a file-scope binding as one line for the node's
+    signature: the source text flattened, cut to MAX_EXPR_LEN with an
+    ellipsis. The rendering a handler uses when it has no expression parser
+    to elide with (Python re-renders through ast and falls back to this)."""
+    flat = " ".join(source_text.split())
+    return flat if len(flat) <= MAX_EXPR_LEN else flat[: MAX_EXPR_LEN - 1] + "…"
+
+
 # ===========================================================================
 # Full-line comment blocks (shared by the config handlers: YAML, TOML)
 # ===========================================================================
