@@ -128,6 +128,17 @@ def test_focus_hit_miss_and_ambiguity(capsys):
     assert code == 1 and "no such file" in out
 
 
+def test_focus_address_is_the_same_for_both_csharp_namespace_forms(tmp_path, capsys):
+    """A file-scoped `namespace X;` encloses the declarations after it, so
+    the qualified address an agent reads off a block-namespace scan hits
+    the same member in the file-scoped form."""
+    scoped = tmp_path / "Scoped.cs"
+    scoped.write_text("namespace MyApp.Services;\n\npublic class Alpha { public void Run() {} }\n")
+    out, _, code = run("focus", str(scoped), "MyApp.Services.Alpha.Run", capsys=capsys)
+    assert code == 0 and out.splitlines()[0] == f"{scoped}::MyApp.Services.Alpha.Run (3-3)"
+    assert "3 | public class Alpha { public void Run() {} }" in out
+
+
 def test_focus_matches_a_heading_substring(capsys):
     golden = (GOLDEN_DIR / "focus_markdown.txt").read_text(encoding="utf-8")
     leaf = golden.splitlines()[0].split("focus: ")[1].split(" @")[0].split(".")[-1]

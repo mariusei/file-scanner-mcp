@@ -510,3 +510,47 @@ def test_interface_members_record_their_implicit_public():
     assert api["Secret"] == ["private", "static"]
     plain = {node.name: node.modifiers for node in structures[1].children}
     assert plain["Helper"] == []
+
+
+def test_file_scoped_namespace_encloses_the_declarations_after_it():
+    """`namespace X;` has no block, and tree-sitter ends the node on its own
+    line; the language makes it enclose everything after it. The handler
+    nests those declarations under the namespace and closes it on the
+    file's last declaration, so both namespace forms give the same tree.
+    `using` directives before the namespace stay at the top level; a second
+    file-scoped namespace (illegal C#) nests into the first, without a crash."""
+    source = (
+        "using System;\n"
+        "using System.Linq;\n"
+        "\n"
+        "namespace MyApp.Services;\n"
+        "\n"
+        "public class Alpha { public void Run() {} }\n"
+        "internal class Beta {}\n"
+    )
+    structures = FileScanner().scan_content(source, "Services.cs")
+    assert [(s.type, s.name) for s in structures] == [
+        ("imports", "using directives"),
+        ("namespace", "MyApp.Services"),
+    ]
+    namespace = structures[1]
+    assert (namespace.start_line, namespace.end_line) == (4, 7)
+    assert [(c.name, c.start_line) for c in namespace.children] == [("Alpha", 6), ("Beta", 7)]
+    assert [m.name for m in namespace.children[0].children] == ["Run"]
+
+    block = FileScanner().scan_content(
+        "using System;\nusing System.Linq;\n\nnamespace MyApp.Services\n{\n"
+        "public class Alpha { public void Run() {} }\ninternal class Beta {}\n}\n",
+        "Block.cs",
+    )
+    assert [(c.name, c.start_line) for c in block[1].children] == [
+        (c.name, c.start_line) for c in namespace.children
+    ]
+
+    doubled = FileScanner().scan_content(
+        "namespace MyApp.One;\n\nclass First {}\n\nnamespace MyApp.Two;\n\nclass Second {}\n",
+        "Doubled.cs",
+    )
+    assert [s.name for s in doubled] == ["MyApp.One"]
+    assert [c.name for c in doubled[0].children] == ["First", "MyApp.Two"]
+    assert [c.name for c in doubled[0].children[1].children] == ["Second"]
