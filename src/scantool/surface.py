@@ -97,6 +97,11 @@ def format_surface(surface: Surface, label: str) -> str:
     return "\n".join(lines)
 
 
+def diff_direction(label_a: str, label_b: str) -> str:
+    """Bind the A/B side labels the diff rows use: ``A=@main → B=@next``."""
+    return f"A={label_a} → B={label_b}"
+
+
 def format_surface_diff(a: Surface, b: Surface, label_a: str, label_b: str) -> str:
     """Names added, removed, changed (signature) or moved between A and B."""
     old = {e.name: e for e in a.exports}
@@ -113,10 +118,10 @@ def format_surface_diff(a: Surface, b: Surface, label_a: str, label_b: str) -> s
     ]
     lines = [
         f"<{_count(len(added), 'name')} added, {len(removed)} removed, {len(changed)} changed, "
-        f"{len(moved)} moved> surface diff {label_a} → {label_b}: package {b.package}"
+        f"{len(moved)} moved> surface diff {diff_direction(label_a, label_b)}: package {b.package}"
     ]
     if not (added or removed or changed or moved):
-        lines.append(f"no surface differences between {label_a} and {label_b}")
+        lines.append(f"no surface differences between A={label_a} and B={label_b}")
         return "\n".join(lines)
     for name in added:
         lines.append(f"  + {name}  {new[name].signature}   B:{new[name].location}")

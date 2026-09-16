@@ -219,8 +219,15 @@ def test_surface_at_a_ref_and_the_diff_states_its_direction(tmp_path, monkeypatc
     out, _, code = run("surface", "pkg", "--ref", "main", "--against", "next", capsys=capsys)
     assert code == 0
     assert out.splitlines()[0].startswith(
-        "<1 name added, 0 removed, 1 changed, 0 moved> surface diff @main → @next"
+        "<1 name added, 0 removed, 1 changed, 0 moved> surface diff A=@main → B=@next"
     )
     assert "  + extra  () -> " not in out  # the signature is `()` with no return annotation
     assert "  + extra  ()   B:pkg/extras.py:1" in out
     assert "  ~ helper   (x: int, /, *, flag: bool = False) -> int → (x: int) -> int" in out
+
+    out, _, code = run(
+        "surface", "pkg", "--ref", "main", "--against", "next", "--json", capsys=capsys
+    )
+    document = json.loads(out)
+    assert code == 0 and document["direction"] == "A=@main → B=@next"
+    assert (document["a"]["coverage"]["ref"], document["b"]["coverage"]["ref"]) == ("main", "next")
