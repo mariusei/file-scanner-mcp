@@ -79,6 +79,23 @@ def find_callers(directory: str, name: str) -> Callers:
     return Callers(name, definitions, sites, len(result.files))
 
 
+def under(found: Callers, directory: str) -> Callers:
+    """The same result with every path prefixed by the directory as typed,
+    so each address is runnable from where the caller stands; a typed `.`
+    adds nothing."""
+    prefix = os.path.normpath(directory)
+    if prefix == ".":
+        return found
+
+    def rebase(path: str) -> str:
+        return os.path.join(prefix, path).replace(os.sep, "/")
+
+    found.definitions = [(rebase(f), ln, k, p) for f, ln, k, p in found.definitions]
+    for site in found.sites:
+        site.file = rebase(site.file)
+    return found
+
+
 def _count(n: int, noun: str) -> str:
     return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 

@@ -151,7 +151,7 @@ def overlap(
 def callers(
     name: str, directory: str | None = None, ref: str | None = None, as_json: bool = False
 ) -> tuple[str, int]:
-    from .callers import callers_to_json, find_callers, format_callers
+    from .callers import callers_to_json, find_callers, format_callers, under
 
     directory = directory or "."
     label = f"@{ref}" if ref else ""
@@ -165,6 +165,7 @@ def callers(
         raise RefError(f"{directory} is not a directory")
     else:
         found = find_callers(directory, name)
+    found = under(found, directory)
     code = 0 if found.sites else 1
     if as_json:
         return json.dumps(callers_to_json(found, label), indent=2), code

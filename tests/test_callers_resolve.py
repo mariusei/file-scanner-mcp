@@ -64,6 +64,43 @@ def test_callers_lists_actual_call_sites_only(tmp_path, monkeypatch, capsys):
     assert not re.search(r"mod\.py:(1|9|15)\b", out)  # the docstring, comment and string lines
 
 
+def test_callers_paths_carry_the_typed_directory(tmp_path, monkeypatch):
+    """Every address callers prints is runnable from where the caller stands:
+    `defined:` and site lines carry the typed directory, in text and JSON."""
+    from scantool import commands
+
+    pkg = tmp_path / "src" / "pkg"
+    pkg.mkdir(parents=True)
+    (pkg / "mod.py").write_text(CODE)
+    (pkg / "other.py").write_text(
+        "from mod import target\n\n\ndef elsewhere():\n    return target(3)\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    text, code = commands.callers("target", "src/pkg/")
+    assert code == 0
+    assert "defined: src/pkg/mod.py::target (function) src/pkg/mod.py:4" in text
+    assert "\nsrc/pkg/other.py  (1 site)\n" in text
+    assert "  - elsewhere src/pkg/other.py:5   return target(3)" in text
+    assert "\nmod.py" not in text and " mod.py:" not in text
+    document = json.loads(commands.callers("target", "./src/pkg", as_json=True)[0])
+    assert document["definitions"][0]["file"] == "src/pkg/mod.py"
+    assert {s["file"] for s in document["sites"]} == {"src/pkg/mod.py", "src/pkg/other.py"}
+    assert document["coverage"]["by_file"] == {"src/pkg/mod.py": 4, "src/pkg/other.py": 1}
+
+
+def test_callers_typed_dot_adds_no_prefix(tmp_path, monkeypatch):
+    from scantool import commands
+
+    (tmp_path / "mod.py").write_text(CODE)
+    monkeypatch.chdir(tmp_path)
+    text, _ = commands.callers("target", ".")
+    assert "defined: mod.py::target (function) mod.py:4" in text
+    assert "./" not in text
+    document = json.loads(commands.callers("target", None, as_json=True)[0])
+    assert document["definitions"][0]["file"] == "mod.py"
+    assert all(s["file"] == "mod.py" for s in document["sites"])
+
+
 def test_callers_none(tmp_path, monkeypatch, capsys):
     (tmp_path / "mod.py").write_text("def lonely():\n    return 1\n")
     monkeypatch.chdir(tmp_path)
