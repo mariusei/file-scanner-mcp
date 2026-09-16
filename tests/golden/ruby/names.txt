@@ -1,4 +1,4 @@
-<1 file seen, 19 structures shown, 1 excluded (.git/)>
+<1 file seen, 20 structures shown, 1 excluded (.git/)>
 basic.rb (8-39)
 - DataAccess @8 # Data access layer module
   - DatabaseManager @10 # Manages database connections and queries

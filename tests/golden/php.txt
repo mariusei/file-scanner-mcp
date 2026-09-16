@@ -1,4 +1,4 @@
-<1 file seen, 25 structures shown>
+<1 file seen, 26 structures shown>
 basic.php (6-167)
 - App\Database @6
 - use statements @8
@@ -52,6 +52,7 @@ basic.php (6-167)
 - formatName (string $firstName, string $lastName) string @130 # Formats a user's full name.
    function formatName(string $firstName, string $lastName): string {
        return "{$firstName} {$lastName}";
+- DEFAULT_ATTEMPTS = 3 @137
 - Retrier @142 # Retries an action a bounded number of times.
   - __construct (int $attempts = DEFAULT_ATTEMPTS) @145 [public]
      public function __construct(int $attempts = DEFAULT_ATTEMPTS) {

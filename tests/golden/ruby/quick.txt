@@ -1,4 +1,4 @@
-<1 file seen, 19 structures shown>
+<1 file seen, 20 structures shown>
 basic.rb (3-97)
 - require statements @3
 - DataAccess @8 # Data access layer module
@@ -42,6 +42,7 @@ basic.rb (3-97)
    def validate_email(email)
      email.include?('@')
    …
+- DEFAULT_ATTEMPTS = 3 @69
 - Retrier @72 # Retries a block a bounded number of times
   - initialize (attempts = DEFAULT_ATTEMPTS) @73
      def initialize(attempts = DEFAULT_ATTEMPTS)

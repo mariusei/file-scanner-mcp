@@ -374,3 +374,93 @@ def test_surface_lists_module_members_qualified(tmp_path):
     )
     names = [e.name for e in read_surface(str(tmp_path)).exports]
     assert names == ["Outer.Shown", "Outer.Inner.deep", "Outer.helper"]
+
+
+# ── constants: the Python handler's module-level binding rule ────────────────
+
+CONSTANTS_SRC = (
+    "MAX_RETRIES = 3\n"
+    "LIMITS = { soft: 10,\n"
+    "  hard: 20 }\n"
+    "lower = 1\n"
+    "Point = Struct.new(:x, :y)\n"
+    "Anon = Class.new\n"
+    "Double = ->(x) { x * 2 }\n"
+    "Later = proc { }\n"
+    "First, Second = 1, 2\n"
+    "Config::DEBUG = true\n"
+    "module Gem\n"
+    "  VERSION = '1.0'\n"
+    "  class Widget\n"
+    "    KIND = :w\n"
+    "    def run\n"
+    "      LOCAL_ONLY = 1\n"
+    "      local = 2\n"
+    "    end\n"
+    "  end\n"
+    "end\n"
+    "if ENV['X']\n"
+    "  GUARDED = 1\n"
+    "end\n"
+)
+
+
+def _variables(nodes):
+    for node in nodes:
+        if node.type == "variable":
+            yield node
+        yield from _variables(node.children)
+
+
+def test_constants_become_variable_nodes(tmp_path, file_scanner):
+    path = tmp_path / "constants.rb"
+    path.write_text(CONSTANTS_SRC)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    top = {s.name: s for s in structures if s.type == "variable"}
+
+    assert top["MAX_RETRIES"].signature == "= 3"
+    assert top["MAX_RETRIES"].start_line == 1
+    assert top["LIMITS"].signature == "= { soft: 10, hard: 20 }"
+    assert (top["LIMITS"].start_line, top["LIMITS"].end_line) == (2, 3)
+    assert all(not v.synthetic for v in top.values())
+
+
+def test_constants_nest_under_their_module_and_class(tmp_path, file_scanner):
+    path = tmp_path / "constants.rb"
+    path.write_text(CONSTANTS_SRC)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    gem = next(s for s in structures if s.type == "module" and s.name == "Gem")
+    widget = next(c for c in gem.children if c.type == "class")
+
+    version = next(c for c in gem.children if c.type == "variable")
+    assert (version.name, version.signature) == ("VERSION", "= '1.0'")
+    kind = next(c for c in widget.children if c.type == "variable")
+    assert (kind.name, kind.signature) == ("KIND", "= :w")
+
+
+def test_constants_skip_what_is_not_a_single_value(tmp_path, file_scanner):
+    """A lowercase target is a local; a class-, Struct-, lambda- or
+    proc-valued constant is a definition; multiple and qualified assignment
+    name no single value; anything deeper than a module/class body is out."""
+    path = tmp_path / "constants.rb"
+    path.write_text(CONSTANTS_SRC)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    names = {v.name for v in _variables(structures)}
+
+    assert names == {"MAX_RETRIES", "LIMITS", "VERSION", "KIND"}
+    assert not names & {"lower", "local", "Point", "Anon", "Double", "Later"}
+    assert not names & {"First", "Second", "DEBUG", "Config::DEBUG", "LOCAL_ONLY", "GUARDED"}
+
+
+def test_constants_are_not_call_graph_definitions():
+    definitions = get_language(".rb").extract_definitions("constants.rb", CONSTANTS_SRC)
+    assert {d.name for d in definitions} == {"Widget", "run"}, "a module is no definition either"
+
+
+def test_surface_lists_a_constant(tmp_path):
+    (tmp_path / "config.rb").write_text(
+        "DEFAULT_ATTEMPTS = 3\n_HIDDEN = 1\nmodule Gem\n  VERSION = '1.0'\nend\ndef run; end\n"
+    )
+    exports = {e.name: e for e in read_surface(str(tmp_path)).exports}
+    assert set(exports) == {"DEFAULT_ATTEMPTS", "Gem.VERSION", "run"}
+    assert exports["DEFAULT_ATTEMPTS"].line == 1

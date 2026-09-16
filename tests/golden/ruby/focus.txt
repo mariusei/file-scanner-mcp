@@ -34,6 +34,7 @@ basic.rb (3-97)
      38 |   end
 - UserService @42 # Handles user-related operations
 - validate_email (email) @64 # Validate email format
+- DEFAULT_ATTEMPTS = 3 @69
 - Retrier @72 # Retries a block a bounded number of times
 - main () @92 # Main entry point
 [exit 0]
