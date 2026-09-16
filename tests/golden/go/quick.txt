@@ -1,4 +1,4 @@
-<1 file seen, 16 structures shown>
+<1 file seen, 17 structures shown>
 basic.go (4-104)
 - import statements @4
 - Config @10 [public] # Config holds application configuration
@@ -50,6 +50,7 @@ basic.go (4-104)
    	db := NewDatabaseManager("postgresql://localhost/mydb")
    	retryConnect(db)
    	fmt.Println("Application started")
+- MaxRetries = 3 @93 [public] # MaxRetries is the retry budget for connection attempts
 - retryConnect (db *DatabaseManager) error @96 # retryConnect retries the connection until it succeeds or the budget is spent (internal)
    func retryConnect(db *DatabaseManager) error {
     …

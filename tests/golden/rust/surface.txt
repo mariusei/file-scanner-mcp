@@ -1,8 +1,9 @@
-<5 public names, 5 via definition> package rust @WORKTREE
+<6 public names, 6 via definition> package rust @WORKTREE
 basic
   User                                    rust/basic.rs:8
   DatabaseManager                         rust/basic.rs:15
   UserService                             rust/basic.rs:42
   Validate                                rust/basic.rs:64
   validate_email  (email: &str) -> bool   rust/basic.rs:80
+  MAX_ATTEMPTS  = 3                       rust/basic.rs:95
 [exit 0]

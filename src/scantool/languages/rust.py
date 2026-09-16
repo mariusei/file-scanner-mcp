@@ -184,12 +184,46 @@ class RustLanguage(BaseLanguage):
             elif node.type == "use_declaration":
                 self._handle_import(node, parent_structures)
 
+            # Constants and statics of the file or of a mod block
+            elif node.type in ("const_item", "static_item") and self._at_item_scope(node):
+                parent_structures.append(self._extract_value(node, source_code))
+
             else:
                 for child in node.children:
                     traverse(child, parent_structures)
 
         traverse(root, structures)
         return structures
+
+    @staticmethod
+    def _at_item_scope(node: Node) -> bool:
+        """Whether an item is the file's own or directly inside a `mod`
+        block (whose items the walk lists alongside the file's). An
+        associated const in an impl or trait body is a member and is out."""
+        parent = node.parent
+        if parent is None:
+            return False
+        if parent.type == "source_file":
+            return True
+        grand = parent.parent
+        return parent.type == "declaration_list" and grand is not None and grand.type == "mod_item"
+
+    def _extract_value(self, node: Node, source_code: bytes) -> StructureNode:
+        """`const NAME: T = value` or `static [mut] NAME: T = value` as a
+        variable node, with its doc comment and visibility (`pub`,
+        `pub(crate)`, … as on a function, so the surface rule applies)."""
+        name = node.child_by_field_name("name")
+        value = node.child_by_field_name("value")
+        return self._value_node(
+            self._get_node_text(name, source_code) if name is not None else "unnamed",
+            self._get_node_text(value, source_code) if value is not None else None,
+            node.start_point[0] + 1,
+            node.end_point[0] + 1,
+            modifiers=[
+                m for m in self._extract_modifiers(node, source_code) if m.startswith("pub")
+            ],
+            docstring=self._extract_doc_comment(node, source_code),
+        )
 
     def _extract_struct(self, node: Node, source_code: bytes) -> StructureNode:
         """Extract struct with metadata."""

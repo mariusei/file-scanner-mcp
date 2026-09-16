@@ -300,3 +300,83 @@ def test_surface_without_a_facade_is_each_files_pub_items(tmp_path):
 
     (tmp_path / "a.rs").write_text("pub struct A;\nstruct B;\npub(crate) fn c() {}\nimpl A {}\n")
     assert [(e.name, e.via) for e in read_surface(str(tmp_path)).exports] == [("A", "definition")]
+
+
+# ===========================================================================
+# File-scope constants and statics (the rule Python's module constants set)
+# ===========================================================================
+
+CONSTANTS_RS = (
+    "use std::fmt;\n"
+    "\n"
+    "/// Attempts before giving up.\n"
+    "pub const LIMIT: u32 = 3;\n"
+    "static mut COUNTER: i32 = 0;\n"
+    'pub(crate) static NAME: &str = "x";\n'
+    "pub mod inner {\n"
+    "    pub const DEPTH: u8 = 1;\n"
+    "}\n"
+    "pub struct S;\n"
+    "impl S {\n"
+    "    const MEMBER: u8 = 2;\n"
+    "    pub fn f() -> u8 {\n"
+    "        const LOCAL: u8 = 4;\n"
+    "        LOCAL\n"
+    "    }\n"
+    "}\n"
+    "pub const HANDLER: fn() -> u8 = S::f;\n"
+)
+
+
+def test_file_scope_constants_become_variable_nodes(tmp_path, file_scanner):
+    """`const` and `static [mut]` at file scope or directly in a `mod` block
+    are variable nodes, `= value` as signature, the doc comment as docstring
+    and the visibility recorded as on a function."""
+    path = tmp_path / "consts.rs"
+    path.write_text(CONSTANTS_RS)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+    variables = {s.name: s for s in structures if s.type == "variable"}
+
+    assert set(variables) == {"LIMIT", "COUNTER", "NAME", "DEPTH", "HANDLER"}
+    assert variables["LIMIT"].signature == "= 3"
+    assert variables["LIMIT"].modifiers == ["pub"]
+    assert variables["LIMIT"].docstring == "Attempts before giving up."
+    assert variables["COUNTER"].signature == "= 0"
+    assert variables["COUNTER"].modifiers == []
+    assert variables["NAME"].signature == '= "x"'
+    assert variables["NAME"].modifiers == ["pub(crate)"]
+    assert variables["DEPTH"].signature == "= 1"
+    assert variables["HANDLER"].signature == "= S::f"
+    assert all(not v.synthetic for v in variables.values())
+
+
+def test_associated_and_local_constants_are_not_file_scope(tmp_path, file_scanner):
+    """An associated const in an impl body is a member (left to the impl),
+    a const inside a function body is not the file's, a `use` is an import,
+    and a function is bound once (its value in a const is a path, not a
+    second definition)."""
+    path = tmp_path / "consts.rs"
+    path.write_text(CONSTANTS_RS)
+    structures = file_scanner.scan_file(str(path), include_file_metadata=False)
+
+    def walk(nodes):
+        for node in nodes:
+            yield node
+            yield from walk(node.children)
+
+    names = [node.name for node in walk(structures)]
+    assert not set(names) & {"MEMBER", "LOCAL", "fmt", "std::fmt"}
+    assert names.count("f") == 1
+
+
+def test_surface_lists_a_pub_constant_not_a_crate_private_one(tmp_path):
+    from scantool.surface import read_surface
+
+    (tmp_path / "lib.rs").write_text(
+        "pub const LIMIT: u32 = 3;\n"
+        'pub(crate) static NAME: &str = "x";\n'
+        "static mut COUNTER: i32 = 0;\n"
+        "pub fn f() {}\n"
+    )
+    rows = [(e.name, e.kind, e.signature) for e in read_surface(str(tmp_path)).exports]
+    assert rows == [("LIMIT", "variable", "= 3"), ("f", "function", "()")]

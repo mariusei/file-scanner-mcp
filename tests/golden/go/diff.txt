@@ -1,10 +1,11 @@
 <1 file changed, 1 with structural rows> v1 → v2
 
-basic.go  (+1 ~1 =1 -1)
+basic.go  (+1 ~2 =1 -1)
   + Health() bool                                   B:43
   ~ ValidateEmail(email string, strict bool) bool   A:76 → B:73   [signature: (email string) bool → (email string, strict bool) bool]
+  ~ MaxRetries = 5                                  A:93 → B:90   [value: 3 → 5]
   = RemoveUser(s *UserService) (userID int) error   A:71 → B:68   [renamed from DeleteUser]
   - Disconnect(db *DatabaseManager) ()              A:43
 
-summary: 1 file, +1 ~1 =1 -1 structures
+summary: 1 file, +1 ~2 =1 -1 structures
 [exit 0]

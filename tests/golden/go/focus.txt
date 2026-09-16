@@ -19,5 +19,6 @@ basic.go (4-104)
 - ValidateEmail (email string) bool @76 [public] # ValidateEmail validates email format
 - FormatTimestamp (t time.Time) string @81 [public] # FormatTimestamp formats a timestamp to string
 - main () @86 # main is the entry point
+- MaxRetries = 3 @93 [public] # MaxRetries is the retry budget for connection attempts
 - retryConnect (db *DatabaseManager) error @96 # retryConnect retries the connection until it succeeds or the budget is spent (internal)
 [exit 0]

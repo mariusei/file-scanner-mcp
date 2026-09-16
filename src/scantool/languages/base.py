@@ -417,6 +417,31 @@ class BaseLanguage(ABC):
         """Prefix needed for a detached excerpt to parse (e.g. PHP's '<?php')."""
         return ""
 
+    @staticmethod
+    def _value_node(
+        name: str,
+        value: str | None,
+        start_line: int,
+        end_line: int,
+        modifiers: list[str] | None = None,
+        docstring: str | None = None,
+    ) -> StructureNode:
+        """A named file-scope binding as a node (type "variable"), the shape
+        Python's module constants set: the name, `= value` with the value
+        flattened and width-cut (all a budgeted scan shows; a deep scan
+        expands it through expand_value), the lines of the whole declaration,
+        and the visibility the language's surface rule reads. A binding
+        declared without a value (`var mu sync.Mutex`) has no signature."""
+        return StructureNode(
+            type="variable",
+            name=name,
+            start_line=start_line,
+            end_line=end_line,
+            signature=f"= {render_flat_value(value)}" if value else None,
+            modifiers=modifiers or [],
+            docstring=docstring,
+        )
+
     def expand_value(self, node: StructureNode, excerpt: list[str]) -> None:
         """Show a value node whole — a deep scan, where nothing is budgeted.
 
