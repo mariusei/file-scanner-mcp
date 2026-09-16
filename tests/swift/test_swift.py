@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from scantool.scanner import FileScanner
+from scantool.surface import read_surface
 
 
 def test_basic_parsing(file_scanner):
@@ -372,3 +373,49 @@ def test_setter_restriction_is_not_the_declaration_visibility():
     assert members["count"] == ["private(set)"]
     assert members["secret"] == ["private"]
     assert members["name"] == ["fileprivate(set)", "public"]
+
+
+def test_file_scope_bindings_are_variable_nodes():
+    """`let NAME = …` and `var NAME = …` at file scope are variable nodes
+    with `= value` as the signature and the access keyword as modifier,
+    like Python's module values. Not a node: a closure value (a function),
+    a tuple pattern, a comma list, a computed property, a binding inside a
+    function and a member of a type (a property of the type)."""
+    source = (
+        "/// Attempts before giving up\n"
+        "let defaultAttempts = 3\n"
+        'public let name: String = "x"\n'
+        "private var count = 0\n"
+        "let increment = { (a: Int) -> Int in a + 1 }\n"
+        "let (first, second) = (1, 2)\n"
+        "let m = 1, n = 2\n"
+        "var computed: Int { return 1 }\n"
+        "func run() { let inner = 1 }\n"
+        "struct T { static let member = 1 }\n"
+    )
+    structures = FileScanner().scan_content(source, "lib.swift")
+    values = {n.name: n for n in structures if n.type == "variable"}
+    assert set(values) == {"defaultAttempts", "name", "count"}
+    assert values["defaultAttempts"].signature == "= 3"
+    assert values["defaultAttempts"].docstring == "Attempts before giving up"
+    assert values["defaultAttempts"].modifiers == []
+    assert (values["defaultAttempts"].start_line, values["defaultAttempts"].end_line) == (2, 2)
+    assert values["name"].signature == '= "x"'
+    assert values["name"].modifiers == ["public"]
+    assert values["count"].signature == "= 0"
+    assert values["count"].modifiers == ["private"]
+    names = {n.name for n in structures}
+    assert not names & {"increment", "first", "second", "m", "n", "computed", "inner"}
+    member = next(n for n in structures if n.name == "T").children[0]
+    assert (member.name, member.type) == ("member", "property")
+
+
+def test_surface_lists_a_public_constant_and_not_a_private_one(tmp_path):
+    """An internal (unmarked) or public binding is on the surface, a
+    `private` or `fileprivate` one is not — the rule Swift functions follow."""
+    (tmp_path / "Lib.swift").write_text(
+        'let defaultAttempts = 3\npublic let name = "x"\nprivate let secret = 1\n'
+        "fileprivate var hidden = 2\nlet increment = { (a: Int) -> Int in a + 1 }\n"
+    )
+    exports = [(e.name, e.kind) for e in read_surface(str(tmp_path)).exports]
+    assert exports == [("defaultAttempts", "variable"), ("name", "variable")]

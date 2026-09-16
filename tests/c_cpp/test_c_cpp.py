@@ -417,3 +417,54 @@ def test_surface_lists_namespace_members_and_drops_internal_linkage(tmp_path):
     )
     names = [e.name for e in read_surface(str(tmp_path)).exports]
     assert names == ["utils.shown", "utils.deep.far", "api"]
+
+
+def test_file_scope_constants_are_variable_nodes():
+    """A `#define NAME value` and a qualified declaration with an initialiser
+    are variable nodes with `= value` as the signature, like Python's module
+    values. Not a node: a bare `#define` (an include guard), a function-like
+    macro, a declaration without an initialiser, a comma list, a static data
+    member and a static inside a function."""
+    source = (
+        "#ifndef LIB_H\n#define LIB_H\n"
+        "#define MAX_RETRIES 3 // attempts\n"
+        "#define SQUARE(x) ((x) * (x))\n"
+        'static const char *GREETING = "hello // there";\n'
+        "constexpr double SCALE = 1.5;\n"
+        "int counter;\n"
+        "int a = 1, b = 2;\n"
+        "struct S { static const int M = 5; };\n"
+        "void fn(void) { static int inner = 1; }\n"
+        "#endif\n"
+    )
+    structures = FileScanner().scan_content(source, "lib.h")
+    values = {n.name: n for n in structures if n.type == "variable"}
+    assert set(values) == {"MAX_RETRIES", "GREETING", "SCALE"}
+    assert values["MAX_RETRIES"].signature == "= 3"
+    assert values["MAX_RETRIES"].modifiers == []
+    assert (values["MAX_RETRIES"].start_line, values["MAX_RETRIES"].end_line) == (3, 3)
+    assert values["GREETING"].signature == '= "hello // there"'
+    assert values["GREETING"].modifiers == ["static", "const"]
+    assert values["SCALE"].signature == "= 1.5"
+    assert values["SCALE"].modifiers == ["constexpr"]
+    names = {n.name for n in structures}
+    assert not names & {"LIB_H", "SQUARE", "counter", "a", "b", "M", "inner"}
+    struct = next(n for n in structures if n.name == "S")
+    assert not any(c.type == "variable" for c in struct.children)
+
+
+def test_surface_lists_a_public_constant_and_not_a_static_one(tmp_path):
+    """A `#define` and a `const`/`constexpr` at file scope are on the surface,
+    a `static` one is not; through a named namespace, qualified; inside the
+    anonymous namespace, not at all — the same rule as for functions."""
+    (tmp_path / "lib.cpp").write_text(
+        "#define MAX_RETRIES 3\nstatic const int BUFFER = 64;\nconstexpr int LIMIT = 9;\n"
+        "namespace utils { inline constexpr int STEP = 2; static int hidden = 1; }\n"
+        "namespace { const int local = 4; }\n"
+    )
+    exports = [(e.name, e.kind) for e in read_surface(str(tmp_path)).exports]
+    assert exports == [
+        ("MAX_RETRIES", "variable"),
+        ("LIMIT", "variable"),
+        ("utils.STEP", "variable"),
+    ]

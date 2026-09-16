@@ -1,4 +1,4 @@
-<1 file seen, 11 structures shown, 1 excluded (.git/)>
+<1 file seen, 12 structures shown, 1 excluded (.git/)>
 2 hits in 2 structures for /main/
 
 ./basic.c

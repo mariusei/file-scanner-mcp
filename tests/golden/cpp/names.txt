@@ -1,4 +1,4 @@
-<1 file seen, 23 structures shown, 1 excluded (.git/)>
+<1 file seen, 24 structures shown, 1 excluded (.git/)>
 basic.cpp (9-21)
 - utils @9 # Utility namespace
   - validate_email bool (const std::string& email) @12 # Validate email format

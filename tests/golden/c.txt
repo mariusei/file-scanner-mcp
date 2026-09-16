@@ -1,4 +1,4 @@
-<1 file seen, 11 structures shown>
+<1 file seen, 12 structures shown>
 basic.c (3-83)
 - #include directives @3
 - User @8 # User structure definition
@@ -25,6 +25,7 @@ basic.c (3-83)
 - Status @45 # Status codes enumeration
    enum Status {
        …
+- MAX_RETRIES = 3 @52 # Retry budget for connection attempts
 - Pool @55 # Connection pool, its address record nested in it
    struct Pool {
        struct Address {

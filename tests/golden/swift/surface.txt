@@ -1,4 +1,4 @@
-<10 public names, 10 via definition> package swift @WORKTREE
+<11 public names, 11 via definition> package swift @WORKTREE
 basic
   Config                                               swift/basic.swift:7
   Logger                                               swift/basic.swift:14
@@ -10,4 +10,5 @@ basic
   formatTimestamp  (_ date: Date) -> String            swift/basic.swift:109
   UserID  = Int                                        swift/basic.swift:116
   CompletionHandler  = (Result<Bool, Error>) -> Void   swift/basic.swift:117
+  defaultAttempts  = 3                                 swift/basic.swift:120
 [exit 0]

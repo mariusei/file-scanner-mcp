@@ -14,7 +14,7 @@ from pathlib import Path
 import tree_sitter_cpp
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import BaseLanguage, render_flat_value
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -22,6 +22,10 @@ from .models import (
     ImportInfo,
     StructureNode,
 )
+
+# A `//` comment at the end of a macro's value (tree-sitter keeps it inside
+# the preproc_arg); a `//` inside a string literal is part of the value.
+_TRAILING_LINE_COMMENT = re.compile(r'^((?:[^"/]|"(?:[^"\\]|\\.)*"|/(?!/))*)//.*$')
 
 
 class CCppLanguage(BaseLanguage):
@@ -72,6 +76,11 @@ class CCppLanguage(BaseLanguage):
     # (see traverse_members: struct default public, class default private).
     _ACCESS_LABELS = frozenset({"public", "private", "protected"})
     _INTERNAL_LINKAGE = frozenset({"static", "internal"})
+
+    #: A file-scope declaration is a constant node when one of these qualifies
+    #: it and it has an initialiser; an unqualified global is left alone.
+    _CONSTANT_QUALIFIERS = frozenset({"static", "const", "constexpr"})
+
     _ANONYMOUS_NAMESPACE = "<anonymous>"
     #: A namespace's members are the package's names: the surface lists
     #: `utils` and `utils.validate_email` (QUALIFIER, not the source's `::`).
@@ -295,12 +304,19 @@ class CCppLanguage(BaseLanguage):
                 if func_node:
                     parent_structures.append(func_node)
 
-            # Function declarations
+            # A function prototype, or a file-scope constant
             elif node.type == "declaration":
-                # Check if this is a function declaration
-                func_node = self._extract_function_declaration(node, source_code, root)
-                if func_node:
-                    parent_structures.append(func_node)
+                decl_node = self._extract_function_declaration(
+                    node, source_code, root
+                ) or self._extract_constant(node, source_code)
+                if decl_node:
+                    parent_structures.append(decl_node)
+
+            # Object-like macros: `#define NAME value`
+            elif node.type == "preproc_def":
+                define_node = self._extract_define(node, source_code)
+                if define_node:
+                    parent_structures.append(define_node)
 
             # Method definitions (inside classes)
             elif node.type == "field_declaration":
@@ -442,7 +458,7 @@ class CCppLanguage(BaseLanguage):
         comment = self._extract_comment(node, source_code)
 
         # Get modifiers
-        modifiers = self._extract_function_modifiers(node, source_code)
+        modifiers = self._extract_declaration_modifiers(node, source_code)
 
         # Get attributes
         attributes = self._extract_attributes(node, source_code)
@@ -508,7 +524,7 @@ class CCppLanguage(BaseLanguage):
         comment = self._extract_comment(node, source_code)
 
         # Get modifiers
-        modifiers = self._extract_function_modifiers(node, source_code)
+        modifiers = self._extract_declaration_modifiers(node, source_code)
 
         return StructureNode(
             type=type_name,
@@ -520,6 +536,65 @@ class CCppLanguage(BaseLanguage):
             modifiers=modifiers,
             children=[],
         )
+
+    def _extract_define(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """An object-like macro with a value, `#define NAME value`: a variable
+        node like Python's `NAME = value`. A bare `#define NAME` (an include
+        guard, a feature flag) binds no value, and a function-like macro is
+        a preproc_function_def, never seen here."""
+        name = node.child_by_field_name("name")
+        value = node.child_by_field_name("value")
+        if name is None or value is None:
+            return None
+        joined = self._get_node_text(value, source_code).replace("\\\n", " ")
+        text = _TRAILING_LINE_COMMENT.sub(r"\1", joined)
+        return StructureNode(
+            type="variable",
+            name=self._get_node_text(name, source_code),
+            start_line=node.start_point[0] + 1,
+            end_line=value.end_point[0] + 1,
+            signature=f"= {render_flat_value(text)}",
+            docstring=self._extract_comment(node, source_code),
+        )
+
+    def _extract_constant(self, node: Node, source_code: bytes) -> StructureNode | None:
+        """A file-scope constant: one `static`, `const` or `constexpr`
+        declarator with an initialiser (`static const int X = 3;`,
+        `const char *NAME = "…";`, `inline constexpr double Z = 4.5;`).
+        Not one named value, so not a node: a declaration without an
+        initialiser (`int counter;`, `extern int e;`), an unqualified
+        global, a comma list (`int a = 1, b = 2;`) and an out-of-class
+        member definition (`int Counter::count = 0;`). A static data member
+        is a field_declaration and stays with its class."""
+        modifiers = self._extract_declaration_modifiers(node, source_code)
+        declarators = node.children_by_field_name("declarator")
+        if not set(modifiers) & self._CONSTANT_QUALIFIERS or len(declarators) != 1:
+            return None
+        value = declarators[0].child_by_field_name("value")
+        name = self._declared_name(declarators[0].child_by_field_name("declarator"), source_code)
+        if value is None or name is None:
+            return None
+        return StructureNode(
+            type="variable",
+            name=name,
+            start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1,
+            signature=f"= {render_flat_value(self._get_node_text(value, source_code))}",
+            docstring=self._extract_comment(node, source_code),
+            modifiers=modifiers,
+        )
+
+    def _declared_name(self, declarator: Node | None, source_code: bytes) -> str | None:
+        """The identifier a declarator binds, through pointer, reference,
+        array and parenthesised declarators; None when it is not a plain
+        identifier (a qualified name defines a member declared elsewhere)."""
+        while declarator is not None and declarator.type.endswith("_declarator"):
+            declarator = declarator.child_by_field_name("declarator") or (
+                declarator.named_children[-1] if declarator.named_children else None
+            )
+        if declarator is None or declarator.type != "identifier":
+            return None
+        return self._get_node_text(declarator, source_code)
 
     def _extract_method(self, node: Node, source_code: bytes) -> StructureNode | None:
         """Extract method from field declaration."""
@@ -651,7 +726,7 @@ class CCppLanguage(BaseLanguage):
 
         return modifiers
 
-    def _extract_function_modifiers(self, node: Node, source_code: bytes) -> list[str]:
+    def _extract_declaration_modifiers(self, node: Node, source_code: bytes) -> list[str]:
         """Extract modifiers for functions (static, inline, virtual, const, etc.)."""
         modifiers = []
 

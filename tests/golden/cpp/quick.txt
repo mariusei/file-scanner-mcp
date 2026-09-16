@@ -1,4 +1,4 @@
-<1 file seen, 23 structures shown>
+<1 file seen, 24 structures shown>
 basic.cpp (3-151)
 - #include directives @3
 - utils @9 # Utility namespace
@@ -53,6 +53,7 @@ basic.cpp (3-151)
 - max_value T (T a, T b) @121
    T max_value(T a, T b) {
     …
+- MAX_RETRIES = 3 @126 [constexpr] # Retry budget for connection attempts
 - retry_connect bool (database::DatabaseManager& db) @129 [static] # Retry the connection until it succeeds or the budget is spent (internal)
    static bool retry_connect(database::DatabaseManager& db) {
     …
