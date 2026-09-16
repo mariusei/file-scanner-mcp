@@ -182,7 +182,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     ),
     Capability(
         command="overlap",
-        usage=("sct overlap  <base> <branch>... [--repo DIR]",),
+        usage=("sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K]",),
         short="structures 2+ branches touch, collisions, merge order",
         long=(
             "N branches against one base, each at its own merge-base: structures "

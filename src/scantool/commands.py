@@ -126,9 +126,16 @@ def surface(
 
 
 def overlap(
-    base: str, branches: list[str], repo: str | None = None, as_json: bool = False
+    base: str,
+    branches: list[str],
+    repo: str | None = None,
+    path: str | None = None,
+    kind: str | None = None,
+    as_json: bool = False,
 ) -> tuple[str, int]:
-    from .overlap import format_overlap, overlap_to_json
+    """path: only files under this repository-relative prefix; kind: only
+    structures of this node type (as scan prints it). Empty means all."""
+    from .overlap import Scope, format_overlap, overlap_to_json
     from .overlap import overlap as compute
     from .structural_diff import repo_top, verify_ref
 
@@ -140,7 +147,7 @@ def overlap(
         if not verify_ref(top, ref):
             raise RefError(f"unknown ref {ref!r} in {top}")
     try:
-        result = compute(top, base, branches)
+        result = compute(top, base, branches, Scope(path, kind))
     except ValueError as error:
         raise RefError(str(error)) from error
     if as_json:
