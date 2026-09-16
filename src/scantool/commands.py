@@ -106,7 +106,7 @@ def surface(
     against: str | None = None,
     as_json: bool = False,
 ) -> tuple[str, int]:
-    from .surface import format_surface, format_surface_diff, surface_to_json
+    from .surface import diff_direction, format_surface, format_surface_diff, surface_to_json
 
     label_a = f"@{ref}" if ref else "@WORKTREE"
     surface_a = _surface_at(package_dir, ref)
@@ -114,7 +114,7 @@ def surface(
         surface_b = _surface_at(package_dir, against)
         if as_json:
             document = {
-                "direction": f"{label_a} → @{against}",
+                "direction": diff_direction(label_a, f"@{against}"),
                 "a": surface_to_json(surface_a, label_a),
                 "b": surface_to_json(surface_b, f"@{against}"),
             }
