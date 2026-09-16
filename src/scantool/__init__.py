@@ -1,4 +1,4 @@
-"""File Scanner MCP - Beautiful file structure scanner with tree formatting."""
+"""Scantool: code structure for coding agents, as an MCP server and the sct shell command."""
 
 import os
 import sys
