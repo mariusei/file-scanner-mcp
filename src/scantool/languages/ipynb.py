@@ -50,11 +50,14 @@ SCOPE:
   ✓ Raw cells as addressable, diffable nodes with no inner structure
   ✓ Both documented shapes of `source` (list of lines, or one string)
   ✓ IPython magics and shell escapes masked so they cannot derail a cell's parse
-  ✗ No extract_calls: notebook cells are exploratory, and making them call-graph
-    nodes changes the peer cohorts consensus.py mines. That is a measurement,
-    not a default, so the notebook contributes definitions and imports but no
-    edges. CLAIMS_DEAD stays False accordingly — a notebook definition is never
-    called dead.
+  ✓ Calls from the code cells, through the Python handler with the notebook's
+    own definitions, so a notebook is a call-graph node like a module: callers,
+    divergence, hot functions and the diff's call relations see its edges. A
+    call at the top of a cell is module level (caller_name None), the same
+    convention as top-level code in a .py file.
+  ✗ CLAIMS_DEAD stays False: a notebook definition with no caller in the corpus
+    is run from the cells themselves and the kernel, channels no call graph
+    sees, so the framework never calls one dead.
   ✗ No outputs: execution results are data, not structure
 """
 
@@ -62,17 +65,28 @@ import json
 import re
 import textwrap
 from bisect import bisect_right
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Protocol, TypeVar
 
 from .base import BaseLanguage
 from .markdown import MarkdownLanguage
-from .models import EntryPointInfo, ImportInfo, StructureNode
+from .models import CallInfo, DefinitionInfo, EntryPointInfo, ImportInfo, StructureNode
 from .python import PythonLanguage
 
 # A line is IPython, not Python, when it opens with a magic (%timeit, %%bash)
 # or a shell escape (!pip install). `% b` and `!= b` are excluded: those are
 # operators on a continuation line.
 _IPYTHON_LINE = re.compile(r"[ \t]*(?:%{1,2}[A-Za-z_]|![^=\s])")
+
+
+class _Lined(Protocol):
+    """What a semantic pass returns: a record addressed by one line."""
+
+    line: int
+
+
+L = TypeVar("L", bound=_Lined)
 
 
 @dataclass
@@ -285,28 +299,41 @@ class JupyterLanguage(BaseLanguage):
     # Semantic Analysis
     # ===========================================================================
 
-    def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
-        """Python imports from the code cells, on their .ipynb lines.
-
-        Markdown cells carry links, not dependencies: a notebook's imports are
-        what its code imports.
-        """
-        imports = []
+    def _python_pass(self, content: str, extract: Callable[[str], list[L]]) -> list[L]:
+        """One Python semantic pass over every code cell, each record moved from
+        its in-cell line onto the .ipynb line. Markdown cells carry links and
+        prose, not dependencies, entry points or calls."""
+        found: list[L] = []
         for cell in self._cells(content):
             if cell.cell_type != "code":
                 continue
-            for info in self._cell_languages["code"].extract_imports(file_path, cell.text):
+            for info in extract(cell.text):
                 info.line = _at(cell.file_lines, info.line)
-                imports.append(info)
-        return imports
+                found.append(info)
+        return found
+
+    def extract_imports(self, file_path: str, content: str) -> list[ImportInfo]:
+        """Python imports from the code cells, on their .ipynb lines."""
+        python = self._cell_languages["code"]
+        return self._python_pass(content, lambda text: python.extract_imports(file_path, text))
 
     def find_entry_points(self, file_path: str, content: str) -> list[EntryPointInfo]:
         """Python entry points declared in the code cells, on their .ipynb lines."""
-        entry_points = []
-        for cell in self._cells(content):
-            if cell.cell_type != "code":
-                continue
-            for ep in self._cell_languages["code"].find_entry_points(file_path, cell.text):
-                ep.line = _at(cell.file_lines, ep.line)
-                entry_points.append(ep)
-        return entry_points
+        python = self._cell_languages["code"]
+        return self._python_pass(content, lambda text: python.find_entry_points(file_path, text))
+
+    def extract_calls(
+        self, file_path: str, content: str, definitions: list[DefinitionInfo]
+    ) -> list[CallInfo]:
+        """Python calls from the code cells, on their .ipynb lines.
+
+        `definitions` are the notebook's own (code_map extracts them from this
+        handler's scan), passed through unchanged: the Python handler attributes
+        a call to the nearest enclosing definition among them, and to no one
+        (module level) at the top of a cell — so a notebook and a module obey
+        the same caller-resolution contract.
+        """
+        python = self._cell_languages["code"]
+        return self._python_pass(
+            content, lambda text: python.extract_calls(file_path, text, definitions)
+        )

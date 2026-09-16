@@ -34,6 +34,7 @@ _CONTRACT_CLEAN = [
     "zig",
     "ruby",
     "java",
+    "ipynb",
 ]
 
 
