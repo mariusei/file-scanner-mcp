@@ -173,9 +173,9 @@ class CSharpLanguage(BaseLanguage):
             if node.type == "using_directive":
                 self._handle_using(node, parent_structures)
 
-            # Namespace declaration
-            elif node.type in ("namespace_declaration", "file_scoped_namespace_declaration"):
-                self._handle_namespace(node, parent_structures, source_code, root, traverse)
+            # Block namespace; the file-scoped form is claimed by traverse_siblings
+            elif node.type == "namespace_declaration":
+                self._handle_namespace(node, parent_structures, source_code, traverse)
 
             # Classes
             elif node.type == "class_declaration":
@@ -243,9 +243,27 @@ class CSharpLanguage(BaseLanguage):
                 parent_structures.append(constructor_node)
 
             else:
-                # Keep traversing
-                for child in node.children:
-                    traverse(child, parent_structures)
+                traverse_siblings(node.children, parent_structures)
+
+        def traverse_siblings(children: list[Node], parent_structures: list):
+            """Walk siblings in order. A file-scoped `namespace X;` is a node
+            that ends on its own line in the grammar, yet in the language it
+            encloses every declaration after it: those siblings are nested
+            under the namespace node, which ends where the last sibling ends,
+            so both namespace forms give the same tree. A second `namespace Y;`
+            (illegal C#) nests into the first rather than replacing it."""
+            target = parent_structures
+            for child in children:
+                if child.type == "file_scoped_namespace_declaration":
+                    namespace_node = self._namespace_node(
+                        child, source_code, end_line=children[-1].end_point[0] + 1
+                    )
+                    if namespace_node is None:
+                        continue
+                    target.append(namespace_node)
+                    target = namespace_node.children
+                else:
+                    traverse(child, target)
 
         traverse(root, structures)
         return structures
@@ -699,33 +717,33 @@ class CSharpLanguage(BaseLanguage):
 
         return None
 
-    def _handle_namespace(
-        self, node: Node, parent_structures: list, source_code: bytes, root: Node, traverse_func
-    ):
-        """Handle namespace declaration."""
+    def _namespace_node(
+        self, node: Node, source_code: bytes, end_line: int
+    ) -> StructureNode | None:
+        """The namespace node for either declaration form; None when unnamed."""
         name_node = node.child_by_field_name("name")
+        if name_node is None:
+            return None
+        return StructureNode(
+            type="namespace",
+            name=self._get_node_text(name_node, source_code),
+            start_line=node.start_point[0] + 1,
+            end_line=end_line,
+            children=[],
+        )
 
-        if name_node:
-            namespace_name = self._get_node_text(name_node, source_code)
-            namespace_node = StructureNode(
-                type="namespace",
-                name=namespace_name,
-                start_line=node.start_point[0] + 1,
-                end_line=node.end_point[0] + 1,
-                children=[],
-            )
-            parent_structures.append(namespace_node)
-
-            # Traverse children within namespace
-            body = node.child_by_field_name("body")
-            if body:
-                for child in body.children:
-                    traverse_func(child, namespace_node.children)
-            else:
-                # File-scoped namespace - traverse remaining children
-                for child in node.children:
-                    if child.start_point[0] > node.start_point[0]:
-                        traverse_func(child, namespace_node.children)
+    def _handle_namespace(
+        self, node: Node, parent_structures: list, source_code: bytes, traverse_func
+    ):
+        """Block namespace: the members are the body's children."""
+        namespace_node = self._namespace_node(node, source_code, end_line=node.end_point[0] + 1)
+        if namespace_node is None:
+            return
+        parent_structures.append(namespace_node)
+        body = node.child_by_field_name("body")
+        if body:
+            for child in body.children:
+                traverse_func(child, namespace_node.children)
 
     def _handle_using(self, node: Node, parent_structures: list):
         """Group using directives together."""

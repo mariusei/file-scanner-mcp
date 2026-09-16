@@ -323,8 +323,6 @@ def test_csharp_surface_is_the_public_types_inside_the_namespace(tmp_path):
     assert names == [
         ("MyApp.Core.IApi", "interface", "Lib"),
         ("MyApp.Core.Widget", "class", "Lib"),
-        # a file-scoped `namespace X;` has no block, so the handler yields the
-        # declarations as siblings, not members: bare here (handler candidate)
-        ("Token", "record", "Scoped"),
+        ("MyApp.Core.Token", "record", "Scoped"),
     ]
     assert not BaseLanguage.SURFACE_CONTAINER_TYPES
