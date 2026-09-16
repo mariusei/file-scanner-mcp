@@ -11,7 +11,8 @@ authors = [
 keywords = [
     "mcp", "mcp-server", "model-context-protocol",
     "code-analysis", "tree-sitter", "claude", "claude-code",
-    "file-scanner", "structure-extraction", "static-analysis",
+    "code-structure-mcp", "structure-extraction", "static-analysis",
+    "coding-agent", "cursor", "call-graph", "structural-diff", "sct",
     "ast", "code-structure", "codebase-analysis", "ai-tools",
     "developer-tools",
 ]
@@ -71,11 +72,11 @@ scantool-http = "scantool.server:http_main"
 sct = "scantool.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mariusei/file-scanner-mcp"
-Repository = "https://github.com/mariusei/file-scanner-mcp"
-Issues = "https://github.com/mariusei/file-scanner-mcp/issues"
-Changelog = "https://github.com/mariusei/file-scanner-mcp/releases"
-"MCP Registry" = "https://glama.ai/mcp/servers/@mariusei/file-scanner-mcp"
+Homepage = "https://github.com/mariusei/scantool"
+Repository = "https://github.com/mariusei/scantool"
+Issues = "https://github.com/mariusei/scantool/issues"
+Changelog = "https://github.com/mariusei/scantool/releases"
+"MCP Registry" = "https://glama.ai/mcp/servers/@mariusei/scantool"
 
 [build-system]
 requires = ["hatchling"]
