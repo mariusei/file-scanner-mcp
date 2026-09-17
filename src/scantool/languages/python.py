@@ -851,6 +851,36 @@ class PythonLanguage(BaseLanguage):
 
         return None
 
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """`from pkg.sub import mod` binds the package and, for each name
+        that is a submodule, that module too (Python imports both). The
+        base names only the package, which is why `from pkg import mod`
+        never counted as an importer of mod."""
+        module = imp.target_module
+        if imp.import_type == "relative" and module.startswith("."):
+            if module != ".":
+                return []  # above the scanned root
+            module = ""  # `from . import x` in a top-level file: the root is the package
+        targets = []
+        if module:
+            target = self.resolve_import_to_file(
+                module, imp.source_file, all_files, definitions_map
+            )
+            if target:
+                targets.append(target)
+        if imp.import_type in ("from_import", "relative"):
+            joiner = "/" if imp.import_type == "relative" else "."
+            for name in imp.imported_names:
+                submodule = f"{module}{joiner}{name}" if module else name
+                target = self.resolve_import_to_file(
+                    submodule, imp.source_file, all_files, definitions_map
+                )
+                if target and target not in targets:
+                    targets.append(target)
+        return targets
+
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format Python entry point for display."""
         if ep.type == "main_function":

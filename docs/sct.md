@@ -19,7 +19,7 @@ sct search   <dir> <pattern> --names --decorator RE   one row per structure, dec
 sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
 sct surface  <package-dir> [--ref REF] [--against REF] [--part ID]
 sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K] [--part ID]
-sct callers  <name> [--dir DIR] [--ref REF]
+sct callers  <name|file> [--dir DIR] [--ref REF]
 sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
 sct divergence <dir> [--max-findings N]
 sct history  <path::name | path:line> [--ref REF] [--repo DIR]
@@ -128,7 +128,9 @@ line.
 **`sct callers`** lists the actual call sites of a function or method across
 a directory, each with its enclosing function and `path:line`, with the
 definitions first. Mentions in docstrings, comments and strings are not
-calls and never appear.
+calls and never appear. Given a file instead of a name, it lists the files
+that import it with the import line, from the same statically resolved
+import graph as the preview's `used by`.
 
 **`sct resolve`** translates `path:line` or `path::name` from one ref to
 another: the enclosing structure with its start and end at `--from`, and

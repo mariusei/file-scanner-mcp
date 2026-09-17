@@ -1093,6 +1093,21 @@ class BaseLanguage(ABC):
         """
         return None
 
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """Every project file one import statement binds, in order.
+
+        The default is the one file resolve_import_to_file names for the
+        statement's target module. Override when a statement can bind more
+        than the module it names: Python's `from pkg import mod` binds the
+        package and the submodule, a Rust `use crate::{a, b}` two modules.
+        """
+        target = self.resolve_import_to_file(
+            imp.target_module, imp.source_file, all_files, definitions_map
+        )
+        return [target] if target else []
+
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format entry point for display.
 

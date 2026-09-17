@@ -225,8 +225,11 @@ class CodeMap:
                 del cache[stale]
 
         # Phase 3: Build import graph (only with analyzed files)
-        import_graph = self._build_import_graph(all_imports, analyzed_files, type_to_file)
+        import_graph, import_sites = self._build_import_graph(
+            all_imports, analyzed_files, type_to_file
+        )
         result.import_graph = import_graph
+        result.import_sites = import_sites
 
         # Phase 4: Calculate file-level centrality
         self._calculate_centrality(import_graph)
@@ -318,7 +321,7 @@ class CodeMap:
         imports: list[ImportInfo],
         all_files: list[str],
         type_to_file: dict[str, str] | None = None,
-    ) -> dict[str, FileNode]:
+    ) -> tuple[dict[str, FileNode], dict[str, list[ImportInfo]]]:
         """
         Build import graph from imports.
 
@@ -328,11 +331,14 @@ class CodeMap:
             type_to_file: Optional map of type names to file paths (for Swift intra-module deps)
 
         Returns:
-            Dict mapping file path to FileNode
+            (file path -> FileNode, target file -> the import statements that
+            bind it). imported_by is derived from the second, so the preview's
+            `used by N files` and `sct callers <file>` are one number.
         """
 
         now = time.time()
         type_to_file = type_to_file or {}
+        sites: dict[str, list[ImportInfo]] = {}
 
         # Initialize nodes for all files with metadata
         graph = {}
@@ -359,46 +365,30 @@ class CodeMap:
             if source_file not in graph:
                 graph[source_file] = FileNode(path=source_file)
 
-            # Try to resolve target module to a file
-            target_file = self._resolve_import_to_file(imp, all_files, type_to_file)
-
-            if target_file and target_file in graph:
-                # Skip self-references
-                if target_file == source_file:
+            for target_file in self._resolve_import_targets(imp, all_files, type_to_file):
+                if target_file not in graph or target_file == source_file:
                     continue
-
-                # Add edge to graph
+                sites.setdefault(target_file, []).append(imp)
                 if target_file not in graph[source_file].imports:
                     graph[source_file].imports.append(target_file)
-
                 if source_file not in graph[target_file].imported_by:
                     graph[target_file].imported_by.append(source_file)
 
-        return graph
+        return graph, sites
 
-    def _resolve_import_to_file(
+    def _resolve_import_targets(
         self,
         imp: ImportInfo,
         all_files: list[str],
         definitions_map: dict[str, str],
-    ) -> str | None:
-        """
-        Resolve import to file path by delegating to language-specific analyzer.
-
-        Args:
-            imp: ImportInfo object containing source file and target module
-            all_files: List of all files in project
-            definitions_map: Map of type/definition names to file paths
-
-        Returns:
-            Relative file path or None
-        """
+    ) -> list[str]:
+        """The project files one import statement binds, resolved by the
+        language handler of the importing file; empty for an external or
+        unresolvable import."""
         analyzer = self._get_analyzer(imp.source_file)
         if analyzer:
-            return analyzer.resolve_import_to_file(
-                imp.target_module, imp.source_file, all_files, definitions_map
-            )
-        return None
+            return analyzer.resolve_import_targets(imp, all_files, definitions_map)
+        return []
 
     def _calculate_centrality(self, graph: dict[str, FileNode]) -> None:
         """
@@ -944,7 +934,7 @@ class CodeMap:
 # `git`'s title carries the activity window and is built by the server, which
 # owns the git signals.
 PART_TITLES: dict[str, str] = {
-    "core": "CORE FILES (by centrality)",
+    "core": "CORE FILES (by centrality; used by = files that import it, resolved statically)",
     "entry": "ENTRY POINTS",
     "structure": "STRUCTURE",
     "archetypes": "FILE ARCHETYPES",

@@ -242,6 +242,9 @@ class CodeMapResult:
     files: list[FileNode] = field(default_factory=list)
     entry_points: list[EntryPointInfo] = field(default_factory=list)
     import_graph: dict[str, FileNode] = field(default_factory=dict)
+    # target file -> the import statements that bind it; FileNode.imported_by
+    # is derived from this, so the count and the sites cannot disagree
+    import_sites: dict[str, list[ImportInfo]] = field(default_factory=dict)
     clusters: dict[str, list[str]] = field(default_factory=dict)
 
     # Layer 2: Structure-level analysis

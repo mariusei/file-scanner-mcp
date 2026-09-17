@@ -62,7 +62,7 @@ in 3 to 5k tokens. What it printed on scantool's own source, trimmed:
   cli.py:main() @562
   languages/__init__.py:__all__ (13 items)
 
-━━━ CORE FILES (by centrality) ━━━
+━━━ core: CORE FILES (by centrality; used by = files that import it, resolved statically) ━━━
   languages/models.py: imports 0, used by 33 files
      class StructureNode [called by 178]
 ```
@@ -111,6 +111,14 @@ sct callers condense_excerpt --dir src/scantool
 Actual call sites with their enclosing function and `path:line`, definitions
 first. Mentions in comments, docstrings and strings are not calls and never
 appear.
+
+```
+sct callers src/scantool/code_map.py
+```
+
+Given a file, the files that import it, each with the import line: the
+number the preview prints as `used by N files`, computed from the same
+statically resolved import graph.
 
 ### Will these branches collide when merged?
 
@@ -227,7 +235,7 @@ sct search   <dir> <pattern> --names --decorator RE   one row per structure, dec
 sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
 sct surface  <package-dir> [--ref REF] [--against REF] [--part ID]
 sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K] [--part ID]
-sct callers  <name> [--dir DIR] [--ref REF]
+sct callers  <name|file> [--dir DIR] [--ref REF]
 sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
 sct divergence <dir> [--max-findings N]
 sct history  <path::name | path:line> [--ref REF] [--repo DIR]

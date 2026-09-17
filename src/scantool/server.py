@@ -1607,7 +1607,8 @@ def callers(
     name may be bare ("target") or qualified with the language's own
     qualifier ("Box.method") to disambiguate same-named methods on different
     classes; a bare name matches call sites regardless of which class holds
-    the method.
+    the method. A file path (or `path::`) instead of a name answers with the
+    files importing that file, each with the import line.
 
     Args (tiered — most calls need only Common):
         Common:

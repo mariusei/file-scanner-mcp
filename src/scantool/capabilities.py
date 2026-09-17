@@ -208,14 +208,16 @@ CAPABILITIES: tuple[Capability, ...] = (
     ),
     Capability(
         command="callers",
-        usage=("sct callers  <name> [--dir DIR] [--ref REF]",),
+        usage=("sct callers  <name|file> [--dir DIR] [--ref REF]",),
         short="actual call sites and their calling function",
         long=(
             "Actual call sites of a function or method across a directory, never a "
             "mention in prose, a comment, a docstring or a string literal; each with "
             "its enclosing function and path:line, the definition(s) first. A qualified "
             "name (Class.method) narrows the definitions; which definition a site binds "
-            "to is not resolved, and the answer says so."
+            "to is not resolved, and the answer says so. Given a file instead of a name, "
+            "the files that import it with the import line, from the same statically "
+            "resolved import graph as the preview's `used by`."
         ),
         tools={"callers": ""},
         hints=("callers <name>", "callers <name> --dir <dir>"),
