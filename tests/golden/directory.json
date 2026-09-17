@@ -138,7 +138,7 @@
           "name": "Task queue notes",
           "start_line": 1,
           "end_line": 12,
-          "docstring": "Liten, stabil fixture for golden-test av scan_directory-for\u2026",
+          "docstring": "Liten, stabil fixture for golden-test av scan_directory-formatet.",
           "children": [
             {
               "type": "heading-2",
@@ -152,7 +152,7 @@
               "name": "Open questions",
               "start_line": 9,
               "end_line": 12,
-              "docstring": "Should `drain` preserve insertion order for equal prioritie\u2026"
+              "docstring": "Should `drain` preserve insertion order for equal priorities?"
             }
           ]
         }

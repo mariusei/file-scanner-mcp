@@ -469,13 +469,37 @@ def test_section_gist_after_setext_heading(file_scanner, tmp_path):
     assert _by_name(structures, "Title").docstring == "Under the underline."
 
 
-def test_section_gist_is_cut_to_the_value_width(file_scanner, tmp_path):
+def test_section_gist_is_the_first_sentence_whole(file_scanner, tmp_path):
     from scantool.languages.base import MAX_EXPR_LEN
 
-    structures = _scan_md(file_scanner, tmp_path, "# Top\n\n" + "word " * 40 + "\n")
+    first = "This first sentence runs well past the sixty-character row width of a value."
+    assert len(first) > MAX_EXPR_LEN
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        f"# Long\n\n{first} Second sentence.\n\n"
+        '# Quoted\n\nHe said "stop here." Then more.\n\n'
+        "# Bracketed\n\nSee the guide (section 2)! And on.\n\n"
+        "# Eol\n\nEnds at the line end?\ncontinues below\n\n"
+        "# Dotted\n\nRun `v0.20.0` on file.md then stop. Next.\n",
+    )
+    assert _by_name(structures, "Long").docstring == first
+    assert _by_name(structures, "Quoted").docstring == 'He said "stop here."'
+    assert _by_name(structures, "Bracketed").docstring == "See the guide (section 2)!"
+    assert _by_name(structures, "Eol").docstring == "Ends at the line end?"
+    assert _by_name(structures, "Dotted").docstring == "Run `v0.20.0` on file.md then stop."
+
+
+def test_section_gist_without_a_sentence_end_is_cut_to_the_value_width(file_scanner, tmp_path):
+    from scantool.languages.base import MAX_EXPR_LEN
+
+    structures = _scan_md(
+        file_scanner, tmp_path, "# Top\n\n" + "word " * 40 + "\n\n# Lead\n\nTo install, run:\n"
+    )
     gist = _by_name(structures, "Top").docstring
     assert len(gist) == MAX_EXPR_LEN
     assert gist.startswith("word word") and gist.endswith("…")
+    assert _by_name(structures, "Lead").docstring == "To install, run:"
 
 
 def test_quick_scan_row_carries_the_gist(tmp_path, capsys):

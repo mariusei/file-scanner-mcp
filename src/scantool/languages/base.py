@@ -109,23 +109,30 @@ def render_flat_value(source_text: str) -> str:
 _SECTION_FRAME_LINE = re.compile(r"^(?:```|~~~|\||\[?!\[|<|[-*_]{3,}\s*$)")
 # A list or blockquote marker at the start of a line; what follows is prose.
 _SECTION_LINE_MARKER = re.compile(r"^(?:[-*+]|\d+[.)]|>)(?:\s+|$)")
+# Where a sentence ends inside a line: terminal punctuation, any closing
+# quote or bracket, then a space or the end of the line.
+_SENTENCE_END = re.compile(r"[.!?][\"'”’)\]]*(?:\s|$)")
 
 
 def section_gist(body: list[str]) -> str | None:
-    """The gist of a document section: its first line of prose, rendered
-    the way a value node's signature is (whitespace flattened, cut to
-    MAX_EXPR_LEN). `body` is the section's own lines, after the heading and
-    before its first child heading; the caller blanks the lines the parser
-    knows to be code. Frame lines are skipped; a list item's text stands
-    in for a paragraph, since a section is often only the list. A section
-    with no prose has no gist."""
+    """The gist of a document section: the first sentence of its first
+    line of prose, whole; when no sentence ends on that line (hard-wrapped
+    text, a lead-in ending in a colon), the line rendered the way a value
+    node's signature is (whitespace flattened, cut to MAX_EXPR_LEN).
+    `body` is the section's own lines, after the heading and before its
+    first child heading; the caller blanks the lines the parser knows to
+    be code. Frame lines are skipped; a list item's text stands in for a
+    paragraph, since a section is often only the list. A section with no
+    prose has no gist."""
     for line in body:
         text = line.strip()
         if not text or _SECTION_FRAME_LINE.match(text):
             continue
-        text = _SECTION_LINE_MARKER.sub("", text)
-        if text:
-            return render_flat_value(text)
+        text = " ".join(_SECTION_LINE_MARKER.sub("", text).split())
+        if not text:
+            continue
+        end = _SENTENCE_END.search(text)
+        return text[: end.end()].rstrip() if end else render_flat_value(text)
     return None
 
 
