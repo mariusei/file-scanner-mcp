@@ -158,6 +158,9 @@ class JupyterLanguage(BaseLanguage):
     JSON container and the in-cell -> file line mapping, nothing else.
     """
 
+    # Code cells are Python; markdown cells have no keyworded rows
+    _ROW_KEYWORDS = PythonLanguage._ROW_KEYWORDS
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._cell_languages: dict[str, BaseLanguage] = {

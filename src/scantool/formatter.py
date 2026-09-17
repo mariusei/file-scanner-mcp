@@ -1,10 +1,32 @@
 """Pretty tree formatter for file structure with rich metadata display."""
 
 import json
+import os
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from .languages import StructureNode
+from .languages import StructureNode, get_registry
+
+# Experiment flag: rows carry the language keyword before the name and their
+# decorators inline (`- def list_items(limit: int) -> list @13 @router.get`),
+# so grepping scan output for the keyword finds the names it would find in
+# the source. The keywords live in each language handler. Unset: the frozen
+# output contract, byte for byte.
+ROW_KEYWORD_ENV = "SCANTOOL_ROW_KEYWORD"
+INLINE_DECORATOR_WIDTH = 60
+
+
+def _no_keyword(node: StructureNode) -> str | None:
+    return None
+
+
+def _inline_decorator(decorator: str) -> str:
+    """One decorator as a row token: whitespace collapsed, cut to the width."""
+    text = " ".join(decorator.split())
+    if len(text) > INLINE_DECORATOR_WIDTH:
+        return text[: INLINE_DECORATOR_WIDTH - 1] + "…"
+    return text
 
 
 def _spans_source(node: StructureNode) -> bool:
@@ -123,9 +145,16 @@ class TreeFormatter:
         self.show_docstrings = show_docstrings
         self.show_complexity = show_complexity
         self.condense = condense
+        # Set per format() call from the experiment flag and the file's language
+        self._inline_rows = False
+        self._row_keyword: Callable[[StructureNode], str | None] = _no_keyword
 
     def format(self, file_path: str, structures: list[StructureNode]) -> str:
         """Format the structure as a pretty tree."""
+        self._inline_rows = os.environ.get(ROW_KEYWORD_ENV) == "1"
+        language = get_registry().get_class(Path(file_path).suffix) if self._inline_rows else None
+        self._row_keyword = language._row_keyword if language else _no_keyword
+
         if not structures:
             return f"{Path(file_path).name} (empty file)"
 
@@ -183,19 +212,29 @@ class TreeFormatter:
 
         # Build the main node line (token-optimized format)
         # Remove "type:" prefix (redundant), shorten line range format
-        parts = [f"{prefix}{connector} {node.name}"]
-
-        # Add signature if available
-        if self.show_signatures and node.signature:
-            parts.append(node.signature)
+        signature = node.signature if self.show_signatures and node.signature else ""
+        keyword = self._row_keyword(node)
+        if keyword:
+            # `def name(args)`: a bracketed signature glues to the name as in
+            # the source; a worded one (`extends Base`, `: byte`) keeps a space
+            glue = "" if signature[:1] in ("(", "<", "[") else " "
+            parts = [f"{prefix}{connector} {keyword} {node.name}{glue}{signature}".rstrip()]
+        else:
+            parts = [f"{prefix}{connector} {node.name}"]
+            if signature:
+                parts.append(signature)
 
         # Add line numbers in compact format @startline
         if node.start_line > 0 or node.end_line > 0:
             parts.append(f"@{node.start_line}")
 
-        # Add modifiers if present
-        if node.modifiers:
-            modifiers_str = " ".join(node.modifiers)
+        # Add modifiers if present; `async` folded into the keyword is not
+        # repeated
+        modifiers = node.modifiers
+        if keyword and keyword.startswith("async "):
+            modifiers = [m for m in modifiers if m != "async"]
+        if modifiers:
+            modifiers_str = " ".join(modifiers)
             parts.append(f"[{modifiers_str}]")
 
         # Per-node git activity (only set when counts differ across nodes)
@@ -212,6 +251,10 @@ class TreeFormatter:
             if complexity_str:
                 parts.append(complexity_str)
 
+        # Experiment: decorators inline, before the docstring comment
+        if self.show_decorators and node.decorators and self._inline_rows:
+            parts.extend(_inline_decorator(d) for d in node.decorators)
+
         # Add docstring inline as comment (token-optimized)
         if self.show_docstrings and node.docstring:
             parts.append(f"# {node.docstring}")
@@ -219,7 +262,7 @@ class TreeFormatter:
         lines.append(" ".join(parts))
 
         # Add decorators on separate lines (2-space indent, token-optimized)
-        if self.show_decorators and node.decorators:
+        if self.show_decorators and node.decorators and not self._inline_rows:
             decorator_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space
             for decorator in node.decorators:
                 lines.append(f"{decorator_prefix}{decorator}")

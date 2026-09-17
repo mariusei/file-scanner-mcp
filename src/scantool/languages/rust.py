@@ -39,6 +39,14 @@ class RustLanguage(BaseLanguage):
 
     CONDENSE_STRATEGY = "skeleton"
     IMPORT_GROUP_LABEL = "use statements"
+    _ROW_KEYWORDS = {
+        "function": "fn",
+        "method": "fn",
+        "struct": "struct",
+        "enum": "enum",
+        "trait": "trait",
+        "impl": "impl",
+    }
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # Off-graph channels the static call graph cannot see in Rust:

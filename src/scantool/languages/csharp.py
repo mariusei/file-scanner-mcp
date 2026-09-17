@@ -36,6 +36,15 @@ class CSharpLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    # Methods, constructors and properties carry no keyword in the source
+    _ROW_KEYWORDS = {
+        "class": "class",
+        "interface": "interface",
+        "struct": "struct",
+        "record": "record",
+        "enum": "enum",
+        "namespace": "namespace",
+    }
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # Off-graph channels the static call graph cannot see in C#:

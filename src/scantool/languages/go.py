@@ -38,6 +38,7 @@ class GoLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    _ROW_KEYWORDS = {"function": "func", "method": "func", "struct": "type", "interface": "type"}
 
     # Reachability: Go exports by capitalization — an upper-case identifier is
     # public API (reachable from outside the corpus); a lower-case one that is

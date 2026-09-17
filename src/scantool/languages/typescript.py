@@ -38,6 +38,8 @@ class TypeScriptLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    # Methods carry no keyword in the source (`createUser(...) {`)
+    _ROW_KEYWORDS = {"function": "function", "class": "class", "interface": "interface"}
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # Off-graph channels the static call graph cannot see in TS/JS:

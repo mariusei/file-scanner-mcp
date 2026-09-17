@@ -42,6 +42,8 @@ class CCppLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    # Functions and methods carry no keyword in the source
+    _ROW_KEYWORDS = {"class": "class", "struct": "struct", "enum": "enum", "namespace": "namespace"}
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # C/C++ has whole-program linkage the single-file call graph cannot see, so the

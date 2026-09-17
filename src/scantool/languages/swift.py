@@ -35,6 +35,20 @@ class SwiftLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    # init/deinit/subscript are their own keyword already (the node name);
+    # properties may be `var` or `let`, which the node does not record
+    _ROW_KEYWORDS = {
+        "function": "func",
+        "method": "func",
+        "class": "class",
+        "struct": "struct",
+        "enum": "enum",
+        "actor": "actor",
+        "protocol": "protocol",
+        "extension": "extension",
+        "typealias": "typealias",
+        "case": "case",
+    }
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # Per-definition channels the call graph cannot see in Swift:

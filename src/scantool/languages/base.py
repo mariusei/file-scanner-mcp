@@ -413,6 +413,23 @@ class BaseLanguage(ABC):
     # (e.g. Rust shows "use statements")
     IMPORT_GROUP_LABEL: str = "import statements"
 
+    # Experiment (SCANTOOL_ROW_KEYWORD=1): the language's own keyword for a
+    # node type, printed before the name so a structure row reads like the
+    # source (`def list_items(...)`, `fn parse(...)`). Types the source
+    # writes without a keyword (Java methods, C functions, variables) are
+    # absent, and their rows keep today's form. Underscored so the frozen
+    # hook matrix (tests/golden/hooks.json) does not count it as a hook.
+    _ROW_KEYWORDS: dict[str, str] = {}
+
+    @classmethod
+    def _row_keyword(cls, node: StructureNode) -> str | None:
+        """Keyword prefix for a structure row, with `async` folded in where
+        the source writes it before the keyword (`async def`, `async fn`)."""
+        keyword = cls._ROW_KEYWORDS.get(node.type)
+        if keyword is not None and "async" in node.modifiers:
+            return f"async {keyword}"
+        return keyword
+
     def _fragment_prefix(self) -> str:
         """Prefix needed for a detached excerpt to parse (e.g. PHP's '<?php')."""
         return ""

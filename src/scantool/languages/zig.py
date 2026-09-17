@@ -36,6 +36,15 @@ class ZigLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    # Containers are declared `const Name = struct { ... }`
+    _ROW_KEYWORDS = {
+        "function": "fn",
+        "method": "fn",
+        "struct": "const",
+        "enum": "const",
+        "union": "const",
+        "test": "test",
+    }
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # Zig visibility is explicit and simple (no inheritance/protocols):

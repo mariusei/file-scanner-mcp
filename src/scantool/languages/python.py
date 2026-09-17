@@ -71,6 +71,8 @@ class PythonLanguage(BaseLanguage):
         self.parser = Parser()
         self.parser.language = Language(tree_sitter_python.language())
 
+    _ROW_KEYWORDS = {"function": "def", "method": "def", "class": "class"}
+
     # ── Reachability contract (dead-code detection) ──────────────────────────
     CLAIMS_DEAD = True
     #: Dispatch-by-name conventions: invoked via getattr/framework (ast.NodeVisitor

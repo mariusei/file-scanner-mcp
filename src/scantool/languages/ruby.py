@@ -36,6 +36,7 @@ class RubyLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    _ROW_KEYWORDS = {"method": "def", "class": "class", "module": "module"}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

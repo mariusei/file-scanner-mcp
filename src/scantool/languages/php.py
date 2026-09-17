@@ -36,6 +36,15 @@ class PHPLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    _ROW_KEYWORDS = {
+        "function": "function",
+        "method": "function",
+        "class": "class",
+        "interface": "interface",
+        "trait": "trait",
+        "enum": "enum",
+        "namespace": "namespace",
+    }
 
     # ── Reachability contract (dead-code detection) ──────────────────────────
     # PHP has explicit visibility, but no-modifier defaults to PUBLIC. public and

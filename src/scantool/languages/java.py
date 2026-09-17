@@ -36,6 +36,8 @@ class JavaLanguage(BaseLanguage):
     """
 
     CONDENSE_STRATEGY = "skeleton"
+    # Methods and constructors carry no keyword in the source
+    _ROW_KEYWORDS = {"class": "class", "interface": "interface", "enum": "enum"}
 
     # Reachability: public API (`public` in modifiers) is reachable from outside
     # the corpus; non-public & unused → dead candidate. Annotations (Spring etc.)
