@@ -4,7 +4,7 @@ basic.ipynb (7-64)
    # Sales ledger
    
    Reads the nightly export and summarises it per region.
-  - Sales ledger @7
+  - Sales ledger @7 # Reads the nightly export and summarises it per region.
 - cell 2 (code) in-cell 1-16 at 18-33 @18
   - import statements @18
   - total (amounts) @21 # Sum of the amounts.

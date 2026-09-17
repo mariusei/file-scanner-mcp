@@ -100,6 +100,36 @@ def render_flat_value(source_text: str) -> str:
 
 
 # ===========================================================================
+# Section gist (shared by the document handlers: Markdown, text)
+# ===========================================================================
+
+# A line of a section's body that is frame rather than prose: a code fence,
+# a table row, an image (also one wrapped in a link, the badge line), an
+# HTML tag, a thematic break.
+_SECTION_FRAME_LINE = re.compile(r"^(?:```|~~~|\||\[?!\[|<|[-*_]{3,}\s*$)")
+# A list or blockquote marker at the start of a line; what follows is prose.
+_SECTION_LINE_MARKER = re.compile(r"^(?:[-*+]|\d+[.)]|>)(?:\s+|$)")
+
+
+def section_gist(body: list[str]) -> str | None:
+    """The gist of a document section: its first line of prose, rendered
+    the way a value node's signature is (whitespace flattened, cut to
+    MAX_EXPR_LEN). `body` is the section's own lines, after the heading and
+    before its first child heading; the caller blanks the lines the parser
+    knows to be code. Frame lines are skipped; a list item's text stands
+    in for a paragraph, since a section is often only the list. A section
+    with no prose has no gist."""
+    for line in body:
+        text = line.strip()
+        if not text or _SECTION_FRAME_LINE.match(text):
+            continue
+        text = _SECTION_LINE_MARKER.sub("", text)
+        if text:
+            return render_flat_value(text)
+    return None
+
+
+# ===========================================================================
 # Full-line comment blocks (shared by the config handlers: YAML, TOML)
 # ===========================================================================
 

@@ -1,4 +1,4 @@
 <1 file seen, 14 structures shown, 1 excluded (.git/)>
 basic.ipynb (7-9)
-- Sales ledger @7
+- Sales ledger @7 # Reads the nightly export and summarises it per region.
 [exit 0]

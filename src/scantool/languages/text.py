@@ -5,7 +5,7 @@ sections (headers) and paragraphs. Since plain text files don't have
 imports or entry points, those methods return empty lists.
 """
 
-from .base import BaseLanguage
+from .base import BaseLanguage, section_gist
 from .models import (
     EntryPointInfo,
     ImportInfo,
@@ -130,6 +130,13 @@ class TextLanguage(BaseLanguage):
                 synthetic=True,
             )
             structures.append(para_node)
+
+        # A section's gist: the first prose line of its paragraphs (the
+        # header's own lines are never a paragraph)
+        for section in structures:
+            if section.type == "section" and section.children:
+                first = section.children[0]
+                section.docstring = section_gist(lines[first.start_line - 1 : section.end_line])
 
         return structures
 

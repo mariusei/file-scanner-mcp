@@ -11,12 +11,14 @@
       "name": "Project Documentation",
       "start_line": 1,
       "end_line": 98,
+      "docstring": "This is a sample Markdown file for testing the scanner.",
       "children": [
         {
           "type": "heading-2",
           "name": "Installation",
           "start_line": 5,
           "end_line": 23,
+          "docstring": "To install the package, run:",
           "children": [
             {
               "type": "code-block",
@@ -31,6 +33,7 @@
               "name": "Quick Start",
               "start_line": 13,
               "end_line": 23,
+              "docstring": "Here's a simple example:",
               "children": [
                 {
                   "type": "code-block",
@@ -49,6 +52,7 @@
           "name": "Features",
           "start_line": 24,
           "end_line": 47,
+          "docstring": "The scanner supports multiple languages:",
           "children": [
             {
               "type": "code-block",
@@ -63,6 +67,7 @@
               "name": "Advanced Usage",
               "start_line": 35,
               "end_line": 47,
+              "docstring": "For more control over the output:",
               "children": [
                 {
                   "type": "code-block",
@@ -81,12 +86,14 @@
           "name": "Configuration",
           "start_line": 48,
           "end_line": 60,
+          "docstring": "Settings can be adjusted in the config file.",
           "children": [
             {
               "type": "heading-3",
               "name": "Environment Variables",
               "start_line": 52,
               "end_line": 60,
+              "docstring": "Set the following variables:",
               "children": [
                 {
                   "type": "code-block",
@@ -105,24 +112,28 @@
           "name": "API Reference",
           "start_line": 61,
           "end_line": 76,
+          "docstring": "Main components of the system.",
           "children": [
             {
               "type": "heading-3",
               "name": "FileScanner Class",
               "start_line": 65,
-              "end_line": 68
+              "end_line": 68,
+              "docstring": "The main scanner class handles file parsing."
             },
             {
               "type": "heading-3",
               "name": "TreeFormatter Class",
               "start_line": 69,
               "end_line": 76,
+              "docstring": "Formats output as a tree structure.",
               "children": [
                 {
                   "type": "heading-4",
                   "name": "Options",
                   "start_line": 73,
-                  "end_line": 76
+                  "end_line": 76,
+                  "docstring": "Multiple formatting options are available."
                 }
               ]
             }
@@ -133,18 +144,21 @@
           "name": "Contributing",
           "start_line": 77,
           "end_line": 92,
+          "docstring": "Guidelines for contributors.",
           "children": [
             {
               "type": "heading-3",
               "name": "Code Style",
               "start_line": 81,
-              "end_line": 84
+              "end_line": 84,
+              "docstring": "Follow PEP 8 for Python code."
             },
             {
               "type": "heading-3",
               "name": "Testing",
               "start_line": 85,
               "end_line": 92,
+              "docstring": "Run the test suite:",
               "children": [
                 {
                   "type": "code-block",
@@ -162,7 +176,8 @@
           "type": "heading-2",
           "name": "License",
           "start_line": 93,
-          "end_line": 98
+          "end_line": 98,
+          "docstring": "MIT License"
         }
       ]
     },
@@ -171,12 +186,14 @@
       "name": "Alternative Heading Style",
       "start_line": 99,
       "end_line": 129,
+      "docstring": "This is a level 1 heading using Setext style.",
       "children": [
         {
           "type": "heading-2",
           "name": "Subheading with Underline",
           "start_line": 104,
           "end_line": 129,
+          "docstring": "This is a level 2 heading using Setext style.",
           "children": [
             {
               "type": "code-block",
@@ -189,7 +206,8 @@
               "type": "heading-3",
               "name": "Final Section",
               "start_line": 116,
-              "end_line": 129
+              "end_line": 129,
+              "docstring": "Closing remarks."
             }
           ]
         }

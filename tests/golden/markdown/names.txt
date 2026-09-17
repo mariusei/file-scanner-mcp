@@ -1,29 +1,29 @@
 <1 file seen, 25 structures shown, 1 excluded (.git/)>
 basic.md (1-98)
-- Project Documentation @1
-  - Installation @5
+- Project Documentation @1 # This is a sample Markdown file for testing the scanner.
+  - Installation @5 # To install the package, run:
     - code block (bash) bash @9
-    - Quick Start @13
+    - Quick Start @13 # Here's a simple example:
       - code block (python) python @17
-  - Features @24
+  - Features @24 # The scanner supports multiple languages:
     - code block (typescript) typescript @28
-    - Advanced Usage @35
+    - Advanced Usage @35 # For more control over the output:
       - code block (python) python @39
-  - Configuration @48
-    - Environment Variables @52
+  - Configuration @48 # Settings can be adjusted in the config file.
+    - Environment Variables @52 # Set the following variables:
       - code block (bash) bash @56
          56 | ```bash
          57 | export SCANTOOL_DEBUG=1
          58 | export SCANTOOL_PATH=/usr/local/bin
          59 | ```
          60 | 
-  - API Reference @61
-    - FileScanner Class @65
-    - TreeFormatter Class @69
-      - Options @73
-  - Contributing @77
-    - Code Style @81
-    - Testing @85
+  - API Reference @61 # Main components of the system.
+    - FileScanner Class @65 # The main scanner class handles file parsing.
+    - TreeFormatter Class @69 # Formats output as a tree structure.
+      - Options @73 # Multiple formatting options are available.
+  - Contributing @77 # Guidelines for contributors.
+    - Code Style @81 # Follow PEP 8 for Python code.
+    - Testing @85 # Run the test suite:
       - code block (bash) bash @89
-  - License @93
+  - License @93 # MIT License
 [exit 0]
