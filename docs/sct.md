@@ -7,7 +7,7 @@ into uv's tool bin directory when it starts (see
 [install.md](install.md#the-sct-launcher) for where, and how to opt out).
 
 ```
-sct <dir> [--lines N]
+sct <dir> [--part ID] [--lines N]
 sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep] [--lines N]
 sct scan     - [...]                     paths from stdin, one per line
 sct scan     - --as <path> [...]         stdin content scanned as <path>
@@ -50,7 +50,15 @@ cut something, one trailer names the call that recovers the most:
 **`sct <dir>`** is orientation: size and language mix, entry points, hot
 functions and the call-graph map, in roughly 3 to 5k tokens. It is for the
 first look at an unknown codebase, not for targeted questions; the file tree
-is the tier below (`scan`).
+is the tier below (`scan`). The answer has parts, and line one is its table
+of contents: every part's id and line count in body order, then the form
+that fetches one part (`sct <dir> --part core`), so a `| head -40` loses
+content but not the knowledge of what was lost. The ids are `core`, `entry`,
+`structure`, `archetypes`, `architecture`, `deps`, `hot`, `inventory`,
+`next` and `git` (plus `divergence` when the peer-divergence audit has
+something to say); `--part` takes several, repeated or as a comma list, and
+renders them in that order under the same first line, which then also says
+`showing …`.
 
 **`sct scan`** is the skeleton of one or more files with `path:line` for
 every structure. `--depth quick` is headers only; `--budget N` caps the

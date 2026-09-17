@@ -9,6 +9,7 @@ help text, and stdout is UTF-8 with LF on every platform.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -430,3 +431,115 @@ def test_focus_body_is_the_header_and_the_numbered_lines(capsys):
     out, _, code = run("focus", str(FOCUS_MODULE), "_walk", "--body", "--json", capsys=capsys)
     document = json.loads(out)
     assert code == 0 and "context" not in document and document["start_line"] == start
+
+
+# --- the preview's parts: line one is the table of contents, every part fetchable alone ---
+
+TOC = re.compile(
+    r"^<sct (?P<dir>.+) : (?P<parts>.*) — one part: sct (?P=dir) --part (?P<first>\w+)(; showing (?P<showing>.*))?>$"
+)
+HEADER = re.compile(r"^━━━ (?P<id>\w+): ")
+
+
+def _preview_parts(out: str) -> tuple[dict[str, int], list[str], dict[str, int]]:
+    """(counts on line one, ids shown on line one, line count per rendered
+    part: header through its last non-blank line; the footer is not a part)."""
+    lines = out.rstrip("\n").split("\n")
+    toc = TOC.match(lines[0])
+    assert toc, lines[0]
+    counts = {name: int(n) for name, n in (item.split(" ") for item in toc["parts"].split(", "))}
+    showing = toc["showing"].split(", ") if toc["showing"] else []
+    body = lines[2:-1]  # after the directory line, before the footer
+    assert lines[1].startswith("📂 ") and lines[-1].startswith("Analysis: ")
+    rendered: dict[str, list[str]] = {}
+    current = None
+    for line in body:
+        header = HEADER.match(line)
+        if header:
+            current = header["id"]
+            rendered[current] = []
+        if current:
+            rendered[current].append(line)
+    for part in rendered.values():
+        while part and not part[-1]:
+            part.pop()
+    return counts, showing, {pid: len(part) for pid, part in rendered.items()}
+
+
+@pytest.fixture
+def project(tmp_path: Path) -> Path:
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "models.py").write_text("class Item:\n    pass\n\ndef load():\n    return Item()\n")
+    (pkg / "app.py").write_text(
+        "from pkg.models import load\n\ndef main():\n    return load()\n\n"
+        'if __name__ == "__main__":\n    main()\n'
+    )
+    return tmp_path
+
+
+def test_orientation_line_one_is_the_table_of_contents(project, capsys):
+    from scantool.code_map import PART_TITLES
+
+    typed = str(project) + "/"
+    out, _, code = run(typed, capsys=capsys)
+    assert code == 0
+    counts, showing, rendered = _preview_parts(out)
+    assert out.split("\n")[0].startswith(f"<sct {typed} : ") and f"sct {typed} --part core>" in out
+    assert out.split("\n")[1] == f"📂 {project.name}/"
+    assert showing == []
+    # the fixed ids, in body order, core first
+    assert list(counts) == [pid for pid in PART_TITLES if pid in counts]
+    assert list(counts)[:4] == ["core", "entry", "structure", "archetypes"]
+    assert set(counts) <= set(PART_TITLES)
+    # every count is the part's rendered length, and every rendered part is listed
+    assert counts == rendered
+
+
+def test_orientation_part_single_several_comma_and_unknown(capsys):
+    out, _, code = run(str(FIXTURE_DIR), "--part", "hot", capsys=capsys)
+    assert code == 0
+    counts, showing, rendered = _preview_parts(out)
+    assert showing == ["hot"] and list(rendered) == ["hot"]
+    assert rendered["hot"] == counts["hot"] and len(counts) > 1  # the map stays complete
+
+    out, _, _ = run(str(FIXTURE_DIR), "--part", "next,hot", capsys=capsys)
+    _, showing, rendered = _preview_parts(out)
+    assert showing == ["next", "hot"] and list(rendered) == ["next", "hot"]
+
+    out, _, _ = run(str(FIXTURE_DIR), "--part", "hot", "--part", "structure", capsys=capsys)
+    _, showing, rendered = _preview_parts(out)
+    assert showing == ["hot", "structure"] and list(rendered) == ["hot", "structure"]
+
+    # a part the directory has nothing for is listed as shown and renders nothing
+    out, _, code = run(str(FIXTURE_DIR), "--part", "entry", capsys=capsys)
+    _, showing, rendered = _preview_parts(out)
+    assert code == 0 and showing == ["entry"] and rendered == {}
+
+    out, err, code = run(str(FIXTURE_DIR), "--part", "hot,nope", capsys=capsys)
+    assert code == 2 and out == ""
+    assert "unknown part 'nope'; parts: core, entry, structure, archetypes" in err
+
+
+def test_preview_directory_part_is_the_cli_answer(capsys):
+    from scantool import server
+
+    text = "".join(p.text for p in server.preview_directory(str(FIXTURE_DIR), part="next, hot"))
+    out, _, _ = run(str(FIXTURE_DIR), "--part", "next,hot", capsys=capsys)
+    assert out == text + "\n"
+
+    text = "".join(p.text for p in server.preview_directory(str(FIXTURE_DIR), part="nope"))
+    assert text.startswith("Error: unknown part 'nope'; parts: core, entry")
+    text = "".join(
+        p.text for p in server.preview_directory(str(FIXTURE_DIR), depth="quick", part="hot")
+    )
+    assert text.startswith("Error: part applies to depth normal or deep")
+
+
+def test_lines_keeps_the_table_of_contents(capsys):
+    out, _, code = run(str(FIXTURE_DIR), "--lines", "12", capsys=capsys)
+    lines = out.rstrip("\n").split("\n")
+    assert code == 0 and len(lines) == 13
+    assert TOC.match(lines[0]) and lines[1].startswith("📂 ")
+    assert lines[-1].startswith("… +") and lines[-1].endswith("(--lines 12)")

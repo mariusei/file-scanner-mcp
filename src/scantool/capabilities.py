@@ -45,13 +45,14 @@ class Capability:
 CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         command="",
-        usage=("sct <dir> [--lines N]",),
+        usage=("sct <dir> [--part ID] [--lines N]",),
         short="orientation: entry points, hot functions, call map",
         long=(
             "No command on a directory = orientation: size and language mix, entry "
             "points, hot functions, the call-graph map (~3-5k tokens; for first-time "
-            "orientation of an unknown codebase, not for targeted questions). The file "
-            "tree is the tier below (scan)."
+            "orientation of an unknown codebase, not for targeted questions). Line one "
+            "lists the answer's parts with their line counts and the form that fetches "
+            "one part alone. The file tree is the tier below (scan)."
         ),
         tools={"preview_directory": ""},
         hints=("<dir>",),

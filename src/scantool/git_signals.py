@@ -207,8 +207,9 @@ def collect_git_signals(
     return GitSignals(churn=dict(churn), co_change=co_change, window_days=window_days)
 
 
-def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
-    """Compact activity section for preview output; "" when nothing to say."""
+def activity_lines(signals: GitSignals, max_entries: int = 8) -> list[str]:
+    """The activity section's content lines (hot files, co-changed pairs);
+    empty when there is nothing to say."""
     hot = [
         (path, count)
         for path, count in sorted(signals.churn.items(), key=lambda kv: -kv[1])
@@ -222,9 +223,19 @@ def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
         lines.append(
             "  co-change: " + ", ".join(f"{a} <-> {b} {c}x" for a, b, c in signals.co_change)
         )
+    return lines
+
+
+def activity_title(signals: GitSignals) -> str:
+    return f"GIT ACTIVITY (last {signals.window_days}d of activity)"
+
+
+def format_activity(signals: GitSignals, max_entries: int = 8) -> str:
+    """Compact activity section for the quick preview; "" when nothing to say."""
+    lines = activity_lines(signals, max_entries)
     if not lines:
         return ""
-    return f"\n━━━ GIT ACTIVITY (last {signals.window_days}d of activity) ━━━\n" + "\n".join(lines)
+    return f"\n━━━ {activity_title(signals)} ━━━\n" + "\n".join(lines)
 
 
 def recent_line_edits(file_path: str, window_days: int = 90) -> dict[int, str] | None:
