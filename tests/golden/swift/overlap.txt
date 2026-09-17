@@ -1,7 +1,8 @@
-<2 branches vs v1, 2 with structural changes> base v1 (b1e10be)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 8, colliding 3, order 1> base v1 (b1e10be)
+branches:
 a  merge-base b1e10be  1 ahead 0 behind  1 file, +2 ~3 -2 structures
 b  merge-base b1e10be  1 ahead 0 behind  1 file, +2 ~3 -2 structures
-overlap (structures touched by 2+ branches): 7 in 1 file
+shared: overlap (structures touched by 2+ branches): 7 in 1 file
   basic.swift::DatabaseManager              a(~)  b(~)
   basic.swift::DatabaseManager.disconnect   a(-)  b(-)
   basic.swift::DatabaseManager.query        a(~)  b(~)
@@ -9,8 +10,8 @@ overlap (structures touched by 2+ branches): 7 in 1 file
   basic.swift::formatDate                   a(+)  b(+)
   basic.swift::formatTimestamp              a(-)  b(-)
   basic.swift::health                       a(+)  b(+)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   formatDate   a:basic.swift:101  b:basic.swift:101
   health       a:basic.swift:112  b:basic.swift:112
-merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
+order: merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
 [exit 0]

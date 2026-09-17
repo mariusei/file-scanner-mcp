@@ -1,14 +1,15 @@
-<2 branches vs v1, 2 with structural changes> base v1 (ff8b9b1)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 6, colliding 3, order 1> base v1 (ff8b9b1)
+branches:
 a  merge-base ff8b9b1  1 ahead 0 behind  1 file, +2 ~1 -2 structures
 b  merge-base ff8b9b1  1 ahead 0 behind  1 file, +2 ~1 -2 structures
-overlap (structures touched by 2+ branches): 5 in 1 file
+shared: overlap (structures touched by 2+ branches): 5 in 1 file
   basic.sql::active_users         a(-)  b(-)
   basic.sql::calculate_discount   a(~)  b(~)
   basic.sql::idx_product_price    a(-)  b(-)
   basic.sql::idx_products_stock   a(+)  b(+)
   basic.sql::recent_users         a(+)  b(+)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   idx_products_stock   a:basic.sql:34  b:basic.sql:34
   recent_users         a:basic.sql:20  b:basic.sql:20
-merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
+order: merge order (a hint, not a verdict): a < b   (all share 5 structures; ordered by change size, a touches 5 and b touches 5)
 [exit 0]

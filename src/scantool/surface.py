@@ -21,12 +21,13 @@ SCOPE:
 
 import os
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from .languages import get_registry
 from .languages.models import Export
+from .parts import SURFACE_DIFF_PARTS, body, parts_inventory
 
 
 @dataclass
@@ -102,8 +103,11 @@ def diff_direction(label_a: str, label_b: str) -> str:
     return f"A={label_a} → B={label_b}"
 
 
-def format_surface_diff(a: Surface, b: Surface, label_a: str, label_b: str) -> str:
-    """Names added, removed, changed (signature) or moved between A and B."""
+def diff_parts(a: Surface, b: Surface) -> dict[str, list[str]]:
+    """The diff body, every part in body order: names added, changed
+    (signature), moved (module or file) or removed between A and B. A
+    non-empty part opens with a header line carrying its ID; an empty one
+    renders nothing but keeps its place in the inventory."""
     old = {e.name: e for e in a.exports}
     new = {e.name: e for e in b.exports}
     added = [n for n in new if n not in old]
@@ -116,25 +120,34 @@ def format_surface_diff(a: Surface, b: Surface, label_a: str, label_b: str) -> s
         and n not in changed
         and (old[n].path, old[n].module) != (new[n].path, new[n].module)
     ]
+    rows = {
+        "added": [f"  + {n}  {new[n].signature}   B:{new[n].location}" for n in added],
+        "changed": [
+            f"  ~ {n}   {old[n].signature} → {new[n].signature}   "
+            f"A:{old[n].location} → B:{new[n].location}"
+            for n in changed
+        ],
+        "moved": [f"  = {n}  moved   A:{old[n].location} → B:{new[n].location}" for n in moved],
+        "removed": [f"  - {n}  {old[n].signature}   A:{old[n].location}" for n in removed],
+    }
+    return {name: [f"{name}:", *rows[name]] if rows[name] else [] for name in SURFACE_DIFF_PARTS}
+
+
+def format_surface_diff(
+    a: Surface, b: Surface, label_a: str, label_b: str, showing: Sequence[str] = ()
+) -> str:
+    """The first line carries the name counts and the parts inventory; the
+    body is every part, or with `showing` only those."""
+    parts = diff_parts(a, b)
+    names = {name: max(len(lines) - 1, 0) for name, lines in parts.items()}
     lines = [
-        f"<{_count(len(added), 'name')} added, {len(removed)} removed, {len(changed)} changed, "
-        f"{len(moved)} moved> surface diff {diff_direction(label_a, label_b)}: package {b.package}"
+        f"<{_count(names['added'], 'name')} added, {names['removed']} removed, "
+        f"{names['changed']} changed, {names['moved']} moved; {parts_inventory(parts, showing)}> "
+        f"surface diff {diff_direction(label_a, label_b)}: package {b.package}"
     ]
-    if not (added or removed or changed or moved):
+    if not any(parts.values()):
         lines.append(f"no surface differences between A={label_a} and B={label_b}")
-        return "\n".join(lines)
-    for name in added:
-        lines.append(f"  + {name}  {new[name].signature}   B:{new[name].location}")
-    for name in changed:
-        lines.append(
-            f"  ~ {name}   {old[name].signature} → {new[name].signature}   "
-            f"A:{old[name].location} → B:{new[name].location}"
-        )
-    for name in moved:
-        lines.append(f"  = {name}  moved   A:{old[name].location} → B:{new[name].location}")
-    for name in removed:
-        lines.append(f"  - {name}  {old[name].signature}   A:{old[name].location}")
-    return "\n".join(lines)
+    return "\n".join([*lines, *body(parts, showing)])
 
 
 def surface_to_json(surface: Surface, label: str) -> dict:

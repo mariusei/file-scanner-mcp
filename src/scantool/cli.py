@@ -36,6 +36,7 @@ from collections.abc import Callable, Sequence
 from .capabilities import help_commands, help_usage
 from .commands import UsageError
 from .gitref import RefError, ref_kind, repo_and_rel, split_address
+from .parts import OVERLAP_PARTS, SURFACE_DIFF_PARTS
 
 HELP_TEMPLATE = """\
 sct — structure-first reader for code and documents
@@ -66,6 +67,9 @@ OPTIONS
   --dir DIR      Directory callers scans (default: the current directory).
   --path PATH    Restrict diff or overlap to a file or directory, relative to the repo.
   --kind KIND    Restrict overlap to structures of one type (function, class, …).
+  --part ID      Only these parts of a multi-part report (overlap, surface --against);
+                 a comma list or repeated. The first line names every part with its
+                 line count, so a `| head -N` cut still says what lies below it.
   --budget N     Approximate output size in tokens (scan, files only).
   --part ID      <dir>: only these parts of the answer (repeatable, or a comma
                  list), in this order. Line one of every answer is the table of
@@ -414,7 +418,9 @@ def run_diff(args: argparse.Namespace) -> tuple[list[str], int]:
 def run_surface(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import commands
 
-    text, code = commands.surface(args.package_dir, args.ref, args.against, as_json=args.json)
+    text, code = commands.surface(
+        args.package_dir, args.ref, args.against, as_json=args.json, part=",".join(args.part)
+    )
     return [text], code
 
 
@@ -422,7 +428,13 @@ def run_overlap(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import commands
 
     text, code = commands.overlap(
-        args.base, args.branches, args.repo, args.path, args.kind, as_json=args.json
+        args.base,
+        args.branches,
+        args.repo,
+        args.path,
+        args.kind,
+        as_json=args.json,
+        part=",".join(args.part),
     )
     return [text], code
 
@@ -496,6 +508,15 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     def ref_option(p: argparse.ArgumentParser) -> None:
         p.add_argument(
             "--ref", metavar="REF", help="read at this git ref (branch, tag, SHA), no checkout"
+        )
+
+    def part_option(p: argparse.ArgumentParser, ids: tuple[str, ...]) -> None:
+        p.add_argument(
+            "--part",
+            action="append",
+            default=[],
+            metavar="ID",
+            help=f"only these parts of the report, comma list or repeated: {', '.join(ids)}",
         )
 
     def lines_option(p: argparse.ArgumentParser) -> None:
@@ -577,6 +598,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     surface.add_argument(
         "--against", metavar="REF", help="print the surface diff, this ref on the B side"
     )
+    part_option(surface, SURFACE_DIFF_PARTS)
 
     overlap = parser("overlap", "N branches against one base, merge-base per branch.", True)
     overlap.add_argument("base")
@@ -588,6 +610,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     overlap.add_argument(
         "--kind", metavar="KIND", help="only structures of this type (function, class, …)"
     )
+    part_option(overlap, OVERLAP_PARTS)
 
     callers = parser(
         "callers", "Actual call sites of a function or method across a directory.", True

@@ -172,7 +172,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     ),
     Capability(
         command="surface",
-        usage=("sct surface  <package-dir> [--ref REF] [--against REF]",),
+        usage=("sct surface  <package-dir> [--ref REF] [--against REF] [--part ID]",),
         short="public names and where each is defined; --against REF",
         long=(
             "The public surface of a package directory at a ref: every exported name "
@@ -181,14 +181,15 @@ CAPABILITIES: tuple[Capability, ...] = (
             "chains; Rust's pub and lib.rs re-exports; TypeScript's index exports; Go's "
             "exported identifiers; visibility keywords elsewhere; a namespace or module "
             "is looked through. --against REF prints the surface diff; the header states "
-            "the direction (A → B)."
+            "the direction (A → B) and names its parts (added, changed, moved, removed) "
+            "with line counts; --part ID prints one part alone."
         ),
         tools={"surface": ""},
         hints=("surface <package-dir>", "surface <package-dir> --against REF"),
     ),
     Capability(
         command="overlap",
-        usage=("sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K]",),
+        usage=("sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K] [--part ID]",),
         short="structures 2+ branches touch, collisions, merge order",
         long=(
             "N branches against one base, each at its own merge-base: structures "
@@ -199,7 +200,8 @@ CAPABILITIES: tuple[Capability, ...] = (
             "branch whether it is already in the base and by which criterion (ancestor / "
             "patch-equivalent / tree-equal; patch-equivalence proves it can be deleted, "
             "not that its content is in the current tree). Ends with a merge-order hint, "
-            "not a verdict."
+            "not a verdict. The first line names the parts (branches, history, shared, "
+            "colliding, order) with line counts; --part ID prints one part alone."
         ),
         tools={"overlap": ""},
         hints=("overlap <base> <branch>...",),

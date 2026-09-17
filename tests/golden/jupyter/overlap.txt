@@ -1,15 +1,16 @@
-<2 branches vs v1, 2 with structural changes> base v1 (15c51f8)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 7, colliding 3, order 1> base v1 (15c51f8)
+branches:
 a  merge-base 15c51f8  1 ahead 0 behind  1 file, +2 ~2 -2 structures
 b  merge-base 15c51f8  1 ahead 0 behind  1 file, +2 ~2 -2 structures
-overlap (structures touched by 2+ branches): 6 in 1 file
+shared: overlap (structures touched by 2+ branches): 6 in 1 file
   basic.ipynb::cell 2 (code).Ledger.average   a(+)  b(+)
   basic.ipynb::cell 2 (code).Ledger.mean      a(-)  b(-)
   basic.ipynb::cell 4 (code).DEFAULT_REGION   a(~)  b(~)
   basic.ipynb::cell 4 (code).count            a(+)  b(+)
   basic.ipynb::cell 4 (code).describe         a(-)  b(-)
   basic.ipynb::cell 4 (code).report           a(~)  b(~)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   average   a:basic.ipynb:32  b:basic.ipynb:32
   count     a:basic.ipynb:62  b:basic.ipynb:62
-merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+order: merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
 [exit 0]

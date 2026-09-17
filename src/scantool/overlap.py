@@ -39,8 +39,10 @@ SCOPE:
 """
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from .parts import body, parts_inventory
 from .scanner import FileScanner
 from .structural_diff import (
     NodeRecord,
@@ -363,23 +365,15 @@ def _entanglement(result: OverlapResult) -> Counter:
     return Counter({branch: len(found) for branch, found in sites.items()})
 
 
-def format_overlap(result: OverlapResult) -> str:
+def render_parts(result: OverlapResult) -> dict[str, list[str]]:
+    """The body, one entry per part present, keyed by OVERLAP_PARTS in body
+    order; each part opens with a header line carrying its ID. history,
+    colliding and order are absent when there is nothing to report."""
     reports = result.reports
-    in_base = [r for r in reports if r.in_base]
-    parts = [
-        f"{len(reports)} {'branch' if len(reports) == 1 else 'branches'} vs {result.base}",
-        f"{sum(1 for r in reports if r.touched)} with structural changes",
-    ]
-    if in_base:
-        parts.append(f"{len(in_base)} already in base")
-    if result.stacked:
-        parts.append(f"{_count(len(result.stacked), 'pair')} sharing history")
-    head = f"<{', '.join(parts)}> base {result.base} ({result.base_sha})"
-    if result.scope.label:
-        head += f"  [{result.scope.label}]"
-    lines = [head]
+    parts: dict[str, list[str]] = {}
 
     width = max(len(r.branch) for r in reports)
+    branches = ["branches:"]
     for r in reports:
         c = r.counts
         line = (
@@ -388,27 +382,32 @@ def format_overlap(result: OverlapResult) -> str:
         )
         if r.in_base:
             line += f"   [already in base: {r.in_base}]"
-        lines.append(line)
+        branches.append(line)
     if any("patch-equivalent" in (r.in_base or "") for r in reports):
-        lines.append(
+        branches.append(
             "  patch-equivalent proves the branch can be deleted, not that its content is in the base's current tree"
         )
+    parts["branches"] = branches
 
-    for s in result.stacked:
-        lines.append(
-            f"shared history: {s.a} and {s.b} share {_count(s.commits, 'commit')} beyond the base; "
-            "overlap between them is expected, not a conflict"
-        )
-        residual = (
-            f"{_count(len(s.residual), 'structure')} in {_count(s.residual_files, 'file')}"
-            if s.residual
-            else "none"
-        )
-        lines.append(f"  residual beyond their shared commits: {residual}")
-        lines.extend(f"    {path}::{name}" for path, name in s.rows[:RESIDUAL_CAP])
-        if len(s.rows) > RESIDUAL_CAP:
-            lines.append(f"    … {len(s.rows) - RESIDUAL_CAP} more")
+    if result.stacked:
+        history = ["history:"]
+        for s in result.stacked:
+            history.append(
+                f"shared history: {s.a} and {s.b} share {_count(s.commits, 'commit')} beyond the base; "
+                "overlap between them is expected, not a conflict"
+            )
+            residual = (
+                f"{_count(len(s.residual), 'structure')} in {_count(s.residual_files, 'file')}"
+                if s.residual
+                else "none"
+            )
+            history.append(f"  residual beyond their shared commits: {residual}")
+            history.extend(f"    {path}::{name}" for path, name in s.rows[:RESIDUAL_CAP])
+            if len(s.rows) > RESIDUAL_CAP:
+                history.append(f"    … {len(s.rows) - RESIDUAL_CAP} more")
+        parts["history"] = history
 
+    shared: list[str] = []
     if result.shared:
         rows = sorted(
             (
@@ -419,37 +418,41 @@ def format_overlap(result: OverlapResult) -> str:
         )
         shown = rows[:ROW_CAP]
         files_hit = len({path for path, _ in result.shared})
-        header = f"overlap (structures touched by 2+ branches): {len(rows)} in {_count(files_hit, 'file')}"
+        header = f"shared: overlap (structures touched by 2+ branches): {len(rows)} in {_count(files_hit, 'file')}"
         if result.base_moved:
             header += f", {len(result.base_moved)} also changed in base"
-        lines.append(header)
+        shared.append(header)
         label_width = min(max(len(label) for label, _, _ in shown), LABEL_CAP)
         for label, hits, base_mark in shown:
             marks = "  ".join(f"{branch}({mark})" for branch, mark in sorted(hits))
             if base_mark:
                 marks += f"  base({base_mark})"
-            lines.append(f"  {label:<{label_width}}   {marks}")
+            shared.append(f"  {label:<{label_width}}   {marks}")
         if len(rows) > len(shown):
             per_file = Counter(path for path, _ in result.shared)
-            lines.append(f"  … {len(rows) - len(shown)} more, per file:")
+            shared.append(f"  … {len(rows) - len(shown)} more, per file:")
             for path, count in per_file.most_common(FILE_CAP):
-                lines.append(f"    {path}   {_count(count, 'structure')}")
+                shared.append(f"    {path}   {_count(count, 'structure')}")
     else:
-        lines.append("overlap (structures touched by 2+ branches): none")
+        shared.append("shared: overlap (structures touched by 2+ branches): none")
+    parts["shared"] = shared
 
     if result.colliding:
         names = sorted(result.colliding)
         shown_names = names[:NAME_CAP]
-        lines.append(f"colliding new names (added independently on 2+ branches): {len(names)}")
+        colliding = [
+            f"colliding: colliding new names (added independently on 2+ branches): {len(names)}"
+        ]
         name_width = min(max(len(n) for n in shown_names), LABEL_CAP)
         for name in shown_names:
             sites = "  ".join(
                 f"{branch}:{path}:{line}"
                 for branch, path, line, _ in sorted(result.colliding[name])
             )
-            lines.append(f"  {name:<{name_width}}   {sites}")
+            colliding.append(f"  {name:<{name_width}}   {sites}")
         if len(names) > len(shown_names):
-            lines.append(f"  … and {len(names) - len(shown_names)} more")
+            colliding.append(f"  … and {len(names) - len(shown_names)} more")
+        parts["colliding"] = colliding
 
     candidates = [r for r in reports if not r.in_base]
     if len(candidates) > 1:
@@ -472,8 +475,28 @@ def format_overlap(result: OverlapResult) -> str:
         in_stack = {branch for s in result.stacked for branch in (s.a, s.b)}
         if any(r.branch in in_stack for r in candidates):
             reason += "; stacked pairs count only their residual beyond shared commits"
-        lines.append(f"merge order (a hint, not a verdict): {chain}   ({reason})")
-    return "\n".join(lines)
+        parts["order"] = [f"order: merge order (a hint, not a verdict): {chain}   ({reason})"]
+    return parts
+
+
+def format_overlap(result: OverlapResult, showing: Sequence[str] = ()) -> str:
+    """The first line carries the coverage and the parts inventory; the
+    body is every part, or with `showing` only those."""
+    reports = result.reports
+    in_base = [r for r in reports if r.in_base]
+    coverage = [
+        f"{len(reports)} {'branch' if len(reports) == 1 else 'branches'} vs {result.base}",
+        f"{sum(1 for r in reports if r.touched)} with structural changes",
+    ]
+    if in_base:
+        coverage.append(f"{len(in_base)} already in base")
+    if result.stacked:
+        coverage.append(f"{_count(len(result.stacked), 'pair')} sharing history")
+    parts = render_parts(result)
+    head = f"<{', '.join(coverage)}; {parts_inventory(parts, showing)}> base {result.base} ({result.base_sha})"
+    if result.scope.label:
+        head += f"  [{result.scope.label}]"
+    return "\n".join([head, *body(parts, showing)])
 
 
 def overlap_to_json(result: OverlapResult) -> dict:
@@ -499,6 +522,7 @@ def overlap_to_json(result: OverlapResult) -> dict:
             ],
             "filters": {"path": result.scope.path, "kind": result.scope.kind},
         },
+        "parts": {name: len(lines) for name, lines in render_parts(result).items()},
         "base": {"ref": result.base, "sha": result.base_sha},
         "branches": [
             {
