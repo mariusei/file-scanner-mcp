@@ -12,6 +12,7 @@ from .consensus import DivergenceConfig, find_divergences, format_divergences
 from .delta import stat_fingerprint
 from .gitignore import load_gitignore
 from .languages import (
+    BaseLanguage,
     CodeMapResult,
     DefinitionInfo,
     EntryPointInfo,
@@ -125,6 +126,7 @@ class CodeMap:
         # Get analyzer registry
         self.registry = get_registry()
         self.generic_language = GenericLanguage()
+        self._analyzers: dict[type, BaseLanguage] = {}
 
     def _extract_file(self, analyzer, file_path: str, content: str) -> tuple:
         """Per-file extraction — the cacheable unit, pure in (file_path, content).
@@ -162,7 +164,7 @@ class CodeMap:
         file_clusters = {}
         file_definitions = {}  # Track definitions per file
         analyzed_files = []  # Track which files were actually analyzed
-        type_to_file = {}  # Map type names to files (for Swift intra-module deps)
+        type_to_file: dict[str, str] = {}  # definitions_map for import resolution
 
         cache = _dir_cache(str(self.directory)) if self.use_cache else None
         seen = set()
@@ -206,17 +208,22 @@ class CodeMap:
             all_entry_points.extend(entry_points)  # Layer 1: entry points
             file_clusters[file_path] = cluster  # Layer 1: classification
 
+            # definitions_map: name → file_path (first definition wins), and
+            # `<namespace>.<name>` → file_path for a definition directly inside
+            # a namespace node, so a handler can find every file declaring a
+            # namespace (C# `using A.B;`) without a second parse. Import
+            # resolution is Layer 1, so the map is built in both modes.
+            for defn in definitions:
+                if not defn.name:
+                    continue
+                type_to_file.setdefault(defn.name, file_path)
+                if defn.enclosing_kind == "namespace" and defn.parent:
+                    type_to_file.setdefault(f"{defn.parent}.{defn.name}", file_path)
+
             # Layer 2: definitions and calls (if enabled)
             if self.enable_layer2:
                 all_definitions.extend(definitions)
                 file_definitions[file_path] = definitions
-
-                # Build definitions_map: name → file_path (first definition wins)
-                # Used by analyzers for type-based import resolution.
-                for defn in definitions:
-                    if defn.name and defn.name not in type_to_file:
-                        type_to_file[defn.name] = file_path
-
                 all_calls.extend(calls)
 
         # Drop cache entries for files no longer discovered (deleted/renamed)
@@ -305,17 +312,19 @@ class CodeMap:
         return files
 
     def _get_analyzer(self, file_path: str):
-        """Get appropriate analyzer for file extension."""
+        """The handler for a file's extension, one instance per class for
+        the analysis (a handler may cache project config it reads while
+        resolving imports); the generic handler for an unknown extension."""
         ext = Path(file_path).suffix
         if not ext:
             return None
 
         analyzer_class = self.registry.get_analyzer(ext)
-        if analyzer_class:
-            return analyzer_class()
-        else:
-            # Use generic analyzer as fallback
+        if not analyzer_class:
             return self.generic_language
+        if analyzer_class not in self._analyzers:
+            self._analyzers[analyzer_class] = analyzer_class(root=str(self.directory))
+        return self._analyzers[analyzer_class]
 
     def _build_import_graph(
         self,

@@ -8,8 +8,11 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import json
 import os
+import posixpath
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import tree_sitter_typescript
@@ -26,6 +29,64 @@ from .models import (
 )
 
 _SOURCE_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs")
+
+# tsconfig.json is JSON with comments and trailing commas (tsc's own
+# parser accepts both); a string literal is kept whole so a `//` inside
+# one is not a comment.
+_JSONC_NOISE = re.compile(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/', re.S)
+_TRAILING_COMMA = re.compile(r",(\s*[}\]])")
+
+
+def _lenient_json(text: str):
+    """The document, or None when it is not JSON even after stripping
+    comments and trailing commas."""
+    try:
+        return json.loads(text)
+    except ValueError:
+        pass
+    stripped = _JSONC_NOISE.sub(lambda m: m.group(0) if m.group(0)[0] == '"' else "", text)
+    try:
+        return json.loads(_TRAILING_COMMA.sub(r"\1", stripped))
+    except ValueError:
+        return None
+
+
+@dataclass(frozen=True)
+class _TsPaths:
+    """The module resolution one tsconfig.json declares: `paths` patterns
+    and the project directory their substitutions (and, when `baseUrl` is
+    set, bare specifiers) are resolved against."""
+
+    base: str
+    paths: dict[str, list[str]]
+    bare_against_base: bool
+
+
+def _read_tsconfig(path: str, directory: str) -> _TsPaths | None:
+    """`compilerOptions.baseUrl` and `.paths` of one tsconfig.json, with
+    baseUrl resolved from the config's own directory (tsc's rule; the
+    directory itself when baseUrl is absent). None for an unreadable or
+    unparsable file or one without compilerOptions."""
+    try:
+        data = _lenient_json(Path(path).read_text(encoding="utf-8"))
+    except OSError:
+        return None
+    options = data.get("compilerOptions") if isinstance(data, dict) else None
+    if not isinstance(options, dict):
+        return None
+    base_url = options.get("baseUrl")
+    paths = options.get("paths")
+    return _TsPaths(
+        base=posixpath.normpath(
+            posixpath.join(directory, base_url if isinstance(base_url, str) else ".")
+        ),
+        paths={
+            pattern: [t for t in targets if isinstance(t, str)]
+            for pattern, targets in (paths.items() if isinstance(paths, dict) else ())
+            if isinstance(targets, list)
+        },
+        bare_against_base=isinstance(base_url, str),
+    )
 
 
 class TypeScriptLanguage(BaseLanguage):
@@ -67,6 +128,7 @@ class TypeScriptLanguage(BaseLanguage):
         # tree-sitter-typescript provides both typescript and tsx parsers
         # Use language_tsx for all TypeScript files as it's a superset that handles both
         self.parser.language = Language(tree_sitter_typescript.language_tsx())
+        self._tsconfigs: dict[str, _TsPaths | None] = {}  # by project directory
 
     # ===========================================================================
     # Metadata (REQUIRED)
@@ -1152,15 +1214,79 @@ class TypeScriptLanguage(BaseLanguage):
                 return f"{module}/index{ext}"
         return None
 
+    def _tsconfig(self, directory: str) -> _TsPaths | None:
+        """The nearest tsconfig.json at or above a project directory, read
+        once per analysis; None outside an analysis (no root) or when no
+        config above the directory declares compilerOptions."""
+        if self.root is None:
+            return None
+        if directory not in self._tsconfigs:
+            candidate = os.path.join(self.root, directory, "tsconfig.json")
+            if os.path.isfile(candidate):
+                self._tsconfigs[directory] = _read_tsconfig(candidate, directory)
+            elif directory in ("", "."):
+                self._tsconfigs[directory] = None
+            else:
+                self._tsconfigs[directory] = self._tsconfig(posixpath.dirname(directory))
+        return self._tsconfigs[directory]
+
+    def _alias_candidates(self, source_file: str, specifier: str) -> list[str]:
+        """The project paths a bare specifier may name under the importing
+        file's tsconfig: the substitutions of the `paths` pattern with the
+        longest matching prefix, in order; else the specifier under baseUrl
+        when one is set; nothing without a config. Each as a project path
+        without the source extension, like a resolved relative specifier."""
+        config = self._tsconfig(posixpath.dirname(source_file))
+        if config is None:
+            return []
+        best: tuple[int, str, str] | None = None  # prefix length, pattern, the `*` text
+        for pattern in config.paths:
+            prefix, star, suffix = pattern.partition("*")
+            if not star:
+                if specifier != pattern:
+                    continue
+                matched = ""
+            elif (
+                specifier.startswith(prefix)
+                and specifier.endswith(suffix)
+                and len(specifier) >= len(prefix) + len(suffix)
+            ):
+                matched = specifier[len(prefix) : len(specifier) - len(suffix)]
+            else:
+                continue
+            if best is None or len(prefix) > best[0]:
+                best = (len(prefix), pattern, matched)
+        if best is not None:
+            targets = [t.replace("*", best[2], 1) for t in config.paths[best[1]]]
+        elif config.bare_against_base:
+            targets = [specifier]
+        else:
+            return []
+        out = []
+        for target in targets:
+            joined = posixpath.normpath(posixpath.join(config.base, target))
+            if joined in (".", "..") or joined.startswith("../"):
+                continue
+            stem, ext = posixpath.splitext(joined)
+            out.append(stem if ext in _SOURCE_EXTENSIONS else joined)
+        return out
+
     def resolve_import_targets(
         self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
     ) -> list[str]:
-        """Only a relative specifier names a project file; a bare one is a
-        package (or a tsconfig paths alias, which is not read), even when a
-        root file happens to share its name."""
-        if imp.import_type != "relative":
-            return []
-        return super().resolve_import_targets(imp, all_files, definitions_map)
+        """A relative specifier names a project file. A bare one is a
+        package, even when a root file happens to share its name, unless the
+        nearest tsconfig.json maps it into the project through `paths` or
+        `baseUrl`; the first mapped candidate that is a file wins."""
+        if imp.import_type == "relative":
+            return super().resolve_import_targets(imp, all_files, definitions_map)
+        for module in self._alias_candidates(imp.source_file, imp.target_module):
+            target = self.resolve_import_to_file(
+                module, imp.source_file, all_files, definitions_map
+            )
+            if target:
+                return [target]
+        return []
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format TypeScript/JavaScript entry point for display."""

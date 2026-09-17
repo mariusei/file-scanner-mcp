@@ -8,6 +8,7 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import posixpath
 import re
 from pathlib import Path
 
@@ -726,17 +727,22 @@ class PHPLanguage(BaseLanguage):
         # Pattern 3: require/include statements
         # require 'path/to/file.php';
         # require_once 'path/to/file.php';
-        # include 'path/to/file.php';
-        # include_once 'path/to/file.php';
+        # include 'header.php';
+        # include_once __DIR__ . '/footer.php';
+        # require dirname(__FILE__) . '/../boot.php';
+        # A path anchored to __DIR__ or dirname(__FILE__) is relative to the
+        # including file, as `./` and `../` are.
         require_pattern = (
-            r'(require|require_once|include|include_once)\s*[\(\s]+[\'"]([^\'"]+)[\'"]'
+            r"(require|require_once|include|include_once)[\(\s]+"
+            r"(__DIR__\s*\.\s*|dirname\(\s*__FILE__\s*\)\s*\.\s*)?"
+            r"[\'\"]([^\'\"]+)[\'\"]"
         )
         for match in re.finditer(require_pattern, content, re.MULTILINE):
-            keyword = match.group(1)
-            file_path_str = match.group(2)
+            keyword, anchor, file_path_str = match.groups()
             line_num = content[: match.start()].count("\n") + 1
 
-            # Determine if relative import
+            if anchor:
+                file_path_str = "./" + file_path_str.lstrip("/")
             is_relative = file_path_str.startswith(("./", "../"))
             import_type = f"{keyword}_relative" if is_relative else keyword
 
@@ -1120,8 +1126,12 @@ class PHPLanguage(BaseLanguage):
         - App\\Models\\User -> app/Models/User.php (Laravel)
         - Foo\\Bar\\Baz -> Foo/Bar/Baz.php
 
+        A require/include names a file path, which resolves as written.
         Vendor namespaces are skipped.
         """
+        if module in all_files:
+            return module
+
         # Skip vendor packages (common third-party prefixes)
         vendor_prefixes = (
             "Illuminate\\",
@@ -1153,42 +1163,13 @@ class PHPLanguage(BaseLanguage):
         return None
 
     def _resolve_php_relative_path(self, current_file: str, relative_path: str) -> str | None:
-        """Resolve PHP relative file path (e.g., './config.php', '../utils.php').
-
-        Unlike Python's dot imports, PHP uses Unix-style relative paths.
-
-        Args:
-            current_file: Path of file doing the include/require
-            relative_path: Relative path string (e.g., './config.php')
-
-        Returns:
-            Resolved absolute path or None
-        """
-
-        # Get directory of current file
-        current_dir = "/".join(current_file.split("/")[:-1])
-
-        # Normalize the path
-        # ./config.php -> config.php
-        # ../utils.php -> (parent)/utils.php
-        if relative_path.startswith("./"):
-            relative_path = relative_path[2:]
-        elif relative_path.startswith("../"):
-            # Go up directories
-            parts = current_dir.split("/") if current_dir else []
-            path_parts = relative_path.split("/")
-            for part in path_parts:
-                if part == "..":
-                    if parts:
-                        parts.pop()
-                else:
-                    parts.append(part)
-            return "/".join(parts) if parts else None
-
-        # Combine current directory with relative path
-        if current_dir:
-            return f"{current_dir}/{relative_path}"
-        return relative_path
+        """`./config.php`, `../utils.php` (Unix-style, unlike Python's dot
+        imports) from the including file's directory as a project path;
+        None above the scanned root."""
+        joined = posixpath.normpath(posixpath.join(posixpath.dirname(current_file), relative_path))
+        if joined == ".." or joined.startswith("../") or joined == ".":
+            return None  # above the scanned root, or no file at all
+        return joined
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format PHP entry point for display.

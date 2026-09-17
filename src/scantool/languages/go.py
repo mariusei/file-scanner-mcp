@@ -511,13 +511,13 @@ class GoLanguage(BaseLanguage):
 
         Patterns supported:
         - import "package"
-        - import alias "package"
+        - import alias "package" (alias may be `.` or `_`)
         - import ( ... ) (grouped imports)
         """
         imports = []
 
         # Pattern 1: Single import
-        single_import_pattern = r'^\s*import\s+(?:(\w+)\s+)?"([^"]+)"'
+        single_import_pattern = r'^\s*import\s+(?:(\w+|\.)\s+)?"([^"]+)"'
         for match in re.finditer(single_import_pattern, content, re.MULTILINE):
             alias = match.group(1)  # Optional alias
             package = match.group(2)
@@ -550,7 +550,7 @@ class GoLanguage(BaseLanguage):
                     continue
 
                 # Match: alias "package" OR "package"
-                import_line_pattern = r'(?:(\w+)\s+)?"([^"]+)"'
+                import_line_pattern = r'(?:(\w+|\.)\s+)?"([^"]+)"'
                 line_match = re.search(import_line_pattern, line)
                 if line_match:
                     alias = line_match.group(1)
