@@ -30,47 +30,54 @@ def format_focus(
     source_lines: list[str],
     focus: str,
     addressed: bool = False,
+    body_only: bool = False,
 ) -> str:
     """Render skeleton-with-context + verbatim body for the focused node.
 
     addressed=True opens with the node's structural address instead of the
     `focus:` line: `path::Qualified.name (a-b)`, the form `focus` accepts
     back as one argument (`@` is reserved for a ref, so the range stays in
-    parentheses)."""
+    parentheses). body_only=True is the header and the node's numbered
+    lines alone: no file outline, no parent context (what `grep "^ +[0-9]+ |"`
+    over the full answer used to extract)."""
     matches = _resolve(structures, focus)
     if len(matches) != 1:
         return _resolution_error(structures, focus, matches)
 
     target, ancestors = matches[0]
-    path_ids = {id(node) for node in (*ancestors, target)}
-    pruned = _prune(structures, target, path_ids, source_lines)
-
     if addressed:
         name = address_name(structures, target, ancestors)
         header = f"{file_path}::{name} ({target.start_line}-{target.end_line})"
     else:
         qualified = ".".join(node.name for node in (*ancestors, target))
         header = f"focus: {qualified} @{target.start_line}-{target.end_line}"
+    if body_only:
+        return header + "\n" + "\n".join(_numbered(target, source_lines))
+    path_ids = {id(node) for node in (*ancestors, target)}
+    pruned = _prune(structures, target, path_ids, source_lines)
     return header + "\n" + TreeFormatter().format(file_path, pruned)
 
 
 def focus_to_json(
-    file_path: str, structures: list[StructureNode], source_lines: list[str], focus: str
+    file_path: str,
+    structures: list[StructureNode],
+    source_lines: list[str],
+    focus: str,
+    body_only: bool = False,
 ) -> dict | str:
     """The same answer as format_focus(addressed=True) as a document: the
     address (valid input for focus), the node's range, its verbatim body,
-    and the pruned skeleton as context. A miss or an ambiguity returns the
-    message format_focus would print, so both doors say the same thing."""
+    and the pruned skeleton as context (absent with body_only). A miss or
+    an ambiguity returns the message format_focus would print, so both
+    doors say the same thing."""
     from .formatter import structures_to_json
 
     matches = _resolve(structures, focus)
     if len(matches) != 1:
         return _resolution_error(structures, focus, matches)
     target, ancestors = matches[0]
-    path_ids = {id(node) for node in (*ancestors, target)}
-    pruned = _prune(structures, target, path_ids, source_lines)
     name = address_name(structures, target, ancestors)
-    return {
+    document = {
         "address": f"{file_path}::{name}",
         "ref": None,
         "path": file_path,
@@ -82,8 +89,18 @@ def focus_to_json(
         "signature": target.signature,
         "docstring": target.docstring,
         "body": "\n".join(source_lines[target.start_line - 1 : target.end_line]),
-        "context": structures_to_json(pruned, file_path, return_dict=True)["structures"],
     }
+    if not body_only:
+        path_ids = {id(node) for node in (*ancestors, target)}
+        pruned = _prune(structures, target, path_ids, source_lines)
+        document["context"] = structures_to_json(pruned, file_path, return_dict=True)["structures"]
+    return document
+
+
+def _numbered(target: StructureNode, source_lines: list[str]) -> list[str]:
+    """The node's lines in the formatter's verbatim form, `N | text`."""
+    body = source_lines[target.start_line - 1 : target.end_line]
+    return [f"{i} | {line}" for i, line in enumerate(body, start=target.start_line)]
 
 
 # A heading that opens with a bracketed tag ([DEV-L17] Contracts …) is

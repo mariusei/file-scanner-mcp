@@ -17,12 +17,19 @@ SOLUTION:
 SCOPE:
   ✓ <dir> (orientation), scan, focus, search; --json, --ascii; stdin
   ✓ UTF-8 and LF on stdout on every platform
+  ✓ the filters agents piped the output through (measured 2026-09-17: 52 of
+    529 sct calls cut with `| head`, 23 piped to grep): --lines N, the N
+    most informative lines (rows first, then code) and what was cut; search
+    --decorator; focus --body. Here, not in the tool functions: the MCP
+    client has its own budget, and the row grammar is one thing to know in
+    one place
   ✗ git refs, diff, overlap, surface, resolve, callers: later steps
 """
 
 import argparse
 import json
 import os
+import re
 import sys
 from collections.abc import Callable, Sequence
 
@@ -60,6 +67,15 @@ OPTIONS
   --path PATH    Restrict diff or overlap to a file or directory, relative to the repo.
   --kind KIND    Restrict overlap to structures of one type (function, class, …).
   --budget N     Approximate output size in tokens (scan, files only).
+  --lines N      The N most informative lines (<dir>, scan, focus, search):
+                 headers and structure rows first, in document order, then
+                 as much skeleton or body as fits; one trailer says how many
+                 lines were cut. Where `| head -N` cuts inside a skeleton
+                 and says nothing, this keeps the rows. Ignored with --json.
+  --decorator RE Search: only structures with a decorator matching this regex
+                 (with --names); one row per structure, decorators on the row.
+  --body         Focus: the header and the node's numbered lines alone, no
+                 file outline, no parent context.
   --as PATH      The name stdin content is scanned under (its extension picks
                  the parser; the name appears in the output).
   --json         Same content as JSON (every command but <dir> and divergence).
@@ -160,6 +176,47 @@ _split_address = split_address  # the address form is gitref's; kept under its o
 
 def to_ascii(text: str) -> str:
     return "".join(GLYPHS.get(char, char) for char in text)
+
+
+# The row grammar every text answer shares: a structure row opens with `- `
+# (at any indent); an indented line under it is its decorator (`@…`, first
+# under the row) or its content: skeleton, verbatim `N | ` lines, a gist,
+# the ⟨…⟩ marker. Everything else is structure — coverage and file lines,
+# section headers, rows, decorators — and has priority; a blank line is
+# content (a separator is worth less than the row it separates).
+ROW = re.compile(r"^\s*- ")
+NUMBERED = re.compile(r"^\s*\d+ \| ")
+
+
+def _is_content(line: str) -> bool:
+    return not line.strip() or (line[0].isspace() and not ROW.match(line))
+
+
+def _structure_lines(lines: list[str]) -> list[bool]:
+    """Per line: structure (priority) or content (fills what is left)."""
+    flags: list[bool] = []
+    for i, line in enumerate(lines):
+        decorator = _is_content(line) and line.lstrip().startswith("@") and i > 0 and flags[i - 1]
+        flags.append(decorator or not _is_content(line))
+    return flags
+
+
+def cap_lines(text: str, limit: int) -> str:
+    """The `limit` most informative lines of an answer, in document order:
+    every structure line first (headers, rows, decorators), then content
+    lines until the budget is spent — a cut skeleton or body stops where
+    the budget ends — and one trailer naming how many lines were cut.
+    Where `| head -N` cuts inside a skeleton and says nothing, this keeps
+    the rows."""
+    lines = text.split("\n")
+    if len(lines) <= limit:
+        return text
+    structure = _structure_lines(lines)
+    ranked = [i for i in range(len(lines)) if structure[i]]
+    ranked += [i for i in range(len(lines)) if not structure[i]]
+    kept = sorted(ranked[:limit])
+    trailer = f"… +{len(lines) - len(kept)} lines (--lines {limit})"
+    return "\n".join([lines[i] for i in kept] + [trailer])
 
 
 def _text(result) -> str:
@@ -284,6 +341,7 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
             content=content,
             filename=args.as_path,
             focus=args.name,
+            body_only=args.body,
             include_metadata=False,
             output_format=output_format,
         )
@@ -293,6 +351,7 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
         result = server.scan_file(
             file_path=args.path,
             focus=args.name,
+            body_only=args.body,
             delta=False,
             include_metadata=False,
             output_format=output_format,
@@ -305,9 +364,15 @@ def run_focus(args: argparse.Namespace) -> tuple[list[str], int]:
 def run_search(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
 
+    if args.decorator and not args.names:
+        raise UsageError(
+            "sct search: --decorator filters structures; it goes with --names "
+            "(a text hit has no decorator)"
+        )
     pattern = {"name_pattern" if args.names else "content_pattern": args.pattern}
     kwargs = dict(
         type_filter=args.type,
+        has_decorator=args.decorator,
         include_metadata=False,
         limit=args.limit,
         offset=args.offset,
@@ -422,8 +487,17 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
             "--ref", metavar="REF", help="read at this git ref (branch, tag, SHA), no checkout"
         )
 
+    def lines_option(p: argparse.ArgumentParser) -> None:
+        p.add_argument(
+            "--lines",
+            type=int,
+            metavar="N",
+            help="the N most informative lines: rows first, then code; a trailer names the cut",
+        )
+
     orient = parser("", "Orientation: entry points, hot functions, call-graph map.", False)
     orient.add_argument("directory")
+    lines_option(orient)
 
     scan = parser("scan", "Skeleton of files or a directory, within a budget.", True)
     scan.add_argument("path", nargs="+", help="file, directory, or `-` for paths on stdin")
@@ -431,25 +505,39 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     scan.add_argument("--depth", choices=("quick", "normal", "deep"), help="files only")
     stdin_option(scan)
     ref_option(scan)
+    lines_option(scan)
 
     focus = parser("focus", "One structure verbatim with parent context.", True)
     focus.add_argument("path", help="file, an address path::name[@ref], or `-` with --as")
     focus.add_argument(
         "name", nargs="?", help="name, Class.method, heading, or a heading substring"
     )
+    focus.add_argument(
+        "--body",
+        action="store_true",
+        help="the header and the node's numbered lines alone, no file outline",
+    )
     stdin_option(focus)
     ref_option(focus)
+    lines_option(focus)
 
     search = parser("search", "Text or names across a directory with structural context.", True)
     search.add_argument("directory")
     search.add_argument("pattern", help="Python regex")
     search.add_argument("--names", action="store_true", help="match structure names, not text")
     search.add_argument("--type", metavar="TYPE", help="report only structures of this type")
+    search.add_argument(
+        "--decorator",
+        metavar="RE",
+        help="with --names: only structures with a decorator matching this regex, "
+        "one row per structure with its decorators",
+    )
     search.add_argument("--limit", type=int, default=40, metavar="N", help="structures per page")
     search.add_argument(
         "--offset", type=int, default=0, metavar="N", help="skip this many structures"
     )
     ref_option(search)
+    lines_option(search)
 
     diff = parser("diff", "Structural diff between refs, or a ref and the working tree.", True)
     diff.add_argument("ref_a", metavar="refA")
@@ -541,7 +629,7 @@ def _configure_streams() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
 
 
-def _emit(outputs: list[str], as_json: bool, as_ascii: bool) -> None:
+def _emit(outputs: list[str], as_json: bool, as_ascii: bool, lines: int | None = None) -> None:
     if as_json:
         documents, messages = [], []
         for output in outputs:
@@ -555,7 +643,10 @@ def _emit(outputs: list[str], as_json: bool, as_ascii: bool) -> None:
             document = documents[0] if len(documents) == 1 else documents
             sys.stdout.write(json.dumps(document, indent=2) + "\n")
         return
-    text = "\n".join(output.rstrip("\n") for output in outputs) + "\n"
+    text = "\n".join(output.rstrip("\n") for output in outputs)
+    if lines is not None:
+        text = cap_lines(text, lines)
+    text += "\n"
     sys.stdout.write(to_ascii(text) if as_ascii else text)
 
 
@@ -582,7 +673,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except RefError as error:
         sys.stderr.write(f"sct {command}: {error}\n".replace("sct : ", "sct: "))
         return 1
-    _emit(outputs, args.json, args.ascii)
+    _emit(outputs, args.json, args.ascii, getattr(args, "lines", None))
     return code
 
 
