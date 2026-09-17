@@ -12,7 +12,8 @@ import textwrap
 
 import pytest
 
-from scantool import cli
+from scantool import cli, commands, server
+from scantool.parts import SURFACE_DIFF_PARTS
 from scantool.surface import read_surface
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
@@ -188,8 +189,10 @@ def _git(cwd, *args):
     )
 
 
-@requires_git
-def test_surface_at_a_ref_and_the_diff_states_its_direction(tmp_path, monkeypatch, capsys):
+@pytest.fixture
+def versioned(tmp_path, monkeypatch):
+    """main: the package as written; next: helper's signature changed and
+    `extra` newly exported."""
     _write(tmp_path, PACKAGE)
     _git(tmp_path, "init", "-q", "-b", "main")
     _git(tmp_path, "add", ".")
@@ -209,7 +212,11 @@ def test_surface_at_a_ref_and_the_diff_states_its_direction(tmp_path, monkeypatc
     )
     _git(tmp_path, "commit", "-qam", "v2")
     monkeypatch.chdir(tmp_path)
+    return tmp_path
 
+
+@requires_git
+def test_surface_at_a_ref_and_the_diff_states_its_direction(versioned, capsys):
     out, _, code = run("surface", "pkg", "--ref", "main", capsys=capsys)
     assert code == 0 and out.splitlines()[0].endswith("package pkg @main")
     assert "extra" not in {
@@ -219,8 +226,11 @@ def test_surface_at_a_ref_and_the_diff_states_its_direction(tmp_path, monkeypatc
     out, _, code = run("surface", "pkg", "--ref", "main", "--against", "next", capsys=capsys)
     assert code == 0
     assert out.splitlines()[0].startswith(
-        "<1 name added, 0 removed, 1 changed, 0 moved> surface diff A=@main → B=@next"
+        "<1 name added, 0 removed, 1 changed, 0 moved; "
+        "parts: added 2, changed 2, moved 0, removed 0> surface diff A=@main → B=@next"
     )
+    assert "\nadded:\n  + extra" in out and "\nchanged:\n  ~ helper" in out
+    assert "moved:" not in out and "removed:" not in out  # empty parts render no header
     assert "  + extra  () -> " not in out  # the signature is `()` with no return annotation
     assert "  + extra  ()   B:pkg/extras.py:1" in out
     assert "  ~ helper   (x: int, /, *, flag: bool = False) -> int → (x: int) -> int" in out
@@ -231,3 +241,135 @@ def test_surface_at_a_ref_and_the_diff_states_its_direction(tmp_path, monkeypatc
     document = json.loads(out)
     assert code == 0 and document["direction"] == "A=@main → B=@next"
     assert (document["a"]["coverage"]["ref"], document["b"]["coverage"]["ref"]) == ("main", "next")
+
+
+def _inventory(first_line: str) -> tuple[dict[str, int], list[str]]:
+    inside = first_line[first_line.index("; parts: ") + len("; parts: ") : first_line.index(">")]
+    listed, _, showing = inside.partition("; showing ")
+    counts = {name: int(n) for name, n in (item.split() for item in listed.split(", "))}
+    return counts, showing.split(", ") if showing else []
+
+
+def _split_parts(body: list[str]) -> dict[str, list[str]]:
+    parts: dict[str, list[str]] = {}
+    current = None
+    for line in body:
+        header = next((name for name in SURFACE_DIFF_PARTS if line == f"{name}:"), None)
+        if header is not None:
+            current = header
+            parts[current] = []
+        assert current is not None, f"line before any part header: {line!r}"
+        parts[current].append(line)
+    return parts
+
+
+@requires_git
+class TestDiffParts:
+    """The diff's first line names its four parts with rendered line counts
+    (an empty part counts 0 and renders nothing); --part ID fetches parts
+    alone after the same first line."""
+
+    def test_inventory_counts_equal_the_rendered_parts(self, versioned, capsys):
+        out, _, _ = run("surface", "pkg", "--ref", "main", "--against", "next", capsys=capsys)
+        first, *body = out.splitlines()
+        counts, showing = _inventory(first)
+        parts = _split_parts(body)
+        assert showing == [] and list(counts) == list(SURFACE_DIFF_PARTS)
+        assert counts == {name: len(parts.get(name, [])) for name in SURFACE_DIFF_PARTS}
+        assert 1 + sum(counts.values()) == len(out.splitlines())
+
+    def test_no_differences_is_an_all_zero_inventory(self, versioned, capsys):
+        out, _, code = run("surface", "pkg", "--ref", "main", "--against", "main", capsys=capsys)
+        assert code == 0
+        counts, _ = _inventory(out.splitlines()[0])
+        assert counts == {"added": 0, "changed": 0, "moved": 0, "removed": 0}
+        assert out.splitlines()[1] == "no surface differences between A=@main and B=@main"
+
+    def test_part_prints_that_part_after_the_same_first_line(self, versioned, capsys):
+        full, _, _ = run("surface", "pkg", "--ref", "main", "--against", "next", capsys=capsys)
+        first, *body = full.splitlines()
+        parts = _split_parts(body)
+        out, _, code = run(
+            "surface",
+            "pkg",
+            "--ref",
+            "main",
+            "--against",
+            "next",
+            "--part",
+            "changed",
+            capsys=capsys,
+        )
+        assert code == 0
+        assert out.splitlines()[0] == first.replace(
+            "> surface diff", "; showing changed> surface diff"
+        )
+        assert out.splitlines()[1:] == parts["changed"] == ["changed:", *parts["changed"][1:]]
+
+    def test_part_takes_a_comma_list_or_repeats_in_body_order(self, versioned, capsys):
+        full, _, _ = run("surface", "pkg", "--ref", "main", "--against", "next", capsys=capsys)
+        parts = _split_parts(full.splitlines()[1:])
+        listed, _, _ = run(
+            "surface",
+            "pkg",
+            "--ref",
+            "main",
+            "--against",
+            "next",
+            "--part",
+            "changed,added",
+            capsys=capsys,
+        )
+        repeated, _, _ = run(
+            "surface",
+            "pkg",
+            "--ref",
+            "main",
+            "--against",
+            "next",
+            "--part",
+            "changed",
+            "--part",
+            "added",
+            capsys=capsys,
+        )
+        assert listed == repeated
+        assert "; showing added, changed> surface diff" in listed.splitlines()[0]
+        assert listed.splitlines()[1:] == parts["added"] + parts["changed"]
+
+    def test_an_empty_requested_part_leaves_only_the_first_line(self, versioned, capsys):
+        out, _, code = run(
+            "surface",
+            "pkg",
+            "--ref",
+            "main",
+            "--against",
+            "next",
+            "--part",
+            "removed",
+            capsys=capsys,
+        )
+        assert code == 0 and len(out.splitlines()) == 1
+        assert "removed 0; showing removed> surface diff" in out
+
+    def test_unknown_part_is_a_usage_error_listing_the_ids(self, versioned, capsys):
+        out, err, code = run(
+            "surface", "pkg", "--ref", "main", "--against", "next", "--part", "nope", capsys=capsys
+        )
+        assert code == 2 and out == ""
+        assert "unknown part 'nope'; parts: added, changed, moved, removed" in err
+
+    def test_part_without_against_is_a_usage_error(self, versioned, capsys):
+        out, err, code = run("surface", "pkg", "--part", "added", capsys=capsys)
+        assert code == 2 and out == ""
+        assert "--part goes with --against" in err
+
+    def test_the_mcp_tool_takes_part(self, versioned, capsys):
+        text, _ = commands.surface("pkg", "main", "next", part="added,changed")
+        result = server.surface("pkg", ref="main", against="next", part="added,changed")
+        assert "".join(item.text for item in result) == text
+        assert "; showing added, changed> surface diff" in text
+        result = server.surface("pkg", ref="main", against="next", part="nope")
+        assert "".join(item.text for item in result).startswith(
+            "Error reading surface: sct surface: unknown part 'nope'; parts: "
+        )

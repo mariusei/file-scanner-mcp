@@ -1,7 +1,8 @@
-<2 branches vs v1, 2 with structural changes> base v1 (0294565)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 8, colliding 3, order 1> base v1 (0294565)
+branches:
 a  merge-base 0294565  1 ahead 0 behind  1 file, +2 ~3 -2 structures
 b  merge-base 0294565  1 ahead 0 behind  1 file, +2 ~3 -2 structures
-overlap (structures touched by 2+ branches): 7 in 1 file
+shared: overlap (structures touched by 2+ branches): 7 in 1 file
   Basic.java::ConnectionRetrier              a(~)  b(~)
   Basic.java::DatabaseManager                a(~)  b(~)
   Basic.java::DatabaseManager.disconnect     a(-)  b(-)
@@ -9,8 +10,8 @@ overlap (structures touched by 2+ branches): 7 in 1 file
   Basic.java::EmailValidator.validateEmail   a(~)  b(~)
   Basic.java::UserService.deleteUser         a(-)  b(-)
   Basic.java::UserService.removeUser         a(+)  b(+)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   health       a:Basic.java:45  b:Basic.java:45
   removeUser   a:Basic.java:87  b:Basic.java:87
-merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
+order: merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
 [exit 0]

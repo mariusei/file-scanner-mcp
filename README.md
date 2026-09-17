@@ -225,8 +225,8 @@ sct focus    - --as <path> <name>        stdin content, one node
 sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N] [--lines N]
 sct search   <dir> <pattern> --names --decorator RE   one row per structure, decorators on the row
 sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
-sct surface  <package-dir> [--ref REF] [--against REF]
-sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K]
+sct surface  <package-dir> [--ref REF] [--against REF] [--part ID]
+sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K] [--part ID]
 sct callers  <name> [--dir DIR] [--ref REF]
 sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
 sct divergence <dir> [--max-findings N]

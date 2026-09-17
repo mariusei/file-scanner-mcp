@@ -105,9 +105,16 @@ def surface(
     ref: str | None = None,
     against: str | None = None,
     as_json: bool = False,
+    part: str = "",
 ) -> tuple[str, int]:
+    """part: only these parts of the diff (comma list of IDs); the diff is
+    the only multi-part form, so it goes with against."""
+    from .parts import SURFACE_DIFF_PARTS, select_parts
     from .surface import diff_direction, format_surface, format_surface_diff, surface_to_json
 
+    if part and not against:
+        raise UsageError("sct surface: --part goes with --against; the plain surface is one part")
+    showing = select_parts(part, SURFACE_DIFF_PARTS, "surface")
     label_a = f"@{ref}" if ref else "@WORKTREE"
     surface_a = _surface_at(package_dir, ref)
     if against:
@@ -119,7 +126,7 @@ def surface(
                 "b": surface_to_json(surface_b, f"@{against}"),
             }
             return json.dumps(document, indent=2), 0
-        return format_surface_diff(surface_a, surface_b, label_a, f"@{against}"), 0
+        return format_surface_diff(surface_a, surface_b, label_a, f"@{against}", showing), 0
     if as_json:
         return json.dumps(surface_to_json(surface_a, label_a), indent=2), 0
     return format_surface(surface_a, label_a), 1 if not surface_a.exports else 0
@@ -132,13 +139,17 @@ def overlap(
     path: str | None = None,
     kind: str | None = None,
     as_json: bool = False,
+    part: str = "",
 ) -> tuple[str, int]:
     """path: only files under this repository-relative prefix; kind: only
-    structures of this node type (as scan prints it). Empty means all."""
+    structures of this node type (as scan prints it); part: only these
+    parts of the report (comma list of IDs). Empty means all."""
     from .overlap import Scope, format_overlap, overlap_to_json
     from .overlap import overlap as compute
+    from .parts import OVERLAP_PARTS, select_parts
     from .structural_diff import repo_top, verify_ref
 
+    showing = select_parts(part, OVERLAP_PARTS, "overlap")
     where = repo or os.getcwd()
     top = repo_top(where)
     if top is None:
@@ -152,7 +163,7 @@ def overlap(
         raise RefError(str(error)) from error
     if as_json:
         return json.dumps(overlap_to_json(result), indent=2), 0
-    return format_overlap(result), 0
+    return format_overlap(result, showing), 0
 
 
 def callers(

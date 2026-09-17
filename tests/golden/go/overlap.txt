@@ -1,15 +1,16 @@
-<2 branches vs v1, 2 with structural changes> base v1 (8c8db1e)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 7, colliding 3, order 1> base v1 (8c8db1e)
+branches:
 a  merge-base 8c8db1e  1 ahead 0 behind  1 file, +2 ~2 -2 structures
 b  merge-base 8c8db1e  1 ahead 0 behind  1 file, +2 ~2 -2 structures
-overlap (structures touched by 2+ branches): 6 in 1 file
+shared: overlap (structures touched by 2+ branches): 6 in 1 file
   basic.go::DeleteUser      a(-)  b(-)
   basic.go::Disconnect      a(-)  b(-)
   basic.go::Health          a(+)  b(+)
   basic.go::MaxRetries      a(~)  b(~)
   basic.go::RemoveUser      a(+)  b(+)
   basic.go::ValidateEmail   a(~)  b(~)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   Health       a:basic.go:43  b:basic.go:43
   RemoveUser   a:basic.go:68  b:basic.go:68
-merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
+order: merge order (a hint, not a verdict): a < b   (all share 6 structures; ordered by change size, a touches 6 and b touches 6)
 [exit 0]

@@ -1,7 +1,8 @@
-<2 branches vs v1, 2 with structural changes> base v1 (65d751f)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 8, colliding 4, order 1> base v1 (65d751f)
+branches:
 a  merge-base 65d751f  1 ahead 0 behind  1 file, +3 ~1 -3 structures
 b  merge-base 65d751f  1 ahead 0 behind  1 file, +3 ~1 -3 structures
-overlap (structures touched by 2+ branches): 7 in 1 file
+shared: overlap (structures touched by 2+ branches): 7 in 1 file
   basic.html::Frequently Asked Questions   a(+)  b(+)
   basic.html::Related Links                a(-)  b(-)
   basic.html::article                      a(~)  b(~)
@@ -9,9 +10,9 @@ overlap (structures touched by 2+ branches): 7 in 1 file
   basic.html::main-footer                  a(-)  b(-)
   basic.html::sidebar                      a(-)  b(-)
   basic.html::site-footer                  a(+)  b(+)
-colliding new names (added independently on 2+ branches): 3
+colliding: colliding new names (added independently on 2+ branches): 3
   Frequently Asked Questions   a:basic.html:56  b:basic.html:56
   faq                          a:basic.html:55  b:basic.html:55
   site-footer                  a:basic.html:62  b:basic.html:62
-merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
+order: merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
 [exit 0]

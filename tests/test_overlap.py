@@ -14,6 +14,7 @@ import subprocess
 import pytest
 
 from scantool import cli, commands, server
+from scantool.parts import OVERLAP_PARTS
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 
@@ -96,17 +97,18 @@ class TestOverlap:
         assert code == 0
         first = out.splitlines()[0]
         assert first.startswith(
-            "<4 branches vs main, 3 with structural changes, 1 already in base, 1 pair sharing history> base main ("
+            "<4 branches vs main, 3 with structural changes, 1 already in base, 1 pair sharing history; "
+            "parts: branches 5, history 3, shared 3, colliding 2, order 1> base main ("
         )
         assert "feat-d" in out and "[already in base: ancestor]" in out
         assert "shared history: feat-a and feat-c share 1 commit beyond the base" in out
         assert (
-            "overlap (structures touched by 2+ branches): 2 in 1 file, 1 also changed in base"
+            "shared: overlap (structures touched by 2+ branches): 2 in 1 file, 1 also changed in base"
             in out
         )
         assert "mod.py::alpha" in out and "feat-a(~)  feat-b(~)  feat-c(~)  base(~)" in out
         assert "mod.py::newfn" in out and "feat-a(+)  feat-c(+)\n" in out
-        assert "colliding new names (added independently on 2+ branches): 1" in out
+        assert "colliding: colliding new names (added independently on 2+ branches): 1" in out
         assert "newfn" in out and "feat-a:mod.py:9" in out and "feat-b:other.py:5" in out
         # feat-c and feat-e got newfn through the commits they share with
         # feat-a: added once, not a collision between them and feat-a
@@ -114,7 +116,10 @@ class TestOverlap:
         assert "feat-c:" not in row and "feat-e:" not in row, row
         # feat-a and feat-b each share only alpha with a branch they do not
         # stack on (newfn is feat-a/feat-c shared history) and touch 2 each
-        assert "merge order (a hint, not a verdict): feat-a < feat-b < feat-c   (all share 1" in out
+        assert (
+            "order: merge order (a hint, not a verdict): feat-a < feat-b < feat-c   (all share 1"
+            in out
+        )
         assert "stacked pairs count only their residual beyond shared commits" in out
         assert "feat-d" not in out.splitlines()[-1]  # already in base: not ordered
 
@@ -131,7 +136,7 @@ class TestOverlap:
         # raw overlap between feat-c and feat-e counts alpha and newfn, which
         # both inherit from feat-a; beyond their mutual merge-base only beta
         assert (
-            "overlap (structures touched by 2+ branches): 3 in 1 file, 1 also changed in base"
+            "shared: overlap (structures touched by 2+ branches): 3 in 1 file, 1 also changed in base"
             in out
         )
         assert "mod.py::beta" in out and "feat-c(~)  feat-e(~)\n" in out
@@ -143,9 +148,9 @@ class TestOverlap:
         ]
         # the residual is listed under its count line, one address per row
         assert lines[pairs[2] + 2] == "    mod.py::beta"
-        assert lines[pairs[2] + 3].startswith("overlap (")
+        assert lines[pairs[2] + 3].startswith("shared: overlap (")
         assert lines[-1].startswith(
-            "merge order (a hint, not a verdict): feat-a < feat-c < feat-e   "
+            "order: merge order (a hint, not a verdict): feat-a < feat-c < feat-e   "
             "(feat-a shares 0 structures with the others, feat-e shares 1;"
         )
         assert lines[-1].endswith("stacked pairs count only their residual beyond shared commits)")
@@ -189,6 +194,123 @@ class TestOverlap:
         monkeypatch.chdir(tmp_path_factory.mktemp("outside"))
         _, err, code = run("overlap", "main", "feat-a", capsys=capsys)
         assert code == 1 and "pass --repo DIR" in err
+
+
+def _inventory(first_line: str) -> tuple[dict[str, int], list[str]]:
+    """The parts inventory and the `showing` list the first line carries."""
+    inside = first_line[first_line.index("; parts: ") + len("; parts: ") : first_line.index(">")]
+    listed, _, showing = inside.partition("; showing ")
+    counts = {name: int(n) for name, n in (item.split() for item in listed.split(", "))}
+    return counts, showing.split(", ") if showing else []
+
+
+def _split_parts(body: list[str], ids: tuple[str, ...]) -> dict[str, list[str]]:
+    """The body cut at its part header lines, in the order they appear."""
+    parts: dict[str, list[str]] = {}
+    current = None
+    for line in body:
+        header = next((name for name in ids if line.startswith(f"{name}:")), None)
+        if header is not None:
+            current = header
+            parts[current] = []
+        assert current is not None, f"line before any part header: {line!r}"
+        parts[current].append(line)
+    return parts
+
+
+@requires_git
+class TestParts:
+    """The first line names every part with its rendered line count, so a
+    `| head -N` cut loses content but not the knowledge of what was lost;
+    --part ID fetches parts alone after the same first line."""
+
+    def test_inventory_counts_equal_the_rendered_parts(self, repo, capsys):
+        out, _, _ = run("overlap", "main", "feat-a", "feat-b", "feat-c", "feat-d", capsys=capsys)
+        first, *body = out.splitlines()
+        counts, showing = _inventory(first)
+        parts = _split_parts(body, OVERLAP_PARTS)
+        assert showing == []
+        assert list(counts) == list(parts) == list(OVERLAP_PARTS)  # every part, body order
+        assert counts == {name: len(lines) for name, lines in parts.items()}
+        assert 1 + sum(counts.values()) == len(out.splitlines())
+        assert parts["branches"][0] == "branches:" and parts["history"][0] == "history:"
+
+    def test_absent_parts_are_absent_from_the_inventory(self, repo, capsys):
+        # feat-a and feat-b share no history: no history part, and the
+        # inventory says so rather than listing it at zero
+        out, _, _ = run("overlap", "main", "feat-a", "feat-b", capsys=capsys)
+        counts, _ = _inventory(out.splitlines()[0])
+        assert list(counts) == ["branches", "shared", "colliding", "order"]
+        assert "history:" not in out
+
+    def test_part_prints_that_part_after_the_same_first_line(self, repo, capsys):
+        full, _, _ = run("overlap", "main", "feat-a", "feat-b", "feat-c", capsys=capsys)
+        first, *body = full.splitlines()
+        parts = _split_parts(body, OVERLAP_PARTS)
+        out, _, code = run(
+            "overlap", "main", "feat-a", "feat-b", "feat-c", "--part", "shared", capsys=capsys
+        )
+        assert code == 0
+        assert out.splitlines()[0] == first.replace("> base", "; showing shared> base")
+        assert out.splitlines()[1:] == parts["shared"]
+        assert out.splitlines()[1].startswith("shared: overlap (structures touched by 2+ branches)")
+
+    def test_part_takes_a_comma_list_or_repeats_in_body_order(self, repo, capsys):
+        full, _, _ = run("overlap", "main", "feat-a", "feat-b", "feat-c", capsys=capsys)
+        parts = _split_parts(full.splitlines()[1:], OVERLAP_PARTS)
+        listed, _, _ = run(
+            "overlap",
+            "main",
+            "feat-a",
+            "feat-b",
+            "feat-c",
+            "--part",
+            "order,branches",
+            capsys=capsys,
+        )
+        repeated, _, _ = run(
+            "overlap",
+            "main",
+            "feat-a",
+            "feat-b",
+            "feat-c",
+            "--part",
+            "order",
+            "--part",
+            "branches",
+            capsys=capsys,
+        )
+        assert listed == repeated
+        assert "; showing branches, order> base" in listed.splitlines()[0]
+        assert listed.splitlines()[1:] == parts["branches"] + parts["order"]
+
+    def test_a_requested_part_that_is_absent_leaves_only_the_first_line(self, repo, capsys):
+        out, _, code = run(
+            "overlap", "main", "feat-a", "feat-b", "--part", "history", capsys=capsys
+        )
+        assert code == 0 and len(out.splitlines()) == 1
+        assert "; showing history> base" in out
+
+    def test_unknown_part_is_a_usage_error_listing_the_ids(self, repo, capsys):
+        out, err, code = run("overlap", "main", "feat-a", "feat-b", "--part", "nope", capsys=capsys)
+        assert code == 2 and out == ""
+        assert "unknown part 'nope'; parts: branches, history, shared, colliding, order" in err
+
+    def test_json_carries_the_inventory(self, repo, capsys):
+        text, _, _ = run("overlap", "main", "feat-a", "feat-b", "feat-c", capsys=capsys)
+        counts, _ = _inventory(text.splitlines()[0])
+        out, _, _ = run("overlap", "main", "feat-a", "feat-b", "feat-c", "--json", capsys=capsys)
+        assert json.loads(out)["parts"] == counts
+
+    def test_the_mcp_tool_takes_part(self, repo, capsys):
+        text, _ = commands.overlap("main", ["feat-a", "feat-b", "feat-c"], part="shared,order")
+        result = server.overlap("main", ["feat-a", "feat-b", "feat-c"], part="shared,order")
+        assert "".join(item.text for item in result) == text
+        assert "; showing shared, order> base" in text
+        result = server.overlap("main", ["feat-a", "feat-b"], part="nope")
+        assert "".join(item.text for item in result).startswith(
+            "Error computing overlap: sct overlap: unknown part 'nope'; parts: "
+        )
 
 
 SCOPED_MOD = "def alpha(x):\n    return x\n\n\nclass Box:\n    def get(self):\n        return 1\n"

@@ -1480,6 +1480,7 @@ def surface(
     ref: str | None = None,
     against: str | None = None,
     output_format: str = "tree",
+    part: str = "",
 ) -> list[TextContent]:
     """
     The public surface of a package at a ref, or the surface diff between two refs.
@@ -1489,7 +1490,9 @@ def surface(
       lazy-import table (`__getattr__`), TYPE_CHECKING imports and re-export
       chains to each name's real definition; inherited members are marked
     - Pass against=REF → names added, removed, changed signature, or moved
-      to a different module between ref and against
+      to a different module between ref and against; the first line names
+      each part (added, changed, moved, removed) with its line count, and
+      part="removed" fetches one part alone
     - ref=None reads the working tree; ref="v1.0"/"HEAD~5"/a branch reads the
       package as committed there, with no checkout
 
@@ -1503,12 +1506,16 @@ def surface(
         Semantics & display:
             ref: Read the package as of this git ref (default: the working tree)
             output_format: Output format - "tree" or "json" (default: "tree")
+            part: Only these parts of the diff, a comma list of added, changed,
+                moved, removed (goes with against; empty = all)
 
     Returns:
         Public names grouped by defining module, or an added/removed/changed/moved diff
     """
     try:
-        text, _ = commands.surface(package_dir, ref, against, as_json=output_format == "json")
+        text, _ = commands.surface(
+            package_dir, ref, against, as_json=output_format == "json", part=part
+        )
         return [TextContent(type="text", text=text)]
     except Exception as e:
         return [TextContent(type="text", text=f"Error reading surface: {e}")]
@@ -1525,6 +1532,7 @@ def overlap(
     path: str = "",
     kind: str = "",
     output_format: str = "tree",
+    part: str = "",
 ) -> list[TextContent]:
     """
     N branches compared against one base, each at its own merge-base with base.
@@ -1544,6 +1552,9 @@ def overlap(
     forked. A branch already an ancestor of base (or patch-equivalent to it)
     is flagged, not silently folded in.
 
+    The first line names each part of the report (branches, history, shared,
+    colliding, order) with its line count; part="shared" fetches one alone.
+
     Args (tiered — most calls need only Common):
         Common:
             base: The base ref every branch is compared against
@@ -1555,6 +1566,8 @@ def overlap(
             kind: Only structures of this node type, as scan prints it
                 (function, method, class, …; empty = all)
             output_format: Output format - "tree" or "json" (default: "tree")
+            part: Only these parts of the report, a comma list of branches,
+                history, shared, colliding, order (empty = all)
 
     Returns:
         Per-branch merge-base/ahead/behind, structures shared across branches,
@@ -1562,7 +1575,7 @@ def overlap(
     """
     try:
         text, _ = commands.overlap(
-            base, branches, repo, path, kind, as_json=output_format == "json"
+            base, branches, repo, path, kind, as_json=output_format == "json", part=part
         )
         return [TextContent(type="text", text=text)]
     except Exception as e:

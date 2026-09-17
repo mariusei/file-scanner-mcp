@@ -1,13 +1,14 @@
-<2 branches vs v1, 2 with structural changes> base v1 (ad5f89e)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 5, colliding 3, order 1> base v1 (ad5f89e)
+branches:
 a  merge-base ad5f89e  1 ahead 0 behind  1 file, +2 ~0 -2 structures
 b  merge-base ad5f89e  1 ahead 0 behind  1 file, +2 ~0 -2 structures
-overlap (structures touched by 2+ branches): 4 in 1 file
+shared: overlap (structures touched by 2+ branches): 4 in 1 file
   basic.txt::APPENDIX              a(+)  b(+)
   basic.txt::CONCLUSION            a(-)  b(-)
   basic.txt::FINAL NOTE            a(+)  b(+)
   basic.txt::FUTURE ENHANCEMENTS   a(-)  b(-)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   APPENDIX     a:basic.txt:77  b:basic.txt:77
   FINAL NOTE   a:basic.txt:57  b:basic.txt:57
-merge order (a hint, not a verdict): a < b   (all share 4 structures; ordered by change size, a touches 4 and b touches 4)
+order: merge order (a hint, not a verdict): a < b   (all share 4 structures; ordered by change size, a touches 4 and b touches 4)
 [exit 0]

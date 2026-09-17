@@ -1,7 +1,8 @@
-<2 branches vs v1, 2 with structural changes> base v1 (b1a37e2)
+<2 branches vs v1, 2 with structural changes; parts: branches 3, shared 8, colliding 3, order 1> base v1 (b1a37e2)
+branches:
 a  merge-base b1a37e2  1 ahead 0 behind  1 file, +2 ~3 -2 structures
 b  merge-base b1a37e2  1 ahead 0 behind  1 file, +2 ~3 -2 structures
-overlap (structures touched by 2+ branches): 7 in 1 file
+shared: overlap (structures touched by 2+ branches): 7 in 1 file
   basic.php::DEFAULT_ATTEMPTS             a(~)  b(~)
   basic.php::DatabaseManager              a(~)  b(~)
   basic.php::DatabaseManager.disconnect   a(-)  b(-)
@@ -9,8 +10,8 @@ overlap (structures touched by 2+ branches): 7 in 1 file
   basic.php::UserService.removeUser       a(+)  b(+)
   basic.php::health                       a(+)  b(+)
   basic.php::validateEmail                a(~)  b(~)
-colliding new names (added independently on 2+ branches): 2
+colliding: colliding new names (added independently on 2+ branches): 2
   health       a:basic.php:127  b:basic.php:127
   removeUser   a:basic.php:104  b:basic.php:104
-merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
+order: merge order (a hint, not a verdict): a < b   (all share 7 structures; ordered by change size, a touches 7 and b touches 7)
 [exit 0]

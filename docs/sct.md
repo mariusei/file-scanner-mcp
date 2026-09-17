@@ -17,8 +17,8 @@ sct focus    - --as <path> <name>        stdin content, one node
 sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N] [--lines N]
 sct search   <dir> <pattern> --names --decorator RE   one row per structure, decorators on the row
 sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
-sct surface  <package-dir> [--ref REF] [--against REF]
-sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K]
+sct surface  <package-dir> [--ref REF] [--against REF] [--part ID]
+sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K] [--part ID]
 sct callers  <name> [--dir DIR] [--ref REF]
 sct resolve  <path:line | path::name> --from REF --to REF [--repo DIR]
 sct divergence <dir> [--max-findings N]
@@ -108,8 +108,9 @@ changed functions.
 with its signature, how it is exported (`__all__`, a lazy-import table, a
 re-export, `TYPE_CHECKING`) and where it is defined after following the
 re-exports, with members inherited from bases inside the package marked.
-`--against REF` prints the surface diff and the header states the
-direction.
+`--against REF` prints the surface diff; the header states the direction
+and names the diff's parts (`added`, `changed`, `moved`, `removed`) with
+their line counts, and `--part ID` prints one part alone.
 
 **`sct overlap`** takes N branches against one base, each at its own
 merge-base: structures touched by two or more branches (as addresses), new
@@ -118,7 +119,11 @@ share beyond the base (a stack, so their overlap is expected), and per branch
 whether it is already in the base and by which criterion (ancestor,
 patch-equivalent, tree-equal; patch-equivalence proves the branch can be
 deleted, not that its content is in the current tree). It ends with a
-merge-order hint, not a verdict.
+merge-order hint, not a verdict. The first line names the report's parts
+(`branches`, `history`, `shared`, `colliding`, `order`) with their line
+counts, so a `| head -N` cut still says what lies below it; `--part ID`
+(a comma list or repeated) prints only those parts after the same first
+line.
 
 **`sct callers`** lists the actual call sites of a function or method across
 a directory, each with its enclosing function and `path:line`, with the
