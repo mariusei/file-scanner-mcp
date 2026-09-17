@@ -490,16 +490,44 @@ def test_section_gist_is_the_first_sentence_whole(file_scanner, tmp_path):
     assert _by_name(structures, "Dotted").docstring == "Run `v0.20.0` on file.md then stop."
 
 
-def test_section_gist_without_a_sentence_end_is_cut_to_the_value_width(file_scanner, tmp_path):
+def test_section_gist_reads_the_sentence_across_wrapped_lines(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        "# Wrapped\n\nAgents read most code through\ntheir shell, not through\n"
+        "MCP tools. Second sentence\nhere.\n\n"
+        "# Paragraphs\n\nFirst paragraph has no end\n\nSecond paragraph. Done.\n\n"
+        "# Fenced\n\nLead-in without end\n```\ncode\n```\nafter the fence.\n\n"
+        "# List\n\n- first item wraps\n  onto this line. Then more.\n- second item.\n\n"
+        "# Quote\n\n> quoted text wraps\n> across lines. And on.\n\n"
+        "# Lead\n\nTo install, run:\n",
+    )
+    gists = {
+        name: _by_name(structures, name).docstring
+        for name in ("Wrapped", "Paragraphs", "Fenced", "List", "Quote", "Lead")
+    }
+    assert gists == {
+        "Wrapped": "Agents read most code through their shell, not through MCP tools.",
+        "Paragraphs": "First paragraph has no end",
+        "Fenced": "Lead-in without end",
+        "List": "first item wraps onto this line.",
+        "Quote": "quoted text wraps across lines.",
+        "Lead": "To install, run:",
+    }
+
+
+def test_section_gist_is_capped_at_twice_the_value_width(file_scanner, tmp_path):
     from scantool.languages.base import MAX_EXPR_LEN
 
     structures = _scan_md(
-        file_scanner, tmp_path, "# Top\n\n" + "word " * 40 + "\n\n# Lead\n\nTo install, run:\n"
+        file_scanner,
+        tmp_path,
+        "# Run-on\n\n" + "word " * 40 + "\n\n# Long sentence\n\n" + "word " * 40 + "end. Next.\n",
     )
-    gist = _by_name(structures, "Top").docstring
-    assert len(gist) == MAX_EXPR_LEN
-    assert gist.startswith("word word") and gist.endswith("…")
-    assert _by_name(structures, "Lead").docstring == "To install, run:"
+    for name in ("Run-on", "Long sentence"):
+        gist = _by_name(structures, name).docstring
+        assert len(gist) == 2 * MAX_EXPR_LEN
+        assert gist.startswith("word word") and gist.endswith("…")
 
 
 def test_quick_scan_row_carries_the_gist(tmp_path, capsys):

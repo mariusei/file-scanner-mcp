@@ -90,13 +90,13 @@ def default_is_private_name(name: str) -> bool:
 MAX_EXPR_LEN = 60
 
 
-def render_flat_value(source_text: str) -> str:
+def render_flat_value(source_text: str, limit: int = MAX_EXPR_LEN) -> str:
     """The value of a file-scope binding as one line for the node's
-    signature: the source text flattened, cut to MAX_EXPR_LEN with an
-    ellipsis. The rendering a handler uses when it has no expression parser
-    to elide with (Python re-renders through ast and falls back to this)."""
+    signature: the source text flattened, cut to `limit` with an ellipsis.
+    The rendering a handler uses when it has no expression parser to elide
+    with (Python re-renders through ast and falls back to this)."""
     flat = " ".join(source_text.split())
-    return flat if len(flat) <= MAX_EXPR_LEN else flat[: MAX_EXPR_LEN - 1] + "…"
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
 
 
 # ===========================================================================
@@ -107,33 +107,43 @@ def render_flat_value(source_text: str) -> str:
 # a table row, an image (also one wrapped in a link, the badge line), an
 # HTML tag, a thematic break.
 _SECTION_FRAME_LINE = re.compile(r"^(?:```|~~~|\||\[?!\[|<|[-*_]{3,}\s*$)")
-# A list or blockquote marker at the start of a line; what follows is prose.
-_SECTION_LINE_MARKER = re.compile(r"^(?:[-*+]|\d+[.)]|>)(?:\s+|$)")
-# Where a sentence ends inside a line: terminal punctuation, any closing
-# quote or bracket, then a space or the end of the line.
+# A list marker at the start of a line: it opens an item, so it also ends
+# the item before it. A blockquote marker only prefixes the line's prose.
+_SECTION_LIST_MARKER = re.compile(r"^(?:[-*+]|\d+[.)])(?:\s+|$)")
+_SECTION_QUOTE_MARKER = re.compile(r"^>\s*")
+# Where a sentence ends: terminal punctuation, any closing quote or
+# bracket, then a space or the end of the text.
 _SENTENCE_END = re.compile(r"[.!?][\"'”’)\]]*(?:\s|$)")
+# The widest a gist gets: a first sentence longer than this is cut there.
+_GIST_LIMIT = 2 * MAX_EXPR_LEN
 
 
 def section_gist(body: list[str]) -> str | None:
     """The gist of a document section: the first sentence of its first
-    line of prose, whole; when no sentence ends on that line (hard-wrapped
-    text, a lead-in ending in a colon), the line rendered the way a value
-    node's signature is (whitespace flattened, cut to MAX_EXPR_LEN).
-    `body` is the section's own lines, after the heading and before its
-    first child heading; the caller blanks the lines the parser knows to
-    be code. Frame lines are skipped; a list item's text stands in for a
-    paragraph, since a section is often only the list. A section with no
-    prose has no gist."""
+    paragraph, read across the paragraph's wrapped lines, whole up to
+    _GIST_LIMIT; a paragraph with no sentence end (a lead-in ending in a
+    colon) gives the paragraph, cut the same way. `body` is the section's
+    own lines, after the heading and before its first child heading; the
+    caller blanks the lines the parser knows to be code. Frame lines are
+    skipped; the paragraph ends at a blank line, a frame line, or the next
+    list item — so a section that is only a list gives its first item's
+    text, which is often the content. A section with no prose has no gist."""
+    paragraph: list[str] = []
     for line in body:
-        text = line.strip()
-        if not text or _SECTION_FRAME_LINE.match(text):
-            continue
-        text = " ".join(_SECTION_LINE_MARKER.sub("", text).split())
-        if not text:
-            continue
-        end = _SENTENCE_END.search(text)
-        return text[: end.end()].rstrip() if end else render_flat_value(text)
-    return None
+        text = _SECTION_QUOTE_MARKER.sub("", line.strip())
+        if paragraph:
+            if not text or _SECTION_FRAME_LINE.match(text) or _SECTION_LIST_MARKER.match(text):
+                break
+            paragraph.append(text)
+        elif text and not _SECTION_FRAME_LINE.match(text):
+            text = _SECTION_LIST_MARKER.sub("", text)
+            if text:
+                paragraph.append(text)
+    if not paragraph:
+        return None
+    text = " ".join(paragraph)
+    end = _SENTENCE_END.search(text)
+    return render_flat_value(text[: end.end()] if end else text, _GIST_LIMIT)
 
 
 # ===========================================================================
