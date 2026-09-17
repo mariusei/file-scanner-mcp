@@ -279,7 +279,8 @@ class CodeMap:
         # .venv, gitignored dirs) are never descended into — rglob walked
         # them all and filtered per file afterwards
         for root, dirs, names in os.walk(self.directory):
-            rel_root = os.path.relpath(root, self.directory)
+            # Graph paths are repository-relative with forward slashes on every OS
+            rel_root = os.path.relpath(root, self.directory).replace("\\", "/")
 
             kept_dirs = []
             for dir_name in dirs:
@@ -359,13 +360,15 @@ class CodeMap:
 
         # Process imports
         for imp in imports:
-            source_file = imp.source_file
+            source_file = imp.source_file.replace("\\", "/")
 
             # Ensure source file exists in graph
             if source_file not in graph:
                 graph[source_file] = FileNode(path=source_file)
 
-            for target_file in self._resolve_import_targets(imp, all_files, type_to_file):
+            for resolved in self._resolve_import_targets(imp, all_files, type_to_file):
+                # Resolvers may join with the platform separator; the graph is keyed with "/"
+                target_file = resolved.replace("\\", "/")
                 if target_file not in graph or target_file == source_file:
                     continue
                 sites.setdefault(target_file, []).append(imp)
