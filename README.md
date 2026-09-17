@@ -215,7 +215,7 @@ Agents read most code through their shell, not through MCP tools. `sct` is
 the same reader as a shell command, under the same interpreter as the server:
 
 ```
-sct <dir> [--lines N]
+sct <dir> [--part ID] [--lines N]
 sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep] [--lines N]
 sct scan     - [...]                     paths from stdin, one per line
 sct scan     - --as <path> [...]         stdin content scanned as <path>

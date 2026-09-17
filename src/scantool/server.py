@@ -12,7 +12,7 @@ from mcp.types import TextContent
 from . import commands
 from .capabilities import tool_description
 from .code_health import analyze_health
-from .code_map import CodeMap
+from .code_map import CodeMap, parse_parts, part_header, render_preview
 from .connectivity import connectivity_tail
 from .content_search import find_leads, format_hits, hits_to_json, search_content
 from .delta import FULL_DETAIL, GIST_DETAIL, ScanMemory, apply_node_delta, format_age
@@ -26,6 +26,8 @@ from .formatter import (
     structures_to_json,
 )
 from .git_signals import (
+    activity_lines,
+    activity_title,
     collect_git_signals,
     file_churn,
     format_activity,
@@ -149,6 +151,7 @@ def preview_directory(
     max_files: int = 10000,
     max_entries: int = 20,
     respect_gitignore: bool = True,
+    part: str = "",
 ) -> list[TextContent]:
     """
     Intelligent directory preview - analyzes all file types including code, markdown, text, HTML, CSS, SQL, and config files.
@@ -163,7 +166,9 @@ def preview_directory(
     - "normal": Architecture analysis (2-5s) - imports, entry points, clusters
     - "deep": Function-level (5-10s) - hot functions, call graph, centrality [DEFAULT]
 
-    **What you get (depth="deep", default):**
+    **What you get (depth="deep", default):** a multi-part answer whose first
+    line lists every part with its line count and the form that fetches one
+    part alone, so a `| head -N` cut loses content, not the map of what was lost.
     - ✅ Entry Points: main(), if __name__, app instances
     - ✅ Core Files: Most imported files (architectural hubs)
     - ✅ Architecture: Files clustered by role (entry points, core logic, utilities, tests)
@@ -193,6 +198,9 @@ def preview_directory(
             max_files: Maximum files to analyze (safety limit, default: 10000)
             max_entries: Maximum entries to show per section (default: 20)
             respect_gitignore: Respect .gitignore patterns (default: True)
+            part: Only these parts, comma list in the order wanted (the ids are on
+                line one of every answer: core, entry, structure, archetypes,
+                architecture, deps, hot, inventory, next, git). Default: all.
 
     Returns:
         Structured code analysis with entry points, architecture, hot functions, and call graph
@@ -223,6 +231,12 @@ def preview_directory(
         - Scales: 486 files analyzed in 4.79s (production FastAPI backend)
     """
     try:
+        parts = parse_parts(part)
+        if parts and depth == "quick":
+            return [TextContent(type="text", text="Error: part applies to depth normal or deep")]
+    except ValueError as error:
+        return [TextContent(type="text", text=f"Error: {error}")]
+    try:
         # Map depth to analysis mode
         if depth == "quick":
             # Metadata only
@@ -247,9 +261,18 @@ def preview_directory(
             )
 
             code_map = cm.analyze()
-            output = cm.format_tree(code_map, max_entries=max_entries)
-
-            return [TextContent(type="text", text=output + _git_activity_section(directory))]
+            sections = cm.sections(code_map, max_entries=max_entries)
+            signals = collect_git_signals(directory)
+            if signals and (activity := activity_lines(signals)):
+                sections["git"] = [part_header("git", activity_title(signals)), *activity]
+            output = render_preview(
+                cm.directory.name,
+                sections,
+                cm.footer(code_map),
+                fetch_form=f"sct {directory}",
+                part=parts,
+            )
+            return [TextContent(type="text", text=output)]
 
         else:
             return [

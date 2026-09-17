@@ -67,6 +67,11 @@ OPTIONS
   --path PATH    Restrict diff or overlap to a file or directory, relative to the repo.
   --kind KIND    Restrict overlap to structures of one type (function, class, …).
   --budget N     Approximate output size in tokens (scan, files only).
+  --part ID      <dir>: only these parts of the answer (repeatable, or a comma
+                 list), in this order. Line one of every answer is the table of
+                 contents: each part's id and line count, and the form that
+                 fetches one part; the ids are core, entry, structure,
+                 archetypes, architecture, deps, hot, inventory, next, git.
   --lines N      The N most informative lines (<dir>, scan, focus, search):
                  headers and structure rows first, in document order, then
                  as much skeleton or body as fits; one trailer says how many
@@ -250,10 +255,16 @@ def _stdin_content(command: str, as_path: str | None, paths: Sequence[str]) -> s
 
 def run_orient(args: argparse.Namespace) -> tuple[list[str], int]:
     from . import server
+    from .code_map import parse_parts
 
+    try:
+        parts = parse_parts(args.part or [])
+    except ValueError as error:
+        raise UsageError(f"sct: {error}") from error
     if not os.path.isdir(args.directory):
         return [f"sct: no such directory: {args.directory}"], 1
-    return [_text(server.preview_directory(directory=args.directory))], 0
+    text = _text(server.preview_directory(directory=args.directory, part=",".join(parts)))
+    return [text], 0
 
 
 def run_scan(args: argparse.Namespace) -> tuple[list[str], int]:
@@ -497,6 +508,13 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
 
     orient = parser("", "Orientation: entry points, hot functions, call-graph map.", False)
     orient.add_argument("directory")
+    orient.add_argument(
+        "--part",
+        action="append",
+        metavar="ID",
+        help="only these parts (repeatable, or a comma list), in this order; "
+        "line one of every answer lists the ids with their line counts",
+    )
     lines_option(orient)
 
     scan = parser("scan", "Skeleton of files or a directory, within a budget.", True)
