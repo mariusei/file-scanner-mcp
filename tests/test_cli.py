@@ -282,3 +282,127 @@ def test_a_file_with_an_invalid_escape_leaves_stderr_empty(tmp_path, capsys):
     code = cli.main(["surface", str(tmp_path)])
     out, err = capsys.readouterr()
     assert code == 0 and "f" in out and err == ""
+
+
+# --- the filters agents piped the output through (--lines, --decorator, --body) ---
+
+ROUTES = (
+    "from fastapi import APIRouter\n"
+    "router = APIRouter()\n\n"
+    '@router.get("/items")\n'
+    "async def list_items() -> list:\n"
+    "    return []\n\n"
+    '@router.post("/items")\n'
+    "async def create_item(item: dict) -> dict:\n"
+    '    """Create one."""\n'
+    "    return item\n\n"
+    "def helper():\n"
+    "    pass\n"
+)
+
+
+def test_cap_lines_cuts_at_a_row_boundary_and_names_the_cut():
+    text = "h\n- row1 @1\n   skel1\n   skel2\n- row2 @5\n   skel"
+    # the cut lands inside row1's skeleton: the whole row goes
+    assert cli.cap_lines(text, 3) == "h\n… +5 lines (--lines 3)"
+    # the cut lands on the next row: row1 stays whole
+    assert cli.cap_lines(text, 4) == "h\n- row1 @1\n   skel1\n   skel2\n… +2 lines (--lines 4)"
+    # decorator and ⟨…⟩ lines belong to their row like skeleton lines do
+    text = "h\n- f @1\n   @dec\n   ⟨…⟩ +9\n- g @12"
+    assert cli.cap_lines(text, 2) == "h\n… +4 lines (--lines 2)"
+    assert cli.cap_lines(text, 3) == "h\n… +4 lines (--lines 3)"
+    assert cli.cap_lines(text, 4) == "h\n- f @1\n   @dec\n   ⟨…⟩ +9\n… +1 lines (--lines 4)"
+
+
+def test_cap_lines_may_cut_between_numbered_lines_and_is_a_no_op_when_short():
+    text = "h\n- f @1\n   1 | a\n   2 | b\n   3 | c"
+    assert cli.cap_lines(text, 3) == "h\n- f @1\n   1 | a\n… +2 lines (--lines 3)"
+    assert cli.cap_lines(text, 5) == text
+    assert cli.cap_lines(text, 50) == text
+
+
+def test_scan_lines_never_splits_a_skeleton(capsys):
+    full, _, _ = run("scan", str(FOCUS_MODULE), capsys=capsys)
+    total = len(full.rstrip("\n").splitlines())
+    for limit in range(2, total + 2):
+        out, _, code = run("scan", str(FOCUS_MODULE), "--lines", str(limit), capsys=capsys)
+        assert code == 0
+        lines = out.rstrip("\n").splitlines()
+        if limit >= total:
+            assert lines == full.rstrip("\n").splitlines()
+            continue
+        kept, trailer = lines[:-1], lines[-1]
+        assert len(kept) <= limit
+        assert trailer == f"… +{total - len(kept)} lines (--lines {limit})"
+        assert kept == full.splitlines()[: len(kept)]  # a prefix, nothing rewritten
+        first_cut = full.splitlines()[len(kept)]
+        # the first line cut is never a continuation of a kept row
+        assert not cli._continues_row(first_cut) or cli.NUMBERED.match(first_cut), first_cut
+
+
+def test_lines_on_the_other_three_and_not_on_json(capsys):
+    out, _, code = run(str(FIXTURE_DIR), "--lines", "5", capsys=capsys)
+    assert code == 0 and out.rstrip("\n").splitlines()[-1].startswith("… +")
+    assert len(out.rstrip("\n").splitlines()) <= 6
+
+    out, _, code = run("search", str(FOCUS_MODULE.parent), "focus", "--lines", "4", capsys=capsys)
+    assert code == 0 and out.rstrip("\n").splitlines()[-1].startswith("… +")
+
+    out, _, code = run("focus", str(FOCUS_MODULE), "_walk", "--lines", "3", capsys=capsys)
+    assert code == 0 and out.startswith(f"{FOCUS_MODULE}::_walk (")
+    assert out.rstrip("\n").splitlines()[-1].startswith("… +")
+
+    out, _, code = run("scan", str(FOCUS_MODULE), "--lines", "3", "--ascii", capsys=capsys)
+    assert code == 0 and out.rstrip("\n").splitlines()[-1].startswith("... +")
+
+    out, _, code = run("scan", str(PYTHON_SAMPLE), "--lines", "3", "--json", capsys=capsys)
+    assert code == 0 and json.loads(out)["file"] == str(PYTHON_SAMPLE)
+
+
+def test_search_decorator_is_a_table_of_decorated_structures(tmp_path, capsys):
+    (tmp_path / "routes.py").write_text(ROUTES)
+    out, _, code = run(
+        "search", str(tmp_path), ".", "--names", "--decorator", "router", capsys=capsys
+    )
+    assert code == 0
+    rows = [line for line in out.splitlines() if line.startswith("- ")]
+    assert rows == [
+        '- list_items () -> list @5 [async] @router.get("/items")',
+        '- create_item (item: dict) -> dict @9 [async] @router.post("/items") # Create one.',
+    ]
+    assert "helper" not in out and "router = " not in out
+
+    out, _, code = run(
+        "search", str(tmp_path), ".", "--names", "--decorator", r"router\.post", capsys=capsys
+    )
+    assert code == 0 and [line for line in out.splitlines() if line.startswith("- ")] == [rows[1]]
+
+    out, _, code = run(
+        "search", str(tmp_path), ".", "--names", "--decorator", "nothing", capsys=capsys
+    )
+    assert code == 1 and "No structures found" in out
+
+    assert cli.main(["search", str(tmp_path), "x", "--decorator", "router"]) == 2
+    _, err, _ = run("--help", capsys=capsys)  # drain
+
+
+def test_focus_body_is_the_header_and_the_numbered_lines(capsys):
+    out, _, code = run("focus", str(FOCUS_MODULE), "_walk", "--body", capsys=capsys)
+    lines = out.rstrip("\n").splitlines()
+    assert code == 0 and lines[0].startswith(f"{FOCUS_MODULE}::_walk (")
+    start, end = map(int, lines[0].rsplit("(", 1)[1].rstrip(")").split("-"))
+    assert [line.split(" | ", 1)[0] for line in lines[1:]] == [
+        str(n) for n in range(start, end + 1)
+    ]
+    assert (
+        lines[1] == f"{start} | def _walk(structures: list[StructureNode], ancestors: tuple = ()):"
+    )
+    assert "focus.py (" not in out  # no file outline
+
+    full, _, _ = run("focus", str(FOCUS_MODULE), "_walk", capsys=capsys)
+    numbered = [line.strip() for line in full.splitlines() if cli.NUMBERED.match(line)]
+    assert numbered == lines[1:]  # what `grep "^ +[0-9]+ |"` used to extract
+
+    out, _, code = run("focus", str(FOCUS_MODULE), "_walk", "--body", "--json", capsys=capsys)
+    document = json.loads(out)
+    assert code == 0 and "context" not in document and document["start_line"] == start

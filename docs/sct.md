@@ -7,14 +7,15 @@ into uv's tool bin directory when it starts (see
 [install.md](install.md#the-sct-launcher) for where, and how to opt out).
 
 ```
-sct <dir>
-sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
+sct <dir> [--lines N]
+sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep] [--lines N]
 sct scan     - [...]                     paths from stdin, one per line
 sct scan     - --as <path> [...]         stdin content scanned as <path>
-sct focus    <path> <name|heading> [--ref REF] [--json]
+sct focus    <path> <name|heading> [--ref REF] [--body] [--lines N] [--json]
 sct focus    <path>::<name>[@REF]        the address form, one argument
 sct focus    - --as <path> <name>        stdin content, one node
-sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]
+sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N] [--lines N]
+sct search   <dir> <pattern> --names --decorator RE   one row per structure, decorators on the row
 sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
 sct surface  <package-dir> [--ref REF] [--against REF]
 sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K]
@@ -57,16 +58,29 @@ answer at roughly N tokens and degrades the least salient functions first.
 `-` reads paths from stdin, and `- --as <path>` scans stdin content as if it
 were that path.
 
+`--lines N` (on `<dir>`, `scan`, `focus` and `search`) caps the answer at N
+lines the way `| head -N` does, without the silent half row: the cut falls
+on a row boundary, a row's skeleton and decorator lines go with the row,
+and one trailer, `… +K lines (--lines N)`, says how many lines were cut.
+Numbered lines (`N | text`) carry their own position and may be cut
+anywhere. An answer shorter than N is unchanged; `--json` ignores it.
+
 **`sct focus`** reads one function, class, method or heading verbatim with
 line numbers, the rest of the file as a one-level outline. Names resolve in
 three tiers: exact match, qualified path (`ClassA.method`, works for
 markdown headings too), then case-insensitive substring; an ambiguous name
-returns the qualified candidate list instead of guessing.
+returns the qualified candidate list instead of guessing. `--body` prints
+the header and the node's numbered lines alone, no outline and no parent
+context (what `grep "^ +[0-9]+ |"` over the full answer used to extract).
 
 **`sct search`** finds a regex in a directory and returns each hit with its
 enclosing function, class or section, plus leads: names called in the hits
 that are defined elsewhere, with their location. `--names` searches
 structure names instead of content; `--type` filters by structure type.
+`--decorator RE`, with `--names`, keeps only structures with a decorator
+matching the regex and answers as a table: one row per structure with its
+decorators on the row (`- create_item (item: Item) -> dict @18 [async]
+@router.post("/items")`), so a route table is one row per route.
 
 **`sct diff`** is the structural diff between two refs, or one ref and the
 working tree: per file, `+` added, `~` changed (`signature: old → new`,

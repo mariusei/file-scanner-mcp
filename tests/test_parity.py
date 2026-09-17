@@ -170,3 +170,36 @@ class TestDivergenceCommand:
     def test_missing_directory_is_a_ref_error(self, capsys):
         assert cli.main(["divergence", "no-such-dir"]) == 1
         assert "not a directory" in capsys.readouterr().err
+
+
+class TestFocusBody:
+    def test_body_only_matches_sct_focus_body(self, tmp_path, capsys):
+        sample = tmp_path / "mod.py"
+        sample.write_text(V1)
+        out, code = _cli("focus", str(sample), "beta", "--body", capsys=capsys)
+        assert code == 0 and out == f"{sample}::beta (5-6)\n5 | def beta():\n6 |     return 2"
+        mcp = _mcp(
+            server.scan_file(
+                file_path=str(sample), focus="beta", body_only=True, include_metadata=False
+            )
+        )
+        assert mcp == out
+        mcp = _mcp(
+            server.scan_file_content(content=V1, filename=str(sample), focus="beta", body_only=True)
+        )
+        assert mcp == out
+
+    def test_body_only_json_has_no_context(self, tmp_path, capsys):
+        sample = tmp_path / "mod.py"
+        sample.write_text(V1)
+        out, code = _cli("focus", str(sample), "beta", "--body", "--json", capsys=capsys)
+        mcp = _mcp(
+            server.scan_file(
+                file_path=str(sample), focus="beta", body_only=True, output_format="json"
+            )
+        )
+        assert code == 0 and json.loads(out) == json.loads(mcp)
+        assert (
+            "context" not in json.loads(out)
+            and json.loads(out)["body"] == "def beta():\n    return 2"
+        )

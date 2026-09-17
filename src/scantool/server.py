@@ -3,6 +3,7 @@
 import json
 import os
 import re
+from dataclasses import replace
 from pathlib import Path
 
 from fastmcp import FastMCP
@@ -386,13 +387,21 @@ def list_directories(
 
 
 def _focus_answer(
-    path: str, structures, source_lines: list[str], focus: str, output_format: str
+    path: str,
+    structures,
+    source_lines: list[str],
+    focus: str,
+    output_format: str,
+    body_only: bool = False,
 ) -> str:
-    """One node verbatim with parent context, as text or as a document; a
-    miss or an ambiguity is the same message in both forms."""
+    """One node verbatim with parent context (body_only: without it), as
+    text or as a document; a miss or an ambiguity is the same message in
+    both forms."""
     if output_format != "json":
-        return format_focus(path, structures, source_lines, focus, addressed=True)
-    document = focus_to_json(path, structures, source_lines, focus)
+        return format_focus(
+            path, structures, source_lines, focus, addressed=True, body_only=body_only
+        )
+    document = focus_to_json(path, structures, source_lines, focus, body_only=body_only)
     return document if isinstance(document, str) else json.dumps(document, indent=2)
 
 
@@ -441,6 +450,7 @@ def scan_file_content(
     content: str,
     filename: str,
     focus: str | None = None,
+    body_only: bool = False,
     show_signatures: bool = True,
     show_decorators: bool = True,
     show_docstrings: bool = True,
@@ -477,6 +487,8 @@ def scan_file_content(
             filename: Filename (with extension) to determine parser type
             focus: Read ONE node verbatim by name ("query", "ClassA.method",
                 a heading or a substring of one), as in scan_file
+            body_only: With focus, the header and the node's numbered lines
+                alone, no file outline (default: False)
         Cost & slicing:
             budget: Approximate token cap for code skeletons (None = full)
             depth: "quick" (~300), "normal" (~1500) or "deep" (full) when
@@ -526,7 +538,9 @@ def scan_file_content(
 
         if focus is not None:
             source_lines = content.split("\n")
-            answer = _focus_answer(filename, structures, source_lines, focus, output_format)
+            answer = _focus_answer(
+                filename, structures, source_lines, focus, output_format, body_only
+            )
             return [TextContent(type="text", text=answer)]
         if output_format == "json":
             document = {
@@ -557,6 +571,7 @@ def scan_file_content(
 def scan_file(
     file_path: str,
     focus: str | None = None,
+    body_only: bool = False,
     show_signatures: bool = True,
     show_decorators: bool = True,
     show_docstrings: bool = True,
@@ -608,6 +623,8 @@ def scan_file(
                 qualified if needed ("ClassA.method"). Returns the file
                 skeleton at depth 1 (parent context) plus the focused node's
                 full body with line numbers. Ambiguous name → candidate list
+            body_only: With focus, the header and the node's numbered lines
+                alone: no file outline, no parent context (default: False)
         Cost & slicing:
             budget: Approximate token cap for skeleton content. The least salient
                 functions degrade first (full depth → outline → header only), so
@@ -672,6 +689,7 @@ def scan_file(
             file_path,
             ref,
             focus=focus,
+            body_only=body_only,
             show_signatures=show_signatures,
             show_decorators=show_decorators,
             show_docstrings=show_docstrings,
@@ -744,7 +762,9 @@ def scan_file(
 
         if focus is not None:
             source_lines = Path(file_path).read_text(errors="replace").split("\n")
-            answer = _focus_answer(file_path, structures, source_lines, focus, output_format)
+            answer = _focus_answer(
+                file_path, structures, source_lines, focus, output_format, body_only
+            )
             return [TextContent(type="text", text=answer)]
 
         delta_note = ""
@@ -1201,7 +1221,9 @@ def search_structures(
             name_pattern: Regex pattern to match names (e.g., "^test_", ".*Manager$")
             type_filter: Filter by type (e.g., "function", "class", "method")
         Semantics & display:
-            has_decorator: Filter by decorator (e.g., "@property", "@staticmethod")
+            has_decorator: Regex a decorator must match (e.g., "property",
+                "router\\.(get|post)"); the answer is then a table, one row
+                per structure with its decorators on the row
             min_complexity: Minimum complexity (lines) to include
             output_format: Output format - "tree" or "json" (default: "tree")
 
@@ -1313,7 +1335,10 @@ def search_structures(
         else:
             outputs = []
             for file_path, structures in sorted(matching.items()):
-                outputs.append(formatter.format(file_path, structures))
+                if has_decorator:
+                    outputs.append(_decorator_table.format(file_path, _rows_only(structures)))
+                else:
+                    outputs.append(formatter.format(file_path, structures))
             result = "\n\n".join(outputs)
             return [TextContent(type="text", text=header + result)]
 
@@ -1333,6 +1358,19 @@ def _search_scope(path: str) -> Sweep:
     else:
         sweep.results[path] = structures
     return sweep
+
+
+# A decorator search answers as a table (one row per structure, decorators
+# on the row): the route table an agent builds with `grep "@router"` by hand
+_decorator_table = TreeFormatter(decorators_inline=True)
+
+
+def _rows_only(structures: list[StructureNode]) -> list[StructureNode]:
+    """The nodes as bare rows: no skeleton, no excerpt, no children (a
+    matching child is its own row already)."""
+    return [
+        replace(node, children=[], code_skeleton=None, code_excerpt=None) for node in structures
+    ]
 
 
 _PATHS_BY_NAME_CAP = 10
@@ -1386,9 +1424,7 @@ def _filter_structures(
         if name_pattern and not re.search(name_pattern, node.name):
             match = False
 
-        if has_decorator and (
-            not node.decorators or not any(has_decorator in d for d in node.decorators)
-        ):
+        if has_decorator and not any(re.search(has_decorator, d) for d in node.decorators or ()):
             match = False
 
         if min_complexity and node.complexity and node.complexity.get("lines", 0) < min_complexity:

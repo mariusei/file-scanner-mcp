@@ -106,6 +106,7 @@ class TreeFormatter:
         show_docstrings: bool = True,
         show_complexity: bool = False,
         condense: bool = True,
+        decorators_inline: bool = False,
     ):
         """
         Initialize formatter with display options.
@@ -117,12 +118,16 @@ class TreeFormatter:
             show_complexity: Display complexity metrics
             condense: Show condensed skeletons (pseudocode lines without
                 line numbers) instead of verbatim excerpts where available
+            decorators_inline: Decorators on the node's own row (before the
+                docstring) instead of on lines below it, so a decorator
+                search reads as a table: one row per structure
         """
         self.show_signatures = show_signatures
         self.show_decorators = show_decorators
         self.show_docstrings = show_docstrings
         self.show_complexity = show_complexity
         self.condense = condense
+        self.decorators_inline = decorators_inline
 
     def format(self, file_path: str, structures: list[StructureNode]) -> str:
         """Format the structure as a pretty tree."""
@@ -212,6 +217,9 @@ class TreeFormatter:
             if complexity_str:
                 parts.append(complexity_str)
 
+        if self.show_decorators and self.decorators_inline and node.decorators:
+            parts.extend(node.decorators)
+
         # Add docstring inline as comment (token-optimized)
         if self.show_docstrings and node.docstring:
             parts.append(f"# {node.docstring}")
@@ -219,7 +227,7 @@ class TreeFormatter:
         lines.append(" ".join(parts))
 
         # Add decorators on separate lines (2-space indent, token-optimized)
-        if self.show_decorators and node.decorators:
+        if self.show_decorators and not self.decorators_inline and node.decorators:
             decorator_prefix = prefix + (self.SPACE if is_last else self.VERTICAL) + " "  # 2-space
             for decorator in node.decorators:
                 lines.append(f"{decorator_prefix}{decorator}")

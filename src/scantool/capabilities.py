@@ -45,7 +45,7 @@ class Capability:
 CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         command="",
-        usage=("sct <dir>",),
+        usage=("sct <dir> [--lines N]",),
         short="orientation: entry points, hot functions, call map",
         long=(
             "No command on a directory = orientation: size and language mix, entry "
@@ -61,7 +61,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         command="scan",
         usage=(
-            "sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]",
+            "sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep] [--lines N]",
             "sct scan     - [...]                     paths from stdin, one per line",
             "sct scan     - --as <path> [...]         stdin content scanned as <path>",
         ),
@@ -76,7 +76,8 @@ CAPABILITIES: tuple[Capability, ...] = (
         tools={
             "scan_file": (
                 " One file; budget=1500 for exploration, 300 for a quick look; focus='name' "
-                "(or 'Class.method') reads one node verbatim instead of guessing line ranges; "
+                "(or 'Class.method') reads one node verbatim instead of guessing line ranges, "
+                "body_only=True without the file outline; "
                 "ref= reads it at a git ref. May append a self-levelling CONNECTIVITY note "
                 "(candidate dead/orphan/drift across the corpus, silent when clean)."
             ),
@@ -96,7 +97,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         command="focus",
         usage=(
-            "sct focus    <path> <name|heading> [--ref REF] [--json]",
+            "sct focus    <path> <name|heading> [--ref REF] [--body] [--lines N] [--json]",
             "sct focus    <path>::<name>[@REF]        the address form, one argument",
             "sct focus    - --as <path> <name>        stdin content, one node",
         ),
@@ -106,7 +107,8 @@ CAPABILITIES: tuple[Capability, ...] = (
             "(Class.method), a heading or a substring of a heading. Several matches "
             "list themselves with their ranges and a range picks one; none lists the "
             "top-level names. The answer opens with the node's address, "
-            "`path::Qualified.name (a-b)`, which focus accepts back."
+            "`path::Qualified.name (a-b)`, which focus accepts back. --body is the "
+            "header and the node's numbered lines alone, no outline."
         ),
         hints=("focus <path> <name>", "focus <path>::<name>@REF"),
         substitutes=(("git show REF:f | sed -n", "sct focus f::name@REF"),),
@@ -114,7 +116,8 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability(
         command="search",
         usage=(
-            "sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]",
+            "sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N] [--lines N]",
+            "sct search   <dir> <pattern> --names --decorator RE   one row per structure, decorators on the row",
         ),
         short="hits with their enclosing structure, leads; --names",
         long=(
@@ -123,7 +126,9 @@ CAPABILITIES: tuple[Capability, ...] = (
             "defined; when no lead exists it says so. --names matches structure names "
             "instead of text, and an empty answer names the paths that match. The "
             "pattern is a Python regex; grep's `\\|` is read as alternation with a note. "
-            "--type filters which structures are reported. 40 structures per page, "
+            "--type filters which structures are reported; --decorator RE (with "
+            "--names) keeps structures with a matching decorator and answers one row "
+            "per structure, decorators on the row. 40 structures per page, "
             "--limit/--offset for the rest, and the page is stated."
         ),
         tools={

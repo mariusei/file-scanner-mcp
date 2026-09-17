@@ -74,17 +74,17 @@ sct focus src/scantool/capabilities.py capability_of_tool
 ```
 
 ```
-src/scantool/capabilities.py::capability_of_tool (265-269)
-capabilities.py (1-328)
+src/scantool/capabilities.py::capability_of_tool (270-274)
+capabilities.py (1-333)
 - module docstring @1 # FILE: capabilities.py
 - import statements @30
 - Capability @34
-- CAPABILITIES = (Capability(command='', usage=('sct <dir>',), short='orient… @45
-- capability (command: str) -> Capability @258
-- capability_of_tool (tool: str) -> Capability @265
-   265 | def capability_of_tool(tool: str) -> Capability:
-   266 |     for entry in CAPABILITIES:
-   267 |         if tool in entry.tools:
+   @dataclass(frozen=True)
+- CAPABILITIES = (Capability(command='', usage=('sct <dir> [--…',), short='o… @45
+- capability (command: str) -> Capability @263
+- capability_of_tool (tool: str) -> Capability @270
+   270 | def capability_of_tool(tool: str) -> Capability:
+   271 |     for entry in CAPABILITIES:
 ```
 
 The node comes verbatim with line numbers, the rest of the file as a
@@ -215,14 +215,15 @@ Agents read most code through their shell, not through MCP tools. `sct` is
 the same reader as a shell command, under the same interpreter as the server:
 
 ```
-sct <dir>
-sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep]
+sct <dir> [--lines N]
+sct scan     <path>... [--ref REF] [--budget N] [--depth quick|normal|deep] [--lines N]
 sct scan     - [...]                     paths from stdin, one per line
 sct scan     - --as <path> [...]         stdin content scanned as <path>
-sct focus    <path> <name|heading> [--ref REF] [--json]
+sct focus    <path> <name|heading> [--ref REF] [--body] [--lines N] [--json]
 sct focus    <path>::<name>[@REF]        the address form, one argument
 sct focus    - --as <path> <name>        stdin content, one node
-sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N]
+sct search   <dir> <pattern> [--ref REF] [--names] [--type TYPE] [--limit N] [--offset N] [--lines N]
+sct search   <dir> <pattern> --names --decorator RE   one row per structure, decorators on the row
 sct diff     <refA> [<refB>] [--repo DIR] [--path PATH] [--no-merge-base] [--review]
 sct surface  <package-dir> [--ref REF] [--against REF]
 sct overlap  <base> <branch>... [--repo DIR] [--path P] [--kind K]
