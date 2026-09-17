@@ -301,43 +301,58 @@ ROUTES = (
 )
 
 
-def test_cap_lines_cuts_at_a_row_boundary_and_names_the_cut():
+def test_cap_lines_keeps_rows_first_then_fills_with_content():
     text = "h\n- row1 @1\n   skel1\n   skel2\n- row2 @5\n   skel"
-    # the cut lands inside row1's skeleton: the whole row goes
-    assert cli.cap_lines(text, 3) == "h\n… +5 lines (--lines 3)"
-    # the cut lands on the next row: row1 stays whole
-    assert cli.cap_lines(text, 4) == "h\n- row1 @1\n   skel1\n   skel2\n… +2 lines (--lines 4)"
-    # decorator and ⟨…⟩ lines belong to their row like skeleton lines do
+    # the rows alone fill the budget: no skeleton at all
+    assert cli.cap_lines(text, 3) == "h\n- row1 @1\n- row2 @5\n… +3 lines (--lines 3)"
+    # room for one content line: the first, wherever it is; a cut block has no marker
+    assert cli.cap_lines(text, 4) == "h\n- row1 @1\n   skel1\n- row2 @5\n… +2 lines (--lines 4)"
+    # rows exceed the budget: the first rows, in order
+    assert cli.cap_lines(text, 2) == "h\n- row1 @1\n… +4 lines (--lines 2)"
+    # a decorator line under its row is structure; the ⟨…⟩ marker is content
     text = "h\n- f @1\n   @dec\n   ⟨…⟩ +9\n- g @12"
-    assert cli.cap_lines(text, 2) == "h\n… +4 lines (--lines 2)"
-    assert cli.cap_lines(text, 3) == "h\n… +4 lines (--lines 3)"
-    assert cli.cap_lines(text, 4) == "h\n- f @1\n   @dec\n   ⟨…⟩ +9\n… +1 lines (--lines 4)"
+    assert cli.cap_lines(text, 2) == "h\n- f @1\n… +3 lines (--lines 2)"
+    assert cli.cap_lines(text, 3) == "h\n- f @1\n   @dec\n… +2 lines (--lines 3)"
+    assert cli.cap_lines(text, 4) == "h\n- f @1\n   @dec\n- g @12\n… +1 lines (--lines 4)"
 
 
-def test_cap_lines_may_cut_between_numbered_lines_and_is_a_no_op_when_short():
+def test_cap_lines_fills_a_body_in_order_and_is_a_no_op_when_short():
     text = "h\n- f @1\n   1 | a\n   2 | b\n   3 | c"
     assert cli.cap_lines(text, 3) == "h\n- f @1\n   1 | a\n… +2 lines (--lines 3)"
+    assert cli.cap_lines(text, 4) == "h\n- f @1\n   1 | a\n   2 | b\n… +1 lines (--lines 4)"
     assert cli.cap_lines(text, 5) == text
     assert cli.cap_lines(text, 50) == text
 
 
-def test_scan_lines_never_splits_a_skeleton(capsys):
+def test_scan_lines_is_exactly_n_lines_rows_before_content(capsys):
     full, _, _ = run("scan", str(FOCUS_MODULE), capsys=capsys)
-    total = len(full.rstrip("\n").splitlines())
+    full_lines = full.rstrip("\n").splitlines()
+    total = len(full_lines)
+    structure = cli._structure_lines(full_lines)
     for limit in range(2, total + 2):
         out, _, code = run("scan", str(FOCUS_MODULE), "--lines", str(limit), capsys=capsys)
         assert code == 0
         lines = out.rstrip("\n").splitlines()
         if limit >= total:
-            assert lines == full.rstrip("\n").splitlines()
+            assert lines == full_lines
             continue
         kept, trailer = lines[:-1], lines[-1]
-        assert len(kept) <= limit
-        assert trailer == f"… +{total - len(kept)} lines (--lines {limit})"
-        assert kept == full.splitlines()[: len(kept)]  # a prefix, nothing rewritten
-        first_cut = full.splitlines()[len(kept)]
-        # the first line cut is never a continuation of a kept row
-        assert not cli._continues_row(first_cut) or cli.NUMBERED.match(first_cut), first_cut
+        assert len(kept) == limit
+        assert trailer == f"… +{total - limit} lines (--lines {limit})"
+        # a subsequence of the full answer: document order, nothing rewritten
+        positions, cursor = [], 0
+        for line in kept:
+            cursor = full_lines.index(line, cursor)  # raises when it is not one
+            positions.append(cursor)
+            cursor += 1
+        # no row is dropped while a content line is kept
+        content_kept = [i for i in positions if not structure[i]]
+        if content_kept:
+            assert all(i in positions for i in range(total) if structure[i])
+            # and the content kept is the first of it, in order
+            assert (
+                content_kept == [i for i in range(total) if not structure[i]][: len(content_kept)]
+            )
 
 
 def test_lines_on_the_other_three_and_not_on_json(capsys):
@@ -351,6 +366,15 @@ def test_lines_on_the_other_three_and_not_on_json(capsys):
     out, _, code = run("focus", str(FOCUS_MODULE), "_walk", "--lines", "3", capsys=capsys)
     assert code == 0 and out.startswith(f"{FOCUS_MODULE}::_walk (")
     assert out.rstrip("\n").splitlines()[-1].startswith("… +")
+    # a focus is mostly body: --body --lines gives the header and the first lines of it
+    out, _, code = run("focus", str(FOCUS_MODULE), "_walk", "--body", "--lines", "3", capsys=capsys)
+    lines = out.rstrip("\n").splitlines()
+    assert (
+        code == 0
+        and len(lines) == 4
+        and cli.NUMBERED.match(lines[1])
+        and cli.NUMBERED.match(lines[2])
+    )
 
     out, _, code = run("scan", str(FOCUS_MODULE), "--lines", "3", "--ascii", capsys=capsys)
     assert code == 0 and out.rstrip("\n").splitlines()[-1].startswith("... +")

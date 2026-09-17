@@ -58,12 +58,15 @@ answer at roughly N tokens and degrades the least salient functions first.
 `-` reads paths from stdin, and `- --as <path>` scans stdin content as if it
 were that path.
 
-`--lines N` (on `<dir>`, `scan`, `focus` and `search`) caps the answer at N
-lines the way `| head -N` does, without the silent half row: the cut falls
-on a row boundary, a row's skeleton and decorator lines go with the row,
-and one trailer, `… +K lines (--lines N)`, says how many lines were cut.
-Numbered lines (`N | text`) carry their own position and may be cut
-anywhere. An answer shorter than N is unchanged; `--json` ignores it.
+`--lines N` (on `<dir>`, `scan`, `focus` and `search`) is the N most
+informative lines of the answer, in document order: the coverage and file
+lines, every structure row and its decorator lines first, then the skeleton,
+gist and verbatim `N | text` lines until the budget is spent (a cut block
+stops where the budget ends), and one trailer, `… +K lines (--lines N)`,
+saying how many lines were cut. Where `| head -N` stops inside a skeleton and
+says nothing, this keeps the rows; a `focus --lines N` is the header, the
+outline rows and as much body as fits. An answer shorter than N is
+unchanged; `--json` ignores it.
 
 **`sct focus`** reads one function, class, method or heading verbatim with
 line numbers, the rest of the file as a one-level outline. Names resolve in

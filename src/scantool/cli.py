@@ -18,10 +18,11 @@ SCOPE:
   ✓ <dir> (orientation), scan, focus, search; --json, --ascii; stdin
   ✓ UTF-8 and LF on stdout on every platform
   ✓ the filters agents piped the output through (measured 2026-09-17: 52 of
-    529 sct calls cut with `| head`, 23 piped to grep): --lines N, cutting
-    at row boundaries and saying what was cut; search --decorator; focus
-    --body. Here, not in the tool functions: the MCP client has its own
-    budget, and the row grammar is one thing to know in one place
+    529 sct calls cut with `| head`, 23 piped to grep): --lines N, the N
+    most informative lines (rows first, then code) and what was cut; search
+    --decorator; focus --body. Here, not in the tool functions: the MCP
+    client has its own budget, and the row grammar is one thing to know in
+    one place
   ✗ git refs, diff, overlap, surface, resolve, callers: later steps
 """
 
@@ -66,10 +67,11 @@ OPTIONS
   --path PATH    Restrict diff or overlap to a file or directory, relative to the repo.
   --kind KIND    Restrict overlap to structures of one type (function, class, …).
   --budget N     Approximate output size in tokens (scan, files only).
-  --lines N      At most N lines of output (<dir>, scan, focus, search): the
-                 cut falls on a row boundary, a row's skeleton and decorator
-                 lines go with it, and one trailer says how many lines were
-                 cut. Lossless where `| head -N` is not; ignored with --json.
+  --lines N      The N most informative lines (<dir>, scan, focus, search):
+                 headers and structure rows first, in document order, then
+                 as much skeleton or body as fits; one trailer says how many
+                 lines were cut. Where `| head -N` cuts inside a skeleton
+                 and says nothing, this keeps the rows. Ignored with --json.
   --decorator RE Search: only structures with a decorator matching this regex
                  (with --names); one row per structure, decorators on the row.
   --body         Focus: the header and the node's numbered lines alone, no
@@ -177,33 +179,44 @@ def to_ascii(text: str) -> str:
 
 
 # The row grammar every text answer shares: a structure row opens with `- `
-# (at any indent); the lines under it that are indented and open with
-# neither `- ` nor `N | ` are its decorators, skeleton, gist or ⟨…⟩ marker
-# and belong to it — a half skeleton would read as a whole one. Numbered
-# lines (`N | `) carry their own position and can be cut anywhere.
+# (at any indent); an indented line under it is its decorator (`@…`, first
+# under the row) or its content: skeleton, verbatim `N | ` lines, a gist,
+# the ⟨…⟩ marker. Everything else is structure — coverage and file lines,
+# section headers, rows, decorators — and has priority; a blank line is
+# content (a separator is worth less than the row it separates).
 ROW = re.compile(r"^\s*- ")
 NUMBERED = re.compile(r"^\s*\d+ \| ")
 
 
-def _continues_row(line: str) -> bool:
-    return line[:1].isspace() and not ROW.match(line) and not NUMBERED.match(line)
+def _is_content(line: str) -> bool:
+    return not line.strip() or (line[0].isspace() and not ROW.match(line))
+
+
+def _structure_lines(lines: list[str]) -> list[bool]:
+    """Per line: structure (priority) or content (fills what is left)."""
+    flags: list[bool] = []
+    for i, line in enumerate(lines):
+        decorator = _is_content(line) and line.lstrip().startswith("@") and i > 0 and flags[i - 1]
+        flags.append(decorator or not _is_content(line))
+    return flags
 
 
 def cap_lines(text: str, limit: int) -> str:
-    """The first `limit` lines of an answer, the cut moved back to the row
-    boundary above it (a row goes whole or not at all), and one trailer
-    naming what was cut — `| head -N` without the silent half row."""
+    """The `limit` most informative lines of an answer, in document order:
+    every structure line first (headers, rows, decorators), then content
+    lines until the budget is spent — a cut skeleton or body stops where
+    the budget ends — and one trailer naming how many lines were cut.
+    Where `| head -N` cuts inside a skeleton and says nothing, this keeps
+    the rows."""
     lines = text.split("\n")
     if len(lines) <= limit:
         return text
-    kept = limit
-    if _continues_row(lines[kept]):
-        row = kept
-        while row > 0 and _continues_row(lines[row - 1]):
-            row -= 1
-        if row > 0 and ROW.match(lines[row - 1]):
-            kept = row - 1
-    return "\n".join(lines[:kept]) + f"\n… +{len(lines) - kept} lines (--lines {limit})"
+    structure = _structure_lines(lines)
+    ranked = [i for i in range(len(lines)) if structure[i]]
+    ranked += [i for i in range(len(lines)) if not structure[i]]
+    kept = sorted(ranked[:limit])
+    trailer = f"… +{len(lines) - len(kept)} lines (--lines {limit})"
+    return "\n".join([lines[i] for i in kept] + [trailer])
 
 
 def _text(result) -> str:
@@ -479,7 +492,7 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
             "--lines",
             type=int,
             metavar="N",
-            help="at most N lines, cut at a row boundary, with a trailer naming what was cut",
+            help="the N most informative lines: rows first, then code; a trailer names the cut",
         )
 
     orient = parser("", "Orientation: entry points, hot functions, call-graph map.", False)
