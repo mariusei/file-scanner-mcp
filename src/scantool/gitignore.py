@@ -1,10 +1,19 @@
-"""Gitignore parsing and path matching utilities.
+"""Gitignore parsing and path matching, following git's own rules.
 
 A scan honours every .gitignore from the scanned directory up to the home
 directory, each one matched relative to ITS OWN directory as git does. A
 layer that ignores the scanned directory itself (uv writes `.venv/.gitignore`
 containing `*`) is set aside when that directory was named explicitly, and
 the caller is told which file and pattern were overridden.
+
+Decisions agree with `git check-ignore`: the last matching pattern wins, a
+pattern with a slash is anchored to its .gitignore's directory, a trailing
+slash matches directories only, and a path is ignored when any parent
+directory is. That last rule is what makes re-inclusion work the way git
+does it — `!dir/file` re-includes the file under `dir/*` (only the entries
+are matched), but not under `dir/` or `dir` (the directory itself is
+excluded, so nothing below it can come back). Parent decisions are cached,
+so a walk pays for one match per directory and one per file.
 """
 
 import os
@@ -12,124 +21,130 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+Match = tuple[bool, str]  # (is_negation, label of the pattern as written)
 
-class GitignoreParser:
-    """Parse and match paths against gitignore patterns."""
+
+def _normalize(path: str, is_dir: bool) -> tuple[str, bool]:
+    """Slash-separated, no leading `./`; a trailing slash means a directory."""
+    if os.sep != "/":
+        path = path.replace(os.sep, "/")
+    if path.startswith("./"):
+        path = path[2:]
+    if path.endswith("/"):
+        path, is_dir = path[:-1], True
+    return path, is_dir
+
+
+class _Matcher:
+    """Git's walk over a path: the closest excluded parent directory decides;
+    otherwise the path's own last matching pattern does."""
+
+    def __init__(self) -> None:
+        self._dirs: dict[str, str | None] = {}
+
+    def last_match(self, path: str, is_dir: bool) -> Match | None:
+        raise NotImplementedError
+
+    def _root_ignored(self) -> str | None:
+        """What ignores the directory the paths are relative to, if anything."""
+        return None
+
+    def _positive(self, path: str, is_dir: bool) -> str | None:
+        hit = self.last_match(path, is_dir)
+        return None if hit is None or hit[0] else hit[1]
+
+    def _dir_decision(self, directory: str) -> str | None:
+        if directory not in self._dirs:
+            if directory:
+                parent = directory.rpartition("/")[0]
+                by = self._dir_decision(parent) or self._positive(directory, True)
+            else:
+                by = self._root_ignored()
+            self._dirs[directory] = by
+        return self._dirs[directory]
+
+    def decide(self, path: str, is_dir: bool = False) -> str | None:
+        """The pattern that ignores the path, or None."""
+        path, is_dir = _normalize(path, is_dir)
+        if is_dir:
+            return self._dir_decision(path)
+        return self._dir_decision(path.rpartition("/")[0]) or self._positive(path, False)
+
+    def matches(self, path: str, is_dir: bool = False) -> bool:
+        return self.decide(path, is_dir) is not None
+
+
+class GitignoreParser(_Matcher):
+    """One list of gitignore patterns, matched against paths relative to
+    the directory the list belongs to."""
 
     def __init__(self, patterns: list[str]):
-        """
-        Initialize gitignore parser with patterns.
-
-        Args:
-            patterns: List of gitignore pattern strings
-        """
-        self.patterns: list[tuple[re.Pattern, bool, str]] = []
+        super().__init__()
+        self.patterns: list[tuple[re.Pattern, bool, bool, str]] = []
         for pattern in patterns:
             pattern = pattern.strip()
-            # Skip empty lines and comments
             if not pattern or pattern.startswith("#"):
                 continue
             self.patterns.append(self._compile_pattern(pattern))
 
-    def _compile_pattern(self, pattern: str) -> tuple[re.Pattern, bool, str]:
-        """
-        Compile a gitignore pattern to regex.
-
-        Returns:
-            Tuple of (compiled_regex, is_negation, the pattern as written)
-        """
+    def _compile_pattern(self, pattern: str) -> tuple[re.Pattern, bool, bool, str]:
+        """(regex, is_negation, dir_only, the pattern as written), regex
+        matching the whole path the way git's fnmatch does."""
         raw = pattern
         is_negation = pattern.startswith("!")
         if is_negation:
             pattern = pattern[1:]
-
-        # Directory-only pattern: the trailing slash is stripped, but the
-        # directory-only restriction itself is not enforced when matching.
-        if pattern.endswith("/"):
+        dir_only = pattern.endswith("/")
+        if dir_only:
             pattern = pattern[:-1]
+        # A slash anywhere but the end anchors the pattern to the .gitignore's
+        # directory; without one it matches the basename at any depth.
+        anchored = "/" in pattern
+        pattern = pattern.removeprefix("/")
 
-        # Anchored pattern (starts with /)
-        if pattern.startswith("/"):
-            pattern = pattern[1:]
-            anchored = True
-        else:
-            anchored = False
-
-        # Convert gitignore glob to regex
-        regex_parts = []
-        i = 0
-        while i < len(pattern):
+        parts: list[str] = []
+        i, n = 0, len(pattern)
+        while i < n:
             char = pattern[i]
-            if char == "*":
-                if i + 1 < len(pattern) and pattern[i + 1] == "*":
-                    # ** matches any number of directories
-                    regex_parts.append(".*")
+            if pattern.startswith("**", i) and (i == 0 or pattern[i - 1] == "/"):
+                if i + 2 == n:  # trailing `/**`: everything inside
+                    parts.append(".*")
                     i += 2
-                    # Skip following /
-                    if i < len(pattern) and pattern[i] == "/":
-                        i += 1
                     continue
-                else:
-                    # * matches anything except /
-                    regex_parts.append("[^/]*")
+                if pattern[i + 2] == "/":  # `**/`: zero or more directories
+                    parts.append("(?:.*/)?")
+                    i += 3
+                    continue
+            if char == "*":
+                parts.append("[^/]*")
             elif char == "?":
-                regex_parts.append("[^/]")
+                parts.append("[^/]")
             elif char == "[":
-                # Character class
-                j = i + 1
-                while j < len(pattern) and pattern[j] != "]":
-                    j += 1
-                if j < len(pattern):
-                    regex_parts.append(pattern[i : j + 1])
-                    i = j
+                negated = pattern.startswith("!", i + 1)
+                j = pattern.find("]", i + 2 + negated)  # a `]` right after `[` or `[!` is literal
+                if j == -1:
+                    parts.append("\\[")
                 else:
-                    regex_parts.append(re.escape(char))
+                    parts.append(("[^" if negated else "[") + pattern[i + 1 + negated : j] + "]")
+                    i = j
+            elif char == "\\" and i + 1 < n:
+                i += 1
+                parts.append(re.escape(pattern[i]))
             else:
-                regex_parts.append(re.escape(char))
+                parts.append(re.escape(char))
             i += 1
 
-        regex_str = "".join(regex_parts)
+        regex = "".join(parts)
+        if not anchored:
+            regex = "(?:.*/)?" + regex
+        return (re.compile(f"^{regex}$"), is_negation, dir_only, raw)
 
-        # Build final pattern
-        # Pattern should match:
-        # 1. The exact name (.venv matches .venv)
-        # 2. The name as a directory (.venv matches .venv/)
-        # 3. Anything under it (.venv matches .venv/foo/bar.py)
-
-        if anchored:
-            # Must match from start
-            # Matches: exact name, or name followed by / and anything
-            final_pattern = f"^{regex_str}(?:/.*)?$"
-        else:
-            # Can match anywhere in path
-            # Matches at start or after /, then exact name or name/ with anything
-            final_pattern = f"(?:^|/){regex_str}(?:/.*)?$"
-
-        return (re.compile(final_pattern), is_negation, raw)
-
-    def matches(self, path: str, is_dir: bool = False) -> bool:
-        """
-        Check if path matches any pattern.
-
-        Args:
-            path: Relative path to check
-            is_dir: Whether the path is a directory
-
-        Returns:
-            True if path should be ignored
-        """
-        return self.decide(path, is_dir) is not None
-
-    def decide(self, path: str, is_dir: bool = False) -> str | None:
-        """The pattern (as written) that ignores the path, or None. The last
-        matching pattern wins, as in git; a negation clears the decision."""
-        if path.startswith("./"):
-            path = path[2:]
-        decision = None
-        for regex, is_negation, raw in self.patterns:
-            if regex.search(path):
-                decision = None if is_negation else raw
-        return decision
+    def last_match(self, path: str, is_dir: bool) -> Match | None:
+        hit = None
+        for regex, is_negation, dir_only, raw in self.patterns:
+            if (is_dir or not dir_only) and regex.match(path):
+                hit = (is_negation, raw)
+        return hit
 
 
 @dataclass
@@ -144,30 +159,30 @@ class IgnoreLayer:
         return f"{self.prefix}/{rel_path}" if self.prefix else rel_path
 
 
-class GitignoreStack:
+class GitignoreStack(_Matcher):
     """All .gitignore layers above and at a directory, outermost first, each
-    matched relative to its own directory; the last matching pattern wins."""
+    matched relative to its own directory; the last matching pattern wins.
+    Decisions read '<gitignore file>: <pattern>' for paths relative to the
+    scanned directory."""
 
     PROBE = "__scantool_probe__"  # a name no real pattern spells out
 
     def __init__(self, layers: list[IgnoreLayer]):
+        super().__init__()
         self.layers = layers
 
-    def decide(self, path: str, is_dir: bool = False) -> str | None:
-        """'<gitignore file>: <pattern>' for the pattern that ignores the
-        path (relative to the scanned directory), or None."""
-        if path.startswith("./"):
-            path = path[2:]
-        decision = None
+    def last_match(self, path: str, is_dir: bool) -> Match | None:
+        hit = None
         for layer in self.layers:
-            rooted = layer.rooted(path)
-            for regex, is_negation, raw in layer.parser.patterns:
-                if regex.search(rooted):
-                    decision = None if is_negation else f"{layer.source}: {raw}"
-        return decision
+            if own := layer.parser.last_match(layer.rooted(path), is_dir):
+                hit = (own[0], f"{layer.source}: {own[1]}")
+        return hit
 
-    def matches(self, path: str, is_dir: bool = False) -> bool:
-        return self.decide(path, is_dir) is not None
+    def _root_ignored(self) -> str | None:
+        for layer in self.layers:
+            if layer.prefix and (by := layer.parser.decide(layer.prefix, True)):
+                return f"{layer.source}: {by}"
+        return None
 
     def set_aside_root_ignores(self) -> list[tuple[Path, str]]:
         """Drop every layer that ignores the scanned directory itself or
@@ -183,6 +198,7 @@ class GitignoreStack:
             else:
                 kept.append(layer)
         self.layers = kept
+        self._dirs.clear()
         return set_aside
 
 

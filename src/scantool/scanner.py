@@ -51,9 +51,9 @@ def _dir_excluded_by(name: str, rel: str, gitignore, exclude_parser: GitignorePa
     """The label a pruned directory is counted under, or None to descend."""
     if name.startswith(".") or should_skip_directory(name):
         return f"{name}/"
-    if gitignore and (by := gitignore.decide(rel + "/", True)):
+    if gitignore and (by := gitignore.decide(rel, True)):
         return by
-    return exclude_parser.decide(rel + "/", True)
+    return exclude_parser.decide(rel, True)
 
 
 def _describe(source: Path, root: Path) -> str:
