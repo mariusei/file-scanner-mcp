@@ -190,15 +190,7 @@ CASES: dict[str, Case] = {
 
 # Forms the handler cannot resolve yet. Closing one turns the xfail into an
 # unexpected pass (strict) that must be removed here.
-HOLES: dict[tuple[str, str], str] = {
-    ("typescript", "tsconfig paths alias"): "tsconfig paths are not read",
-    ("go", "dot import"): '`import . "pkg"` is not matched by the single-import pattern',
-    ("java", "import a.b.*"): "wildcard imports resolve to no file",
-    ("java", "import static"): "static imports resolve as if the member were a class",
-    ("csharp", "using A.B;"): "namespaces are matched to paths, not to files declaring them",
-    ("php", "require_once __DIR__.'/…'"): "`__DIR__ . '…'` is not matched as a require",
-    ("c", '#include "util.h"'): "a quoted include is not tried next to the including file",
-}
+HOLES: dict[tuple[str, str], str] = {}
 
 
 def _params():

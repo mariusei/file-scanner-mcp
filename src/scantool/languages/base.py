@@ -261,15 +261,24 @@ class BaseLanguage(ABC):
     - extract_calls(): Find function/method calls
     """
 
-    def __init__(self, show_errors: bool = True, fallback_on_errors: bool = True):
+    def __init__(
+        self,
+        show_errors: bool = True,
+        fallback_on_errors: bool = True,
+        root: str | None = None,
+    ):
         """Initialize language handler with error handling options.
 
         Args:
             show_errors: Include ERROR nodes in output
             fallback_on_errors: Use regex fallback if too many parse errors
+            root: The scanned directory when the handler runs inside a code
+                map analysis, so import resolution can read project config
+                (a tsconfig.json) next to the files; None for a bare scan
         """
         self.show_errors = show_errors
         self.fallback_on_errors = fallback_on_errors
+        self.root = root
 
     # ===========================================================================
     # Metadata (REQUIRED - classmethod)

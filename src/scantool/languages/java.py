@@ -943,6 +943,13 @@ class JavaLanguage(BaseLanguage):
     # CodeMap Integration
     # ===========================================================================
 
+    # Plain layout and the Maven source root
+    _SOURCE_ROOTS = ("", "src/main/java/")
+
+    @staticmethod
+    def _is_stdlib(module: str) -> bool:
+        return module.startswith(("java.", "javax.", "sun.", "com.sun."))
+
     def resolve_import_to_file(
         self,
         module: str,
@@ -950,33 +957,44 @@ class JavaLanguage(BaseLanguage):
         all_files: list[str],
         definitions_map: dict[str, str],
     ) -> str | None:
-        """Resolve Java import to file path.
+        """Resolve a Java import, a fully qualified class name, to its file:
+        com.example.MyClass -> com/example/MyClass.java under a source root.
 
-        Java imports are fully qualified class names:
-        - com.example.MyClass -> com/example/MyClass.java
-
-        Wildcard imports (.*) are skipped as they don't resolve to specific files.
-        Standard library and external packages are skipped.
+        Wildcards bind a package, not a class (see resolve_import_targets).
+        Standard library packages are skipped.
         """
-        # Skip wildcard imports
-        if module.endswith(".*"):
+        if module.endswith(".*") or self._is_stdlib(module):
             return None
-
-        # Skip java.* and javax.* (standard library)
-        if module.startswith(("java.", "javax.", "sun.", "com.sun.")):
-            return None
-
-        # Convert package.ClassName to path/ClassName.java
         candidate = module.replace(".", "/") + ".java"
-        if candidate in all_files:
-            return candidate
-
-        # Try with src/main/java prefix (Maven layout)
-        maven_candidate = f"src/main/java/{candidate}"
-        if maven_candidate in all_files:
-            return maven_candidate
-
+        for root in self._SOURCE_ROOTS:
+            if root + candidate in all_files:
+                return root + candidate
         return None
+
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """`import a.b.*` binds every class in package a.b: the .java files
+        in the package's directory. `import static a.b.Mod.f` (or `.*`)
+        names a member; the file is the class a.b.Mod that declares it."""
+        module = imp.target_module
+        if imp.import_type == "static":
+            module = module.rsplit(".", 1)[0]
+        if not module.endswith(".*"):
+            target = self.resolve_import_to_file(
+                module, imp.source_file, all_files, definitions_map
+            )
+            return [target] if target else []
+        if self._is_stdlib(module):
+            return []
+        package_dir = module[:-2].replace(".", "/") + "/"
+        package_dirs = [root + package_dir for root in self._SOURCE_ROOTS]
+        return [
+            f
+            for f in all_files
+            if f.endswith(".java")
+            and any(f.startswith(d) and "/" not in f[len(d) :] for d in package_dirs)
+        ]
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format Java entry point for display.

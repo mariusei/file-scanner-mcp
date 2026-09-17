@@ -8,6 +8,7 @@ Key optimizations:
 - Single tree-sitter parser instance shared across all operations
 """
 
+import posixpath
 import re
 from pathlib import Path
 
@@ -1221,6 +1222,20 @@ class CCppLanguage(BaseLanguage):
                 return candidate
 
         return None
+
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """A quoted include is searched next to the including file first
+        (the preprocessor's rule), then on the include paths like an angle
+        include."""
+        if imp.import_type == "local":
+            beside = posixpath.normpath(
+                posixpath.join(posixpath.dirname(imp.source_file), imp.target_module)
+            )
+            if beside in all_files:
+                return [beside]
+        return super().resolve_import_targets(imp, all_files, definitions_map)
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """

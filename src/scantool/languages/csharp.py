@@ -74,6 +74,9 @@ class CSharpLanguage(BaseLanguage):
         super().__init__(**kwargs)
         self.parser = Parser()
         self.parser.language = Language(tree_sitter_c_sharp.language())
+        # namespace -> files declaring a type in it, built once per
+        # definitions_map (the analysis it belongs to) by _files_declaring
+        self._namespace_index: tuple[dict[str, str], dict[str, list[str]]] | None = None
 
     # ===========================================================================
     # Metadata (REQUIRED)
@@ -1217,12 +1220,12 @@ class CSharpLanguage(BaseLanguage):
         Resolve C# using directive to file path.
 
         C# uses namespace imports, not file imports. We try to match
-        namespace parts to file paths.
+        namespace parts to file paths (`using A.B;` is resolved to the
+        files declaring the namespace in resolve_import_targets).
 
         System.* namespaces are skipped.
         """
-        # Skip system namespaces
-        if module.startswith(("System", "Microsoft", "Windows")):
+        if module.startswith(self._FRAMEWORK_NAMESPACES):
             return None
 
         # Try matching namespace to file path
@@ -1239,6 +1242,36 @@ class CSharpLanguage(BaseLanguage):
                     return f
 
         return None
+
+    _FRAMEWORK_NAMESPACES = ("System", "Microsoft", "Windows")
+
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """`using A.B;` binds every type declared in namespace A.B, so its
+        targets are the files declaring one (block or file-scoped form,
+        both give the same namespace node). Falls back to the path match
+        when no file declares the namespace."""
+        namespace = imp.target_module
+        if (
+            imp.import_type == "using"
+            and not namespace.startswith(self._FRAMEWORK_NAMESPACES)
+            and (files := self._files_declaring(namespace, definitions_map))
+        ):
+            return files
+        return super().resolve_import_targets(imp, all_files, definitions_map)
+
+    def _files_declaring(self, namespace: str, definitions_map: dict[str, str]) -> list[str]:
+        """Files with a type declared directly in `namespace`, read off the
+        `<namespace>.<Type>` keys of definitions_map; indexed once per map."""
+        if self._namespace_index is None or self._namespace_index[0] is not definitions_map:
+            index: dict[str, dict[str, None]] = {}
+            for name, file in definitions_map.items():
+                declaring, _, _ = name.rpartition(".")
+                if declaring:
+                    index.setdefault(declaring, {})[file] = None
+            self._namespace_index = (definitions_map, {ns: list(f) for ns, f in index.items()})
+        return self._namespace_index[1].get(namespace, [])
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """
