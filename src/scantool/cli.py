@@ -613,9 +613,14 @@ def build_parsers() -> dict[str, argparse.ArgumentParser]:
     part_option(overlap, OVERLAP_PARTS)
 
     callers = parser(
-        "callers", "Actual call sites of a function or method across a directory.", True
+        "callers",
+        "Actual call sites of a function or method across a directory; "
+        "given a file, the files that import it.",
+        True,
     )
-    callers.add_argument("name", help="function, method, or Class.method")
+    callers.add_argument(
+        "name", metavar="name|file", help="function, method, Class.method, or a file path"
+    )
     callers.add_argument("--dir", metavar="DIR", help="directory to scan (default: .)")
     ref_option(callers)
 

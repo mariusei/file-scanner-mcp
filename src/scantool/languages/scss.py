@@ -16,7 +16,7 @@ from typing import cast
 from tree_sitter import Node, Parser
 from tree_sitter_language_pack import get_language as get_packed_grammar
 
-from .base import BaseLanguage
+from .base import BaseLanguage, parent_dir
 from .css import CSSLanguage
 from .models import (
     CallInfo,
@@ -897,7 +897,7 @@ class SCSSLanguage(BaseLanguage):
                     return candidate
 
         # Try relative to source file
-        source_dir = str(Path(source_file).parent)
+        source_dir = parent_dir(source_file)
         if source_dir != ".":
             for candidate_base in [module, partial]:
                 for ext in [".scss", ".sass", ""]:

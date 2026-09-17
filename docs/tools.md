@@ -28,7 +28,7 @@ Example output (`depth="deep"`, trimmed):
   server.py:main() @1658
   cli.py:main() @562
 
-━━━ CORE FILES (by centrality) ━━━
+━━━ core: CORE FILES (by centrality; used by = files that import it, resolved statically) ━━━
   languages/models.py: imports 0, used by 33 files
      class StructureNode [called by 178]
 
@@ -222,6 +222,8 @@ in the base and by which criterion, and a merge-order hint.
 
 Definitions first, then every call site with its enclosing function and
 `path:line`. Mentions in comments, docstrings and strings are not calls.
+Given a file path as `name`, the files that import it with the import line
+(the preview's `used by` count, from the same import graph).
 
 | Parameter | Default | Meaning |
 |---|---|---|

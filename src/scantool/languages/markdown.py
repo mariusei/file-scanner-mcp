@@ -14,7 +14,7 @@ from pathlib import Path, PurePosixPath
 import tree_sitter_markdown
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage, section_gist
+from .base import BaseLanguage, parent_dir, section_gist
 from .models import (
     EntryPointInfo,
     ImportInfo,
@@ -663,7 +663,7 @@ class MarkdownLanguage(BaseLanguage):
             return module
 
         # Try relative to source file
-        source_dir = str(Path(source_file).parent)
+        source_dir = parent_dir(source_file)
         if source_dir != ".":
             candidate = f"{source_dir}/{module}"
             if candidate in all_files:

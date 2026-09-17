@@ -25,6 +25,8 @@ from .models import (
     StructureNode,
 )
 
+_SOURCE_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs")
+
 
 class TypeScriptLanguage(BaseLanguage):
     """Unified language handler for TypeScript/JavaScript files.
@@ -762,7 +764,7 @@ class TypeScriptLanguage(BaseLanguage):
             line_num = content[: match.start()].count("\n") + 1
 
             # Determine if relative import
-            is_relative = module.startswith("./")
+            is_relative = module.startswith(".")
             import_type = "relative" if is_relative else "es6_import"
 
             # Resolve relative imports
@@ -787,7 +789,7 @@ class TypeScriptLanguage(BaseLanguage):
             module = match.group(1)
             line_num = content[: match.start()].count("\n") + 1
 
-            is_relative = module.startswith("./")
+            is_relative = module.startswith(".")
             import_type = "relative" if is_relative else "es6_import"
 
             target_module = module
@@ -811,7 +813,7 @@ class TypeScriptLanguage(BaseLanguage):
             module = match.group(1)
             line_num = content[: match.start()].count("\n") + 1
 
-            is_relative = module.startswith("./")
+            is_relative = module.startswith(".")
             import_type = "relative" if is_relative else "require"
 
             target_module = module
@@ -837,7 +839,7 @@ class TypeScriptLanguage(BaseLanguage):
             module = match.group(1)
             line_num = content[: match.start()].count("\n") + 1
 
-            is_relative = module.startswith("./")
+            is_relative = module.startswith(".")
             import_type = "relative" if is_relative else "export_from"
 
             target_module = module
@@ -1114,6 +1116,20 @@ class TypeScriptLanguage(BaseLanguage):
     # CodeMap Integration
     # ===========================================================================
 
+    def _resolve_relative_import(self, current_file: str, relative_import: str) -> str | None:
+        """`./x`, `../x` and `./x.js` from the importing file's directory as
+        a project path without the source extension; a `.js`/`.jsx`/`.mjs`/
+        `.cjs` suffix is the compiled name of a `.ts` source. None above
+        the scanned root."""
+        if not relative_import.startswith("."):
+            return None
+        joined = os.path.normpath(os.path.join(os.path.dirname(current_file), relative_import))
+        joined = joined.replace(os.sep, "/")
+        if joined == ".." or joined.startswith("../"):
+            return None
+        stem, ext = os.path.splitext(joined)
+        return stem if ext in _SOURCE_EXTENSIONS else joined
+
     def resolve_import_to_file(
         self,
         module: str,
@@ -1121,37 +1137,30 @@ class TypeScriptLanguage(BaseLanguage):
         all_files: list[str],
         definitions_map: dict[str, str],
     ) -> str | None:
-        """Resolve TypeScript/JavaScript import to file path.
-
-        Handles:
-        - Relative imports: ./foo -> foo.ts, foo.tsx, foo/index.ts
-        - Path-resolved imports already contain slashes
-        - Node module imports are skipped (no leading ./)
-        """
-        # Skip node_modules packages (non-relative imports)
-        if not module.startswith(".") and "/" not in module:
-            return None
-
-        # Already resolved to path (contains /)
-        if "/" in module:
-            path = module
-
-            # Try with various extensions
-            extensions = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"]
-            for ext in extensions:
-                candidate = f"{path}{ext}"
-                if candidate in all_files:
-                    return candidate
-
-            # Try as directory with index file
-            for ext in extensions:
-                candidate = f"{path}/index{ext}"
-                if candidate in all_files:
-                    return candidate
-
-            return None
-
+        """Resolve a project path (a relative specifier already resolved by
+        extract_imports) to the file: the path itself, path + a source
+        extension, or path/index + a source extension."""
+        if module.startswith("."):
+            return None  # a relative specifier that resolved to nothing
+        if module in all_files:
+            return module
+        for ext in _SOURCE_EXTENSIONS:
+            if f"{module}{ext}" in all_files:
+                return f"{module}{ext}"
+        for ext in _SOURCE_EXTENSIONS:
+            if f"{module}/index{ext}" in all_files:
+                return f"{module}/index{ext}"
         return None
+
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """Only a relative specifier names a project file; a bare one is a
+        package (or a tsconfig paths alias, which is not read), even when a
+        root file happens to share its name."""
+        if imp.import_type != "relative":
+            return []
+        return super().resolve_import_targets(imp, all_files, definitions_map)
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format TypeScript/JavaScript entry point for display."""

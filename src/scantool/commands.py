@@ -166,28 +166,70 @@ def overlap(
     return format_overlap(result, showing), 0
 
 
+def _file_in(name: str, directory: str, ref: str | None) -> str | None:
+    """The file `name` addresses, relative to directory, when it is one: a
+    `path::` address, or a path that exists as a file (on disk, or at ref).
+    None when name is a name."""
+    is_address = name.endswith("::")
+    path = name[:-2] if is_address else name
+    if not path:
+        return None
+    if not is_address and ref is None and not os.path.isfile(path):
+        return None
+    if not is_address and ref is not None:
+        if not os.path.splitext(path)[1]:
+            return None
+        try:
+            top, rel = repo_and_rel(path)
+            if ref_kind(top, ref, rel) != "blob":
+                return None
+        except RefError:
+            return None
+    rel = os.path.relpath(os.path.abspath(path), os.path.abspath(directory)).replace(os.sep, "/")
+    if rel.startswith("../"):
+        raise UsageError(f"sct callers: {path} is not inside {directory}")
+    return rel
+
+
 def callers(
     name: str, directory: str | None = None, ref: str | None = None, as_json: bool = False
 ) -> tuple[str, int]:
+    """A name: its call sites. A file (a path that exists, or `path::`):
+    the files importing it, from the same import graph as the preview."""
     from .callers import callers_to_json, find_callers, format_callers, under
+    from .importers import format_importers, importers, importers_to_json
+    from .importers import under as under_file
 
     directory = directory or "."
     label = f"@{ref}" if ref else ""
+    file = _file_in(name, directory, ref)
+
+    def answer(tree: str) -> tuple[str, int]:
+        if file:
+            used = under_file(importers(tree, file), directory)
+            text = (
+                json.dumps(importers_to_json(used, label), indent=2)
+                if as_json
+                else format_importers(used, label)
+            )
+            return text, 0 if used.sites else 1
+        found = under(find_callers(tree, name), directory)
+        text = (
+            json.dumps(callers_to_json(found, label), indent=2)
+            if as_json
+            else format_callers(found, label)
+        )
+        return text, 0 if found.sites else 1
+
     if ref:
         top, rel = repo_and_rel(directory)
         if ref_kind(top, ref, rel) != "tree":
             raise RefError(f"{spec(ref, rel)} is not a directory")
         with materialised(top, ref, rel, os.path.basename(os.path.abspath(directory))) as tree:
-            found = find_callers(tree, name)
-    elif not os.path.isdir(directory):
+            return answer(tree)
+    if not os.path.isdir(directory):
         raise RefError(f"{directory} is not a directory")
-    else:
-        found = find_callers(directory, name)
-    found = under(found, directory)
-    code = 0 if found.sites else 1
-    if as_json:
-        return json.dumps(callers_to_json(found, label), indent=2), code
-    return format_callers(found, label), code
+    return answer(directory)
 
 
 def resolve(

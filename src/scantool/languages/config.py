@@ -17,7 +17,7 @@ Key functionality:
 import re
 from pathlib import Path
 
-from .base import BaseLanguage
+from .base import BaseLanguage, parent_dir
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -245,7 +245,7 @@ class ConfigLanguage(BaseLanguage):
             return module
 
         # Try relative to source file directory
-        source_dir = str(Path(source_file).parent)
+        source_dir = parent_dir(source_file)
         if source_dir != ".":
             candidate = f"{source_dir}/{module}"
             if candidate in all_files:

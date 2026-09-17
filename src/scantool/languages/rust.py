@@ -803,6 +803,19 @@ class RustLanguage(BaseLanguage):
         """
         imports = []
 
+        # Module declarations: `mod name;` binds name.rs or name/mod.rs under
+        # the file's own module directory (a `mod name { … }` block is inline)
+        mod_pattern = r"^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+(\w+)\s*;"
+        for match in re.finditer(mod_pattern, content, re.MULTILINE):
+            imports.append(
+                ImportInfo(
+                    source_file=file_path,
+                    target_module=match.group(1),
+                    import_type="mod",
+                    line=content[: match.start()].count("\n") + 1,
+                )
+            )
+
         # Pattern for use statements
         # Matches: use path::to::module;
         #          use path::{item1, item2};
@@ -1203,36 +1216,93 @@ class RustLanguage(BaseLanguage):
         all_files: list[str],
         definitions_map: dict[str, str],
     ) -> str | None:
-        """Resolve Rust use path to file path.
+        """Resolve a Rust use path to the deepest module file on it.
 
-        Rust use patterns:
-        - crate::module::item -> src/module.rs or src/module/mod.rs
-        - super::module -> parent directory
-        - self::module -> current module
+        - crate::a::b::Item -> <crate root>/a.rs or a/mod.rs, then a/b.rs …
+        - super::x -> the parent module's directory
+        - self::x -> the file's own module directory
 
-        External crates are skipped.
+        The crate root is the directory of the nearest main.rs/lib.rs above
+        the file (src/ when there is none). std, external crates and `::`
+        paths are skipped.
         """
-        # Skip standard library and external crates
-        if not module.startswith(("crate::", "super::", "self::")):
+        head, _, rest = module.partition("::")
+        base: str | None
+        if head == "crate":
+            base = self._crate_root(source_file, all_files)
+        elif head == "self":
+            base = self._module_dir(source_file)
+        elif head == "super":
+            base = self._parent_module_dir(source_file)
+        else:
             return None
+        if base is None:
+            return None
+        return self._deepest_module(base, rest.split("::") if rest else [], all_files)
 
-        # crate:: refers to current crate root (usually src/)
-        if module.startswith("crate::"):
-            path_parts = module.replace("crate::", "").split("::")
-            # Try src/module.rs
-            candidate = (
-                "src/" + "/".join(path_parts[:-1]) + ".rs"
-                if len(path_parts) > 1
-                else f"src/{path_parts[0]}.rs"
+    def resolve_import_targets(
+        self, imp: ImportInfo, all_files: list[str], definitions_map: dict[str, str]
+    ) -> list[str]:
+        """`mod x;` binds the module file; `use a::{b, c}` binds a and each
+        of b, c that is a module."""
+        if imp.import_type == "mod":
+            found = self._deepest_module(
+                self._module_dir(imp.source_file), [imp.target_module], all_files
             )
-            if candidate in all_files:
-                return candidate
-            # Try src/module/mod.rs
-            candidate_mod = "src/" + "/".join(path_parts) + "/mod.rs"
-            if candidate_mod in all_files:
-                return candidate_mod
+            return [found] if found else []
+        targets = super().resolve_import_targets(imp, all_files, definitions_map)
+        if imp.import_type == "use":
+            for name in imp.imported_names:
+                found = self.resolve_import_to_file(
+                    f"{imp.target_module}::{name}", imp.source_file, all_files, definitions_map
+                )
+                if found and found not in targets:
+                    targets.append(found)
+        return targets
 
-        return None
+    @staticmethod
+    def _module_dir(source_file: str) -> str:
+        """Where the file's child modules live: the directory of a root or
+        mod.rs file, else the directory named after the file."""
+        directory, name = os.path.split(source_file)
+        if name in ("main.rs", "lib.rs", "mod.rs"):
+            return directory
+        return f"{directory}/{name[:-3]}" if directory else name[:-3]
+
+    @staticmethod
+    def _parent_module_dir(source_file: str) -> str | None:
+        """Where the parent module's children (the file's siblings) live;
+        None for a crate root, which has no parent."""
+        directory, name = os.path.split(source_file)
+        if name in ("main.rs", "lib.rs"):
+            return None
+        return os.path.dirname(directory) if name == "mod.rs" else directory
+
+    @staticmethod
+    def _crate_root(source_file: str, all_files: list[str]) -> str:
+        roots = {
+            os.path.dirname(f) for f in all_files if os.path.basename(f) in ("main.rs", "lib.rs")
+        }
+        for root in sorted(roots, key=len, reverse=True):
+            if not root or source_file.startswith(root + "/"):
+                return root
+        return "src" if any(f.startswith("src/") for f in all_files) else ""
+
+    @staticmethod
+    def _deepest_module(base: str, segments: list[str], all_files: list[str]) -> str | None:
+        """Walk the path segments from base while each names a module file;
+        the last one found is the file the path binds (the rest are items)."""
+        found: str | None = None
+        directory = base
+        for segment in segments:
+            prefix = f"{directory}/" if directory else ""
+            candidates = (f"{prefix}{segment}.rs", f"{prefix}{segment}/mod.rs")
+            match = next((c for c in candidates if c in all_files), None)
+            if match is None:
+                break
+            found = match
+            directory = f"{prefix}{segment}"
+        return found
 
     def format_entry_point(self, ep: EntryPointInfo) -> str:
         """Format Rust entry point for display.
