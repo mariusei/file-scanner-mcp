@@ -386,3 +386,156 @@ def test_multiline_setext_heading_name_is_single_line(file_scanner, tmp_path):
             walk(node.children)
 
     walk(structures)
+
+
+# ── section gist: the first prose line of a section, in the docstring slot ──
+
+
+def _scan_md(file_scanner, tmp_path, text: str):
+    md = tmp_path / "gist.md"
+    md.write_text(text, encoding="utf-8")
+    structures = file_scanner.scan_file(str(md))
+    assert structures is not None
+    return structures
+
+
+def _by_name(structures, name):
+    for node in structures:
+        if node.name == name:
+            return node
+        found = _by_name(node.children, name)
+        if found is not None:
+            return found
+    return None
+
+
+def test_section_gist_is_first_prose_line(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        "# Top\n\nFirst   prose  line.\nSecond line.\n\n## Child\n\nChild prose.\n",
+    )
+    assert _by_name(structures, "Top").docstring == "First prose line."
+    assert _by_name(structures, "Child").docstring == "Child prose."
+
+
+def test_section_gist_stops_at_first_child_heading(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner, tmp_path, "# Top\n\n## Child\n\nOnly the child has prose.\n"
+    )
+    assert _by_name(structures, "Top").docstring is None
+    assert _by_name(structures, "Child").docstring == "Only the child has prose."
+
+
+def test_section_gist_from_list_item(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        "# Bullets\n\n-\n- first item text\n- second\n\n"
+        "# Numbered\n\n1. one\n2. two\n\n"
+        "# Quoted\n\n> said\n",
+    )
+    assert _by_name(structures, "Bullets").docstring == "first item text"
+    assert _by_name(structures, "Numbered").docstring == "one"
+    assert _by_name(structures, "Quoted").docstring == "said"
+
+
+def test_section_gist_skips_frame_lines(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        "---\ntitle: Front matter\n---\n\n# Top\n\n"
+        "| a | b |\n|---|---|\n\n"
+        "[![badge](b.svg)](https://x)\n![img](x.png)\n\n"
+        "<div>html</div>\n\n"
+        "```py\ncode line\n```\n\n"
+        "    indented code\n\n"
+        "***\n\n"
+        "The prose.\n",
+    )
+    assert _by_name(structures, "Top").docstring == "The prose."
+
+
+def test_section_gist_none_without_prose(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner, tmp_path, "# Code only\n\n```py\nx = 1\n```\n\n# Empty\n\n# Last\n"
+    )
+    for name in ("Code only", "Empty", "Last"):
+        assert _by_name(structures, name).docstring is None
+
+
+def test_section_gist_after_setext_heading(file_scanner, tmp_path):
+    structures = _scan_md(file_scanner, tmp_path, "Title\n=====\n\nUnder the underline.\n")
+    assert _by_name(structures, "Title").docstring == "Under the underline."
+
+
+def test_section_gist_is_the_first_sentence_whole(file_scanner, tmp_path):
+    from scantool.languages.base import MAX_EXPR_LEN
+
+    first = "This first sentence runs well past the sixty-character row width of a value."
+    assert len(first) > MAX_EXPR_LEN
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        f"# Long\n\n{first} Second sentence.\n\n"
+        '# Quoted\n\nHe said "stop here." Then more.\n\n'
+        "# Bracketed\n\nSee the guide (section 2)! And on.\n\n"
+        "# Eol\n\nEnds at the line end?\ncontinues below\n\n"
+        "# Dotted\n\nRun `v0.20.0` on file.md then stop. Next.\n",
+    )
+    assert _by_name(structures, "Long").docstring == first
+    assert _by_name(structures, "Quoted").docstring == 'He said "stop here."'
+    assert _by_name(structures, "Bracketed").docstring == "See the guide (section 2)!"
+    assert _by_name(structures, "Eol").docstring == "Ends at the line end?"
+    assert _by_name(structures, "Dotted").docstring == "Run `v0.20.0` on file.md then stop."
+
+
+def test_section_gist_reads_the_sentence_across_wrapped_lines(file_scanner, tmp_path):
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        "# Wrapped\n\nAgents read most code through\ntheir shell, not through\n"
+        "MCP tools. Second sentence\nhere.\n\n"
+        "# Paragraphs\n\nFirst paragraph has no end\n\nSecond paragraph. Done.\n\n"
+        "# Fenced\n\nLead-in without end\n```\ncode\n```\nafter the fence.\n\n"
+        "# List\n\n- first item wraps\n  onto this line. Then more.\n- second item.\n\n"
+        "# Quote\n\n> quoted text wraps\n> across lines. And on.\n\n"
+        "# Lead\n\nTo install, run:\n",
+    )
+    gists = {
+        name: _by_name(structures, name).docstring
+        for name in ("Wrapped", "Paragraphs", "Fenced", "List", "Quote", "Lead")
+    }
+    assert gists == {
+        "Wrapped": "Agents read most code through their shell, not through MCP tools.",
+        "Paragraphs": "First paragraph has no end",
+        "Fenced": "Lead-in without end",
+        "List": "first item wraps onto this line.",
+        "Quote": "quoted text wraps across lines.",
+        "Lead": "To install, run:",
+    }
+
+
+def test_section_gist_is_capped_at_twice_the_value_width(file_scanner, tmp_path):
+    from scantool.languages.base import MAX_EXPR_LEN
+
+    structures = _scan_md(
+        file_scanner,
+        tmp_path,
+        "# Run-on\n\n" + "word " * 40 + "\n\n# Long sentence\n\n" + "word " * 40 + "end. Next.\n",
+    )
+    for name in ("Run-on", "Long sentence"):
+        gist = _by_name(structures, name).docstring
+        assert len(gist) == 2 * MAX_EXPR_LEN
+        assert gist.startswith("word word") and gist.endswith("…")
+
+
+def test_quick_scan_row_carries_the_gist(tmp_path, capsys):
+    from scantool import cli
+
+    md = tmp_path / "doc.md"
+    md.write_text("# Top\n\nThe gist of it.\n\n## Child\n\n- item one\n", encoding="utf-8")
+    assert cli.main(["scan", str(md), "--depth", "quick"]) == 0
+    out = capsys.readouterr().out
+    assert "- Top @1 # The gist of it." in out
+    assert "  - Child @5 # item one" in out

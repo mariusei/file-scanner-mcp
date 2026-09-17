@@ -124,3 +124,20 @@ def test_mixed_formatting(file_scanner):
 
     assert len(all_caps) > 0, "Should find all-caps sections"
     assert len(mixed_case) > 0, "Should find mixed-case sections"
+
+
+def test_section_gist_is_first_paragraph_line(file_scanner, tmp_path):
+    txt = tmp_path / "gist.txt"
+    txt.write_text(
+        "OVERVIEW\n\nThe first   line of prose.\nMore.\n\nEMPTY SECTION\n\n"
+        "Underlined\n----------\n\n- a list item\n",
+        encoding="utf-8",
+    )
+    structures = file_scanner.scan_file(str(txt))
+    assert structures is not None
+    gists = {node.name: node.docstring for node in structures if node.type == "section"}
+    assert gists == {
+        "OVERVIEW": "The first line of prose.",
+        "EMPTY SECTION": None,
+        "Underlined": "a list item",
+    }

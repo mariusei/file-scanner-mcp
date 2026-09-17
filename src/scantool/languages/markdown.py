@@ -14,7 +14,7 @@ from pathlib import Path, PurePosixPath
 import tree_sitter_markdown
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import BaseLanguage, section_gist
 from .models import (
     EntryPointInfo,
     ImportInfo,
@@ -185,19 +185,35 @@ class MarkdownLanguage(BaseLanguage):
 
         traverse(root)
 
-        # Fix end_line for all headings to include their content
-        self._fix_heading_ranges(structures, source_code)
+        self._close_sections(structures, source_code)
 
         return structures
 
-    def _fix_heading_ranges(self, structures: list[StructureNode], source_code: bytes):
-        """Fix end_line for headings to include their content sections."""
-        total_lines = len(source_code.decode("utf-8", errors="replace").split("\n"))
+    def _close_sections(self, structures: list[StructureNode], source_code: bytes):
+        """Give each heading its section: end_line extended over the content
+        below it, and the gist — the first prose line of its own body, the
+        lines after the heading and before its first child heading, with
+        the code blocks the parser found blanked out."""
+        lines = source_code.decode("utf-8", errors="replace").split("\n")
 
-        def fix_node(node: StructureNode, next_sibling_start: int | None = None):
-            """Recursively fix end_line for a node and its children."""
+        def close(node: StructureNode, next_sibling_start: int | None = None):
             if not node.type.startswith("heading"):
                 return
+
+            section_end = next_sibling_start - 1 if next_sibling_start else len(lines)
+            first_heading = next((c for c in node.children if c.type.startswith("heading")), None)
+            body_end = first_heading.start_line - 1 if first_heading else section_end
+            code_lines = {
+                line
+                for child in node.children
+                if child.type == "code-block"
+                for line in range(child.start_line, child.end_line + 1)
+            }
+            body = [
+                "" if number in code_lines else text
+                for number, text in enumerate(lines[node.end_line : body_end], node.end_line + 1)
+            ]
+            node.docstring = section_gist(body)
 
             # Process children first
             if node.children:
@@ -208,26 +224,21 @@ class MarkdownLanguage(BaseLanguage):
                         next_start = node.children[i + 1].start_line
                     else:
                         next_start = next_sibling_start
-                    fix_node(child, next_start)
+                    close(child, next_start)
 
                 # Set this heading's end_line to just before the first child's start
                 # or to the last child's end_line
                 last_child = node.children[-1]
                 node.end_line = last_child.end_line
-            elif next_sibling_start is not None:
-                # No children, extend to just before next sibling
-                node.end_line = next_sibling_start - 1
             else:
-                # No children and no next sibling, extend to end of file
-                node.end_line = total_lines
+                node.end_line = section_end
 
-        # Fix all top-level structures
         for i, structure in enumerate(structures):
             if i + 1 < len(structures):
                 next_start = structures[i + 1].start_line
             else:
                 next_start = None
-            fix_node(structure, next_start)
+            close(structure, next_start)
 
     def _extract_atx_heading(self, node: Node, source_code: bytes) -> StructureNode:
         """Extract ATX-style heading (# Heading)."""
@@ -236,11 +247,13 @@ class MarkdownLanguage(BaseLanguage):
         # Get heading text (excluding the # markers)
         text = self._get_heading_text(node, source_code)
 
+        # The heading's own line only (the tree-sitter node ends on the line
+        # after it); _close_sections extends it over the section
         return StructureNode(
             type=f"heading-{level}",
             name=text or "(empty heading)",
             start_line=node.start_point[0] + 1,
-            end_line=node.end_point[0] + 1,
+            end_line=node.start_point[0] + 1,
             children=[],
         )
 
@@ -251,11 +264,14 @@ class MarkdownLanguage(BaseLanguage):
         # Get the heading text (first line, before underline)
         text = self._get_heading_text(node, source_code)
 
+        # The heading's own lines, text through underline (the tree-sitter
+        # node ends on the line after); _close_sections extends it over the section
+        underline = next(c for c in node.children if c.type.startswith("setext_h"))
         return StructureNode(
             type=f"heading-{level}",
             name=text or "(empty heading)",
             start_line=node.start_point[0] + 1,
-            end_line=node.end_point[0] + 1,
+            end_line=underline.start_point[0] + 1,
             children=[],
         )
 
