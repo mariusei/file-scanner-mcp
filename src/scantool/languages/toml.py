@@ -40,7 +40,7 @@ from pathlib import Path
 from tree_sitter import Node, Parser
 from tree_sitter_language_pack import get_language as get_packed_grammar
 
-from .base import BaseLanguage, CommentBlocks
+from .base import BaseLanguage, CommentBlocks, parent_dir
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -459,7 +459,7 @@ class TOMLLanguage(BaseLanguage):
         if module in all_files:
             return module
 
-        source_dir = str(Path(source_file).parent)
+        source_dir = parent_dir(source_file)
         if source_dir != ".":
             candidate = f"{source_dir}/{module}"
             if candidate in all_files:

@@ -319,3 +319,21 @@ def test_callers_with_a_file_json_and_typed_directory(tmp_path_factory, monkeypa
     assert document["coverage"]["files_scanned"] == 9
     assert document["coverage"]["by_file"][f"{typed}/c.py"] == 1
     assert {"file": f"{typed}/a.py", "line": 1, "text": "import pkg.sub.mod"} in document["sites"]
+
+
+def test_crlf_and_platform_parents_do_not_hide_importers(tmp_path):
+    """A CRLF file's `import a.b.c` must still count (the "$"-anchored pattern
+    does not consume "\r"), and a resolver's parent directory must be
+    "/"-joined, not the platform's (Windows failed on both)."""
+    (tmp_path / "pkg" / "sub").mkdir(parents=True)
+    for rel in ("pkg/__init__.py", "pkg/sub/__init__.py"):
+        (tmp_path / rel).write_text("")
+    (tmp_path / "pkg/sub/mod.py").write_bytes(b"def f():\r\n    return 1\r\n")
+    (tmp_path / "a.py").write_bytes(b"import pkg.sub.mod\r\n")
+    (tmp_path / "g.py").write_bytes(b"import pkg.sub.mod as x\r\n")
+    assert sorted(importers(str(tmp_path), "pkg/sub/mod.py").files) == ["a.py", "g.py"]
+
+    (tmp_path / "zig").mkdir()
+    (tmp_path / "zig" / "util.zig").write_text("pub fn f() void {}\n")
+    (tmp_path / "zig" / "main.zig").write_text('const u = @import("util.zig");\n')
+    assert importers(str(tmp_path), "zig/util.zig").files == ["zig/main.zig"]

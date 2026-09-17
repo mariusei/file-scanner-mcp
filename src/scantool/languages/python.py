@@ -546,6 +546,9 @@ class PythonLanguage(BaseLanguage):
         imports = []
 
         # Pattern 1: from X import Y
+        # A CRLF file ends every line with "\r", which "$" does not consume:
+        # `import a.b.c` then matches nothing (the from-form absorbed it).
+        content = content.replace("\r\n", "\n")
         from_import_pattern = r"^\s*from\s+([\w.]+)\s+import\s+(.+?)(?:\s+#.*)?$"
         for match in re.finditer(from_import_pattern, content, re.MULTILINE):
             module = match.group(1)

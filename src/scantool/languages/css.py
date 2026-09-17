@@ -14,7 +14,7 @@ from pathlib import Path
 import tree_sitter_css
 from tree_sitter import Language, Node, Parser
 
-from .base import BaseLanguage
+from .base import BaseLanguage, parent_dir
 from .models import (
     CallInfo,
     DefinitionInfo,
@@ -809,7 +809,7 @@ class CSSLanguage(BaseLanguage):
                 return candidate
 
         # Try relative to source file
-        source_dir = str(Path(source_file).parent)
+        source_dir = parent_dir(source_file)
         if source_dir != ".":
             candidate = f"{source_dir}/{module}"
             if candidate in all_files:

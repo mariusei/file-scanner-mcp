@@ -90,6 +90,15 @@ def default_is_private_name(name: str) -> bool:
 MAX_EXPR_LEN = 60
 
 
+def parent_dir(path: str) -> str:
+    """The parent of a repository-relative path, always "/"-joined: a
+    resolver compares its candidates against the file list, which is keyed
+    with "/" on every platform (Path(...).parent gives "src\\dir" on
+    Windows and would match nothing)."""
+    head, _, _ = path.replace("\\", "/").rpartition("/")
+    return head or "."
+
+
 def render_flat_value(source_text: str, limit: int = MAX_EXPR_LEN) -> str:
     """The value of a file-scope binding as one line for the node's
     signature: the source text flattened, cut to `limit` with an ellipsis.
